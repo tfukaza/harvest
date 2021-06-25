@@ -80,12 +80,12 @@ class Twitter(aseAlgo):
     def algo_init(self):
         self.hold = False
 
-    def handler(self, df, meta):
+    def handler(self, meta):
         if self.hold:
-            self.sell(1)    
+            self.sell('TWTR', 1)    
             self.hold = False
         else:
-            self.buy(1)
+            self.buy('TWTR', 1)
             self.hold = True
 ```
 Finally, we tell the trader to use this algorithm, and run it.
@@ -100,12 +100,12 @@ class Twitter(BaseAlgo):
     def algo_init(self):
         self.hold = False
 
-    def handler(self, df, meta):
+    def handler(self, meta):
         if self.hold:
-            self.sell(1)    
+            self.sell('TWTR', 1)    
             self.hold = False
         else:
-            self.buy(1)
+            self.buy('TWTR', 1)
             self.hold = True
 
 if __name__ == "__main__":

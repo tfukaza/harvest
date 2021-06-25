@@ -26,13 +26,12 @@ class Example(BaseAlgo):
     def algo_init(self):
         pass
 
-    def handler(self, df, meta):
-        rsi = self.rsi(period=8)[-1]
-        if rsi < 30:
-            self.buy(10)    
+    def handler(self, meta):
+        rsi = self.rsi()[-1]
+            self.buy('TWTR', 1)    
             return
         elif rsi > 70:
-            self.sell(10)
+            self.sell('TWTR', 1)
             return
 
 if __name__ == "__main__":
