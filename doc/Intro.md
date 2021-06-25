@@ -17,11 +17,15 @@ pip install git+https://github.com/tfukaza/harvest.git
 
 Next, install libraries corresponding to which broker you want to use
 ```bash
-pip install git+https://github.com/tfukaza/harvest.git[BROKER]
+pip install -e git+https://github.com/tfukaza/harvest.git#egg=harvest[BROKER]
 ```
 Where `BROKER` is replaced by one of the following brokers supported by Harvest:
 - `Robinhood`
 
+On MacOS's zsh, you will need to use the following format instead:
+```bash
+pip install -e 'git+https://github.com/tfukaza/harvest.git#egg=harvest[BROKER]'
+```
 
 Once you have everything installed, set up the login credentials:
 - [For Robinhood](Robinhood.md)
