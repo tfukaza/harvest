@@ -12,12 +12,12 @@ It is recommeded to use a virtualenv or a version control system like Conda, tho
 
 The library can be installed using 
 ```bash
-pip install git+https://github.com/tfukaza/Harvest.git
+pip install git+https://github.com/tfukaza/harvest.git
 ```
 
 Next, install libraries corresponding to which broker you want to use
 ```bash
-pip install git+https://github.com/tfukaza/Harvest.git[BROKER]
+pip install git+https://github.com/tfukaza/harvest.git[BROKER]
 ```
 Where `BROKER` is replaced by one of the following brokers supported by Harvest:
 - `Robinhood`
