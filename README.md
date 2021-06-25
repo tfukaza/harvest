@@ -47,3 +47,7 @@ Easy, right?
 Following are resoruces to get you started with Harvest
  - [Beginner's Guide](doc/Intro.md): Learn how to install and create a basic algorithm with Harvest.
  - [Developer Guide](doc/dev.md): Guide for developers interested in contributing or modifying the code.  
+
+ # Collaborators:
+ Special thanks to the following developers for contributing to this project 🤟
+ - @shershah010
