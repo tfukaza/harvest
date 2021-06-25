@@ -1,0 +1,32 @@
+# ignore ide files
+
+.vscode
+
+# ignore compiled python files
+
+**/__pycache__/
+*.py[cod]
+*.ipynb
+*$py.class
+*.egg-info
+*.ipynb_checkpoints
+
+build/
+dist/
+
+# ignore generated files
+
+build/
+dist/
+
+# ignore coverage files
+
+.coverage
+/htmlcov
+
+# misc.
+
+*.yaml
+!dummy_account.yaml
+
+.DS_Store
