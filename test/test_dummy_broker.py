@@ -21,15 +21,15 @@ class TestDummyBroker(unittest.TestCase):
         watch = ['A', 'B', 'C', '@D']
         dummy.setup_run(watch, '1MIN')
         d = dummy.fetch_latest_stock_price()
-        print(d)
-        self.assertEqual(d.shape, (1, 15))
+        self.assertEqual(len(d), 3)
 
     def test_get_crypto_price(self):
         dummy = broker.DummyBroker()
         watch = ['A', 'B', 'C', '@D']
         dummy.setup_run(watch, '1MIN')
         d = dummy.fetch_latest_crypto_price()
-        self.assertEqual(d.shape, (1, 5))
+        self.assertTrue('@D' in d)
+        self.assertEqual(d['@D'].shape, (1, 5))
 
 if __name__ == '__main__':
     unittest.main()

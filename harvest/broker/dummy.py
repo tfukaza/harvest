@@ -137,36 +137,24 @@ class DummyBroker(base.BaseBroker):
         results = results.loc[(open_time < results.index.time) & (results.index.time < close_time)]
         results = results[(results.index.dayofweek != 5) & (results.index.dayofweek != 6)]
 
-        results.columns = pd.MultiIndex.from_product([[ticker], results.columns])
-
         return results.iloc[::-1]
 
-    def fetch_latest_stock_price(self) -> pd.DataFrame:
-        results = None
+    def fetch_latest_stock_price(self) -> Dict[str, pd.DataFrame]:
+        results = {}
         last = dt.datetime.now() - dt.timedelta(days=7)
         today = dt.datetime.now()
         for ticker in self.watch:
             if ticker[0] != '@':
-                result = self.fetch_price_history(last, today, self.interval, ticker).iloc[[0]]
-                if results is None:
-                    results = result
-                else:
-                    results = results.join(result, how='outer')
-
-        results.columns = pd.MultiIndex.from_tuples(results.columns)
+                results[ticker] = self.fetch_price_history(last, today, self.interval, ticker).iloc[[0]]
         return results
         
-    def fetch_latest_crypto_price(self) -> pd.DataFrame:
-        results = None
+    def fetch_latest_crypto_price(self) -> Dict[str, pd.DataFrame]:
+        results = {}
         last = dt.datetime.now() - dt.timedelta(days=7)
         today = dt.datetime.now()
         for ticker in self.watch:
             if ticker[0] == '@':
-                result = self.fetch_price_history(last, today, self.interval, ticker).iloc[[0]]
-                if results is None:
-                    results = result
-                else:
-                    results = results.join(result, how='outer')
+                results[ticker] = self.fetch_price_history(last, today, self.interval, ticker).iloc[[0]]
         return results
     
     def fetch_stock_positions(self) -> List[Dict[str, Any]]:
