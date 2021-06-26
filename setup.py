@@ -1,7 +1,7 @@
 from setuptools import find_packages, setup
 setup(
     name='harvest',
-    packages=find_packages(include=['harvest', 'harvest.plugin', 'harvest.broker', 'harvest.trader']),
+    packages=find_packages(),
     version='0.1.0',
     description='A framework providing a high-level interface for algorithmic trading.',
     author='Tomoki T. Fukazawa',
