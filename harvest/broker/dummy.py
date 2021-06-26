@@ -61,6 +61,18 @@ class DummyBroker(base.BaseBroker):
         results = None
         return results
 
+    def _generate_fake_stock_data(self):
+        open_s = random.uniform(2, 1000)
+        volume = random.randint(1, 1e7)
+
+        while True: 
+            open_s = max(open_s + random.uniform(-1, 1), 0.001)
+            close = open_s + random.uniform(-1, 1)
+            low = max(min(open_s, close) - random.uniform(0.001, 1), 0)
+            high = max(open_s, close) + random.uniform(0.001, 1)
+            volume = max(volume + random.randint(-5, 5), 1)  
+            yield open_s, high, low, close, volume
+
     def fetch_price_history(self,
         last: dt.datetime, 
         today: dt.datetime, 
