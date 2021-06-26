@@ -28,6 +28,7 @@ class Example(BaseAlgo):
 
     def handler(self, meta):
         rsi = self.rsi()[-1]
+        if rsi < 30:
             self.buy('TWTR', 1)    
             return
         elif rsi > 70:
