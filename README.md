@@ -52,3 +52,4 @@ Following are resoruces to get you started with Harvest
  # Collaborators:
  Special thanks to the following developers for contributing to this project 🤟
  - @shershah010
+ - @Kimeiga
