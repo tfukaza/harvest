@@ -137,7 +137,9 @@ class DummyBroker(base.BaseBroker):
         results = results.loc[(open_time < results.index.time) & (results.index.time < close_time)]
         results = results[(results.index.dayofweek != 5) & (results.index.dayofweek != 6)]
 
-        return results.iloc[::-1]
+        results.columns = pd.MultiIndex.from_product([[ticker], results.columns])
+
+        return results
 
     def fetch_latest_stock_price(self) -> Dict[str, pd.DataFrame]:
         results = {}

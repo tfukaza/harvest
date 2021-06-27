@@ -11,7 +11,7 @@ import sys
 import urllib
 from datetime import timedelta
 from logging import critical, debug, error, info, warning
-from typing import Any, Callable, List 
+from typing import Any, Callable, Dict, List 
 
 # External libraries
 import numpy as np
@@ -80,7 +80,7 @@ class BaseBroker:
         """
         pass
 
-    def _handler(self) -> pd.DataFrame:
+    def _handler(self) -> Dict[str, pd.DataFrame]:
         """This function should be called at the specified interval, and return data.
         For brokers that use streaming, this often means specifying this function as a callback.
         For brokers that use polling, this often means calling whatever endpoint is needed to 
