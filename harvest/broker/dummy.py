@@ -139,7 +139,7 @@ class DummyBroker(base.BaseBroker):
 
         results.columns = pd.MultiIndex.from_product([[ticker], results.columns])
 
-        return results.iloc[::-1]
+        return results
 
     def fetch_latest_stock_price(self) -> Dict[str, pd.DataFrame]:
         results = {}
