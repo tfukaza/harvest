@@ -61,6 +61,18 @@ class DummyBroker(base.BaseBroker):
         results = None
         return results
 
+    def _generate_fake_stock_data(self):
+        open_s = random.uniform(2, 1000)
+        volume = random.randint(1, 1e7)
+
+        while True: 
+            open_s = max(open_s + random.uniform(-1, 1), 0.001)
+            close = open_s + random.uniform(-1, 1)
+            low = max(min(open_s, close) - random.uniform(0.001, 1), 0)
+            high = max(open_s, close) + random.uniform(0.001, 1)
+            volume = max(volume + random.randint(-5, 5), 1)  
+            yield open_s, high, low, close, volume
+
     def fetch_price_history(self,
         last: dt.datetime, 
         today: dt.datetime, 
@@ -125,30 +137,24 @@ class DummyBroker(base.BaseBroker):
         results = results.loc[(open_time < results.index.time) & (results.index.time < close_time)]
         results = results[(results.index.dayofweek != 5) & (results.index.dayofweek != 6)]
 
-        results.columns = pd.MultiIndex.from_product([[ticker], results.columns])
-
         return results.iloc[::-1]
 
-    def fetch_latest_stock_price(self) -> pd.DataFrame:
-        results = pd.DataFrame()
+    def fetch_latest_stock_price(self) -> Dict[str, pd.DataFrame]:
+        results = {}
         last = dt.datetime.now() - dt.timedelta(days=7)
         today = dt.datetime.now()
         for ticker in self.watch:
             if ticker[0] != '@':
-                result = self.fetch_price_history(last, today, self.interval, ticker).iloc[0]
-                results = results.join(result, how='outer')
-
-        results.columns = pd.MultiIndex.from_tuples(results.columns)
+                results[ticker] = self.fetch_price_history(last, today, self.interval, ticker).iloc[[0]]
         return results
         
-    def fetch_latest_crypto_price(self) -> pd.DataFrame:
-        results = pd.DataFrame()
+    def fetch_latest_crypto_price(self) -> Dict[str, pd.DataFrame]:
+        results = {}
         last = dt.datetime.now() - dt.timedelta(days=7)
         today = dt.datetime.now()
         for ticker in self.watch:
             if ticker[0] == '@':
-                result = self.fetch_price_history(last, today, self.interval, ticker).iloc[0]
-                results = results.join(result, how='outer')
+                results[ticker] = self.fetch_price_history(last, today, self.interval, ticker).iloc[[0]]
         return results
     
     def fetch_stock_positions(self) -> List[Dict[str, Any]]:

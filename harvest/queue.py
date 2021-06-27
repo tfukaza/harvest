@@ -16,10 +16,14 @@ class Queue:
     def init_symbol(self, symbol: str, interval: str) -> None:
         if not symbol in self.queue:
             self.queue[symbol] = {}
+        self.queue[symbol][interval] = pd.DataFrame()
         self.queue[symbol][interval + '-update'] = dt.datetime(1970, 1, 1)
 
     def set_symbol_interval(self, symbol: str, interval: str, df: pd.DataFrame) -> None:
         self.queue[symbol][interval] = df
+
+    def set_symbol_interval_update(self, symbol: str, interval: str, timestamp: dt.datetime) -> None:
+        self.queue[symbol][interval + '-update'] = timestamp
     
     def append_symbol_interval(self, symbol: str, interval: str, df: pd.DataFrame, chk_duplicate: bool=False) -> None:
         if self.queue[symbol][interval].empty:
@@ -34,9 +38,6 @@ class Queue:
     
     def get_symbol_interval_prices(self, symbol: str, interval: str, ref: str) -> List[float]:
         return self.queue[symbol][interval][symbol][ref].tolist()
-
-    def set_symbol_interval_update(self, symbol: str, interval: str, timestamp: dt.datetime) -> None:
-        self.queue[symbol][interval + '-update'] = timestamp
 
     def get_symbol_interval_update(self, symbol: str, interval: str) -> dt.datetime:
         return self.queue[symbol][interval + '-update']

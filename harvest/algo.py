@@ -37,7 +37,7 @@ class BaseAlgo:
     
     ############ Functions interfacing with broker #################
 
-    def buy(self, *args, **kwargs):
+    def buy(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
         """Buys the sepcified asset.
 
         :symbol:    Symbol of the asset to buy
@@ -51,9 +51,9 @@ class BaseAlgo:
             - symbol: symbol of asset
             Raises an exception if order fails. 
         """
-        return self.trader.buy(*args, **kwargs)
+        return self.trader.buy(symbol, quantity, in_force, extended)
     
-    def sell(self, *args, **kwargs):
+    def sell(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
         """Sells the sepcified asset.
 
         :symbol:    Symbol of the asset to buy
@@ -67,9 +67,9 @@ class BaseAlgo:
             - symbol: symbol of asset
             Raises an exception if order fails. 
         """
-        return self.trader.sell(*args, **kwargs)
+        return self.trader.sell(symbol, quantity, in_force, extended)
 
-    def await_buy(self, *args, **kwargs):
+    def await_buy(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
         """Buys the specified asset, and hangs the code until the order is filled. 
 
         :symbol:    Symbol of the asset to buy
@@ -83,9 +83,9 @@ class BaseAlgo:
             - symbol: symbol of asset
             Raises an exception if order fails. 
         """
-        return self.trader.await_buy(*args, **kwargs)
+        return self.trader.await_buy(symbol, quantity, in_force, extended)
     
-    def await_sell(self, *args, **kwargs):
+    def await_sell(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
         """Sells the specified asset, and hangs the code until the order is filled. 
 
         :symbol:    Symbol of the asset to buy
@@ -99,9 +99,9 @@ class BaseAlgo:
             - symbol: symbol of asset
             Raises an exception if order fails. 
         """
-        return self.trader.await_sell(*args, **kwargs)
+        return self.trader.await_sell(symbol, quantity, in_force, extended)
 
-    def buy_option(self, *args, **kwargs):
+    def buy_option(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
         """Buys the sepcified option.
         
         :symbol:    Symbol of the asset to buy, in OCC format. 
@@ -114,9 +114,9 @@ class BaseAlgo:
             - symbol: symbol of asset
             Raises an exception if order fails. 
         """
-        return self.trader.buy_option(*args, **kwargs)
+        return self.trader.buy_option(symbol, quantity, in_force, extended)
     
-    def sell_option(self, *args, **kwargs):
+    def sell_option(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
         """Sells the sepcified option.
         
         :symbol:    Symbol of the asset to buy, in OCC format. 
@@ -129,7 +129,7 @@ class BaseAlgo:
             - symbol: symbol of asset
             Raises an exception if order fails. 
         """
-        return self.trader.sell_option(*args, **kwargs)
+        return self.trader.sell_option(symbol, quantity, in_force, extended)
     
     ########### Functions to trade options #################
 

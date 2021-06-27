@@ -278,7 +278,7 @@ class Trader:
 
         val = int(re.sub("[^0-9]", "", self.interval))
         val_fetch = int(re.sub("[^0-9]", "", self.fetch_interval))
-        if minutes % val == val-val_fetch:
+        if minutes % val == 0:
             return True 
         else: 
             return False
@@ -471,40 +471,40 @@ class Trader:
             "multiplier": 1
         }
 
-    def buy(self, *args, **kwargs):
-        ret = self.broker.buy(*args, **kwargs)
+    def buy(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
+        ret = self.broker.buy(symbol, quantity, in_force, extended)
         if ret == None:
             raise Exception("BUY failed")
         self.order_queue.append(ret)
         debug(f"BUY order queue: {self.order_queue}")
         return ret
     
-    def await_buy(self, *args, **kwargs):
-        ret = self.broker.await_buy(*args, **kwargs)
+    def await_buy(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
+        ret = self.broker.await_buy(symbol, quantity, in_force, extended)
         return ret
 
-    def sell(self, *args, **kwargs):
-        ret = self.broker.sell(*args, **kwargs)
+    def sell(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
+        ret = self.broker.sell(symbol, quantity, in_force, extended)
         if ret == None:
             raise Exception("SELL failed")
         self.order_queue.append(ret)
         debug(f"SELL order queue: {self.order_queue}")
         return ret
     
-    def await_sell(self, *args, **kwargs):
-        ret = self.broker.await_sell(*args, **kwargs)
+    def await_sell(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
+        ret = self.broker.await_sell(symbol, quantity, in_force, extended)
         return ret
 
-    def buy_option(self, *args, **kwargs):
-        ret = self.broker.buy_option(*args, **kwargs)
+    def buy_option(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
+        ret = self.broker.buy_option(symbol, quantity, in_force, extended)
         if ret == None:
             raise Exception("BUY failed")
         self.order_queue.append(ret)
         debug(f"BUY order queue: {self.order_queue}")
         return ret
 
-    def sell_option(self, *args, **kwargs):
-        ret = self.broker.sell_option(*args, **kwargs)
+    def sell_option(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
+        ret = self.broker.sell_option(symbol, quantity, in_force, extended)
         if ret == None:
             raise Exception("SELL failed")
         self.order_queue.append(ret)
