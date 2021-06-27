@@ -45,9 +45,16 @@ That's it! Piece of cake 🍰
 # Getting Started
 Following are resources to get you started with Harvest
  - [Beginner's Guide](doc/Intro.md): Learn how to install and create a basic algorithm with Harvest.
- - [Developer Guide](doc/dev.md): Guide for developers interested in contributing or modifying the code.  
+ - Documentation: Coming soon!
+ - Tutorial Series: Coming soon!
 
- # Collaborators:
+# Collaborators
  Special thanks to the following developers for contributing to this project 🤟
  - @shershah010
  - @Kimeiga
+
+
+# Disclaimer
+Harvest is an open-source passion project created by algo trading enthusiasts. 
+- It is not officially associated with Robinhood LLC.  
+- Use Harvest at your own responsibility. 
