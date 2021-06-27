@@ -480,7 +480,7 @@ class BaseBroker:
         raise Exception("This endpoint is not supported in this broker")
     
     def buy_option(self, symbol: str=None, quantity: int=0, in_force: str='gtc'):
-        """Buys the sepcified option.
+        """Buys the specified option.
         
         :symbol:    Symbol of the asset to buy, in OCC format. 
         :quantity:  Quantity of asset to buy
