@@ -11,7 +11,7 @@ import sys
 import urllib
 from datetime import timedelta
 from logging import critical, debug, error, info, warning
-from typing import Any, Callable, List 
+from typing import Any, Callable, Dict, List 
 
 # External libraries
 import numpy as np
