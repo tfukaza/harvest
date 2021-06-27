@@ -102,7 +102,7 @@ class BaseAlgo:
         return self.trader.await_sell(symbol, quantity, in_force, extended)
 
     def buy_option(self, symbol: str=None, quantity: int=0, in_force: str='gtc'):
-        """Buys the sepcified option.
+        """Buys the specified option.
         
         :symbol:    Symbol of the asset to buy, in OCC format. 
         :quantity:  Quantity of asset to buy
@@ -114,10 +114,10 @@ class BaseAlgo:
             - symbol: symbol of asset
             Raises an exception if order fails. 
         """
-        return self.trader.buy_option(symbol, quantity, in_force, extended)
+        return self.trader.buy_option(symbol, quantity, in_force)
     
     def sell_option(self, symbol: str=None, quantity: int=0, in_force: str='gtc'):
-        """Sells the sepcified option.
+        """Sells the specified option.
         
         :symbol:    Symbol of the asset to buy, in OCC format. 
         :quantity:  Quantity of asset to buy
@@ -129,7 +129,7 @@ class BaseAlgo:
             - symbol: symbol of asset
             Raises an exception if order fails. 
         """
-        return self.trader.sell_option(symbol, quantity, in_force, extended)
+        return self.trader.sell_option(symbol, quantity, in_force)
     
     ########### Functions to trade options #################
 

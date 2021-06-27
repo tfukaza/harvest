@@ -231,7 +231,10 @@ class Trader:
             self._queue_init(self.fetch_interval) 
             new_day = True
         
-        self._queue_update(df_dict, self.timestamp)
+        # Update the queue. If not new data is received, skip.
+        is_new = self._queue_update(df_dict, self.timestamp)
+        if not is_new:
+            return 
 
         # If an order was processed, fetch the latest position info
         # otherwise, calculate current positions locally
@@ -339,10 +342,17 @@ class Trader:
         """
         debug("Queue update")
         interval = self.fetch_interval
+        is_new = False
 
         for sym in self.watch:
             self.queue.append_symbol_interval(sym, interval, df_dict[sym], True)
-            self.queue.set_symbol_interval_update(sym, interval, df_dict[sym].index[-1]) 
+            old_timestamp = self.queue.get_symbol_interval_update(sym, interval)
+            new_timestamp = df_dict[sym].index[-1]
+            if new_timestamp <= old_timestamp:
+                continue
+            else:
+                is_new = True
+            self.queue.set_symbol_interval_update(sym, interval, new_timestamp) 
 
             df_base = self.queue.get_symbol_interval(sym, interval) 
             
@@ -358,6 +368,8 @@ class Trader:
               
                 self.queue.append_symbol_interval(sym, inter, df_tmp, True)
                 self.queue.set_symbol_interval_update(sym, interval, df_tmp.index[-1]) 
+        
+        return is_new
 
     def _update_order_queue(self):
         """Check to see if outstanding orders have been accpted or rejected
