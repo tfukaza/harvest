@@ -1,22 +1,21 @@
 ![Header](doc/Header.png)
 
-🚨**WARNING**🚨   
-This library is still in early alpha, and the code is generally unstable. APIs and general functionality are subject to frequent changes. 
-
 ## What is Harvest?
-Harvest is a framework to develop algorithms for trading stocks, options, and cryptocurrencies. In a single framework, you can easily test and deploy algorithms through various brokers. 
+Harvest is a Python framework for algorithmic trading. This simple framework packs a lot of punch:
+- Trade stocks, cryptos, even options! (if your brokerage supports them)
+- Backtest on historical data
+- Paper trading
+- Live trading
 
 ## Why Harvest?
-There are many other algo trading frameworks availible, such as QuantConnect and BackTrader. What distinguishes Harvst is the two core principles the codebase is built around: 
+There are many other algorithmic trading frameworks available, like QuantConnect and BackTrader. What distinguishes Harvest are the core principles the framework is built around: 
 
-😊**Intutive** - The interface is designed to be easy to learn. Many of the complicated data structures and parameters are abstracted away and handeled by Harvest. 
+😊**Intuitive** - The interface is designed to be easy to learn. Many of the complicated data structures and parameters are abstracted away and handled by Harvest. 
 
 🛠️**Hackable** - The entire codebase is open-sourced, and is also modularized in a way that makes it easy for developers to add new, experimental features. 
 
-
 ## Example
-To write an algorithm that monitors the RSI value of Twitter(TWTR) and makes trades based on its value, this is all you need to write:
-
+To trade Twitter(TWTR) on Robinhood with an algorithm that monitors the RSI value, write the following code:
 ```python
 from harvest.algo import BaseAlgo
 from harvest.trader import Trader
@@ -41,14 +40,21 @@ if __name__ == "__main__":
     t.set_algo(Example())
     t.run()
 ```
+That's it! Piece of cake 🍰
 
-Easy, right?
-
-# Getting Started
-Following are resoruces to get you started with Harvest
+## Getting Started
+Following are resources to get you started with Harvest
  - [Beginner's Guide](doc/Intro.md): Learn how to install and create a basic algorithm with Harvest.
- - [Developer Guide](doc/dev.md): Guide for developers interested in contributing or modifying the code.  
+ - Documentation: Coming soon!
+ - Tutorial Series: Coming soon!
 
- # Collaborators:
+## Collaborators
  Special thanks to the following developers for contributing to this project 🤟
  - @shershah010
+ - @Kimeiga
+
+
+## Disclaimer
+Harvest is an open-source passion project created by algo trading enthusiasts. 
+- It is not officially associated with Robinhood LLC.  
+- Use Harvest at your own responsibility. 
