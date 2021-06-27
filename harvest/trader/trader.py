@@ -278,7 +278,7 @@ class Trader:
 
         val = int(re.sub("[^0-9]", "", self.interval))
         val_fetch = int(re.sub("[^0-9]", "", self.fetch_interval))
-        if minutes % val == val-val_fetch:
+        if minutes % val == 0:
             return True 
         else: 
             return False
