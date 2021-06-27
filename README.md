@@ -4,8 +4,8 @@
 Harvest is a Python framework for algorithmic trading. This simple framework packs a lot of punch:
 - Trade stocks, cryptos, even options! (if your brokerage supports them)
 - Backtest on historical data
-- Live trading
 - Paper trading
+- Live trading
 
 ## Why Harvest?
 There are many other algorithmic trading frameworks available, like QuantConnect and BackTrader. What distinguishes Harvest are the core principles the framework is built around: 
@@ -42,19 +42,19 @@ if __name__ == "__main__":
 ```
 That's it! Piece of cake 🍰
 
-# Getting Started
+## Getting Started
 Following are resources to get you started with Harvest
  - [Beginner's Guide](doc/Intro.md): Learn how to install and create a basic algorithm with Harvest.
  - Documentation: Coming soon!
  - Tutorial Series: Coming soon!
 
-# Collaborators
+## Collaborators
  Special thanks to the following developers for contributing to this project 🤟
  - @shershah010
  - @Kimeiga
 
 
-# Disclaimer
+## Disclaimer
 Harvest is an open-source passion project created by algo trading enthusiasts. 
 - It is not officially associated with Robinhood LLC.  
 - Use Harvest at your own responsibility. 
