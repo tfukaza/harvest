@@ -231,7 +231,10 @@ class Trader:
             self._queue_init(self.fetch_interval) 
             new_day = True
         
-        self._queue_update(df_dict, self.timestamp)
+        # Update the queue. If not new data is received, skip.
+        is_new = self._queue_update(df_dict, self.timestamp)
+        if not is_new:
+            return 
 
         # If an order was processed, fetch the latest position info
         # otherwise, calculate current positions locally
@@ -339,10 +342,17 @@ class Trader:
         """
         debug("Queue update")
         interval = self.fetch_interval
+        is_new = False
 
         for sym in self.watch:
             self.queue.append_symbol_interval(sym, interval, df_dict[sym], True)
-            self.queue.set_symbol_interval_update(sym, interval, df_dict[sym].index[-1]) 
+            old_timestamp = self.queue.get_symbol_interval_update(sym, interval)
+            new_timestamp = df_dict[sym].index[-1]
+            if new_timestamp <= old_timestamp:
+                continue
+            else:
+                is_new = True
+            self.queue.set_symbol_interval_update(sym, interval, new_timestamp) 
 
             df_base = self.queue.get_symbol_interval(sym, interval) 
             
@@ -358,6 +368,8 @@ class Trader:
               
                 self.queue.append_symbol_interval(sym, inter, df_tmp, True)
                 self.queue.set_symbol_interval_update(sym, interval, df_tmp.index[-1]) 
+        
+        return is_new
 
     def _update_order_queue(self):
         """Check to see if outstanding orders have been accpted or rejected
@@ -495,16 +507,16 @@ class Trader:
         ret = self.broker.await_sell(symbol, quantity, in_force, extended)
         return ret
 
-    def buy_option(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
-        ret = self.broker.buy_option(symbol, quantity, in_force, extended)
+    def buy_option(self, symbol: str=None, quantity: int=0, in_force: str='gtc'):
+        ret = self.broker.buy_option(symbol, quantity, in_force)
         if ret == None:
             raise Exception("BUY failed")
         self.order_queue.append(ret)
         debug(f"BUY order queue: {self.order_queue}")
         return ret
 
-    def sell_option(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
-        ret = self.broker.sell_option(symbol, quantity, in_force, extended)
+    def sell_option(self, symbol: str=None, quantity: int=0, in_force: str='gtc'):
+        ret = self.broker.sell_option(symbol, quantity, in_force)
         if ret == None:
             raise Exception("SELL failed")
         self.order_queue.append(ret)
