@@ -11,6 +11,7 @@ import sys
 import threading
 import logging
 from logging import critical, error, info, warning, debug
+import time
 
 # External libraries
 import numpy as np
@@ -52,8 +53,12 @@ class Trader:
             self.broker = broker
             self.broker.setup(self.handler, self)
 
-        # Intialize date 
-        self.timestamp_prev = pytz.utc.localize(dt.datetime(1970, 1, 1))
+        # Initialize date 
+        now = time.mktime(time.gmtime())
+        now = dt.datetime.fromtimestamp(now)
+        now = now.replace(second=0, microsecond=0)
+        now = pytz.utc.localize(now)
+        self.timestamp_prev = now
         self.timestamp = self.timestamp_prev
 
         self.watch = []             # List of stocks to watch
@@ -234,6 +239,7 @@ class Trader:
         # Update the queue. If not new data is received, skip.
         is_new = self._queue_update(df_dict, self.timestamp)
         if not is_new:
+            debug("No new data")
             return 
 
         # If an order was processed, fetch the latest position info
@@ -345,13 +351,14 @@ class Trader:
         is_new = False
 
         for sym in self.watch:
-            self.queue.append_symbol_interval(sym, interval, df_dict[sym], True)
             old_timestamp = self.queue.get_symbol_interval_update(sym, interval)
             new_timestamp = df_dict[sym].index[-1]
+            debug(new_timestamp, old_timestamp)
             if new_timestamp <= old_timestamp:
                 continue
             else:
                 is_new = True
+            self.queue.append_symbol_interval(sym, interval, df_dict[sym], True)
             self.queue.set_symbol_interval_update(sym, interval, new_timestamp) 
 
             df_base = self.queue.get_symbol_interval(sym, interval) 
@@ -406,7 +413,7 @@ class Trader:
         """
         # Update entries in local cache
         # API should also be called if load_watch is false, as there is a high chance 
-        # that data in local cache are not representitive of the entire portfolio,
+        # that data in local cache are not representative of the entire portfolio,
         # meaning total equity cannot be calculated locally
         if new or not self.load_watch:
             pos = self.broker.fetch_stock_positions()
