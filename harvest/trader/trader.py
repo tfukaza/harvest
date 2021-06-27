@@ -495,16 +495,16 @@ class Trader:
         ret = self.broker.await_sell(symbol, quantity, in_force, extended)
         return ret
 
-    def buy_option(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
-        ret = self.broker.buy_option(symbol, quantity, in_force, extended)
+    def buy_option(self, symbol: str=None, quantity: int=0, in_force: str='gtc'):
+        ret = self.broker.buy_option(symbol, quantity, in_force)
         if ret == None:
             raise Exception("BUY failed")
         self.order_queue.append(ret)
         debug(f"BUY order queue: {self.order_queue}")
         return ret
 
-    def sell_option(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
-        ret = self.broker.sell_option(symbol, quantity, in_force, extended)
+    def sell_option(self, symbol: str=None, quantity: int=0, in_force: str='gtc'):
+        ret = self.broker.sell_option(symbol, quantity, in_force)
         if ret == None:
             raise Exception("SELL failed")
         self.order_queue.append(ret)

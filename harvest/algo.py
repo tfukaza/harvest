@@ -101,7 +101,7 @@ class BaseAlgo:
         """
         return self.trader.await_sell(symbol, quantity, in_force, extended)
 
-    def buy_option(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
+    def buy_option(self, symbol: str=None, quantity: int=0, in_force: str='gtc'):
         """Buys the sepcified option.
         
         :symbol:    Symbol of the asset to buy, in OCC format. 
@@ -116,7 +116,7 @@ class BaseAlgo:
         """
         return self.trader.buy_option(symbol, quantity, in_force, extended)
     
-    def sell_option(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
+    def sell_option(self, symbol: str=None, quantity: int=0, in_force: str='gtc'):
         """Sells the sepcified option.
         
         :symbol:    Symbol of the asset to buy, in OCC format. 
