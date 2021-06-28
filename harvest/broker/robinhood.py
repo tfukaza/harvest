@@ -21,6 +21,8 @@ import harvest.broker._base as base
 
 class RobinhoodBroker(base.BaseBroker):
 
+    interval_list = ['1MIN', '5MIN', '15MIN', '30MIN']
+
     def __init__(self, path=None):
         if path == None:
             path = './secret.yaml'
@@ -41,7 +43,7 @@ class RobinhoodBroker(base.BaseBroker):
 
         self.interval = interval
 
-        if interval not in ['1MIN', '5MIN', '15MIN', '30MIN']:
+        if interval not in self.interval_list:
             raise Exception(f'Invalid interval {interval}')
 
         for s in self.watch:
@@ -68,7 +70,9 @@ class RobinhoodBroker(base.BaseBroker):
         val = int(re.sub("[^0-9]", "", self.fetch_interval))
         # RH does not support per minute intervals, so instead 15second intervals are used
         # Note that 1MIN is only supported for crypto
+        
         print("Running...")
+        
         if self.interval == '1MIN':
             while 1:
                 cur = dt.datetime.now()
@@ -219,7 +223,7 @@ class RobinhoodBroker(base.BaseBroker):
     def fetch_option_positions(self):
         ret = rh.get_open_option_positions()
         pos = []
-        print(ret)
+        #print(ret)
         for r in ret:
             # Get option data such as expiration date
             data = rh.get_option_instrument_data_by_id(r['option_id'])

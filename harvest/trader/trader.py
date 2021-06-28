@@ -10,7 +10,7 @@ from datetime import timedelta
 import sys
 import threading
 import logging
-from logging import critical, error, info, warning, debug
+from logging import warning, debug
 import time
 
 # External libraries
@@ -42,6 +42,7 @@ class Trader:
         :broker:
         """
         if streamer == None:
+            warning("Streamer not specified, using DummyBroker")
             self.streamer = DummyBroker()
         else:
             self.streamer = streamer
@@ -73,7 +74,9 @@ class Trader:
 
         self.block_lock = threading.Lock() # Lock for streams that recieve data asynchronously
 
-    def run( self, load_watch=True, interval='5MIN',aggregations = []): 
+        self.algo = None
+
+    def run( self, load_watch=True, interval='5MIN',aggregations=[]): 
         """Entry point to start the system. 
         
         :load_watch: If True, all positions will be loaded from the brokerage account. 
@@ -86,17 +89,22 @@ class Trader:
 
         TODO: If there is no internet connection, the program will shut down before starting. 
         """
-        debug(f"Starting program...")
+        print(f"Starting Harvest...")
 
         self.load_watch = load_watch
         self.interval = interval
         self.aggregations = aggregations
 
+        if not interval in self.streamer.interval_list:
+            raise Exception(f"""Interval '{interval}' is not supported by the selected streamer.\n 
+                                The streamer only supports {self.streamer.interval_list}""")
+
         # Ensure that all aggregate intervals are greater than 'interval'
         int_i = self.interval_list.index(interval)
         for agg in aggregations:
             if self.interval_list.index(agg) <= int_i:
-                raise Exception(f'Cannot aggregate to {agg} when interval is {interval}')
+                raise Exception(f"""Interval '{interval}' is less than aggregation interval '{agg}'\n
+                                    All intervals in aggregations must be greater than specified interval '{interval}'""")
 
         self._setup_account()
         self._setup_stats()
@@ -109,8 +117,11 @@ class Trader:
             for s in self.crypto_positions:
                 self.watch.append(s['symbol'])
             for s in self.order_queue:
-                self.watch.append(s['symbol'])        
-        
+                self.watch.append(s['symbol'])     
+
+        if len(self.watch) == 0:
+            raise Exception(f"No stock or crypto was specified. Use add_symbol() to specify an asset to watch.")
+
         # Remove duplicates
         self.watch = list(set(self.watch))
         debug(f"Watchlist: {self.watch}")
@@ -128,6 +139,9 @@ class Trader:
         if interval != self.fetch_interval:
             self.aggregations.append(interval)
         debug(f"Aggregations: {self.aggregations}")
+
+        if self.algo == None:
+            raise Exception("Algorithm was not specified. Use set_algo to specify an algorithm.")
 
         self.algo.setup(self)
         self.algo.watch = self.watch
@@ -449,13 +463,13 @@ class Trader:
             self.account['equity'] = equity
         
     def _setup_stats(self):
-        """Intializes local cache of stocks, options, and crypto positions.
+        """Initializes local cache of stocks, options, and crypto positions.
         """
-        # get any pending orders 
+        # Get any pending orders 
         ret = self.broker.fetch_order_queue()
         self.order_queue = ret
 
-        # get positions
+        # Get positions
         pos = self.broker.fetch_stock_positions()
         self.stock_positions = pos
         pos = self.broker.fetch_option_positions()
@@ -463,10 +477,10 @@ class Trader:
         pos = self.broker.fetch_crypto_positions()
         self.crypto_positions = pos
 
-        # get account stats
+        # Get account stats
         ret = self.broker.fetch_account()
         self.account = ret
-        # update option stats
+        # Update option stats
         self.broker.update_option_positions(self.option_positions)
 
     def fetch_chain_info(self, *args, **kwargs):

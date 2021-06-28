@@ -10,7 +10,8 @@ import requests
 import sys
 import urllib
 from datetime import timedelta
-from logging import critical, debug, error, info, warning
+from logging import debug
+from warnings import warn
 from typing import Any, Callable, Dict, List 
 
 # External libraries
@@ -118,7 +119,7 @@ class BaseBroker:
         pass
 
     def _exception_handler( func ):
-        """Wrapper to handle unexpected errors in the wrapped funtion. 
+        """Wrapper to handle unexpected errors in the wrapped function. 
         Most functions should be wrapped with this to properly handle errors, such as
         when internet connection is lost. 
 
@@ -131,8 +132,8 @@ class BaseBroker:
                 try:
                     return func(*args, **kwargs) 
                 except Exception as e:
-                    error(e)
-                    error("Retrying...")
+                    debug(e)
+                    debug("Retrying...")
                     tries = tries - 1 
                     continue
             raise Exception(f"{func} failed")
@@ -367,7 +368,7 @@ class BaseBroker:
         raise Exception("This endpoint is not supported in this broker")
     
     def buy(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
-        """Buys the sepcified asset.
+        """Buys the specified asset.
 
         :symbol:    Symbol of the asset to buy
         :quantity:  Quantity of asset to buy
@@ -378,17 +379,19 @@ class BaseBroker:
         """
         if symbol == None:
             symbol = self.watch[0]
+        if quantity <= 0.0:
+            raise Exception(f"Quantity cannot be less than or equal to 0: was given {quantity}")
+
         buy_power = self.trader.account['buying_power']
         price = self.trader.queue.get_last_symbol_interval_price(symbol, self.fetch_interval, 'close')
         limit_price = round(price * 1.05, 2)
         total_price = limit_price * quantity
         
         if total_price >= buy_power:
-            debug("Not enough buying power")
-            return None
-        if quantity <= 0:
-            debug("Quantity must be greater than 0")
-            return None
+            raise Exception(f"""   Not enough buying power 🏦.\n
+                        Total price ({price} * {quantity} * 1.05 = {limit_price}) exceeds buying power {buy_power}.\n 
+                        Reduce purchase quantity or increase buying power.""")
+        
         return self.order_limit('buy', symbol, quantity, limit_price, in_force, extended)
     
     def await_buy(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
@@ -413,7 +416,7 @@ class BaseBroker:
                 return stat
 
     def sell(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
-        """Sells the sepcified asset.
+        """Sells the specified asset.
 
         :symbol:    Symbol of the asset to buy
         :quantity:  Quantity of asset to buy
@@ -425,13 +428,13 @@ class BaseBroker:
         if symbol == None:
             symbol = self.watch[0]
         
-        if isinstance(quantity, str):
-            for p in self.trader.stock_positions + self.trader.crypto_positions:
-                if p['symbol'] == symbol:
-                    quantity = p['quantity']
-                    break
-        if quantity < 0.00001:
-            debug(f"SELL quantity {quantity} is too little")
+        # if isinstance(quantity, str):
+        #     for p in self.trader.stock_positions + self.trader.crypto_positions:
+        #         if p['symbol'] == symbol:
+        #             quantity = p['quantity']
+        #             break
+        if quantity <= 0.0:
+            raise Exception(f"Quantity cannot be less than or equal to 0: was given {quantity}")
             return None
        
         price = self.trader.queue.get_last_symbol_interval_price(symbol, self.fetch_interval, 'close') 
@@ -489,18 +492,19 @@ class BaseBroker:
         :returns: The result of order_option_limit(). Returns None if there is an issue with the parameters.
         """
         if symbol == None:
-            return None
+            raise Exception("Option symbol was not specified")
+        if quantity <= 0.0:
+            raise Exception(f"Quantity cannot be less than or equal to 0: was given {quantity}")
+
         buy_power = self.trader.account['buying_power']
         price = self.trader.streamer.fetch_option_market_data(symbol)['price']
         limit_price = round(price * 1.05, 2)
         total_price = limit_price * quantity
         
         if total_price >= buy_power:
-            debug("Not enough buying power")
-            return None
-        if quantity <= 0:
-            debug("Quantity must be greater than 0")
-            return None
+            raise Exception(f"""   Not enough buying power 🏦.\n
+                        Total price ({price} * {quantity} * 1.05 = {limit_price}) exceeds buying power {buy_power}.\n 
+                        Reduce purchase quantity or increase buying power.""")
         
         sym, date, option_type, strike = self.occ_to_data(symbol)
         return self.order_option_limit('buy', sym, quantity, limit_price, option_type, date, strike, in_force=in_force)
@@ -515,15 +519,14 @@ class BaseBroker:
         :returns: The result of order_option_limit(). Returns None if there is an issue with the parameters.
         """
         if symbol == None:
-            return None
-        if isinstance(quantity, str):
-            for p in self.trader.stock_positions + self.trader.crypto_positions + self.trader.option_positions:
-                if p['symbol'] == symbol:
-                    quantity = p['quantity']
-                    break
-        if quantity < 0.00001:
-            debug(f"SELL quantity {quantity} is too little")
-            return None
+            raise Exception("Option symbol was not specified")
+        if quantity <= 0.0:
+            raise Exception(f"Quantity cannot be less than or equal to 0: was given {quantity}")
+        # if isinstance(quantity, str):
+        #     for p in self.trader.stock_positions + self.trader.crypto_positions + self.trader.option_positions:
+        #         if p['symbol'] == symbol:
+        #             quantity = p['quantity']
+        #             break
        
         price = self.trader.streamer.fetch_option_market_data(symbol)['price']
         limit_price = round(price * 0.95, 2)
