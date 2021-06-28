@@ -353,7 +353,6 @@ class Trader:
         for sym in self.watch:
             old_timestamp = self.queue.get_symbol_interval_update(sym, interval)
             new_timestamp = df_dict[sym].index[-1]
-            debug(new_timestamp, old_timestamp)
             if new_timestamp <= old_timestamp:
                 continue
             else:
