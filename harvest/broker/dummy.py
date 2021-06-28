@@ -77,7 +77,7 @@ class DummyBroker(base.BaseBroker):
         last: dt.datetime, 
         today: dt.datetime, 
         interval: str='1MIN',
-        ticker: str = None) -> pd.DataFrame:
+        symbol: str = None) -> pd.DataFrame:
 
         interval_parsed = re.search('([0-9]*)([A-Z]*)', interval)
         if interval_parsed:
@@ -99,8 +99,8 @@ class DummyBroker(base.BaseBroker):
             times.append(current)
             current += interval
 
-        if not ticker:
-            ticker = 'DUMMY'
+        if not symbol:
+            symbol = 'DUMMY'
 
         # Fake the data 
         stock_gen = self._generate_fake_stock_data()
@@ -137,7 +137,7 @@ class DummyBroker(base.BaseBroker):
         results = results.loc[(open_time < results.index.time) & (results.index.time < close_time)]
         results = results[(results.index.dayofweek != 5) & (results.index.dayofweek != 6)]
 
-        results.columns = pd.MultiIndex.from_product([[ticker], results.columns])
+        results.columns = pd.MultiIndex.from_product([[symbol], results.columns])
 
         return results
 
@@ -145,18 +145,18 @@ class DummyBroker(base.BaseBroker):
         results = {}
         last = dt.datetime.now() - dt.timedelta(days=7)
         today = dt.datetime.now()
-        for ticker in self.watch:
-            if ticker[0] != '@':
-                results[ticker] = self.fetch_price_history(last, today, self.interval, ticker).iloc[[0]]
+        for symbol in self.watch:
+            if symbol[0] != '@':
+                results[symbol] = self.fetch_price_history(last, today, self.interval, symbol).iloc[[0]]
         return results
         
     def fetch_latest_crypto_price(self) -> Dict[str, pd.DataFrame]:
         results = {}
         last = dt.datetime.now() - dt.timedelta(days=7)
         today = dt.datetime.now()
-        for ticker in self.watch:
-            if ticker[0] == '@':
-                results[ticker] = self.fetch_price_history(last, today, self.interval, ticker).iloc[[0]]
+        for symbol in self.watch:
+            if symbol[0] == '@':
+                results[symbol] = self.fetch_price_history(last, today, self.interval, symbol).iloc[[0]]
         return results
     
     def fetch_stock_positions(self) -> List[Dict[str, Any]]:
