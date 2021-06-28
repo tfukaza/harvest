@@ -119,7 +119,7 @@ class BaseBroker:
         pass
 
     def _exception_handler( func ):
-        """Wrapper to handle unexpected errors in the wrapped funtion. 
+        """Wrapper to handle unexpected errors in the wrapped function. 
         Most functions should be wrapped with this to properly handle errors, such as
         when internet connection is lost. 
 
@@ -132,8 +132,8 @@ class BaseBroker:
                 try:
                     return func(*args, **kwargs) 
                 except Exception as e:
-                    error(e)
-                    error("Retrying...")
+                    debug(e)
+                    debug("Retrying...")
                     tries = tries - 1 
                     continue
             raise Exception(f"{func} failed")
