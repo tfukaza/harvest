@@ -30,10 +30,8 @@ class RobinhoodBroker(base.BaseBroker):
             self.config = yaml.safe_load(stream)
 
         totp = pyotp.TOTP(self.config['robin_mfa']).now()
-        debug(f"Current OTP: {totp}")
         login = rh.login(self.config['robin_username'],
                         self.config['robin_password'], store_session=True, mfa_code=totp)
-        debug(login)
     
     def setup_run(self, watch: List[str], interval):
         self.watch = watch
@@ -97,7 +95,6 @@ class RobinhoodBroker(base.BaseBroker):
         df_dict.update( self.fetch_latest_stock_price() )
         df_dict.update( self.fetch_latest_crypto_price())
       
-        debug(df_dict)
         return df_dict
     
     @base.BaseBroker._exception_handler
@@ -163,7 +160,6 @@ class RobinhoodBroker(base.BaseBroker):
         
         df = pd.DataFrame.from_dict(ret)
         df = self._format_df(df, [symbol], interval, False)
-        debug(df)
         return df.iloc[-count:]
 
     @base.BaseBroker._exception_handler
@@ -181,7 +177,6 @@ class RobinhoodBroker(base.BaseBroker):
             df_tmp = self._format_df(df_tmp, [s], self.interval, True)
             df[s] = df_tmp
         
-        debug(f"Stock df: {df}")
         return df        
 
     @base.BaseBroker._exception_handler
@@ -197,7 +192,6 @@ class RobinhoodBroker(base.BaseBroker):
             df_tmp = self._format_df(df_tmp, ['@'+s], self.interval, True)
             df['@'+s] = df_tmp
         
-        debug(f"Crypto df: {df}")
         return df        
     
 
@@ -249,7 +243,6 @@ class RobinhoodBroker(base.BaseBroker):
         ret = rh.get_crypto_positions()
         pos = []
         for r in ret:
-            debug(r)
             # Note: It seems Robinhood misspelled 'cost_bases',
             # it should be 'cost_basis'
             if len(r['cost_bases']) <= 0:
@@ -265,12 +258,10 @@ class RobinhoodBroker(base.BaseBroker):
                     "quantity": qty,
                 } 
             )
-        debug(f"fetch_crypto: {pos}")
         return pos 
     
     @base.BaseBroker._exception_handler
     def update_option_positions(self, positions: List[Any]):
-        debug(f"Option positions: {positions}")
         for r in positions:
             sym, date, type, price = self.occ_to_data(r['occ_symbol'])
             upd = rh.get_option_market_data(
@@ -279,7 +270,6 @@ class RobinhoodBroker(base.BaseBroker):
                 str(price),
                 type
             )
-            debug(upd)
             upd = upd[0][0]
             r["current_price"] = float(upd['adjusted_mark_price'])
             r["market_value"] = float(upd['adjusted_mark_price']) * r['quantity']
@@ -294,7 +284,6 @@ class RobinhoodBroker(base.BaseBroker):
             "buying_power": float(ret['account_buying_power']['amount']),   
             "multiplier": float(-1)
         }
-        debug(ret)
         return ret
 
     @base.BaseBroker._exception_handler
@@ -314,7 +303,6 @@ class RobinhoodBroker(base.BaseBroker):
     @base.BaseBroker._exception_handler
     def fetch_option_order_status(self, id):
         ret = rh.get_option_order_info(id)
-        debug(ret)
         return {
             "type":"OPTION",
             "id":ret['id'],
@@ -329,7 +317,6 @@ class RobinhoodBroker(base.BaseBroker):
     @base.BaseBroker._exception_handler
     def fetch_crypto_order_status(self, id):
         ret = rh.get_crypto_order_info(id)
-        debug(ret)
         return {
             "type":"CRYPTO",
             "id":ret['id'],
@@ -383,7 +370,6 @@ class RobinhoodBroker(base.BaseBroker):
             } )
         ret = rh.get_all_open_crypto_orders()
         for r in ret:
-            debug(r)
             sym = rh.get_symbol_by_url(r['instrument'])
             queue.append({
                 "type":"CRYPTO",
@@ -440,7 +426,6 @@ class RobinhoodBroker(base.BaseBroker):
     def fetch_option_market_data(self, symbol: str):
       
         sym, date, type, price = self.occ_to_data(symbol)
-        debug(f"Converted:{sym},{date},{type},{price}")
         ret = rh.get_option_market_data(
             sym,
             date.strftime('%Y-%m-%d'),
@@ -500,7 +485,6 @@ class RobinhoodBroker(base.BaseBroker):
                     
                     )
                 typ = 'STOCK'
-            debug(ret)
             return {
                 "type":typ,
                 "id":ret['id'],
@@ -535,7 +519,6 @@ class RobinhoodBroker(base.BaseBroker):
                     optionType=option_type,
                     timeInForce=in_force,
                 )
-            debug(ret)
             if 'detail' in ret:
                 Exception(f"Robinhood returned the following error:\n{ret['detail']}")
             return {

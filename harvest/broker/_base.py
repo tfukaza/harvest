@@ -132,7 +132,7 @@ class BaseBroker:
                 try:
                     return func(*args, **kwargs) 
                 except Exception as e:
-                    debug(e)
+                    debug(f"Error: {e}")
                     debug("Retrying...")
                     tries = tries - 1 
                     continue
