@@ -1,7 +1,11 @@
 # Reference: https://www.poornerd.com/2020/08/31/deploy-nextjs-github-actions.html
 on:
   push:
+<<<<<<< HEAD
     branches: [ gh-pages ]
+=======
+    branches: [ documentation ]
+>>>>>>> documentation
 
 jobs:
   build:
@@ -20,8 +24,10 @@ jobs:
     - run: npm install
     - run: npm run build
     - run: npm run export
-    - name: Deploy 🚀
-      uses: JamesIves/github-pages-deploy-action@4.1.4
+    - name: Deploy
+      uses: peaceiris/actions-gh-pages@v3
       with:
-        branch: gh-pages # The branch the action should deploy to.
-        folder: out # The folder the action should deploy.
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_branch: main
+        keep_files: true
+        destination_dir: docs
