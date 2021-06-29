@@ -24,8 +24,8 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
     - run: npm install
-    - run: npx build
-    - run: npx export
+    - run: npx next build
+    - run: npx next export
     - name: Deploy
       uses: peaceiris/actions-gh-pages@v3
       with:
