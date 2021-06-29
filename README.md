@@ -1,4 +1,4 @@
-![Header](doc/Header.png)
+![Header](docs/Header.png)
 
 ## What is Harvest?
 Harvest is a Python framework for algorithmic trading. This simple framework packs a lot of punch:
@@ -44,7 +44,7 @@ That's it! Piece of cake 🍰
 
 ## Getting Started
 Following are resources to get you started with Harvest
- - [Beginner's Guide](doc/Intro.md): Learn how to install and create a basic algorithm with Harvest.
+ - [Beginner's Guide](docs/Intro.md): Learn how to install and create a basic algorithm with Harvest.
  - Documentation: Coming soon!
  - Tutorial Series: Coming soon!
 
