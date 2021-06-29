@@ -1,7 +1,9 @@
 # Reference: https://www.poornerd.com/2020/08/31/deploy-nextjs-github-actions.html
+name: Build Website
+
 on:
   push:
-    branches: [ documentation ]
+    branches: [ main, documentation ]
 
 jobs:
   build:
