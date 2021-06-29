@@ -1,0 +1,27 @@
+# Reference: https://www.poornerd.com/2020/08/31/deploy-nextjs-github-actions.html
+on:
+  push:
+    branches: [ gh-pages ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [14.x]
+
+    steps:
+    - uses: actions/checkout@v2.1.0
+    - name: Use Node.js $
+      uses: actions/setup-node@v1
+      with:
+        node-version: $
+    - run: npm install
+    - run: npm run build
+    - run: npm run export
+    - name: Deploy 🚀
+      uses: JamesIves/github-pages-deploy-action@4.1.4
+      with:
+        branch: gh-pages # The branch the action should deploy to.
+        folder: out # The folder the action should deploy.
