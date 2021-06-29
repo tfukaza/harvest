@@ -1,0 +1,29 @@
+# Reference: https://www.poornerd.com/2020/08/31/deploy-nextjs-github-actions.html
+on:
+  push:
+    branches: [ documentation ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [14.x]
+
+    steps:
+    - uses: actions/checkout@v2.1.0
+    - name: Use Node.js $
+      uses: actions/setup-node@v1
+      with:
+        node-version: $
+    - run: npm install
+    - run: npm run build
+    - run: npm run export
+    - name: Deploy
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_branch: main
+        keep_files: true
+        destination_dir: docs
