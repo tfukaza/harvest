@@ -3,7 +3,7 @@ name: Build Website
 
 on:
   push:
-    branches: [ main, documentation ]
+    branches: [ main ]
 
 defaults:
       run:
