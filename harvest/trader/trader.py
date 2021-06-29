@@ -31,7 +31,7 @@ class Trader:
         The user may or may not own them. Note it does NOT contain options. 
     :broker: Both the broker and streamer store a Broker object.
         Broker places orders and retrieves latest account info like equity.
-    :streamer: Streamer retreives the latest stock price and calls handler().
+    :streamer: Streamer retrieves the latest stock price and calls handler().
     """
 
     interval_list = ['1MIN', '5MIN', '15MIN', '30MIN', '1HR', '1DAY']
@@ -134,7 +134,7 @@ class Trader:
         # so Trader must runs at 5MIN and aggregate it to 10MIN.
         # This also means fetch_interval is always a shorter interval than 'interval'
         self.fetch_interval = self.streamer.fetch_interval
-        debug(f"Interval: {interval}\nBase interval: {self.fetch_interval}")
+        debug(f"Interval: {interval}\nFetch interval: {self.fetch_interval}")
 
         if interval != self.fetch_interval:
             self.aggregations.append(interval)
@@ -167,7 +167,7 @@ class Trader:
             debug("Force flush")
             self.handler(None, True)
         except asyncio.CancelledError:
-            debug("timeout cancelled")
+            debug("Timeout cancelled")
 
     async def handler(self, df_dict, timestamp, flush=False):
         """ Function called by the broker every minute
@@ -189,8 +189,8 @@ class Trader:
         -   If yes, data will be put in a queue, and handler will wait until rest of the data coms in
         -   After a certain timeout period, the handler will forward the data 
         """
-
-        debug(df_dict)
+        debug(f"Handler received: \n{df_dict}")
+        
         self.block_lock.acquire()
 
         self.timestamp_prev = self.timestamp
@@ -215,9 +215,9 @@ class Trader:
             self.task = self.loop.create_task(self.timeout())
 
         symbols = [k for k, v in df_dict.items()]
-        debug(f"Got {symbols}")
+        debug(f"Got data for: {symbols}")
         self.needed = list(set(self.needed) - set(symbols))
-        debug(f"Need {self.needed}")
+        debug(f"Still need data for: {self.needed}")
  
         if not bool(self.block_queue):
             self.block_queue = df_dict 
@@ -378,8 +378,6 @@ class Trader:
             
             for inter in self.aggregations:
                 # Locally aggregate data to reduce network latency
-                debug(f"Aggregating {inter}")
-    
                 old_agg = self.queue.get_symbol_interval(sym, inter).index[-1]
 
                 df_tmp = df_base.loc[old_agg:]
@@ -437,8 +435,6 @@ class Trader:
             self.crypto_positions = [p for p in pos if p['symbol'] in self.watch]
             ret = self.broker.fetch_account()
             self.account = ret
-      
-        debug(df_dict)
 
         if option_update:
             self.broker.update_option_positions(self.option_positions)
