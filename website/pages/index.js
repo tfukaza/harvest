@@ -18,8 +18,8 @@ export default function Home() {
             Algo-trading framework for <a href="https://www.merriam-webster.com/dictionary/tinker">tinkers</a> 🛠️
           </h1>
           <p>
-            Harvest is a robust, flexible Python framework to 
-            build algorithms to trade assets.
+            Harvest is a simple yet robust 
+            Python framework for algorithmic trading.
           </p>
           <button>
             Temp
