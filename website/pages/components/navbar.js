@@ -1,10 +1,11 @@
 import styles from '../../styles/Home.module.css'
+import Link from 'next/link'
 
 export default function NavBar() {
     return (
         <nav className={styles.nav}>
-            <a href="/tutorial">Tutorials</a>
-            <a href="/docs">Docs</a>
+            <Link href="/tutorial"><a>Tutorials</a></Link>
+            <Link href="/docs"><a>Docs</a></Link>
         </nav>
     )
 }
