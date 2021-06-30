@@ -19,7 +19,7 @@ export default function Home() {
           </h1>
           <p>
             Harvest is a robust, flexible Python framework to 
-            easily trade a wide variety of assets.
+            build algorithms to trade assets.
           </p>
           <button>
             Temp
