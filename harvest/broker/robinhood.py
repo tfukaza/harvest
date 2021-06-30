@@ -29,9 +29,22 @@ class RobinhoodBroker(base.BaseBroker):
         with open(path, 'r') as stream:
             self.config = yaml.safe_load(stream)
 
+        debug("Logging into Robinhood...")
         totp = pyotp.TOTP(self.config['robin_mfa']).now()
-        login = rh.login(self.config['robin_username'],
-                        self.config['robin_password'], store_session=True, mfa_code=totp)
+        rh.login(   self.config['robin_username'],
+                    self.config['robin_password'], 
+                    store_session=True, 
+                    mfa_code=totp)
+    
+    def refresh_cred(self):
+        debug("Logging out of Robinhood...")
+        rh.authentication.logout()
+        totp = pyotp.TOTP(self.config['robin_mfa']).now()
+        rh.login(   self.config['robin_username'],
+                    self.config['robin_password'], 
+                    store_session=True, 
+                    mfa_code=totp)
+        debug("Logging into Robinhood...")
     
     def setup_run(self, watch: List[str], interval):
         self.watch = watch

@@ -250,6 +250,10 @@ class Trader:
             self._queue_init(self.fetch_interval) 
             new_day = True
         
+        # Periodically refresh access tokens
+        if new_day or (self.timestamp.hour == 3 and self.timestamp.minute == 0):
+            self.streamer.refresh_cred()
+        
         # Update the queue. If not new data is received, skip.
         is_new = self._queue_update(df_dict, self.timestamp)
         if not is_new:
