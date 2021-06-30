@@ -1,4 +1,4 @@
 module.exports = {
   reactStrictMode: true,
-  assetPrefix: './',
+  assetPrefix: process.env.BASE_PATH || './'
 }
