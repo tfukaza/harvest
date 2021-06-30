@@ -171,7 +171,7 @@ class RobinhoodBroker(base.BaseBroker):
                 interval=self.interval_fmt, 
                 span='day', 
                 )
-            if 'error' in ret:
+            if 'error' in ret or ret == None or (type(ret) == list and len(ret) == 0):
                 continue
             df_tmp = pd.DataFrame.from_dict(ret)
             df_tmp = self._format_df(df_tmp, [s], self.interval, True)
