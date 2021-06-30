@@ -3,11 +3,11 @@ name: Build Website
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, documentation ]
 
 defaults:
-      run:
-        working-directory: website
+  run:
+    working-directory: website
 
 jobs:
   build:
