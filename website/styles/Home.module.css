@@ -17,8 +17,20 @@
   height:70px;
   position: fixed;
   background-color: #FFFFFF;
-  /*box-shadow: 0px 8px 20px 0px rgb(33, 42, 51,0.17)*/
   border-bottom: solid 1px #cfcfcf;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.nav a{
+  margin: 0px 30px;
+  color:#414141;
+  transition: 0.1s;
+}
+
+.nav a:hover{
+  color:#686868;
 }
 
 .landing{
@@ -47,7 +59,7 @@
   grid-column-end: 10;
   margin-top: 50px;
   font-size: 20px;
-  line-height: 130%;
+  line-height: 160%;
   text-align: center;
 }
 
@@ -56,7 +68,7 @@
   color: #00d660;
 }
 
-#landing button{
+#landing .button{
   margin-top: 100px;
   margin-bottom: 200px;
   grid-column-start: 6;

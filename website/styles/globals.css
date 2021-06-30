@@ -14,7 +14,11 @@ h1, h2, h1 a{
 
 p, a{
   font-family: 'Inter', sans-serif;
-  color: #4A4A4A;
+  color: #616161;
+}
+
+p{
+  line-height: 140%;
 }
 
 a {
