@@ -5,11 +5,11 @@ export default function CodeBlock({lang, value}) {
     if (lang === undefined){ lang = "text"; }
     if (value === undefined) { value = "Hello World"; }
     return (
-        <div className={rc.code}>
             <SyntaxHighlighter
-                language={lang}>
+                language={lang}
+                customStyle={''}
+                useInlineStyles={false}>
                 {value}
             </SyntaxHighlighter>
-        </div>
     )
 }

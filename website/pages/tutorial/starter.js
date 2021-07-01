@@ -15,6 +15,7 @@ export default function Module() {
         </section>
         <section className={styles.section}>
             <div className={styles.text}> 
+                <h1>Starter Guide</h1>
                 <h2>Prerequisites</h2>
                 <p>As promised, there isn&#39;t too many prerequisites to 
                     start learning harvest. Just make sure you have the following:
@@ -44,8 +45,11 @@ export default function Module() {
 
                 <p>
                 Where BROKER is replaced by one of the following brokers supported by Harvest:
-              
-                Robinhood
+                </p>
+                <ul>
+                    <li>Robinhood</li>
+                </ul>
+                <p>
                 On MacOS&#39;s zsh, you will need to use the following format instead:
                 </p>
 
@@ -134,26 +138,26 @@ t = Trader( RobinhoodBroker() )`}>
                 <CodeBlock
                     lang="python"
                     value={`from harvest.algo import BaseAlgo
-                from harvest.trader import Trader
-                from harvest.broker.robinhood import RobinhoodBroker
+from harvest.trader import Trader
+from harvest.broker.robinhood import RobinhoodBroker
 
-                class Twitter(BaseAlgo):
-                    def algo_init(self):
-                        self.hold = False
+class Twitter(BaseAlgo):
+    def algo_init(self):
+        self.hold = False
 
-                    def handler(self, meta):
-                        if self.hold:
-                            self.sell('TWTR', 1)    
-                            self.hold = False
-                        else:
-                            self.buy('TWTR', 1)
-                            self.hold = True
+    def handler(self, meta):
+        if self.hold:
+            self.sell('TWTR', 1)    
+            self.hold = False
+        else:
+            self.buy('TWTR', 1)
+            self.hold = True
 
-                if __name__ == "__main__":
-                    t = Trader( RobinhoodBroker(), None )
-                    t.add_symbol('TWTR')
-                    t.set_algo(Twitter())
-                    t.run(interval='1DAY')`}></CodeBlock>
+if __name__ == "__main__":
+    t = Trader( RobinhoodBroker(), None )
+    t.add_symbol('TWTR')
+    t.set_algo(Twitter())
+    t.run(interval='1DAY')`}></CodeBlock>
 
                 <p>By specifying interval=&#39;1DAY&#39; in run, the _handler will be called once every day.
 

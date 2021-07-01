@@ -103,8 +103,13 @@
         0px 5px 5px -4px rgba(23, 33, 73, 0.075);
 }
 
+.text h1{
+  font-size: 50px;
+  margin-top: 100px;
+}
 .text h2{
   margin-top:100px;
+  margin-bottom: 50px;
 }
 
 .footer {

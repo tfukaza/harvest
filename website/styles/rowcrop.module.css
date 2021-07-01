@@ -48,23 +48,3 @@
     grid-column: span 3;
 }
 
-.code{
-    overflow-x: scroll;
-    padding: 15px;
-    width: 100%;
-    background-color: #f5f5f7;
-    border-radius: 6px;
-    box-shadow: 
-          0px 8px 15px 0px rgba(26, 52, 82, 0.075), 
-          0px 10px 7px -10px rgba(23, 33, 73, 0.062);
-  }
-
-.code pre{
-    background-color: transparent!important;
-}
-
-.code pre code{
-    color: #575757;
-    font-family: 'Roboto Mono', monospace;
-    font-size: 13px;
-}

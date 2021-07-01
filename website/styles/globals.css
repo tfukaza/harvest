@@ -13,12 +13,12 @@ h1, h2, h1 a{
   color: #181818;
 }
 
-p, a{
+p, a, li{
   font-family: 'Inter', sans-serif;
   color: #616161;
 }
 
-p{
+p, li{
   line-height: 150%;
 }
 
@@ -33,11 +33,32 @@ section{
 }
 
 pre{
-  margin: 0px;
+  overflow-x: scroll;
+  padding: 15px;
+  margin: 30px 0px;
+  width: 100%;
+  background-color: #f5f5f7;
+  border-radius: 6px;
+  box-shadow: 
+        0px 8px 15px 0px rgba(26, 52, 82, 0.075), 
+        0px 10px 7px -10px rgba(23, 33, 73, 0.062);
 }
+ 
+pre code{
+  color: #575757;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 13px;
+} 
 
 pre code .hljs-keyword{
-  color:rgb(243, 49, 113);
+  color:rgb(255, 50, 135);
 }
 
+pre code .hljs-title{
+  color:rgb(50, 180, 255);
+}
+
+pre code .hljs-params{
+  color:rgb(50, 53, 255);
+}
 
