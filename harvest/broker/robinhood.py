@@ -7,6 +7,8 @@ import threading
 from logging import critical, error, info, warning, debug
 from typing import Any, Dict, List, Tuple
 import time
+from pathlib import Path
+from getpass import getpass
 
 # External libraries
 import dateutil.parser as parser
@@ -26,8 +28,17 @@ class RobinhoodBroker(base.BaseBroker):
     def __init__(self, path=None):
         if path == None:
             path = './secret.yaml'
-        with open(path, 'r') as stream:
-            self.config = yaml.safe_load(stream)
+        
+        # Check if file exists
+        yml_file = Path(path)
+        if yml_file.is_file():
+            with open(path, 'r') as stream:
+                self.config = yaml.safe_load(stream)
+        else:
+            if not self._create_secret(path):
+                return 
+            with open(path, 'r') as stream:
+                self.config = yaml.safe_load(stream)
 
         debug("Logging into Robinhood...")
         totp = pyotp.TOTP(self.config['robin_mfa']).now()
@@ -46,6 +57,83 @@ class RobinhoodBroker(base.BaseBroker):
                     mfa_code=totp)
         debug("Logging into Robinhood...")
     
+    def _create_secret(self, path):
+
+        print("""⚠️  Hmm, looks like you haven't set up login credentials for Robinhood yet.""")
+
+        select = ''
+        while select != 'n' and select != 'y':
+            select = input("❓ Do you want to set it up now? (y/n)")
+            if select == 'n':
+                print("""\n💬 You can't use Robinhood unless we can log you in. You can set up the credentials manually, or use other brokers.""")
+                return False
+            elif select != 'y':
+                print("""🤔 Type in 'y' for 'yes', or 'n' for 'no' """)
+
+        print("""\n💬 Alright! Let's get started""")
+
+        select = input("❓ Do you have a Robinhood account? (y/n)[y]")
+        if select == 'n':
+            input("""\n💬 In that case you'll first need to make an account. I'll wait here, so hit Enter or Return when you've done that.""")
+        elif select != 'y' and select != None:
+            print("\n💬 I'll assume that means yes...")
+        
+        select = input("❓ Do you have Two Factor Authentication enabled? (y/n)[y]")
+        if select == 'n':
+            print("""\n💬 Robinhood (and Harvest) requires users to have 2FA enabled, so we'll turn that on next.""")
+        elif select != 'y' or select != None:
+            input("""\n💬 We'll need to reconfigure 2FA to use Harvest, so temporarily disable 2FA. Hit Enter when you're ready.""")
+        
+        input("""💬 Now enable 2FA. Robinhood should ask you what authentication method you want to use.""")
+        input("💬 Select 'Authenticator App'. (hit Enter)")
+        input("💬 Select 'Can't scan'. (hit Enter)")
+        
+        mfa = input("""❓ You should see a string of letters and numbers on the screen. Type it in here and press Enter:\n""")
+
+        while True:
+            try:
+                totp = pyotp.TOTP(mfa).now()
+            except:
+                print("\n😮 Woah! Something went wrong. Make sure you typed in the code correctly.")
+                mfa = input("""❓ Try typing in the code again:\n""")
+                continue
+            break
+
+        print(f"""💬 Good! Robinhood should now be asking you for a 6-digit passcode. Type in: {totp}""")
+        print(f"""⚠️  Beware, this passcode expires in a few seconds! If you couldn't type it in time, it should be regenerated.""")
+        
+        select = ''
+        while select != 'n':
+            select = input("""❓ Do you want to generate a new passcode? (y/n)[n]""")
+            if select == 'y':
+                totp  = pyotp.TOTP(mfa).now()
+                print("\n💬 New passcode: {totp}")
+            else:
+                select = 'n'
+
+        input(f"""\n💬 Robinhood will show you a backup code. This is useful when 2FA fails, so make sure to keep it somewhere safe. (Enter)""")
+        input(f"""💬 It is recommended you also set up 2FA using an app like Authy or Google Authenticator, so you don't have to run this setup wizard every time you log into Robinhood. (Enter)""")
+        print(f"""💬 Open an authenticator app of your choice, and use the MFA code you typed in earlier to set up OTP passcodes for Robinhood:\n---------------\n{mfa}\n---------------""")
+        input("Press Enter when you're ready.")
+
+        print(f"""💬 Almost there! Type in your username and password for Robinhood""")
+        username = input("\n❓ Username: ")
+        password = getpass("❓ Password: ")
+
+        print(f"""\n💬 All steps are complete now 🎉. Generating secret.yml...""")
+
+        d = {
+            'robin_mfa':      f"{mfa}",
+            'robin_username': f"{username}",
+            'robin_password': f"{password}"
+        }
+        with open(path, 'w') as file:
+            yml = yaml.dump(d, file)
+        
+        print(f"""💬 secret.yml has been created! Make sure you keep this file somewhere secure and never share it with other people.""")
+        
+        return True 
+
     def setup_run(self, watch: List[str], interval):
         self.watch = watch
         self.watch_stock = []

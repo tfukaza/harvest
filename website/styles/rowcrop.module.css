@@ -1,0 +1,50 @@
+
+.button{
+    height:40px;
+    color: #FFFFFF;
+    background: rgb(5,221,75);
+    background: linear-gradient(144deg, rgba(5,221,75,1) 0%, rgba(191,223,4,1) 100%);
+    box-shadow: 0px 8px 18px 0px rgba(10, 129, 50, 0.24), 0px 10px 10px -10px rgba(7, 124, 70, 0.274);
+    border: none;
+    border-radius: 4px;
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: 0.1s ease-out;
+}
+
+:hover.button{
+    transform: translate3d(0px, 3px, 0px);
+    box-shadow: 0px 3px 10px 0px rgba(12, 131, 38, 0.17), 0px 7px 8px -5px rgba(13, 134, 59, 0.17);
+}
+  
+.button a{
+    font-size: 20px;
+    font-weight: 500;
+}
+
+.card{
+    box-sizing: border-box;
+    padding: 30px;
+    border-radius: 8px;
+    background-color: white;
+    box-shadow: 
+        0px 0px 30px 0px rgba(19, 27, 51, 0.075), 
+        0px 8px 20px 0px rgba(26, 52, 82, 0.11), 
+        0px 10px 10px -10px rgba(23, 33, 73, 0.089);
+    transition: 0.1s;
+}
+.card h2{
+    font-size: 20px;
+}
+.card p{
+    color: #777777;
+    font-size: 14px;
+}
+
+.col4{
+    grid-column: span 3;
+}
+

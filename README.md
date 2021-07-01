@@ -1,55 +1,56 @@
 ![Header](docs/Header.png)
 
 ## What is Harvest?
-Harvest is a Python framework for algorithmic trading. This simple framework packs a lot of punch:
+Harvest is a Python framework for algorithmic trading, that packs a lot of punch:
 - Trade stocks, cryptos, even options! (if your brokerage supports them)
 - Backtest on historical data
 - Paper trading
-- Live trading
 
-## Why Harvest?
-There are many other algorithmic trading frameworks available, like QuantConnect and BackTrader. What distinguishes Harvest are the core principles the framework is built around: 
+Visit Harvest's [website](tfukaza.github.io/harvest/) for more details.
 
-😊**Intuitive** - The interface is designed to be easy to learn. Many of the complicated data structures and parameters are abstracted away and handled by Harvest. 
+# For Developers
+Interested in coding for Harvest? Awesome! 🤟 But before you begin, skim through the following sections:
 
-🛠️**Hackable** - The entire codebase is open-sourced, and is also modularized in a way that makes it easy for developers to add new, experimental features. 
+## Local Testing
+While generic tests are built into the CI/CD workflow, ideally you should conduct testing on your local working environment before pushing. This is especially true if you are working on a new feature, debugging, or making large modifications. 
 
-## Example
-To trade Twitter(TWTR) on Robinhood with an algorithm that monitors the RSI value, write the following code:
-```python
-from harvest.algo import BaseAlgo
-from harvest.trader import Trader
-from harvest.broker.robinhood import RobinhoodBroker
+### Testing Harvest 
+Testing Harvest often requires you to provide login credentials to access the brokers, so it is recommended that you test the code in a different directory than your working directory. 
 
-class Example(BaseAlgo):
-    def algo_init(self):
-        pass
-
-    def handler(self, meta):
-        rsi = self.rsi()[-1]
-        if rsi < 30:
-            self.buy('TWTR', 1)    
-            return
-        elif rsi > 70:
-            self.sell('TWTR', 1)
-            return
-
-if __name__ == "__main__":
-    t = Trader( RobinhoodBroker() )
-    t.add_symbol('TWTR')
-    t.set_algo(Example())
-    t.run()
+For example, if you cloned this repo into `C:Alice/document/harvest`, you can create a new directory `C:Alice/document/testing`. All of your test codes and access credentials should then be stored in `testing` to ensure they don't accidentally get pushed to the public repo. You can run 
 ```
-That's it! Piece of cake 🍰
+pip install ../harvest
+``` 
+from `testing` to install the latest codebase from your local machine.  
 
-## Getting Started
-Following are resources to get you started with Harvest
- - [Beginner's Guide](docs/Intro.md): Learn how to install and create a basic algorithm with Harvest.
- - Documentation: Coming soon!
- - Tutorial Series: Coming soon!
+If you want to run the generic tests locally, run:
+```
+python -m unittest discover -s test
+```
 
+### Testing Websites
+The Harvest project has two websites: one for the Harvest homepage, and the other is the web interface to monitor Harvest.
+
+The Harvest homepage is a pre-rendered NextJS/React website. Navigate to `harvest/website`, and run 
+```
+npm run dev
+``` 
+to start a hot-reloading dev server. If you think the website looks good, run 
+```
+npm run build && npm run export
+``` 
+to make sure the website can build without any problems. 
+
+`Details of Harvest web interface coming soon`
+
+## Documentation
+Refer to the `docs` folder for full documentation of the codebase. The documentation provided on the website is for end users and intentionally leaves out some parts. 
+
+`TODO: Add more sections as needed`
+
+# Misc.
 ## Collaborators
- Special thanks to the following developers for contributing to this project 🤟
+ Special thanks to the following developers for contributing to this project:
  - @shershah010
  - @Kimeiga
 
