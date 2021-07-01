@@ -81,6 +81,9 @@ class BaseBroker:
         """
         pass
 
+    def refresh_cred(self):
+        pass
+
     def _handler(self) -> Dict[str, pd.DataFrame]:
         """This function should be called at the specified interval, and return data.
         For brokers that use streaming, this often means specifying this function as a callback.
