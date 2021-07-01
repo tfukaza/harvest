@@ -21,7 +21,7 @@ export default function Home() {
             Harvest is a simple yet robust 
             Python framework for algorithmic trading.
           </p>
-          <Link href="/tutorial">
+          <Link href="/tutorial/starter">
             <a className={`${rc.button} ${styles.button}`}>
               Starter Guide
             </a>

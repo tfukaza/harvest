@@ -1,9 +1,9 @@
-import NavBar from './components/navbar.js'
-import Header from './components/header.js'
+import NavBar from '../components/navbar.js'
+import Header from '../components/header.js'
 import Link from 'next/link'
 
-import styles from '../styles/Home.module.css'
-import rc from '../styles/rowcrop.module.css'
+import styles from './../../styles/Home.module.css'
+import rc from './../../styles/rowcrop.module.css'
 
 export default function Home() {
   return (
@@ -15,7 +15,7 @@ export default function Home() {
 
         
         <section className={styles.section}>
-          <Link href="/tutorials/starter">
+          <Link href="/tutorial/starter" passHref>
           <div className={`${rc.card} ${rc.col4} ${styles.col4}`}>
             <h2>Startup Guide</h2>
             <p>First time? No worries. This module will 

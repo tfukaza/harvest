@@ -16,19 +16,20 @@ export default function Module() {
         <section className={styles.section}>
             <div className={styles.text}> 
                 <h2>Prerequisites</h2>
-                <p>As promised, there isn't too many prerequisites to 
+                <p>As promised, there isn&#39;t too many prerequisites to 
                     start learning harvest. Just make sure you have the following:
+                </p>
                 <ul>
                     <li>Python, version 3.8 or higher</li>
                     <li>A code editing software</li>
-                    <li>Basic coding skills. Don't worry, if you've written anything more than 
-                        'Hello World', you're good to go
+                    <li>Basic coding skills. Don&#39;t worry, if you&#39;ve written anything more than 
+                        &#39;Hello World&#39;, you&#39;re good to go
                     </li>
                 </ul>
-                </p> 
+                
 
                 <h2>Installing</h2>
-                <p>First things first, let's install the library. </p>
+                <p>First things first, let&#39;s install the library. </p>
                 
                 <CodeBlock lang="bash" value="pip install -e git+https://github.com/tfukaza/harvest.git">
                 </CodeBlock>
@@ -45,7 +46,7 @@ export default function Module() {
                 Where BROKER is replaced by one of the following brokers supported by Harvest:
               
                 Robinhood
-                On MacOS's zsh, you will need to use the following format instead:
+                On MacOS&#39;s zsh, you will need to use the following format instead:
                 </p>
 
                 <CodeBlock lang="bash" value="pip install -e 'git+https://github.com/tfukaza/harvest.git#egg=harvest[BROKER]'">
@@ -58,15 +59,15 @@ export default function Module() {
                 if you decide to use other brokers. 
                 
                 Before we begin, there are three components of Harvest you need to know:
-
+                </p>
                 <ul>
                     <li>Trader: The main module responsible for managing the other modules.</li>
                     <li>Broker: The module that communicates with the brokerage you are using.</li>
                     <li>Algo: The module where you define your algorithm.</li>
                 </ul>
-
+                <p>
                 We begin coding by import the aforementioned components, 
-                or "modules" as they are called in Python.
+                or &#39;modules&#39; as they are called in Python.
                 </p>
 
                 <CodeBlock
@@ -76,32 +77,44 @@ from harvest.trader import Trader
 from harvest.broker.robinhood import RobinhoodBroker`}>
                 </CodeBlock>
 
-                First we create a Trader class
+                <p>Then we create a Trader, which will 
+                    be the starting point of Harvest</p>
 
-                if __name__ == "__main__":
-                    t = Trader( RobinhoodBroker() )
-                Few things happen here, and don't worry, this is as complex as Harvest will get (for now).
+                <CodeBlock
+                    lang="python"
+                    value={`if __name__ == "__main__":
+t = Trader( RobinhoodBroker() )`}>
+                </CodeBlock>
+                <p>
+                Few things happen here, and don&#39;t worry, this is as complex as Harvest will get (for now).
 
                 The trader class is instantiated. Traders take two Brokers as input, a streamer and a broker. streamer is the broker used to retrieve stock/cryto data. broker is the brokerage used to place orders and manage your portfolio.
                 For this example, we initialize RobinhoodBroker. The broker automatically reads the credentials saved in secret.yaml and sets up a connection with the broker.
                 The Robinhood broker is specified as a streamer and will be used to get stock/crypto data.
                 If the broker is unspecified, Robinhood will also be used as a broker.
                 Fortunately after this, things get pretty easy. We specify what stock to track, in this case Twitter (TWTR).
+                </p>
+                <CodeBlock
+                    lang="python"
+                    value={`t.add_symbol('TWTR')`}></CodeBlock>
+                
+                <p>At this point, we define our algorithm. Algorithms are created by extending the BaseAlgo class.
+                </p>
 
-                    t.add_symbol('TWTR')
-                At this point, we define our algorithm. Algorithms are created by extending the BaseAlgo class.
-
-                class Twitter(BaseAlgo):
+                <CodeBlock
+                    lang="python"
+                    value={`class Twitter(BaseAlgo):
                     def algo_init(self):
                         pass
 
                     def handler(self, meta):
-                        pass
-                Every also must define two functions
+                        pass`}></CodeBlock>
+
+                <p>every Algo must define two functions
 
                 algo_init: Function called right before the algorithm starts
                 handler: Function called at a specified interval.
-                In this example, we create a simple algorithm that buys and sells a single stock.
+                In this example, we create a simple algorithm that buys and sells a single stock.</p>
                 <CodeBlock
                     lang="python"
                     value={`class Twitter(BaseAlgo):
@@ -114,13 +127,13 @@ from harvest.broker.robinhood import RobinhoodBroker`}>
             self.hold = False
         else:
             self.buy('TWTR', 1)
-            self.hold = True`}
-                        >
-                </CodeBlock>
+            self.hold = True`}></CodeBlock>
                 
-                Finally, we tell the trader to use this algorithm, and run it. Below is the final code after putting everything together.
-
-                from harvest.algo import BaseAlgo
+                <p>Finally, we tell the trader to use this algorithm, and run it. Below is the final code after putting everything together.</p>
+                
+                <CodeBlock
+                    lang="python"
+                    value={`from harvest.algo import BaseAlgo
                 from harvest.trader import Trader
                 from harvest.broker.robinhood import RobinhoodBroker
 
@@ -140,12 +153,14 @@ from harvest.broker.robinhood import RobinhoodBroker`}>
                     t = Trader( RobinhoodBroker(), None )
                     t.add_symbol('TWTR')
                     t.set_algo(Twitter())
-                    t.run(interval='1DAY')
-                By specifying interval='1DAY' in run, the _handler will be called once every day.
+                    t.run(interval='1DAY')`}></CodeBlock>
+
+                <p>By specifying interval=&#39;1DAY&#39; in run, the _handler will be called once every day.
 
                 Now you can log into Robinhood on your phone or computer, and watch Harvest automatically buy and sell Twitter stocks!
 
                 For more examples, check out the sample codes in the example folder.
+                </p>
             </div>
          
         </section>
