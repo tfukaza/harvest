@@ -1,5 +1,7 @@
 import NavBar from './components/navbar.js'
 import Header from './components/header.js'
+import Link from 'next/link'
+
 
 import styles from '../styles/Home.module.css'
 import rc from '../styles/rowcrop.module.css'
@@ -19,9 +21,11 @@ export default function Home() {
             Harvest is a simple yet robust 
             Python framework for algorithmic trading.
           </p>
-          <a href="/tutorial" className={`${rc.button} ${styles.button}`}>
-            Tutorials
-          </a>
+          <Link href="/tutorial">
+            <a className={`${rc.button} ${styles.button}`}>
+              Starter Guide
+            </a>
+          </Link>
         </section>
         <section className={styles.section}>
           <div className={styles.col_card}>

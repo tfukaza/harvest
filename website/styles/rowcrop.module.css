@@ -25,3 +25,46 @@
     font-weight: 500;
 }
 
+.card{
+    box-sizing: border-box;
+    padding: 30px;
+    border-radius: 8px;
+    background-color: white;
+    box-shadow: 
+        0px 0px 30px 0px rgba(19, 27, 51, 0.075), 
+        0px 8px 20px 0px rgba(26, 52, 82, 0.11), 
+        0px 10px 10px -10px rgba(23, 33, 73, 0.089);
+    transition: 0.1s;
+}
+.card h2{
+    font-size: 20px;
+}
+.card p{
+    color: #777777;
+    font-size: 14px;
+}
+
+.col4{
+    grid-column: span 3;
+}
+
+.code{
+    overflow-x: scroll;
+    padding: 15px;
+    width: 100%;
+    background-color: #f5f5f7;
+    border-radius: 6px;
+    box-shadow: 
+          0px 8px 15px 0px rgba(26, 52, 82, 0.075), 
+          0px 10px 7px -10px rgba(23, 33, 73, 0.062);
+  }
+
+.code pre{
+    background-color: transparent!important;
+}
+
+.code pre code{
+    color: #575757;
+    font-family: 'Roboto Mono', monospace;
+    font-size: 13px;
+}
