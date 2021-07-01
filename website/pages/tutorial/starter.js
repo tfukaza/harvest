@@ -17,14 +17,14 @@ export default function Module() {
             <div className={styles.text}> 
                 <h1>Starter Guide</h1>
                 <h2>Prerequisites</h2>
-                <p>As promised, there isn&#39;t too many prerequisites to 
-                    start learning harvest. Just make sure you have the following:
+                <p>Before we begin, make sure you have the following:
                 </p>
                 <ul>
-                    <li>Python, version 3.8 or higher</li>
-                    <li>A code editing software</li>
-                    <li>Basic coding skills. Don&#39;t worry, if you&#39;ve written anything more than 
-                        &#39;Hello World&#39;, you&#39;re good to go
+                    <li>Python, version 3.8 or higher.</li>
+                    <li>A code editing software.</li>
+                    <li>An account for a brokerage. In this tutorial we will be using Robinhood.</li>
+                    <li>Basic coding skills. If you&#39;ve written anything more than 
+                        &#39;Hello World&#39;, you should be good to go.
                     </li>
                 </ul>
                 
@@ -159,11 +159,12 @@ if __name__ == "__main__":
     t.set_algo(Twitter())
     t.run(interval='1DAY')`}></CodeBlock>
 
-                <p>By specifying interval=&#39;1DAY&#39; in run, the _handler will be called once every day.
+                <p>By specifying interval=&#39;1DAY&#39; in run, the handler function will be called once every day.</p>
 
-                Now you can log into Robinhood on your phone or computer, and watch Harvest automatically buy and sell Twitter stocks!
-
-                For more examples, check out the sample codes in the example folder.
+                <p>
+                Now run the code. If this is the first time connecting to Robinhood, you should see 
+                a setup wizard pop up. Follow the steps to set up login credentials for 
+                Robinhood. 
                 </p>
             </div>
          
