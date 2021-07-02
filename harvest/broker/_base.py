@@ -40,7 +40,7 @@ class BaseBroker:
         :path: path to the YAML file containing credentials for the broker. 
             If not specified, should default to './secret.yaml'
         """
-        pass
+        self.trader = None # Allows broker to handle the case when runs without a trader
 
     def setup(self, handler, trader) -> None:
         """This method initializes several class attributes which are required for 
@@ -54,13 +54,14 @@ class BaseBroker:
         self.handler = handler
         self.trader = trader
     
-    def setup_run(self, watch: List[str], interval: str):
+    def setup_run(self, watch: List[str], interval: str, fetch_interval: str):
         """This function is called right before the algorithm begins.
         It should perform any configurations neccesary to start running.
 
         :watch: List of stocks/cryptos to watch. Cryptos are prepended with a '@'
             to distinguish them from stocks
         :interval: Interval to call the algo's handler 
+        :fetch_interval: Interval to do fetch stock/crypto data
         
         Regardless of the implementation, this method must initialize 
         the following attributes:
@@ -73,7 +74,9 @@ class BaseBroker:
             streams data every minute, so even if the algorithm is designed to run at a lower frequncy 
             (like once every 30MIN), under the hood Harvest needs to process data every minute.
         """
-        raise Exception("setup() is not yet implemented in this broker")
+        self.watch = watch 
+        self.interval = interval 
+        self.fetch_interval = fetch_interval
            
     def run(self):
         """This function starts the algorithm. Whether it be polling or streaming,
@@ -385,8 +388,13 @@ class BaseBroker:
         if quantity <= 0.0:
             raise Exception(f"Quantity cannot be less than or equal to 0: was given {quantity}")
 
-        buy_power = self.trader.account['buying_power']
-        price = self.trader.queue.get_last_symbol_interval_price(symbol, self.fetch_interval, 'close')
+        if self.trader is None:
+            buy_power = self.fetch_account()['buying_power']
+            price = self.fetch_price_history(dt.datetime.now() - dt.timedelta(days=7), dt.datetime.now(), symbol)[symbol].iloc[-1]['close']
+        else:
+            buy_power = self.trader.account['buying_power']
+            price = self.trader.queue.get_last_symbol_interval_price(symbol, self.fetch_interval, 'close')
+
         limit_price = round(price * 1.05, 2)
         total_price = limit_price * quantity
         
@@ -408,10 +416,18 @@ class BaseBroker:
         :returns: The result of order_limit(). Returns None if there is an issue with the parameters.
         """
         ret = self.buy(symbol, quantity, in_force, extended)
-        if symbol[0] == '@':
-            check = self.trader.order.fetch_crypto_order_status
+
+        if self.trader is None:
+            if symbol[0] == '@':
+                check = self.fetch_crypto_order_status
+            else:
+                check = self.fetch_stock_order_status
         else:
-            check = self.trader.order.fetch_stock_order_status
+            if symbol[0] == '@':
+                check = self.trader.order.fetch_crypto_order_status
+            else:
+                check = self.trader.order.fetch_stock_order_status
+
         while True:
             time.sleep(0.5)
             stat = check(ret["id"])
@@ -440,7 +456,11 @@ class BaseBroker:
             raise Exception(f"Quantity cannot be less than or equal to 0: was given {quantity}")
             return None
        
-        price = self.trader.queue.get_last_symbol_interval_price(symbol, self.fetch_interval, 'close') 
+        if self.trader is None:
+            price = self.fetch_price_history(dt.datetime.now() - dt.timedelta(days=7), dt.datetime.now(), symbol)[symbol].iloc[-1]['close']
+        else:
+            price = self.trader.queue.get_last_symbol_interval_price(symbol, self.fetch_interval, 'close') 
+
         limit_price = round(price * 0.95, 2)
        
         return self.order_limit('sell', symbol, quantity, limit_price, in_force, extended)
@@ -459,7 +479,10 @@ class BaseBroker:
         
         time.sleep(2)
         while True:
-            stat = self.trader.order.fetch_stock_order_status(ret["id"])
+            if self.trader is None:
+                stat = self.fetch_stock_order_status(ret["id"])
+            else:
+                stat = self.trader.order.fetch_stock_order_status(ret["id"])
             if stat['status'] == 'filled':
                 return stat
             time.sleep(1)
@@ -499,8 +522,13 @@ class BaseBroker:
         if quantity <= 0.0:
             raise Exception(f"Quantity cannot be less than or equal to 0: was given {quantity}")
 
-        buy_power = self.trader.account['buying_power']
-        price = self.trader.streamer.fetch_option_market_data(symbol)['price']
+        if self.trader is None:
+            buy_power = self.fetch_account()['buying_power']
+            price = self.fetch_option_market_data(symbol)['price']
+        else:
+            buy_power = self.trader.account['buying_power']
+            price = self.trader.streamer.fetch_option_market_data(symbol)['price']
+
         limit_price = round(price * 1.05, 2)
         total_price = limit_price * quantity
         
@@ -531,7 +559,11 @@ class BaseBroker:
         #             quantity = p['quantity']
         #             break
        
-        price = self.trader.streamer.fetch_option_market_data(symbol)['price']
+        if self.trader is None:
+            price = self.fetch_option_market_data(symbol)['price']
+        else:
+            price = self.trader.streamer.fetch_option_market_data(symbol)['price']
+            
         limit_price = round(price * 0.95, 2)
        
         sym, date, option_type, strike = self.occ_to_data(symbol)
