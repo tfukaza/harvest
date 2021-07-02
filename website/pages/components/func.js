@@ -2,13 +2,23 @@ import doc from '../../styles/Doc.module.css'
 import CodeBlock from './code'
 
 export default function Function({dict}) {
+<<<<<<< HEAD
+=======
+    if (dict === undefined)
+        return(<p>:)</p>);
+>>>>>>> bug-fix
     let params=[]
     for (let v of dict["params"]){
         params.push(
             <div>
                 <p className={doc.paramName}>• {v["name"]}</p>
                 <p className={doc.paramType}>&nbsp;({v["type"]}):</p>
+<<<<<<< HEAD
                 <p className={doc.paramDesc}>&nbsp;{v["description"]}</p>
+=======
+                {/* <p className={doc.paramDesc}>&nbsp;{v["description"]}</p> */}
+                <p dangerouslySetInnerHTML={{__html: v["description"]}}></p>
+>>>>>>> bug-fix
                 <p className={doc.paramDef}>{v["default"]}</p>
             </div>
         );   

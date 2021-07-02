@@ -136,8 +136,10 @@ class BaseBroker:
                     return func(*args, **kwargs) 
                 except Exception as e:
                     debug(f"Error: {e}")
-                    debug("Retrying...")
+                    debug("Logging out and back in...")
+                    self.refresh_cred()
                     tries = tries - 1 
+                    debug("Retrying...")
                     continue
             raise Exception(f"{func} failed")
         return wrapper

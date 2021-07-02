@@ -55,7 +55,8 @@ class RobinhoodBroker(base.BaseBroker):
                     self.config['robin_password'], 
                     store_session=True, 
                     mfa_code=totp)
-        debug("Logging into Robinhood...")
+        debug("Logged into Robinhood...")
+    
     
     def _create_secret(self, path):
 

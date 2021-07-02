@@ -23,19 +23,17 @@ export default function Home() {
   return (
     <div className={styles.container}>
       <Header title="Harvest | Documentation"></Header>
-      <NavBar></NavBar>
-      <section></section>
-      
+      <NavBar></NavBar>      
       <main className={styles.main}>
-        
+          <nav className={`${doc.nav} ${rc.card}`}>
+            <h3>Algo</h3>
+            <ul>
+            {algo_func}
+            </ul>
+          </nav>
         <section className={styles.section}>
           <h1>Documentation</h1>
-          <nav className={`${doc.nav} ${rc.card}`}>
-          <h3>Algo</h3>
-          <ul>
-           {algo_func}
-          </ul>
-        </nav>
+          <h2 className={doc.className}>harvest.Algo</h2>
           {algo_items}
         </section>
       </main>

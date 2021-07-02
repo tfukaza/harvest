@@ -1,10 +1,13 @@
 .nav{
   grid-column-start: 1;
-  grid-column-end: 3;
-  position: sticky;
+  grid-column-end: 4;
+  position: fixed;
+  margin-top: 100px;
   top:200px;
   height: fit-content;
   max-height: 60vh;
+  width:200px;
+  overflow-wrap: anywhere;
 }
 
 .nav ul{
@@ -18,6 +21,12 @@
 }
 .nav ul li:hover{
   color:rgb(170, 170, 170);
+}
+
+.className{
+  font-size: 30px;
+  grid-column-start: 4;
+  grid-column-end: 13;
 }
 
 .entry{
@@ -37,6 +46,7 @@
 }
 .entry > p{
   font-size: 18px;
+  margin: 3px 0px;
 }
 
 .entry > div{
@@ -82,7 +92,7 @@
 .paramHeader div p:nth-of-type(4){
   font-family: 'Roboto Mono', monospace;
   font-size: 12px;
-  width:25%;
+  min-width:25%;
   margin-left: auto;
   text-align: right;
 }
