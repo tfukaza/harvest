@@ -1,4 +1,3 @@
-import rc from '../../styles/rowcrop.module.css'
 import SyntaxHighlighter from 'react-syntax-highlighter';
 
 export default function CodeBlock({lang, value}) {

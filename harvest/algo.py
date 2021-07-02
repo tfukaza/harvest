@@ -38,7 +38,7 @@ class BaseAlgo:
     ############ Functions interfacing with broker #################
 
     def buy(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
-        """Buys the sepcified asset.
+        """Buys the specified asset.
 
         :symbol:    Symbol of the asset to buy
         :quantity:  Quantity of asset to buy
@@ -54,10 +54,10 @@ class BaseAlgo:
         return self.trader.buy(symbol, quantity, in_force, extended)
     
     def sell(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
-        """Sells the sepcified asset.
+        """Sells the specified asset.
 
-        :symbol:    Symbol of the asset to buy
-        :quantity:  Quantity of asset to buy
+        :symbol:    Symbol of the asset to sell
+        :quantity:  Quantity of asset to sell
         :in_force:  Duration the order is in force
         :extended:  Whether to trade in extended hours or not. 
 

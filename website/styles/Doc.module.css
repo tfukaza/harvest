@@ -1,0 +1,104 @@
+.nav{
+  grid-column-start: 1;
+  grid-column-end: 3;
+  position: sticky;
+  top:200px;
+  height: fit-content;
+  max-height: 60vh;
+}
+
+.nav ul{
+  padding-left:10px;
+}
+.nav ul li{
+  font-family: 'Roboto Mono', monospace;
+  cursor: pointer;
+  font-size: 14px;
+  transition: 0.1s;
+}
+.nav ul li:hover{
+  color:rgb(170, 170, 170);
+}
+
+.entry{
+  grid-column-start: 4;
+  grid-column-end: 13;
+  margin: 50px 0px;
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.entry pre{
+  background-color: #2c2d31;
+}
+
+.entry pre code{
+  color:white;
+}
+.entry > p{
+  font-size: 18px;
+}
+
+.entry > div{
+  margin: 10px 0px;
+}
+.paramHeader{
+  width:100%;
+  display: inline-flex;
+  flex-wrap: wrap;
+}
+
+.paramHeader h3, .paramHeader h4{
+  width:50%;
+}
+
+.paramHeader h4{
+  text-align: right;
+}
+
+.paramHeader div{
+  width:100%;
+  padding: 0px 0px;
+  border-top: solid 2px #ebebeb;
+  display: inline-flex;
+}
+
+.paramHeader div p{
+  margin: 6px 0px;
+  font-size: 14px;
+}
+
+.paramHeader div p:nth-of-type(1){
+  color:#333333;
+  font-family: 'Roboto Mono', monospace;
+}
+.paramHeader div p:nth-of-type(2){
+  color:rgb(61, 179, 6);
+}
+.paramHeader div p:nth-of-type(3){
+  width:50%;
+  margin-left:5px;
+}
+.paramHeader div p:nth-of-type(4){
+  font-family: 'Roboto Mono', monospace;
+  font-size: 12px;
+  width:25%;
+  margin-left: auto;
+  text-align: right;
+}
+
+.paramReturn{
+  width: 60%;
+  padding-right: 30px;
+  box-sizing: border-box;
+}
+.paramReturn p{
+  font-size: 14px;
+}
+
+.paramRaise{
+  width: 40%;
+}
+.paramRaise p{
+  font-size: 14px;
+}

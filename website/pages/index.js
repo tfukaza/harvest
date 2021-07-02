@@ -23,7 +23,7 @@ export default function Home() {
           </p>
           <Link href="/tutorial/starter">
             <a className={`${rc.button} ${styles.button}`}>
-              Starter Guide
+              Startup Guide
             </a>
           </Link>
         </section>
