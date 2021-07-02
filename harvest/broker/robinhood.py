@@ -46,6 +46,8 @@ class RobinhoodBroker(base.BaseBroker):
                     self.config['robin_password'], 
                     store_session=True, 
                     mfa_code=totp)
+
+        super().__init__()
     
     def refresh_cred(self):
         debug("Logging out of Robinhood...")
@@ -136,17 +138,14 @@ class RobinhoodBroker(base.BaseBroker):
         return True 
 
     def setup_run(self, watch: List[str], interval):
-        self.watch = watch
         self.watch_stock = []
         self.watch_crypto = []
         self.watch_crypto_fmt = []
 
-        self.interval = interval
-
         if interval not in self.interval_list:
             raise Exception(f'Invalid interval {interval}')
 
-        for s in self.watch:
+        for s in watch:
             if s[0] == '@':
                 self.watch_crypto_fmt.append(s[1:])
                 self.watch_crypto.append(s)
@@ -157,12 +156,14 @@ class RobinhoodBroker(base.BaseBroker):
         
         if interval == '1MIN':
             self.interval_fmt = '15second'
-            self.fetch_interval='1MIN'
+            fetch_interval = '1MIN'
         else:
             self.interval_fmt = '5minute'
-            self.fetch_interval = '5MIN'
+            fetch_interval = '5MIN'
         
         self.option_cache = {}
+
+        super().setup_run(watch, interval, fetch_interval)
          
     def run(self):
         self.cur_sec = -1
@@ -350,7 +351,7 @@ class RobinhoodBroker(base.BaseBroker):
             if len(r['cost_bases']) <= 0:
                 continue
             qty = float(r['cost_bases'][0]['direct_quantity'])
-            if qty < 0.0000000001:
+            if qty < 1e-10:
                 continue
             
             pos.append(

@@ -16,7 +16,8 @@ class BaseAlgo:
     """
 
     def __init__(self):
-        self.watch=[]
+        self.watch = []
+        self.trader = None # Allows algo to handle the case when runs without a trader
 
     def setup(self, trader) -> None:
         self.trader = trader
@@ -35,7 +36,7 @@ class BaseAlgo:
     def remove_symbol(self, symbol: str) -> None:
         self.watch.remove(symbol)
     
-    ############ Functions interfacing with broker #################
+    ############ Functions interfacing with broker through the trader #################
 
     def buy(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
         """Buys the specified asset.
@@ -171,7 +172,19 @@ class BaseAlgo:
     
     ########## Technical Indicaters ###############
 
-    def rsi(self, symbol: str=None, period: int=14, interval: str='5MIN', ref: str='close') -> np.array:
+    def use_trader_prices(func):
+        def wrap(*args, **kwargs):
+            self = args[0]
+            if self.trader is None:
+                return func(*args, **kwargs)
+            else:
+                prices = self.trader.queue.get_symbol_interval_prices(kwargs['symbol'], kwargs['interval'], kwargs['ref'])
+                return func(prices, *args, **kwargs)
+        return wrap
+
+
+    @use_trader_prices 
+    def rsi(self, prices, symbol: str=None, period: int=14, interval: str='5MIN', ref: str='close') -> np.array:
         """Calculate RSI
 
         :symbol:    Symbol to perform calculation on 
@@ -182,7 +195,7 @@ class BaseAlgo:
         """
         if symbol == None:
             symbol = self.watch[0]
-        prices = self.trader.queue.get_symbol_interval_prices(symbol, interval, ref)
+
         ohlc = pd.DataFrame({
             'close': np.array(prices),
             'open': np.zeros(len(prices)),
@@ -192,7 +205,8 @@ class BaseAlgo:
         rsi = TA.RSI(ohlc, period=period).to_numpy()
         return rsi
     
-    def sma(self, symbol: str=None, period: int=14, interval: str='5MIN', ref: str='close') -> np.array:
+    @use_trader_prices 
+    def sma(self, prices, symbol: str=None, period: int=14, interval: str='5MIN', ref: str='close') -> np.array:
         """Calculate SMA
 
         :symbol:    Symbol to perform calculation on 
@@ -203,7 +217,7 @@ class BaseAlgo:
         """
         if symbol == None:
             symbol = self.watch[0]
-        prices = self.trader.queue.get_symbol_interval_prices(symbol, interval, ref)
+
         ohlc = pd.DataFrame({
             'close': np.array(prices),
             'open': np.zeros(len(prices)),
@@ -213,7 +227,8 @@ class BaseAlgo:
         sma = TA.SMA(ohlc, period=period).to_numpy()
         return sma
     
-    def ema(self, symbol: str=None, period: int=14, interval: str='5MIN', ref: str='close') -> np.array:
+    @use_trader_prices 
+    def ema(self, prices, symbol: str=None, period: int=14, interval: str='5MIN', ref: str='close') -> np.array:
         """Calculate EMA
 
         :symbol:    Symbol to perform calculation on 
@@ -224,7 +239,7 @@ class BaseAlgo:
         """
         if symbol == None:
             symbol = self.watch[0]
-        prices = self.trader.queue.get_symbol_interval_prices(symbol, interval, ref)
+
         ohlc = pd.DataFrame({
             'close': np.array(prices),
             'open': np.zeros(len(prices)),
@@ -234,7 +249,8 @@ class BaseAlgo:
         ema = TA.EMA(ohlc, period=period).to_numpy()
         return ema
     
-    def bbands(self, symbol: str=None, period: int=14, interval: str='5MIN', ref: str='close', dev: float=1.0) -> Tuple[np.array, np.array, np.array]:
+    @use_trader_prices 
+    def bbands(self, prices, symbol: str=None, period: int=14, interval: str='5MIN', ref: str='close', dev: float=1.0) -> Tuple[np.array, np.array, np.array]:
         """Calculate Bollinger Bands
 
         :symbol:    Symbol to perform calculation on 
@@ -246,7 +262,7 @@ class BaseAlgo:
         """
         if symbol == None:
             symbol = self.watch[0]
-        prices = self.trader.queue.get_symbol_interval_prices(symbol, interval, ref)
+
         ohlc = pd.DataFrame({
             'close': np.array(prices),
             'open': np.zeros(len(prices)),
