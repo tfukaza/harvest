@@ -1,5 +1,6 @@
 from harvest.algo import BaseAlgo as a
 from docstring_parser import parse
+import json
 
 # Import every function in BaseAlgo
 # I feel like there should be a better way to do this...
@@ -38,7 +39,40 @@ functions = [
     a.sma
 ]
 
+data = []
+
 for func in functions:
-    # Get the docstring
+    # Get the docstring as an object
     doc = parse(func.__doc__)
-    print([p.arg_name for p in doc.params])
+    # Get description
+    print(doc.short_description, doc.long_description)
+    # Get parameters: arg_name, type_name, is_optional, default, description
+    arg_names = ['self']
+    arg_names.extend([p.arg_name for p in doc.params])
+
+    data.append({
+        "function": func.__name__ + '(' + ', '.join(arg_names) + ')',
+        "index": func.__name__,
+        "short_description": doc.short_description,
+        "long_description": doc.long_description,
+        "params":[
+            {
+                "name": par.arg_name,
+                "type": par.type_name,
+                "desc": par.description[0:par.description.find("defaults")],
+                "default": par.default,
+                "optional": par.is_optional
+            } for par in doc.params
+        ],
+        "returns": doc.returns.description if not doc.returns == None else "",
+        "raises": [
+            {
+                "type": par.type_name,
+                "desc": par.description[0:par.description.find("defaults")],
+            } for par in doc.raises
+        ],
+    })
+    print(doc.returns)
+
+with open('data.json', 'w') as f:
+    json.dump(data, f)
