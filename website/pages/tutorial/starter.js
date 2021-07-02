@@ -15,7 +15,7 @@ export default function Module() {
         </section>
         <section className={styles.section}>
             <div className={styles.text}> 
-                <h1>Starter Guide</h1>
+                <h1>Startup Guide</h1>
                 <h2>Prerequisites</h2>
                 <p>Before we begin, make sure you have the following:
                 </p>

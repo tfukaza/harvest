@@ -40,9 +40,23 @@ class RobinhoodBroker(base.BaseBroker):
             with open(path, 'r') as stream:
                 self.config = yaml.safe_load(stream)
 
+        debug("Logging into Robinhood...")
         totp = pyotp.TOTP(self.config['robin_mfa']).now()
-        login = rh.login(self.config['robin_username'],
-                        self.config['robin_password'], store_session=True, mfa_code=totp)
+        rh.login(   self.config['robin_username'],
+                    self.config['robin_password'], 
+                    store_session=True, 
+                    mfa_code=totp)
+    
+    def refresh_cred(self):
+        debug("Logging out of Robinhood...")
+        rh.authentication.logout()
+        totp = pyotp.TOTP(self.config['robin_mfa']).now()
+        rh.login(   self.config['robin_username'],
+                    self.config['robin_password'], 
+                    store_session=True, 
+                    mfa_code=totp)
+        debug("Logged into Robinhood...")
+    
     
     def _create_secret(self, path):
 
@@ -259,7 +273,7 @@ class RobinhoodBroker(base.BaseBroker):
                 interval=self.interval_fmt, 
                 span='day', 
                 )
-            if 'error' in ret:
+            if 'error' in ret or ret == None or (type(ret) == list and len(ret) == 0):
                 continue
             df_tmp = pd.DataFrame.from_dict(ret)
             df_tmp = self._format_df(df_tmp, [s], self.interval, True)
