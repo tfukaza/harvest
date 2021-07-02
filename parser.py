@@ -39,5 +39,6 @@ functions = [
 ]
 
 for func in functions:
+    # Get the docstring
     doc = parse(func.__doc__)
     print([p.arg_name for p in doc.params])
