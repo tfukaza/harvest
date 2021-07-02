@@ -40,10 +40,10 @@ class BaseAlgo:
     def buy(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
         """Buys the sepcified asset.
 
-        :symbol:    Symbol of the asset to buy
-        :quantity:  Quantity of asset to buy
-        :in_force:  Duration the order is in force
-        :extended:  Whether to trade in extended hours or not. 
+        :param symbol:    Symbol of the asset to buy
+        :param quantity:  Quantity of asset to buy
+        :param in_force:  Duration the order is in force
+        :param extended:  Whether to trade in extended hours or not. 
 
         :returns: A dictionary with the following keys:
             - type: 'STOCK' or 'CRYPTO'

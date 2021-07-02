@@ -1,0 +1,182 @@
+[
+    {
+        "name": "buy(self, symbol, quantity, in_force, extended)",
+        "short": "buy",
+        "description": "Buys the specified asset",
+        "params": [
+            {
+                "name": "symbol",
+                "type":"str",
+                "description":"Ticker symbol of the asset to buy.",
+                "default":"First symbol in 'watch'"
+            },{
+                "name": "quantity",
+                "type":"float",
+                "description":"Quantity of asset to buy.",
+                "default":"1"
+            },{
+                "name": "in_force",
+                "type":"str",
+                "description":"Duration the order is in force. <span>'gtd'</span> or 'gtc'",
+                "default":"gtd"
+            },{
+                "name": "extended",
+                "type":"str",
+                "description":"Whether to trade in extended hours or not",
+                "default":"False"
+            }],
+        "returns": "A dictionary with the following keys:\n\t- type: 'STOCK' or 'CRYPTO'\n\t- id: ID of order\n\t- symbol: symbol of asset",
+        "raises": "Raises an exception if order fails."
+    },
+    {
+        "name": "sell(self, symbol, quantity, in_force, extended)",
+        "short": "sell",
+        "description": "Sells the specified asset",
+        "params": [
+            {
+                "name": "symbol",
+                "type":"str",
+                "description":"Symbol of the asset to sell",
+                "default":"First symbol in 'watch'"
+            },{
+                "name": "quantity",
+                "type":"float",
+                "description":"Quantity of asset to sell"
+            },{
+                "name": "in_force",
+                "type":"str",
+                "description":"Duration the order is in force"
+            },{
+                "name": "extended",
+                "type":"str",
+                "description":"Whether to trade in extended hours or not"
+            }],
+        "returns": "A dictionary with the following keys:\n\t- type: 'STOCK' or 'CRYPTO'\n\t- id: ID of order\n\t- symbol: symbol of asset",
+        "raises": "Raises an exception if order fails."
+    },
+    {
+        "name": "await_buy(self, symbol, quantity, in_force, extended)",
+        "short": "await_buy",
+        "description": "Buys the specified asset, and hangs the code until the order is filled. ",
+        "params": [
+            {
+                "name": "symbol",
+                "type":"str",
+                "description":"Symbol of the asset to sell",
+                "default":"First symbol in 'watch'"
+            },{
+                "name": "quantity",
+                "type":"float",
+                "description":"Quantity of asset to sell"
+            },{
+                "name": "in_force",
+                "type":"str",
+                "description":"Duration the order is in force"
+            },{
+                "name": "extended",
+                "type":"str",
+                "description":"Whether to trade in extended hours or not"
+            }],
+        "returns": "A dictionary with the following keys:\n\t- type: 'STOCK' or 'CRYPTO'\n\t- id: ID of order\n\t- symbol: symbol of asset",
+        "raises": "Raises an exception if order fails."
+    },{
+        "name": "await_sell(self, symbol, quantity, in_force, extended)",
+        "short": "await_sell",
+        "description": "Sells the specified asset, and hangs the code until the order is filled. ",
+        "params": [
+            {
+                "name": "symbol",
+                "type":"str",
+                "description":"Symbol of the asset to sell",
+                "default":"First symbol in 'watch'"
+            },{
+                "name": "quantity",
+                "type":"float",
+                "description":"Quantity of asset to sell"
+            },{
+                "name": "in_force",
+                "type":"str",
+                "description":"Duration the order is in force"
+            },{
+                "name": "extended",
+                "type":"str",
+                "description":"Whether to trade in extended hours or not"
+            }],
+        "returns": "A dictionary with the following keys:\n\t- type: 'STOCK' or 'CRYPTO'\n\t- id: ID of order\n\t- symbol: symbol of asset",
+        "raises": "Raises an exception if order fails."
+    },{
+        "name": "buy_option(self, symbol, quantity, in_force)",
+        "short": "buy_option",
+        "description": "Buys the specified option",
+        "params": [
+            {
+                "name": "symbol",
+                "type":"str",
+                "description":"Ticker symbol of the asset to buy.",
+                "default":"First symbol in 'watch'"
+            },{
+                "name": "quantity",
+                "type":"float",
+                "description":"Quantity of asset to buy.",
+                "default":"1"
+            },{
+                "name": "in_force",
+                "type":"str",
+                "description":"Duration the order is in force. <span>'gtd'</span> or 'gtc'",
+                "default":"gtd"
+            }],
+        "returns": "A dictionary with the following keys:\n\t- type: 'OPTION'\n\t- id: ID of order\n\t- symbol: symbol of asset",
+        "raises": "Raises an exception if order fails."
+    },
+    {
+        "name": "sell_option(self, symbol, quantity, in_force)",
+        "short": "sell_option",
+        "description": "Sells the specified option",
+        "params": [
+            {
+                "name": "symbol",
+                "type":"str",
+                "description":"Symbol of the asset to sell",
+                "default":"First symbol in 'watch'"
+            },{
+                "name": "quantity",
+                "type":"float",
+                "description":"Quantity of asset to sell"
+            },{
+                "name": "in_force",
+                "type":"str",
+                "description":"Duration the order is in force"
+            }],
+        "returns": "A dictionary with the following keys:\n\t- type: 'OPTION'\n\t- id: ID of order\n\t- symbol: symbol of asset",
+        "raises": "Raises an exception if order fails."
+    },
+    {
+        "name": "get_chain_info(self, symbol)",
+        "short": "get_chain_info",
+        "description": "Returns the option chain for a given stock",
+        "params": [
+            {
+                "name": "symbol",
+                "type":"str",
+                "description":"Symbol of stock",
+                "default":"Required"
+            }],
+        "returns": "A dict with the following keys:- id: ID of the option chain - exp_dates: List of expiration dates, in the format 'YYYY-MM-DD' - multiplier: Multiplier of the option, usually 100 ",
+        "raises": "Raises an exception if it fails."
+    },
+    {
+        "name": "get_option_market_data(self, symbol)",
+        "short": "get_option_market_data",
+        "description": "Retrieves data of specified option.",
+        "params": [
+            {
+                "name": "symbol",
+                "type":"str",
+                "description":"OCC Symbol of stock",
+                "default":"Required"
+            }],
+        "returns": "A dictionary:- price: price of option - ask: ask price- bid: bid price",
+        "raises": "Raises an exception if it fails."
+    }
+]
+

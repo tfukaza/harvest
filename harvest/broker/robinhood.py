@@ -44,7 +44,8 @@ class RobinhoodBroker(base.BaseBroker):
                     self.config['robin_password'], 
                     store_session=True, 
                     mfa_code=totp)
-        debug("Logging into Robinhood...")
+        debug("Logged into Robinhood...")
+    
     
     def setup_run(self, watch: List[str], interval):
         self.watch = watch

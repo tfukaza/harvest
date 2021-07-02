@@ -7,9 +7,14 @@
 }
 
 .main {
+<<<<<<< Updated upstream
   display: flex;
+=======
+  min-height: 100vh;
+  /* display: flex;
+>>>>>>> Stashed changes
   justify-content: center;
-  flex-wrap: wrap;
+  flex-wrap: wrap; */
 }
 
 .nav{
@@ -33,6 +38,22 @@
   margin-bottom: 50px;
 }
 
+<<<<<<< Updated upstream
+=======
+.section > h1{
+  font-size: 50px;
+  margin-top:100px;
+  grid-column-start: 1;
+  grid-column-end: 13;
+}
+
+.text{
+  grid-column: 3 / 10;
+}
+
+
+
+>>>>>>> Stashed changes
 #landing h1{
   grid-column-start: 2;
   grid-column-end: 12;
