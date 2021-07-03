@@ -19,6 +19,7 @@ jobs:
         python-version: [3.8]
 
     steps:
+    - uses: actions/checkout@v2.1.0
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
       with:
@@ -30,7 +31,6 @@ jobs:
     - name: Run parser
       run: |
         python parser.py
-    - uses: actions/checkout@v2.1.0
     - name: Use Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v1
       with:
