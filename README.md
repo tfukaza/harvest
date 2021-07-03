@@ -6,7 +6,7 @@ Harvest is a Python framework for algorithmic trading, that packs a lot of punch
 - Backtest on historical data
 - Paper trading
 
-Visit Harvest's [website](tfukaza.github.io/harvest/) for more details.
+Visit Harvest's [website](https://tfukaza.github.io/harvest/) for more details.
 
 # For Developers
 Interested in coding for Harvest? Awesome! 🤟 But before you begin, skim through the following sections:
