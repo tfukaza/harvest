@@ -16,16 +16,17 @@ jobs:
     strategy:
       matrix:
         node-version: [14.x]
-        python-version: [3.8]
+        # python-version: [3.8]
 
     steps:
     - uses: actions/checkout@v2.1.0
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
-      with:
-        python-version: ${{ matrix.python-version }}
+    # - name: Set up Python ${{ matrix.python-version }}
+    #   uses: actions/setup-python@v2
+    #   with:
+    #     python-version: ${{ matrix.python-version }}
     - name: Install dependencies
       run: |
+        pwd
         python -m pip install --upgrade pip
         pip install ../harvest
         pip install docstring-parser
