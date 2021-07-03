@@ -45,9 +45,13 @@
 .entry pre code{
   color:white;
 }
-.entry > p{
-  font-size: 18px;
+.entry > p:nth-of-type(1){
+  font-size: 18px!important;
   margin: 3px 0px;
+}
+
+.entry p, .entry li{
+  font-size: 14px;
 }
 
 .entry > div{
@@ -103,15 +107,9 @@
   padding-right: 30px;
   box-sizing: border-box;
 }
-.paramReturn p{
-  font-size: 14px;
-}
 
 .paramRaise{
   width: 40%;
-}
-.paramRaise p{
-  font-size: 14px;
 }
 
 .lookup{
@@ -141,3 +139,9 @@
 .lookup:hover span{
   visibility: visible;
 }
+
+.raises span{
+  font-family:'Roboto Mono', monospace;
+  color:#cf0934;
+}
+

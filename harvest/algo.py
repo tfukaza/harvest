@@ -47,12 +47,13 @@ class BaseAlgo:
         :param float? quantity:  Quantity of asset to buy. defaults to 1
         :param str? in_force:  Duration the order is in force. '{gtc}' or '{gtd}'. defaults to 'gtc'
         :param str? extended:  Whether to trade in extended hours or not. defaults to False 
+        :returns: The following Python dictionary
 
-        :returns: A dictionary with the following keys:
             - type: 'STOCK' or 'CRYPTO'
             - id: ID of order
             - symbol: symbol of asset
-            Raises an exception if order fails. 
+
+        :raises Exception: There is an error in the order process.
         """
         return self.trader.buy(symbol, quantity, in_force, extended)
     
@@ -63,12 +64,13 @@ class BaseAlgo:
         :param quantity:  Quantity of asset to sell
         :param in_force:  Duration the order is in force
         :param extended:  Whether to trade in extended hours or not. 
-
         :returns: A dictionary with the following keys:
+
             - type: 'STOCK' or 'CRYPTO'
             - id: ID of order
             - symbol: symbol of asset
-            Raises an exception if order fails. 
+        
+        Raises an exception if order fails. 
         """
         return self.trader.sell(symbol, quantity, in_force, extended)
 
