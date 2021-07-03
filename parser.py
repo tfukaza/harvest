@@ -78,5 +78,5 @@ for func in functions:
     })
     
 
-with open('data.json', 'w') as f:
+with open('./pages/docs-content/data.json', 'w') as f:
     json.dump(data, f)

@@ -49,9 +49,9 @@ class BaseAlgo:
         :param str? extended:  Whether to trade in extended hours or not. defaults to False 
         :returns: The following Python dictionary
 
-            - type: 'STOCK' or 'CRYPTO'
-            - id: ID of order
-            - symbol: symbol of asset
+            - type: str, 'STOCK' or 'CRYPTO'
+            - id: str, ID of order
+            - symbol: str, symbol of asset
 
         :raises Exception: There is an error in the order process.
         """
@@ -60,79 +60,83 @@ class BaseAlgo:
     def sell(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
         """Sells the specified asset.
 
-        :param symbol:    Symbol of the asset to sell
-        :param quantity:  Quantity of asset to sell
-        :param in_force:  Duration the order is in force
-        :param extended:  Whether to trade in extended hours or not. 
+        :param str? symbol:    Symbol of the asset to sell
+        :param float? quantity:  Quantity of asset to sell
+        :param str? in_force:  Duration the order is in force
+        :param str? extended:  Whether to trade in extended hours or not. 
         :returns: A dictionary with the following keys:
 
-            - type: 'STOCK' or 'CRYPTO'
-            - id: ID of order
-            - symbol: symbol of asset
+            - type: str, 'STOCK' or 'CRYPTO'
+            - id: str, ID of order
+            - symbol: str, symbol of asset
         
-        Raises an exception if order fails. 
+        :raises Exception: There is an error in the order process.
         """
         return self.trader.sell(symbol, quantity, in_force, extended)
 
     def await_buy(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
         """Buys the specified asset, and hangs the code until the order is filled. 
 
-        :param symbol:    Symbol of the asset to buy
-        :param quantity:  Quantity of asset to buy
-        :param in_force:  Duration the order is in force
-        :param extended:  Whether to trade in extended hours or not. 
-
+        :param str? symbol:    Symbol of the asset to buy
+        :param float? quantity:  Quantity of asset to buy
+        :param str? in_force:  Duration the order is in force
+        :param str? extended:  Whether to trade in extended hours or not. 
         :returns: A dictionary with the following keys:
+
             - type: 'STOCK' or 'CRYPTO'
             - id: ID of order
             - symbol: symbol of asset
-            Raises an exception if order fails. 
+
+        :raises Exception: There is an error in the order process.
         """
         return self.trader.await_buy(symbol, quantity, in_force, extended)
     
     def await_sell(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
         """Sells the specified asset, and hangs the code until the order is filled. 
 
-        :param symbol:    Symbol of the asset to buy
-        :param quantity:  Quantity of asset to buy
-        :param in_force:  Duration the order is in force
-        :param extended:  Whether to trade in extended hours or not. 
-
+        :param str? symbol:    Symbol of the asset to buy
+        :param float? quantity:  Quantity of asset to buy
+        :param str? in_force:  Duration the order is in force
+        :param str? extended:  Whether to trade in extended hours or not. 
         :returns: A dictionary with the following keys:
+
             - type: 'STOCK' or 'CRYPTO'
             - id: ID of order
             - symbol: symbol of asset
-            Raises an exception if order fails. 
+
+        :raises Exception: There is an error in the order process.
         """
         return self.trader.await_sell(symbol, quantity, in_force, extended)
 
     def buy_option(self, symbol: str=None, quantity: int=0, in_force: str='gtc'):
         """Buys the specified option.
         
-        :param symbol:    Symbol of the asset to buy, in OCC format. 
-        :param quantity:  Quantity of asset to buy
-        :param in_force:  Duration the order is in force
-
+        :param str? symbol:    Symbol of the asset to buy, in OCC format. 
+        :param float? quantity:  Quantity of asset to buy
+        :param str? in_force:  Duration the order is in force
         :returns: A dictionary with the following keys:
+
             - type: 'OPTION'
             - id: ID of order
             - symbol: symbol of asset
-            Raises an exception if order fails. 
+
+        :raises Exception: There is an error in the order process.
         """
         return self.trader.buy_option(symbol, quantity, in_force)
     
     def sell_option(self, symbol: str=None, quantity: int=0, in_force: str='gtc'):
         """Sells the specified option.
         
-        :param symbol:    Symbol of the asset to buy, in OCC format. 
-        :param quantity:  Quantity of asset to buy
-        :param in_force:  Duration the order is in force
-
+        :param str? symbol:    Symbol of the asset to buy, in OCC format. 
+        :param float? quantity:  Quantity of asset to buy
+        :param str? in_force:  Duration the order is in force
         :returns: A dictionary with the following keys:
+
             - type: 'OPTION'
             - id: ID of order
             - symbol: symbol of asset
-            Raises an exception if order fails. 
+
+        :raises Exception: There is an error in the order process.
         """
         return self.trader.sell_option(symbol, quantity, in_force)
     

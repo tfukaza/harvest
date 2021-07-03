@@ -65,8 +65,6 @@ function generate_returns(dict){
     // Find all lists in the text
     let lists = text.match(/(\s*\n\s*- .+)+/g);
     let texts = text.split(/\s*- [^\n]*/).filter(s => s.length > 0);
-    console.log(lists);
-    console.log(texts);
 
     for (let t of texts){
         nodes.push(<p>{t}</p>);
