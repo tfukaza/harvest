@@ -40,8 +40,12 @@ jobs:
     - run: |
         cd website
         npm install
-    - run: BASE_PATH="/harvest" npx next build
-    - run: BASE_PATH="/harvest" npx next export
+    - run: |
+        cd website
+        BASE_PATH="/harvest" npx next build
+    - run: |
+        cd website
+        BASE_PATH="/harvest" npx next export
     - name: Deploy
       uses: peaceiris/actions-gh-pages@v3
       with:
