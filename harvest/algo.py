@@ -41,94 +41,103 @@ class BaseAlgo:
     def buy(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
         """Buys the specified asset.
 
-        :param symbol:    Symbol of the asset to buy
-        :param quantity:  Quantity of asset to buy
-        :param in_force:  Duration the order is in force
-        :param extended:  Whether to trade in extended hours or not. 
+        When called, Harvests places a limit order with a limit
+        price 5% higher than the current price. 
 
-        :returns: A dictionary with the following keys:
-            - type: 'STOCK' or 'CRYPTO'
-            - id: ID of order
-            - symbol: symbol of asset
-            Raises an exception if order fails. 
+        :param str? symbol:    Symbol of the asset to buy. defaults to first symbol in watch
+        :param float? quantity:  Quantity of asset to buy. defaults to 1
+        :param str? in_force:  Duration the order is in force. '{gtc}' or '{gtd}'. defaults to 'gtc'
+        :param str? extended:  Whether to trade in extended hours or not. defaults to False 
+        :returns: The following Python dictionary
+
+            - type: str, 'STOCK' or 'CRYPTO'
+            - id: str, ID of order
+            - symbol: str, symbol of asset
+
+        :raises Exception: There is an error in the order process.
         """
         return self.trader.buy(symbol, quantity, in_force, extended)
     
     def sell(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
         """Sells the specified asset.
 
-        :symbol:    Symbol of the asset to sell
-        :quantity:  Quantity of asset to sell
-        :in_force:  Duration the order is in force
-        :extended:  Whether to trade in extended hours or not. 
-
+        :param str? symbol:    Symbol of the asset to sell
+        :param float? quantity:  Quantity of asset to sell
+        :param str? in_force:  Duration the order is in force
+        :param str? extended:  Whether to trade in extended hours or not. 
         :returns: A dictionary with the following keys:
-            - type: 'STOCK' or 'CRYPTO'
-            - id: ID of order
-            - symbol: symbol of asset
-            Raises an exception if order fails. 
+
+            - type: str, 'STOCK' or 'CRYPTO'
+            - id: str, ID of order
+            - symbol: str, symbol of asset
+        
+        :raises Exception: There is an error in the order process.
         """
         return self.trader.sell(symbol, quantity, in_force, extended)
 
     def await_buy(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
         """Buys the specified asset, and hangs the code until the order is filled. 
 
-        :symbol:    Symbol of the asset to buy
-        :quantity:  Quantity of asset to buy
-        :in_force:  Duration the order is in force
-        :extended:  Whether to trade in extended hours or not. 
-
+        :param str? symbol:    Symbol of the asset to buy
+        :param float? quantity:  Quantity of asset to buy
+        :param str? in_force:  Duration the order is in force
+        :param str? extended:  Whether to trade in extended hours or not. 
         :returns: A dictionary with the following keys:
+
             - type: 'STOCK' or 'CRYPTO'
             - id: ID of order
             - symbol: symbol of asset
-            Raises an exception if order fails. 
+
+        :raises Exception: There is an error in the order process.
         """
         return self.trader.await_buy(symbol, quantity, in_force, extended)
     
     def await_sell(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
         """Sells the specified asset, and hangs the code until the order is filled. 
 
-        :symbol:    Symbol of the asset to buy
-        :quantity:  Quantity of asset to buy
-        :in_force:  Duration the order is in force
-        :extended:  Whether to trade in extended hours or not. 
-
+        :param str? symbol:    Symbol of the asset to buy
+        :param float? quantity:  Quantity of asset to buy
+        :param str? in_force:  Duration the order is in force
+        :param str? extended:  Whether to trade in extended hours or not. 
         :returns: A dictionary with the following keys:
+
             - type: 'STOCK' or 'CRYPTO'
             - id: ID of order
             - symbol: symbol of asset
-            Raises an exception if order fails. 
+
+        :raises Exception: There is an error in the order process.
         """
         return self.trader.await_sell(symbol, quantity, in_force, extended)
 
     def buy_option(self, symbol: str=None, quantity: int=0, in_force: str='gtc'):
         """Buys the specified option.
         
-        :symbol:    Symbol of the asset to buy, in OCC format. 
-        :quantity:  Quantity of asset to buy
-        :in_force:  Duration the order is in force
-
+        :param str? symbol:    Symbol of the asset to buy, in OCC format. 
+        :param float? quantity:  Quantity of asset to buy
+        :param str? in_force:  Duration the order is in force
         :returns: A dictionary with the following keys:
+
             - type: 'OPTION'
             - id: ID of order
             - symbol: symbol of asset
-            Raises an exception if order fails. 
+
+        :raises Exception: There is an error in the order process.
         """
         return self.trader.buy_option(symbol, quantity, in_force)
     
     def sell_option(self, symbol: str=None, quantity: int=0, in_force: str='gtc'):
         """Sells the specified option.
         
-        :symbol:    Symbol of the asset to buy, in OCC format. 
-        :quantity:  Quantity of asset to buy
-        :in_force:  Duration the order is in force
-
+        :param str? symbol:    Symbol of the asset to buy, in OCC format. 
+        :param float? quantity:  Quantity of asset to buy
+        :param str? in_force:  Duration the order is in force
         :returns: A dictionary with the following keys:
+
             - type: 'OPTION'
             - id: ID of order
             - symbol: symbol of asset
-            Raises an exception if order fails. 
+
+        :raises Exception: There is an error in the order process.
         """
         return self.trader.sell_option(symbol, quantity, in_force)
     
@@ -137,7 +146,7 @@ class BaseAlgo:
     def get_chain_info(self, symbol: str):
         """Returns information about the symbol's options
         
-        :symbol: symbol of stock
+        :param symbol: symbol of stock
         :returns: A dict with the following keys:
             - id: ID of the option chain 
             - exp_dates: List of expiration dates, in the fomrat "YYYY-MM-DD" 
@@ -148,7 +157,7 @@ class BaseAlgo:
     def get_chain_data(self, symbol: str):
         """Returns the option chain for the specified symbol. 
         
-        :symbol: symbol of stock
+        :param symbol: symbol of stock
         :returns: A dataframe in the following format:
 
                     exp_date strike  type    id
@@ -161,7 +170,7 @@ class BaseAlgo:
     def get_option_market_data(self, symbol: str):
         """Retrieves data of specified option. 
 
-        :symbol: Occ symbol of option
+        :param symbol: Occ symbol of option
         :returns: A dictionary:
             - price: price of option 
             - ask: ask price
@@ -187,10 +196,10 @@ class BaseAlgo:
     def rsi(self, prices, symbol: str=None, period: int=14, interval: str='5MIN', ref: str='close') -> np.array:
         """Calculate RSI
 
-        :symbol:    Symbol to perform calculation on 
-        :period:    Period of RSI
-        :interval:  Interval to perform the calculation
-        :ref:       'close', 'open', 'high', or 'low'
+        :param symbol:    Symbol to perform calculation on 
+        :param period:    Period of RSI
+        :param interval:  Interval to perform the calculation
+        :param ref:       'close', 'open', 'high', or 'low'
         :returns: A list in numpy format, containing RSI values
         """
         if symbol == None:
@@ -209,10 +218,10 @@ class BaseAlgo:
     def sma(self, prices, symbol: str=None, period: int=14, interval: str='5MIN', ref: str='close') -> np.array:
         """Calculate SMA
 
-        :symbol:    Symbol to perform calculation on 
-        :period:    Period of SMA
-        :interval:  Interval to perform the calculation
-        :ref:       'close', 'open', 'high', or 'low'
+        :param symbol:    Symbol to perform calculation on 
+        :param period:    Period of SMA
+        :param interval:  Interval to perform the calculation
+        :param ref:       'close', 'open', 'high', or 'low'
         :returns: A list in numpy format, containing SMA values
         """
         if symbol == None:
@@ -231,10 +240,10 @@ class BaseAlgo:
     def ema(self, prices, symbol: str=None, period: int=14, interval: str='5MIN', ref: str='close') -> np.array:
         """Calculate EMA
 
-        :symbol:    Symbol to perform calculation on 
-        :period:    Period of EMA
-        :interval:  Interval to perform the calculation
-        :ref:       'close', 'open', 'high', or 'low'
+        :param symbol:    Symbol to perform calculation on 
+        :param period:    Period of EMA
+        :param interval:  Interval to perform the calculation
+        :param ref:       'close', 'open', 'high', or 'low'
         :returns: A list in numpy format, containing EMA values
         """
         if symbol == None:
@@ -253,11 +262,11 @@ class BaseAlgo:
     def bbands(self, prices, symbol: str=None, period: int=14, interval: str='5MIN', ref: str='close', dev: float=1.0) -> Tuple[np.array, np.array, np.array]:
         """Calculate Bollinger Bands
 
-        :symbol:    Symbol to perform calculation on 
-        :period:    Period of BBand
-        :interval:  Interval to perform the calculation
-        :ref:       'close', 'open', 'high', or 'low'
-        :dev:       Standard deviation of the bands
+        :param symbol:    Symbol to perform calculation on 
+        :param period:    Period of BBand
+        :param interval:  Interval to perform the calculation
+        :param ref:       'close', 'open', 'high', or 'low'
+        :param dev:       Standard deviation of the bands
         :returns: A tuple of numpy lists, each a list of BBand top, average, and bottom values
         """
         if symbol == None:
@@ -276,12 +285,12 @@ class BaseAlgo:
     def bbands_raw(self, arr: List[float]=[], period: int=14, dev: float=1.0) -> Tuple[np.array, np.array, np.array]:
         """Calculate Bollinger Bands using given data
 
-        :arr: List of prices as float to use in calculation of bollinger band
-        :symbol:    Symbol to perform calculation on 
-        :period:    Period of BBand
-        :interval:  Interval to perform the calculation
-        :ref:       'close', 'open', 'high', or 'low'
-        :dev:       Standard deviation of the bands
+        :param arr: List of prices as float to use in calculation of bollinger band
+        :param symbol:    Symbol to perform calculation on 
+        :param period:    Period of BBand
+        :param interval:  Interval to perform the calculation
+        :param ref:       'close', 'open', 'high', or 'low'
+        :param dev:       Standard deviation of the bands
         :returns: A tuple of numpy lists, each a list of BBand top, average, and bottom values
         """
         ohlc = pd.DataFrame({
@@ -298,7 +307,7 @@ class BaseAlgo:
     def get_quantity(self, symbol: str) -> float:
         """Returns the quantity owned of a specified asset. 
 
-        :symbol:  Symbol of asset
+        :param symbol:  Symbol of asset
         :returns: Quantity of asset. 0 if asset is not owned. 
         """
         search = self.trader.stock_positions + self.trader.crypto_positions
@@ -311,7 +320,7 @@ class BaseAlgo:
     def get_cost(self, symbol) -> float:
         """Returns the average cost of a specified asset. 
 
-        :symbol:  Symbol of asset
+        :param symbol:  Symbol of asset
         :returns: Average cost of asset. Returns None if asset is not being tracked.
         """
         if len(symbol) <= 6:
@@ -347,7 +356,7 @@ class BaseAlgo:
     def get_returns(self, symbol) -> float:
         """Returns the return of a specified asset. 
 
-        :symbol:  Symbol of stock, crypto, or option. Options should be in OCC format.
+        :param symbol:  Symbol of stock, crypto, or option. Options should be in OCC format.
         :returns: Return of asset, expressed as a decimal. Returns None if asset is not owned.
         """
         cost = self.get_cost(symbol)
@@ -365,8 +374,8 @@ class BaseAlgo:
     def get_price_list(self, symbol, interval=None, ref='close'):
         """Returns a list of recent prices for an asset. 
 
-        :symbol:  Symbol of asset.
-        :interval: Interval of data.
+        :param symbol:  Symbol of asset.
+        :param interval: Interval of data.
         :returns: Average cost of asset. Returns None if asset is not being tracked.
         """
         if interval == None:

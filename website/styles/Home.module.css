@@ -18,20 +18,31 @@
   height:70px;
   position: fixed;
   background-color: #FFFFFF;
-  border-bottom: solid 1px #cfcfcf;
+  /* border-bottom: solid 1px #cfcfcf; */
+  z-index: 1;
+  box-shadow: 0px 10px 10px 0px rgb(23 33 73 / 9%);
+}
+
+.nav > a{
+  position: absolute;
+  top:20px;
+  right:20px;
+}
+
+.nav div{
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1;
+  height: 70px;
 }
 
-.nav a{
+.nav div a{
   margin: 0px 30px;
   color:#414141;
   transition: 0.1s;
 }
 
-.nav a:hover{
+.nav div a:hover{
   color:#686868;
 }
 
