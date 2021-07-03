@@ -49,11 +49,9 @@ for func in functions:
     # Get the docstring as an object
     doc = parse(func.__doc__)
     # Get description
-    print(doc.short_description, doc.long_description)
     # Get parameters: arg_name, type_name, is_optional, default, description
     arg_names = ['self']
     arg_names.extend([p.arg_name for p in doc.params])
-    print(doc.returns.description if not doc.returns == None else "")
     data.append({
         "function": func.__name__ + '(' + ', '.join(arg_names) + ')',
         "index": func.__name__,
@@ -78,5 +76,5 @@ for func in functions:
     })
     
 
-with open('./pages/docs-content/data.json', 'w') as f:
+with open('./website/pages/docs-content/data.json', 'w') as f:
     json.dump(data, f)
