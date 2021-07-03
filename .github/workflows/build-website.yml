@@ -25,7 +25,7 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Install dependencies
       run: |
-        pip install docstring_parser
+        pip install docstring-parser
     - name: Run parser
       run: |
         python -m pip install --upgrade pip
