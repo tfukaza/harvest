@@ -1,25 +1,18 @@
 # Builtins
 import asyncio
-import atexit
-import json
-import requests
-import urllib
 import re
 import datetime as dt
-from datetime import timedelta
-import sys
 import threading
-import logging
 from logging import warning, debug
 import time
+from signal import signal, SIGINT
+from sys import exit
 
 # External libraries
-import numpy as np
 import pandas as pd
 import pytz
 
 # Submodule imports
-import harvest.algo as algo
 import harvest.queue as queue
 from harvest.broker.dummy import DummyBroker
 
@@ -75,6 +68,8 @@ class Trader:
         self.block_lock = threading.Lock() # Lock for streams that recieve data asynchronously
 
         self.algo = None
+
+        signal(SIGINT, self.exit)
 
     def run( self, load_watch=True, interval='5MIN',aggregations=[]): 
         """Entry point to start the system. 
@@ -551,3 +546,8 @@ class Trader:
     
     def remove_symbol(self, symbol):
         self.watch.remove(symbol)
+    
+    def exit(self, signum, frame):
+        # TODO: Gracefully exit
+        print("\nStopping Harvest...")
+        exit(0)
