@@ -25,7 +25,7 @@ setup(
         "AlpacaMarket": [
             'alpaca-trade-api'
         ],
-        "Robinhood":[
+        "Robinhood": [
             'pyotp',
             'robin_stocks'
         ]
