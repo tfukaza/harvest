@@ -13,12 +13,12 @@ sym = 'TWTR'
 
 class Options(BaseAlgo):
 
-    def algo_init(self):
+    def setup(self):
         self.hold = False
         self.occ = ''
         self.buy_qty = 0
     
-    def handler(self, meta):
+    def main(self, meta):
 
         price = self.get_price(sym)
 
@@ -63,4 +63,4 @@ if __name__ == "__main__":
     t.add_symbol(sym)
     t.set_algo(Option())
     
-    t.run(interval='5MIN')
+    t.start(interval='5MIN')

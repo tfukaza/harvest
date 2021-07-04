@@ -58,8 +58,11 @@ class DummyBroker(base.BaseBroker):
 
     @base.BaseBroker.main_wrap
     def main(self) -> pd.DataFrame:
-        results = None
-        return results
+        df_dict = {}
+        df_dict.update(self.fetch_latest_stock_price())
+        df_dict.update(self.fetch_latest_crypto_price())
+      
+        return df_dict
 
     def _generate_fake_stock_data(self):
         open_s = random.uniform(2, 1000)

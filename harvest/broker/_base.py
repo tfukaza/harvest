@@ -72,6 +72,21 @@ class BaseBroker:
         self.fetch_interval = fetch_interval
         self.trader = trader
         self.trader_main = trader_main
+
+    def start(self):
+        self.cur_sec = -1
+        self.cur_min = -1
+        val = int(re.sub("[^0-9]", "", self.fetch_interval))
+        # RH does not support per minute intervals, so instead 15second intervals are used
+        # Note that 1MIN is only supported for crypto
+        
+        print("Running...")
+        while 1:
+            cur = dt.datetime.now()
+            minutes = cur.minute
+            if minutes % val == 0 and minutes != self.cur_min:
+                self.main()
+            self.cur_min = minutes
            
 
     def refresh_cred(self):
