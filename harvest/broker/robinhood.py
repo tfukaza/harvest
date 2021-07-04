@@ -168,7 +168,7 @@ class RobinhoodBroker(base.BaseBroker):
         super().setup(watch, interval, fetch_interval, trader, trader_main)
          
 
-    def start(self):
+    def start(self, kill_switch: bool=False):
         self.cur_sec = -1
         self.cur_min = -1
         val = int(re.sub("[^0-9]", "", self.fetch_interval))
@@ -183,6 +183,8 @@ class RobinhoodBroker(base.BaseBroker):
                 if seconds == 1 and seconds != self.cur_sec:
                     self.main()
                 self.cur_sec = seconds
+                if kill_switch:
+                    return
         else:
             while 1:
                 cur = dt.datetime.now()
@@ -190,6 +192,8 @@ class RobinhoodBroker(base.BaseBroker):
                 if minutes % val == 0 and minutes != self.cur_min:
                     self.main()
                 self.cur_min = minutes
+                if kill_switch:
+                    return
         
 
     def exit(self):
@@ -202,6 +206,9 @@ class RobinhoodBroker(base.BaseBroker):
         df_dict.update(self.fetch_latest_crypto_price())
       
         return df_dict
+
+    def has_interval(self, interval: str):
+        return interval in self.interval_list
     
     @base.BaseBroker._exception_handler
     def fetch_price_history( self,

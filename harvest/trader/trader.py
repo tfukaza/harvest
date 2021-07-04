@@ -79,7 +79,7 @@ class Trader:
         self.interval = interval
         self.aggregations = aggregations
 
-        if not interval in self.streamer.interval_list:
+        if not self.streamer.has_interval(interval):
             raise Exception(f"""Interval '{interval}' is not supported by the selected streamer.\n 
                                 The streamer only supports {self.streamer.interval_list}""")
 
@@ -126,7 +126,7 @@ class Trader:
 
 
 
-    def start(self, load_watch=True, interval='5MIN', aggregations=[]): 
+    def start(self, load_watch=True, interval='5MIN', aggregations=[], kill_switch: bool=False): 
         """Entry point to start the system. 
         
         :load_watch: If True, all positions will be loaded from the brokerage account. 
@@ -136,16 +136,18 @@ class Trader:
         :aggregations: A list of intervals. The Trader will aggregate data to the intervals specified in this list.
             For example, if this is set to ['5MIN', '30MIN'], and interval is '1MIN', the algorithm will have access to 
             5MIN, 30MIN aggregated candles in addition to 1MIN candles. 
+        :kill_switch: If true, kills the infinite loop in streamer.start so we can test this flow.
 
         TODO: If there is no internet connection, the program will shut down before starting. 
         """
         print(f"Starting Harvest...")
 
+        self.broker.setup(self.watch, interval, self, self.main)
+        self.streamer.setup(self.watch, interval, self, self.main)
+        
         self.setup(load_watch, interval, aggregations)
-        self.broker.setup(self, self.main, self.watch, interval)
-        self.streamer.setup(self, self.main, self.watch, interval)
+        
         self.algo.setup()
-
         self.algo.trader = self
         self.algo.watch = self.watch
         self.algo.fetch_interval = self.fetch_interval
@@ -160,7 +162,7 @@ class Trader:
 
         self.loop = asyncio.get_event_loop()
 
-        self.streamer.start()
+        self.streamer.start(kill_switch)
 
     async def timeout(self):
         try:

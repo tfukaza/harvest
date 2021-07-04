@@ -64,6 +64,9 @@ class DummyBroker(base.BaseBroker):
       
         return df_dict
 
+    def has_interval(self, interval: str):
+        return True
+
     def _generate_fake_stock_data(self):
         open_s = random.uniform(2, 1000)
         volume = random.randint(1, 1e7)

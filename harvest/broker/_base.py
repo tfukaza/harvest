@@ -73,7 +73,7 @@ class BaseBroker:
         self.trader = trader
         self.trader_main = trader_main
 
-    def start(self):
+    def start(self, kill_switch: bool=False):
         self.cur_sec = -1
         self.cur_min = -1
         val = int(re.sub("[^0-9]", "", self.fetch_interval))
@@ -87,6 +87,9 @@ class BaseBroker:
             if minutes % val == 0 and minutes != self.cur_min:
                 self.main()
             self.cur_min = minutes
+
+            if kill_switch:
+                return
            
 
     def refresh_cred(self):
@@ -115,10 +118,12 @@ class BaseBroker:
             self = args[0]
             df = func(*args, **kwargs) 
 
-            now = time.mktime(time.gmtime())
-            now = dt.datetime.fromtimestamp(now)
+            # now = time.mktime(time.gmtime())
+            # now = dt.datetime.fromtimestamp(now)
+            # now = now.replace(second=0, microsecond=0)
+            # now = pytz.utc.localize(now)
+            now = dt.datetime.now()
             now = now.replace(second=0, microsecond=0)
-            now = pytz.utc.localize(now)
 
             self.trader.loop.run_until_complete(self.trader_main(df, now))
         return wrapper
