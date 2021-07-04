@@ -9,6 +9,7 @@ from logging import critical, error, info, warning, debug
 # External libraries
 import pandas as pd
 import yaml
+import pytz
 
 # Submodule imports
 import harvest.broker._base as base
@@ -101,14 +102,7 @@ class DummyBroker(base.BaseBroker):
 
         times = []
         current = last
-        while current <= today:
-            times.append(current)
-            current += interval
 
-        if not symbol:
-            symbol = 'DUMMY'
-
-        # Fake the data 
         stock_gen = self._generate_fake_stock_data()
         open_s = []
         high = []
@@ -116,13 +110,20 @@ class DummyBroker(base.BaseBroker):
         close = []
         volume = []
 
-        for _ in range(len(times)):
+        # Fake the data 
+        while current <= today:
+            times.append(current.replace(tzinfo=None))
+            current += interval
+
             o, h, l, c, v = next(stock_gen)
             open_s.append(o)
             high.append(h)
             low.append(l)
             close.append(c)
             volume.append(v)
+
+        if not symbol:
+            symbol = 'DUMMY'            
 
         d = {
             'date': times,
@@ -288,7 +289,7 @@ class DummyBroker(base.BaseBroker):
                         "multiplier": 100,
                         "exp_date": date,
                         "strike_price": price,
-                        "type":option_type
+                        "type": option_type
                     })
                 else:
                     pos['avg_price'] = (pos['avg_price']*pos['quantity'] + price*qty)/(qty+pos['quantity'])

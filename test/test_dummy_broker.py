@@ -126,6 +126,20 @@ class TestDummyBroker(unittest.TestCase):
         self.assertEqual(status['time_in_force'], 'gtc')
         self.assertEqual(status['status'], 'filled')
 
+    def test_order_option_limit(self):
+        dummy = DummyBroker() 
+        dummy.setup(['A'], '1MIN')
+        exp_date = dt.datetime.now() + dt.timedelta(hours=5)
+        order = dummy.order_option_limit('buy', 'A', 5, 25.75, 'OPTION', exp_date, 31.25)
+        self.assertEqual(order['type'], 'OPTION')
+        self.assertEqual(order['id'], 0)
+        self.assertEqual(order['symbol'], 'A')
+
+        status = dummy.fetch_option_order_status(order['id'])
+        self.assertEqual(status['symbol'], 'A')
+        self.assertEqual(status['quantity'], 5)
+
+
 
 
 if __name__ == '__main__':

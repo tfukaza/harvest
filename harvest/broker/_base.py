@@ -86,11 +86,10 @@ class BaseBroker:
             minutes = cur.minute
             if minutes % val == 0 and minutes != self.cur_min:
                 self.main()
+                if kill_switch:
+                    return
             self.cur_min = minutes
 
-            if kill_switch:
-                return
-           
 
     def refresh_cred(self):
         raise NotImplementedError("This endpoint is not supported in this broker")
@@ -118,14 +117,13 @@ class BaseBroker:
             self = args[0]
             df = func(*args, **kwargs) 
 
-            # now = time.mktime(time.gmtime())
-            # now = dt.datetime.fromtimestamp(now)
-            # now = now.replace(second=0, microsecond=0)
-            # now = pytz.utc.localize(now)
-            now = dt.datetime.now()
+            now = time.mktime(time.gmtime())
+            now = dt.datetime.fromtimestamp(now)
             now = now.replace(second=0, microsecond=0)
+            now = pytz.utc.localize(now)
 
             self.trader.loop.run_until_complete(self.trader_main(df, now))
+
         return wrapper
 
     def exit(self):
