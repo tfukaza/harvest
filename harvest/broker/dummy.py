@@ -176,7 +176,7 @@ class DummyBroker(base.BaseBroker):
             occ_sym = r['occ_symbol']
 
             if self.trader is None:
-                price = self.fetch_price_history(dt.datetime.now() - dt.timedelta(days=7), dt.datetime.now(), symbol)[symbol].iloc[-1]['close']
+                price = self.fetch_option_market_data(occ_sym)['price']
             else:
                 price = self.trader.streamer.fetch_option_market_data(occ_sym)['price']
 
@@ -198,7 +198,7 @@ class DummyBroker(base.BaseBroker):
         sym = ret['symbol']
 
         if self.trader is None:
-            price = self.fetch_option_market_data(occ_sym)['price']
+            price = self.fetch_price_history(dt.datetime.now() - dt.timedelta(days=7), dt.datetime.now(), self.interval, sym)[sym].iloc[-1]['close']
         else:
             price = self.trader.queue.get_last_symbol_interval_price(sym, self.interval, 'close')
 
@@ -353,7 +353,7 @@ class DummyBroker(base.BaseBroker):
                 'type': 'STOCK',
                 'symbol': symbol,
                 'quantity': quantity,
-                'filled_qty': 0,
+                'filled_qty': quantity,
                 'id': self.id,
                 'time_in_force': in_force,
                 'status': 'filled',
@@ -364,7 +364,7 @@ class DummyBroker(base.BaseBroker):
                 'type': 'CRYPTO',
                 'symbol': symbol,
                 'quantity': quantity,
-                'filled_qty': 0,
+                'filled_qty': quantity,
                 'id': self.id,
                 'time_in_force': in_force,
                 'status': 'filled',
