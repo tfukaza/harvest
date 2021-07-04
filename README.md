@@ -6,7 +6,7 @@ Harvest is a Python framework for algorithmic trading, that packs a lot of punch
 - Backtest on historical data
 - Paper trading
 
-Visit Harvest's [website](tfukaza.github.io/harvest/) for more details.
+Visit Harvest's [website](https://tfukaza.github.io/harvest/) for more details.
 
 # For Developers
 Interested in coding for Harvest? Awesome! 🤟 But before you begin, skim through the following sections:
@@ -17,7 +17,7 @@ While generic tests are built into the CI/CD workflow, ideally you should conduc
 ### Testing Harvest 
 Testing Harvest often requires you to provide login credentials to access the brokers, so it is recommended that you test the code in a different directory than your working directory. 
 
-For example, if you cloned this repo into `C:Alice/document/harvest`, you can create a new directory `C:Alice/document/testing`. All of your test codes and access credentials should then be stored in `testing` to ensure they don't accidentally get pushed to the public repo. You can run 
+For example, if you cloned this repo into `C:\Alice\document\harvest`, you can create a new directory `C:\Alice\document\testing`. All of your test codes and access credentials should then be stored in `testing` to ensure they don't accidentally get pushed to the public repo. You can run 
 ```
 pip install ../harvest
 ``` 

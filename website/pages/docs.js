@@ -7,7 +7,7 @@ import styles from '../styles/Home.module.css'
 import doc from '../styles/Doc.module.css'
 import rc from '../styles/rowcrop.module.css'
 
-import algos from './docs-content/algo.json'
+import algos from './docs-content/data.json'
 
 export default function Home() {
   let algo_items = [];
@@ -15,9 +15,9 @@ export default function Home() {
   for (let val of algos){
     algo_items.push(<Function dict={val}></Function>);
     algo_func.push(<Link 
-                    href={'/docs#'+val["short"]}
+                    href={'/docs#'+val["index"]}
                     passHref>
-                      <li>{val["short"]}</li></Link>)
+                      <li>{val["index"]}</li></Link>)
   }
 
   return (
