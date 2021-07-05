@@ -59,11 +59,17 @@ class DummyBroker(base.BaseBroker):
 
     @base.BaseBroker.main_wrap
     def main(self) -> pd.DataFrame:
-        df_dict = {}
-        df_dict.update(self.fetch_latest_stock_price())
-        df_dict.update(self.fetch_latest_crypto_price())
+        if self.broker_type in ('both', 'streamer'):
+            # Fetch and update data in the storage and return the lastest data
+            pass
+        if self.broker_type in ('both', 'broker'):
+            # Buy and sell stocks that are in the queue
+            pass
+        # df_dict = {}
+        # df_dict.update(self.fetch_latest_stock_price())
+        # df_dict.update(self.fetch_latest_crypto_price())
       
-        return df_dict
+        # return df_dict
 
     def has_interval(self, interval: str):
         return True

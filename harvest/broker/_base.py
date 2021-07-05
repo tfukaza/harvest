@@ -37,9 +37,17 @@ class BaseBroker:
         """Here, the broker should perform any authentications neccesary to 
         connect to the brokerage it is using.
 
+        There are three broker types, 'streamer', 'broker', and 'both'. A 
+        'streamer' is responsible for fetching data and interacting with 
+        the queue to store data. A 'broker' is used solely for buying and 
+        selling stocks, cryptos and options. Finally, 'both' is used to 
+        indicate that the broker fetch data and buy and sell stocks.
+
         :path: path to the YAML file containing credentials for the broker. 
             If not specified, should default to './secret.yaml'
         """
+
+        self.broker_type = 'both'
         self.trader = None # Allows broker to handle the case when runs without a trader
     
     def setup(self, watch: List[str], interval: str, fetch_interval: str, trader=None, trader_main=None) -> None:
@@ -77,8 +85,6 @@ class BaseBroker:
         self.cur_sec = -1
         self.cur_min = -1
         val = int(re.sub("[^0-9]", "", self.fetch_interval))
-        # RH does not support per minute intervals, so instead 15second intervals are used
-        # Note that 1MIN is only supported for crypto
         
         print("Running...")
         while 1:
