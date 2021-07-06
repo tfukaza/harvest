@@ -14,7 +14,9 @@ import pytz
 
 # Submodule imports
 import harvest.queue as queue
+import harvest.load as load
 from harvest.broker.dummy import DummyBroker
+from harvest.algo import BaseAlgo
 
 class Trader:
     """
@@ -68,10 +70,12 @@ class Trader:
         self.block_lock = threading.Lock() # Lock for streams that recieve data asynchronously
 
         self.algo = None
+        self.load = load.Load()
+        self.is_save = True
 
         signal(SIGINT, self.exit)
 
-    def run( self, load_watch=True, interval='5MIN',aggregations=[]): 
+    def run( self, load_watch=True, interval='5MIN', aggregations=[]): 
         """Entry point to start the system. 
         
         :load_watch: If True, all positions will be loaded from the brokerage account. 
@@ -136,7 +140,8 @@ class Trader:
         debug(f"Aggregations: {self.aggregations}")
 
         if self.algo == None:
-            raise Exception("Algorithm was not specified. Use set_algo to specify an algorithm.")
+            print(f"No algo specified. Using BaseAlgo")
+            self.algo = BaseAlgo()
 
         self.algo.setup(self)
         self.algo.watch = self.watch
@@ -150,6 +155,8 @@ class Trader:
             self.blocker[w] = False
         self.block_queue = {}
         self.needed = self.watch.copy()
+
+        self.is_save = True
         
         self.loop = asyncio.get_event_loop()
 
@@ -310,6 +317,7 @@ class Trader:
         This should also be called at the start of each trading day 
         so database is updated and cache is refreshed.
         """
+        debug("Initializing queue...")
 
         today = pytz.utc.localize(dt.datetime.utcnow().replace(microsecond=0, second=0))  # Current timestamp in UTC
         for sym in self.watch:
@@ -319,7 +327,7 @@ class Trader:
             self.queue.set_symbol_interval(sym, interval, df)
             self.queue.set_symbol_interval_update(sym, interval, df.index[-1])
            
-            # Many brokers have seperate API for intraday data, so make an API call
+            # Many brokers have separate API for intraday data, so make an API call
             # instead of aggregating interday data
             if '1DAY' in self.aggregations:
                 df = self.streamer.fetch_price_history(last, today, '1DAY', sym)
@@ -333,6 +341,13 @@ class Trader:
                 df_tmp = self.aggregate_df(df, i)
                 self.queue.set_symbol_interval(sym, i, df_tmp)
                 self.queue.set_symbol_interval_update(sym, i, df_tmp.index[-1])
+        
+        # If is_save is True, save the queue locally
+        if self.is_save:
+            for sym in self.watch:
+                for inter in [self.interval] + self.aggregations:
+                    df = self.queue.get_symbol_interval(sym, inter)
+                    self.load.append_entry(sym, inter, df)
 
     def aggregate_df(self, df, inter):
         sym = list(df.columns.levels[0])[0]

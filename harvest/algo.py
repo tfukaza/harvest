@@ -179,7 +179,7 @@ class BaseAlgo:
         """ 
         return self.trader.fetch_option_market_data(symbol)
     
-    ########## Technical Indicaters ###############
+    ########## Technical Indicators ###############
 
     def use_trader_prices(func):
         def wrap(*args, **kwargs):

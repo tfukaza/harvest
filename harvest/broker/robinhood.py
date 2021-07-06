@@ -205,8 +205,7 @@ class RobinhoodBroker(base.BaseBroker):
         last: dt.datetime, 
         today: dt.datetime, 
         interval: str='1MIN',
-        symbol: str = None,
-        count: int = 200):
+        symbol: str = None):
 
         df = pd.DataFrame()
 
@@ -263,7 +262,7 @@ class RobinhoodBroker(base.BaseBroker):
         
         df = pd.DataFrame.from_dict(ret)
         df = self._format_df(df, [symbol], interval, False)
-        return df.iloc[-count:]
+        return df
 
     @base.BaseBroker._exception_handler
     def fetch_latest_stock_price(self):

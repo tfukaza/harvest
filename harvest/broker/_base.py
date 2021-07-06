@@ -34,18 +34,18 @@ class BaseBroker:
     """
     
     def __init__(self, path: str=None):
-        """Here, the broker should perform any authentications neccesary to 
+        """Here, the broker should perform any authentications necessary to 
         connect to the brokerage it is using.
 
         :path: path to the YAML file containing credentials for the broker. 
             If not specified, should default to './secret.yaml'
         """
-        self.trader = None # Allows broker to handle the case when runs without a trader
+        self.trader = None # Allows broker to handle the case when it runs without a trader
 
     def setup(self, handler, trader) -> None:
         """This method initializes several class attributes which are required for 
         all implementations of BaseBroker. Usually this method does not need to 
-        be reimplemenetd, and can be left alone. 
+        be re-implemented, and can be left alone. 
       
         :handler: A reference to a method in the Trader class that invokes 
             the algorithm
@@ -56,7 +56,7 @@ class BaseBroker:
     
     def setup_run(self, watch: List[str], interval: str, fetch_interval: str):
         """This function is called right before the algorithm begins.
-        It should perform any configurations neccesary to start running.
+        It should perform any configurations necessary to start running.
 
         :watch: List of stocks/cryptos to watch. Cryptos are prepended with a '@'
             to distinguish them from stocks
@@ -70,8 +70,8 @@ class BaseBroker:
             keep track of. Cryptos are prepended with a '@' to distinguish them from stocks.
         :interval: A string specifying the interval to run the algorithm.
         :fetch_interval: A string specifying the interval to collect data. This is needed
-            because some brokers like Alpaca Market allow data streaming. Usualluy data streaming 
-            streams data every minute, so even if the algorithm is designed to run at a lower frequncy 
+            because some brokers like Alpaca Market allow data streaming. Usually data streaming 
+            streams data every minute, so even if the algorithm is designed to run at a lower frequency 
             (like once every 30MIN), under the hood Harvest needs to process data every minute.
         """
         self.watch = watch 
@@ -87,23 +87,6 @@ class BaseBroker:
     def refresh_cred(self):
         pass
 
-    def _handler(self) -> Dict[str, pd.DataFrame]:
-        """This function should be called at the specified interval, and return data.
-        For brokers that use streaming, this often means specifying this function as a callback.
-        For brokers that use polling, this often means calling whatever endpoint is needed to 
-        obtain stock/crpto data, at the specified interval.
-
-        :returns: A dictionary where each key is the symbol for an asset, and the value is the
-            corresponding data in the following pandas dataframe format:
-                      Symbol                              
-                      open   high    low close   volume       
-            timestamp
-            ---       ---    ---     --- ---     ---         
-
-        timestamp should be an offset-aware datetime object in UTC timezone
-        """
-        pass
-    
     def _handler_wrap( func ):
         """Wrapper to run the handler async"""
         def wrapper(*args, **kwargs):
@@ -117,7 +100,25 @@ class BaseBroker:
 
             self.trader.loop.run_until_complete(self.handler(df, now))
         return wrapper
+    
+    @_handler_wrap
+    def _handler(self) -> Dict[str, pd.DataFrame]:
+        """This function should be called at the specified interval, and return data.
+        For brokers that use streaming, this often means specifying this function as a callback.
+        For brokers that use polling, this often means calling whatever endpoint is needed to 
+        obtain stock/crypto data, at the specified interval.
 
+        :returns: A dictionary where each key is the symbol for an asset, and the value is the
+            corresponding data in the following pandas dataframe format:
+                      Symbol                              
+                      open   high    low close   volume       
+            timestamp
+            ---       ---    ---     --- ---     ---         
+
+        timestamp should be an offset-aware datetime object in UTC timezone
+        """
+        pass
+    
     def exit(self):
         """This function is called after every invocation of algo's handler. 
         The intended purpose is for brokers to clear any cache it may have created.
@@ -140,7 +141,7 @@ class BaseBroker:
                 except Exception as e:
                     debug(f"Error: {e}")
                     debug("Logging out and back in...")
-                    self.refresh_cred()
+                    args[0].refresh_cred()
                     tries = tries - 1 
                     debug("Retrying...")
                     continue
