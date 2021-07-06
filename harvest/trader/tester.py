@@ -39,9 +39,6 @@ class TestTrader(trader.Trader):
             self.streamer = streamer
         self.broker = DummyBroker()
 
-        self.streamer.setup(self.handler, self)
-        self.broker.setup(self.handler, self)
-
         self.watch = []             # List of stocks to watch
         self.queue = queue.Queue()  # local cache of historic price
         self.account = {}           # Local cash of account info 
@@ -82,25 +79,16 @@ class TestTrader(trader.Trader):
                 df_tmp = self.aggregate_df(df, i)
                 self.queue.set_symbol_interval(sym, i, df_tmp)
                 self.queue.set_symbol_interval_update(sym, i, last)
-        
 
-    def run(self, interval: str='5MIN', aggregations: List[Any]=[], source: str='LOCAL', path: str="./data"):
-        """Runs backtesting. 
-
-        :source: 'LOCAL' if backtesting data is in a local file, 'FETCH' if the streamer should 
-            be used to download latest data. 
-        """
-
+    def setup(interval: str='5MIN', aggregations: List[Any]=[]):
         self.interval = interval
         self.aggregations = aggregations
 
-        self.streamer.setup_run(self.watch, interval)
-        self.broker.setup_run(self.watch, interval)
+        self.streamer.setup(self.main, self, self.watch, interval)
+        self.broker.setup(self.main, self, self.watch, interval)
 
         self.fetch_interval = interval
-     
         self._setup_account()
-        
         self.df = {}
 
         # Load data into queue
@@ -150,12 +138,27 @@ class TestTrader(trader.Trader):
             
 
         self.load_watch = True
+        
 
-        self.algo.setup(self)
+    def start(self, interval: str='5MIN', aggregations: List[Any]=[], source: str='LOCAL', path: str="./data"):
+        """Runs backtesting. 
+
+        :source: 'LOCAL' if backtesting data is in a local file, 'FETCH' if the streamer should 
+            be used to download latest data. 
+        """
+
+        self.setup(interval, aggregations)
+
+        self.algo.setup()
+        self.algo.trader = self
         self.algo.watch = self.watch
         self.algo.fetch_interval = self.fetch_interval
-        self.algo.algo_init()
 
+        self.main()
+
+        
+
+    def main():
         info("Running test...")
 
         # import cProfile
@@ -179,7 +182,7 @@ class TestTrader(trader.Trader):
                     df = self.df['+'+agg][s].iloc[[i]]
                     self.queue.append_symbol_interval(s, agg, df, True)
         
-            self.algo.handler({})
+            self.algo.main({})
  
         # pr.disable()
         # import pstats 
@@ -189,6 +192,7 @@ class TestTrader(trader.Trader):
         # st.dump_stats("stat.txt")
 
         print(self.account)
+
  
     def _queue_update(self, new_df: pd.DataFrame, time):
         pass

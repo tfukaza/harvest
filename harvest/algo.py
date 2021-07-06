@@ -19,13 +19,10 @@ class BaseAlgo:
         self.watch = []
         self.trader = None # Allows algo to handle the case when runs without a trader
 
-    def setup(self, trader) -> None:
-        self.trader = trader
-
-    def algo_init(self):
+    def setup(self):
         pass
 
-    def handler(self, meta = {}):
+    def main(self, meta = {}):
         pass
 
     ############ Functions to configure the algo #################
