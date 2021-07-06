@@ -46,13 +46,11 @@ class Trader:
             self.streamer = DummyBroker()
         else:
             self.streamer = streamer
-        self.streamer.setup(self.handler, self)
-            
+  
         if broker == None:
             self.broker = self.streamer
         else:
             self.broker = broker
-            self.broker.setup(self.handler, self)
 
         # Initialize date 
         now = time.mktime(time.gmtime())
@@ -76,21 +74,7 @@ class Trader:
 
         self.algo = None
 
-    def run( self, load_watch=True, interval='5MIN',aggregations=[]): 
-        """Entry point to start the system. 
-        
-        :load_watch: If True, all positions will be loaded from the brokerage account. 
-            They will then be added to the watchlist automatically. Set it to False if you
-            do not want to track all positions you currently own. 
-        :interval: Specifies the interval of running the algo. 
-        :aggregations: A list of intervals. The Trader will aggregate data to the intervals specified in this list.
-            For example, if this is set to ['5MIN', '30MIN'], and interval is '1MIN', the algorithm will have access to 
-            5MIN, 30MIN aggregated candles in addition to 1MIN candles. 
-
-        TODO: If there is no internet connection, the program will shut down before starting. 
-        """
-        print(f"Starting Harvest...")
-
+    def setup(self, load_watch=True, interval='5MIN', aggregations=[]):
         self.load_watch = load_watch
         self.interval = interval
         self.aggregations = aggregations
@@ -125,9 +109,6 @@ class Trader:
         # Remove duplicates
         self.watch = list(set(self.watch))
         debug(f"Watchlist: {self.watch}")
-    
-        self.broker.setup_run(self.watch, interval)
-        self.streamer.setup_run(self.watch, interval)
 
         # Fetch interval is the interval in which the streamer
         # gets asset data. For example, Robinhood does not provide 10MIN interval data,
@@ -143,33 +124,55 @@ class Trader:
         if self.algo == None:
             raise Exception("Algorithm was not specified. Use set_algo to specify an algorithm.")
 
-        self.algo.setup(self)
+
+
+    def start(self, load_watch=True, interval='5MIN', aggregations=[]): 
+        """Entry point to start the system. 
+        
+        :load_watch: If True, all positions will be loaded from the brokerage account. 
+            They will then be added to the watchlist automatically. Set it to False if you
+            do not want to track all positions you currently own. 
+        :interval: Specifies the interval of running the algo. 
+        :aggregations: A list of intervals. The Trader will aggregate data to the intervals specified in this list.
+            For example, if this is set to ['5MIN', '30MIN'], and interval is '1MIN', the algorithm will have access to 
+            5MIN, 30MIN aggregated candles in addition to 1MIN candles. 
+
+        TODO: If there is no internet connection, the program will shut down before starting. 
+        """
+        print(f"Starting Harvest...")
+
+        self.setup(load_watch, interval, aggregations)
+        self.broker.setup(self, self.main, self.watch, interval)
+        self.streamer.setup(self, self.main, self.watch, interval)
+        self.algo.setup()
+
+        self.algo.trader = self
         self.algo.watch = self.watch
         self.algo.fetch_interval = self.fetch_interval
-        
+
         self._queue_init(self.fetch_interval) 
-        self.algo.algo_init()
 
         self.blocker = {}
         for w in self.watch:
             self.blocker[w] = False
         self.block_queue = {}
         self.needed = self.watch.copy()
-        
+
         self.loop = asyncio.get_event_loop()
 
-        self.streamer.run()
+        self.streamer.start()
 
     async def timeout(self):
         try:
             debug("Begin timer")
             await asyncio.sleep(1)
             debug("Force flush")
-            self.handler(None, True)
+            self.main(None, True)
         except asyncio.CancelledError:
             debug("Timeout cancelled")
 
-    async def handler(self, df_dict, timestamp, flush=False):
+
+    async def main(self, df_dict, timestamp, flush: bool=False):
         """ Function called by the broker every minute
         as new stock price data is streamed in. 
 
@@ -186,17 +189,17 @@ class Trader:
         -   Data that just came in will be compared against self.watch to see if 
             any data is missing
         -   If no, data will be passed on
-        -   If yes, data will be put in a queue, and handler will wait until rest of the data coms in
-        -   After a certain timeout period, the handler will forward the data 
+        -   If yes, data will be put in a queue, and main will wait until rest of the data coms in
+        -   After a certain timeout period, the main will forward the data 
         """
-        debug(f"Handler received: \n{df_dict}")
+        debug(f"Main received: \n{df_dict}")
         
         self.block_lock.acquire()
 
         self.timestamp_prev = self.timestamp
         self.timestamp = timestamp
 
-        # If flush=True, forcefully push all data in block_queue onto handler_main
+        # If flush=True, forcefully push all data in block_queue onto main_helper
         if flush:
             # For missing data, repeat the existing one
             for n in self.needed:
@@ -204,7 +207,7 @@ class Trader:
             self.needed = self.watch.copy()
             for k, v in self.blocker.items():
                 self.blocker[k] = False
-            self.handler_main(self.block_queue)
+            self.main_helper(self.block_queue)
             self.block_queue = {}
             self.block_lock.release()
             return
@@ -234,14 +237,14 @@ class Trader:
             self.needed = self.watch.copy()
             for k, v in self.blocker.items():
                 self.blocker[k] = False
-            self.handler_main(self.block_queue)
+            self.main_helper(self.block_queue)
             self.block_queue = {}
             self.block_lock.release()
             return 
         
         self.block_lock.release()
 
-    def handler_main(self, df_dict):
+    def main_helper(self, df_dict):
 
         new_day = False
         # Init queue on a new day 
@@ -268,11 +271,11 @@ class Trader:
         if not self.is_freq(self.timestamp):
             return
 
-        meta={
+        meta = {
             'new_day':new_day
         }
 
-        self.algo.handler(meta)
+        self.algo.main(meta)
         self.broker.exit()
         self.streamer.exit()
 

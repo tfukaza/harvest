@@ -10,12 +10,14 @@ class TestAlgo(unittest.TestCase):
         algo = BaseAlgo()
         algo.add_symbol('DUMMY')
         rsi = algo.rsi(prices)[-1]
+        
         self.assertAlmostEqual(rsi, 59.476113, places=5)
 
     def test_sma(self):
         algo = BaseAlgo()
         algo.add_symbol('DUMMY')
         sma = algo.sma(prices)[-1]
+
         self.assertAlmostEqual(sma, sum(prices) / len(prices), places=5)
 
     def test_ema(self):
