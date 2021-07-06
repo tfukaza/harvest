@@ -193,7 +193,10 @@ class BaseAlgo:
         if symbol == None:
             symbol = self.watch[0]
         if interval == None:
-            interval = self.trader.interval
+            if self.trader is None:
+                interval = '5MIN'
+            else:
+                interval = self.trader.interval
         if prices == None:
             prices = self.trader.queue.get_symbol_interval_prices(symbol, interval, ref)
         
