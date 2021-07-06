@@ -42,12 +42,12 @@ class Load:
         save_dir = f"{DB_PATH}/{symbol}"
         if not os.path.isdir(save_dir):
             os.mkdir(save_dir)
-        data = self.get_entry(symbol, interval, update=False)
+        data = self.get_entry(symbol, interval)
         data = data.append(df)
         data = data[~data.index.duplicated(keep='last')]
         data.to_pickle(save_path)
 
-    def get_entry(self, symbol, interval, update=True):
+    def get_entry(self, symbol, interval):
         path = f"{DB_PATH}/{symbol}/data-{interval}" 
         save_dir = f"{DB_PATH}/{symbol}"
         if not os.path.isdir(save_dir):

@@ -23,7 +23,7 @@ import harvest.broker._base as base
 
 class RobinhoodBroker(base.BaseBroker):
 
-    interval_list = ['1MIN', '5MIN', '15MIN', '30MIN']
+    interval_list = ['1MIN', '5MIN', '15MIN', '30MIN', '1DAY']
 
     def __init__(self, path=None):
         super().__init__()

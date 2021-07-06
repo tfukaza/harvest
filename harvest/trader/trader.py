@@ -139,9 +139,9 @@ class Trader:
         """
         print(f"Starting Harvest...")
 
+        self.broker.setup(self.watch, interval, self, self.main)
+        self.streamer.setup(self.watch, interval, self, self.main)
         self.setup(load_watch, interval, aggregations)
-        self.broker.setup(self, self.main, self.watch, interval)
-        self.streamer.setup(self, self.main, self.watch, interval)
         self.algo.setup()
 
         self.algo.trader = self
@@ -281,8 +281,8 @@ class Trader:
 
     def is_freq(self, time):
         """Helper function to determine if algorithm should be invoked for the
-        current timestamp. For example, if interval is 30MIN and fetch_interval is 5MIN,
-        algorithm should be called when minutes are 25 and 55.
+        current timestamp. For example, if interval is 30MIN,
+        algorithm should be called when minutes are 0 and 30.
         """
         
         if self.fetch_interval == self.interval:
@@ -307,7 +307,6 @@ class Trader:
                 return False
 
         val = int(re.sub("[^0-9]", "", self.interval))
-        val_fetch = int(re.sub("[^0-9]", "", self.fetch_interval))
         if minutes % val == 0:
             return True 
         else: 

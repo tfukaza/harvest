@@ -19,6 +19,8 @@ class DummyBroker(base.BaseBroker):
     randomly generated prices. When used as a broker, it paper trades.
     """
 
+    interval_list = ['1MIN', '5MIN', '15MIN', '30MIN', '1DAY']
+
     def __init__(self, account_path: str=None):
         super().__init__()
 
@@ -51,7 +53,7 @@ class DummyBroker(base.BaseBroker):
         
 
     def setup(self, watch: List[str], interval, trader=None, trader_main=None):
-        if interval not in ['1MIN', '5MIN', '15MIN', '30MIN']:
+        if interval not in self.interval_list:
             raise Exception(f'Invalid interval {interval}')
 
         super().setup(watch, interval, interval, trader, trader_main)
