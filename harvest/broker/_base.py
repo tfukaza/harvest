@@ -20,7 +20,8 @@ import pandas as pd
 import pytz
 
 # Submodule imports
-import harvest.load
+from harvest.utils import is_crypto
+
 
 
 class BaseBroker:
@@ -435,12 +436,12 @@ class BaseBroker:
         ret = self.buy(symbol, quantity, in_force, extended)
 
         if self.trader is None:
-            if symbol[0] == '@':
+            if is_crypto(symbol):
                 check = self.fetch_crypto_order_status
             else:
                 check = self.fetch_stock_order_status
         else:
-            if symbol[0] == '@':
+            if is_crypto(symbol):
                 check = self.trader.order.fetch_crypto_order_status
             else:
                 check = self.trader.order.fetch_stock_order_status

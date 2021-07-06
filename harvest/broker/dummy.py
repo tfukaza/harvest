@@ -13,6 +13,7 @@ import pytz
 
 # Submodule imports
 import harvest.broker._base as base
+from harvest.utils import is_crypto
 
 class DummyBroker(base.BaseBroker):
     """DummyBroker, as its name implies, is a dummy broker class that can 
@@ -59,12 +60,16 @@ class DummyBroker(base.BaseBroker):
 
     @base.BaseBroker.main_wrap
     def main(self) -> pd.DataFrame:
+
         if self.broker_type in ('both', 'streamer'):
             # Fetch and update data in the storage and return the lastest data
-            pass
+            df_dict = self.storage.store()
         if self.broker_type in ('both', 'broker'):
             # Buy and sell stocks that are in the queue
+            # iterate through buy / sell queue and apply each
             pass
+
+        return df_dict
         # df_dict = {}
         # df_dict.update(self.fetch_latest_stock_price())
         # df_dict.update(self.fetch_latest_crypto_price())
@@ -159,7 +164,7 @@ class DummyBroker(base.BaseBroker):
         last = dt.datetime.now() - dt.timedelta(days=7)
         today = dt.datetime.now()
         for symbol in self.watch:
-            if symbol[0] != '@':
+            if not is_crypto(symbol):
                 results[symbol] = self.fetch_price_history(last, today, self.interval, symbol).iloc[[-1]]
         return results
         
@@ -168,7 +173,7 @@ class DummyBroker(base.BaseBroker):
         last = dt.datetime.now() - dt.timedelta(days=7)
         today = dt.datetime.now()
         for symbol in self.watch:
-            if symbol[0] == '@':
+            if is_crypto(symbol):
                 results[symbol] = self.fetch_price_history(last, today, self.interval, symbol).iloc[[-1]]
         return results
     
@@ -216,7 +221,7 @@ class DummyBroker(base.BaseBroker):
        
         # If order has been filled, simulate asset buy/sell
         if ret['status'] == 'filled':
-            if ret['symbol'][0] == '@': 
+            if is_crypto(ret['symbol']): 
                 lst = self.cryptos
             else:
                 lst = self.stocks
@@ -358,7 +363,7 @@ class DummyBroker(base.BaseBroker):
         extended: bool=False, 
         ):
         # In this broker, all orders are filled immediately. 
-        if symbol[0] != '@':
+        if not is_crypto(symbol):
             data = {
                 'type': 'STOCK',
                 'symbol': symbol,
