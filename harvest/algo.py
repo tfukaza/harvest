@@ -192,13 +192,17 @@ class BaseAlgo:
     def default_param(self, symbol, interval, ref, prices):
         if symbol == None:
             symbol = self.watch[0]
-        if interval == None:
-            if self.trader is None:
+        if self.trader is None:
+            if interval == None:
                 interval = '5MIN'
-            else:
+            if prices == None:
+                raise Exception(f'No prices found for symbol {symbol}')
+        else:
+            if interval == None:
                 interval = self.trader.interval
-        if prices == None:
-            prices = self.trader.queue.get_symbol_interval_prices(symbol, interval, ref)
+            if prices == None:
+                prices = self.trader.queue.get_symbol_interval_prices(symbol, interval, ref)
+           
         
         return symbol, interval, ref, prices
 
