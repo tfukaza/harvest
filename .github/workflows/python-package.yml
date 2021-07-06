@@ -32,3 +32,4 @@ jobs:
       run: |
         pip install coverage
         coverage run --source harvest -m unittest discover -s test
+        coverage report
