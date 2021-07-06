@@ -59,7 +59,6 @@ class RobinhoodBroker(base.BaseBroker):
                     mfa_code=totp)
         debug("Logged into Robinhood...")
     
-    
     def _create_secret(self, path):
 
         print("""⚠️  Hmm, looks like you haven't set up login credentials for Robinhood yet.""")
