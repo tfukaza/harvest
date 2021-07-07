@@ -1,5 +1,6 @@
 import NavBar from './components/navbar.js'
 import Header from './components/header.js'
+import Footer from './components/footer.js'
 import Function from './components/func.js'
 import Link from 'next/link'
 
@@ -38,9 +39,7 @@ export default function Home() {
         </section>
       </main>
 
-      <footer className={styles.footer}>
-        
-      </footer>
+      <Footer></Footer>
     </div>
   )
 }
