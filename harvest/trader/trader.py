@@ -1,27 +1,22 @@
 # Builtins
 import asyncio
-import atexit
-import json
-import requests
-import urllib
 import re
 import datetime as dt
-from datetime import timedelta
-import sys
 import threading
-import logging
 from logging import warning, debug
 import time
+from signal import signal, SIGINT
+from sys import exit
 
 # External libraries
-import numpy as np
 import pandas as pd
 import pytz
 
 # Submodule imports
-import harvest.algo as algo
 import harvest.queue as queue
+import harvest.load as load
 from harvest.broker.dummy import DummyBroker
+from harvest.algo import BaseAlgo
 
 class Trader:
     """
@@ -73,6 +68,8 @@ class Trader:
         self.block_lock = threading.Lock() # Lock for streams that recieve data asynchronously
 
         self.algo = None
+        self.load = load.Load()
+        self.is_save = True
 
     def setup(self, load_watch=True, interval='5MIN', aggregations=[]):
         self.load_watch = load_watch
@@ -122,7 +119,8 @@ class Trader:
         debug(f"Aggregations: {self.aggregations}")
 
         if self.algo == None:
-            raise Exception("Algorithm was not specified. Use set_algo to specify an algorithm.")
+            print(f"No algo specified. Using BaseAlgo")
+            self.algo = BaseAlgo()
 
 
 
@@ -141,9 +139,9 @@ class Trader:
         """
         print(f"Starting Harvest...")
 
+        self.broker.setup(self.watch, interval, self, self.main)
+        self.streamer.setup(self.watch, interval, self, self.main)
         self.setup(load_watch, interval, aggregations)
-        self.broker.setup(self, self.main, self.watch, interval)
-        self.streamer.setup(self, self.main, self.watch, interval)
         self.algo.setup()
 
         self.algo.trader = self
@@ -158,6 +156,8 @@ class Trader:
         self.block_queue = {}
         self.needed = self.watch.copy()
 
+        self.is_save = True
+        
         self.loop = asyncio.get_event_loop()
 
         self.streamer.start()
@@ -281,8 +281,8 @@ class Trader:
 
     def is_freq(self, time):
         """Helper function to determine if algorithm should be invoked for the
-        current timestamp. For example, if interval is 30MIN and fetch_interval is 5MIN,
-        algorithm should be called when minutes are 25 and 55.
+        current timestamp. For example, if interval is 30MIN,
+        algorithm should be called when minutes are 0 and 30.
         """
         
         if self.fetch_interval == self.interval:
@@ -307,7 +307,6 @@ class Trader:
                 return False
 
         val = int(re.sub("[^0-9]", "", self.interval))
-        val_fetch = int(re.sub("[^0-9]", "", self.fetch_interval))
         if minutes % val == 0:
             return True 
         else: 
@@ -318,6 +317,7 @@ class Trader:
         This should also be called at the start of each trading day 
         so database is updated and cache is refreshed.
         """
+        debug("Initializing queue...")
 
         today = pytz.utc.localize(dt.datetime.utcnow().replace(microsecond=0, second=0))  # Current timestamp in UTC
         for sym in self.watch:
@@ -327,7 +327,7 @@ class Trader:
             self.queue.set_symbol_interval(sym, interval, df)
             self.queue.set_symbol_interval_update(sym, interval, df.index[-1])
            
-            # Many brokers have seperate API for intraday data, so make an API call
+            # Many brokers have separate API for intraday data, so make an API call
             # instead of aggregating interday data
             if '1DAY' in self.aggregations:
                 df = self.streamer.fetch_price_history(last, today, '1DAY', sym)
@@ -341,6 +341,13 @@ class Trader:
                 df_tmp = self.aggregate_df(df, i)
                 self.queue.set_symbol_interval(sym, i, df_tmp)
                 self.queue.set_symbol_interval_update(sym, i, df_tmp.index[-1])
+        
+        # If is_save is True, save the queue locally
+        if self.is_save:
+            for sym in self.watch:
+                for inter in [self.interval] + self.aggregations:
+                    df = self.queue.get_symbol_interval(sym, inter)
+                    self.load.append_entry(sym, inter, df)
 
     def aggregate_df(self, df, inter):
         sym = list(df.columns.levels[0])[0]
@@ -554,3 +561,8 @@ class Trader:
     
     def remove_symbol(self, symbol):
         self.watch.remove(symbol)
+    
+    def exit(self, signum, frame):
+        # TODO: Gracefully exit
+        print("\nStopping Harvest...")
+        exit(0)
