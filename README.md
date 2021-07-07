@@ -1,4 +1,4 @@
-![Header](docs/Header.png)
+![Header](docs/banner.png)
 
 ## What is Harvest?
 Harvest is a Python framework for algorithmic trading, that packs a lot of punch:
