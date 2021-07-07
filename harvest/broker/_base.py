@@ -34,61 +34,54 @@ class BaseBroker:
     """
     
     def __init__(self, path: str=None):
-        """Here, the broker should perform any authentications neccesary to 
+        """Here, the broker should perform any authentications necessary to 
         connect to the brokerage it is using.
 
         :path: path to the YAML file containing credentials for the broker. 
             If not specified, should default to './secret.yaml'
         """
-        pass
-
-    def setup(self, handler, trader) -> None:
-        """This method initializes several class attributes which are required for 
-        all implementations of BaseBroker. Usually this method does not need to 
-        be reimplemenetd, and can be left alone. 
-      
-        :handler: A reference to a method in the Trader class that invokes 
-            the algorithm
-        :trader: A reference to the parent Trader class
-        """
-        self.handler = handler
-        self.trader = trader
+        self.trader = None # Allows broker to handle the case when runs without a trader
     
-    def setup_run(self, watch: List[str], interval: str):
+    def setup(self, watch: List[str], interval: str, fetch_interval: str, trader=None, trader_main=None) -> None:
         """This function is called right before the algorithm begins.
-        It should perform any configurations neccesary to start running.
+        It should perform any configurations necessary to start running.
 
         :watch: List of stocks/cryptos to watch. Cryptos are prepended with a '@'
             to distinguish them from stocks
         :interval: Interval to call the algo's handler 
+        :fetch_interval: Interval to do fetch stock/crypto data
         
         Regardless of the implementation, this method must initialize 
         the following attributes:
 
+        
         :watch: A list containing strings of stock/crypto (but not option) symbols this broker should 
             keep track of. Cryptos are prepended with a '@' to distinguish them from stocks.
         :interval: A string specifying the interval to run the algorithm.
         :fetch_interval: A string specifying the interval to collect data. This is needed
-            because some brokers like Alpaca Market allow data streaming. Usualluy data streaming 
-            streams data every minute, so even if the algorithm is designed to run at a lower frequncy 
+            because some brokers like Alpaca Market allow data streaming. Usually data streaming 
+            streams data every minute, so even if the algorithm is designed to run at a lower frequency 
             (like once every 30MIN), under the hood Harvest needs to process data every minute.
+        :trader: A reference to the parent Trader class
+        :handler: A reference to a method in the Trader class that invokes 
+            the algorithm
         """
-        raise Exception("setup() is not yet implemented in this broker")
+        
+        self.watch = watch 
+        self.interval = interval 
+        self.fetch_interval = fetch_interval
+        self.trader = trader
+        self.trader_main = trader_main
            
-    def run(self):
-        """This function starts the algorithm. Whether it be polling or streaming,
-        the broker must implement some code to invoke _handler() at a specified interval. 
-        """
-        pass
 
     def refresh_cred(self):
-        pass
+        raise NotImplementedError("This endpoint is not supported in this broker")
 
-    def _handler(self) -> Dict[str, pd.DataFrame]:
+    def main(self) -> Dict[str, pd.DataFrame]:
         """This function should be called at the specified interval, and return data.
         For brokers that use streaming, this often means specifying this function as a callback.
         For brokers that use polling, this often means calling whatever endpoint is needed to 
-        obtain stock/crpto data, at the specified interval.
+        obtain stock/crypto data, at the specified interval.
 
         :returns: A dictionary where each key is the symbol for an asset, and the value is the
             corresponding data in the following pandas dataframe format:
@@ -99,9 +92,9 @@ class BaseBroker:
 
         timestamp should be an offset-aware datetime object in UTC timezone
         """
-        pass
+        raise NotImplementedError("This endpoint is not supported in this broker")
     
-    def _handler_wrap( func ):
+    def main_wrap(func):
         """Wrapper to run the handler async"""
         def wrapper(*args, **kwargs):
             self = args[0]
@@ -112,7 +105,7 @@ class BaseBroker:
             now = now.replace(second=0, microsecond=0)
             now = pytz.utc.localize(now)
 
-            self.trader.loop.run_until_complete(self.handler(df, now))
+            self.trader.loop.run_until_complete(self.trader_main(df, now))
         return wrapper
 
     def exit(self):
@@ -137,7 +130,7 @@ class BaseBroker:
                 except Exception as e:
                     debug(f"Error: {e}")
                     debug("Logging out and back in...")
-                    self.refresh_cred()
+                    args[0].refresh_cred()
                     tries = tries - 1 
                     debug("Retrying...")
                     continue
@@ -158,14 +151,14 @@ class BaseBroker:
 
         :returns: A pandas dataframe, same format as _handler()
         """
-        raise Exception("This endpoint is not supported in this broker")
+        raise NotImplementedError("This endpoint is not supported in this broker")
     
     def fetch_latest_stock_price(self):
         """Returns the latest prices for all stocks in self.watch
 
         :returns: A pandas dataframe, same format as _handler()
         """
-        raise Exception("This endpoint is not supported in this broker")
+        raise NotImplementedError("This endpoint is not supported in this broker")
 
     def fetch_latest_crypto_price(self):
         """Returns the latest prices for all cryptos in self.watch
@@ -181,7 +174,7 @@ class BaseBroker:
             - avg_price: The average price the stock was bought at
             - quantity: Quantity owned
         """
-        raise Exception("This endpoint is not supported in this broker")
+        raise NotImplementedError("This endpoint is not supported in this broker")
 
     def fetch_option_positions(self):
         """Returns all current option positions
@@ -196,7 +189,7 @@ class BaseBroker:
             - strike_price: Strike price of the option
             - type: 'call' or 'put'
         """
-        raise Exception("This endpoint is not supported in this broker")
+        raise NotImplementedError("This endpoint is not supported in this broker")
 
     def fetch_crypto_positions(self):
         """Returns all current crypto positions
@@ -206,7 +199,7 @@ class BaseBroker:
             - avg_price: The average price the crypto was bought at
             - quantity: Quantity owned
         """
-        raise Exception("This endpoint is not supported in this broker")
+        raise NotImplementedError("This endpoint is not supported in this broker")
     
     def update_option_positions(self, positions: List[Any]):
         """Updates entries in option_positions list. This is needed as options are priced
@@ -215,7 +208,7 @@ class BaseBroker:
         :positions: The option_positions list in the Trader class. 
         :returns: Nothing
         """
-        raise Exception("This endpoint is not supported in this broker")
+        raise NotImplementedError("This endpoint is not supported in this broker")
 
     def fetch_account(self):
         """Returns current account information from the brokerage. 
@@ -226,7 +219,7 @@ class BaseBroker:
             - buying_power: Total buying power
             - multiplier: Scale of leverge, if leveraging
         """
-        raise Exception("This endpoint is not supported in this broker")
+        raise NotImplementedError("This endpoint is not supported in this broker")
     
     def fetch_stock_order_status(self, id):
         """Returns the status of a stock order with the given id.
@@ -243,7 +236,7 @@ class BaseBroker:
             - time_in_force: Time the order is in force
             - status: Status of the order
         """
-        raise Exception("This endpoint is not supported in this broker")
+        raise NotImplementedError("This endpoint is not supported in this broker")
     
     def fetch_option_order_status(self, id):
         """Returns the status of a option order with the given id.
@@ -260,7 +253,7 @@ class BaseBroker:
             - time_in_force: Time the order is in force
             - status: Status of the order
         """
-        raise Exception("This endpoint is not supported in this broker")
+        raise NotImplementedError("This endpoint is not supported in this broker")
     
     def fetch_crypto_order_status(self, id):
         """Returns the status of a crypto order with the given id.
@@ -277,7 +270,7 @@ class BaseBroker:
             - time_in_force: Time the order is in force
             - status: Status of the order
         """
-        raise Exception("This endpoint is not supported in this broker")
+        raise NotImplementedError("This endpoint is not supported in this broker")
     
     def fetch_order_queue(self):
         """Returns all current pending orders 
@@ -313,7 +306,7 @@ class BaseBroker:
                 - status: Status of the order
                 - side: 'buy' or 'sell'
         """
-        raise Exception("This endpoint is not supported in this broker")
+        raise NotImplementedError("This endpoint is not supported in this broker")
 
     def fetch_chain_info(self, symbol: str):
         """Returns information about the symbol's options
@@ -335,6 +328,7 @@ class BaseBroker:
             ---     ---      ---     ---     ---     
         exp_date should be a timezone-aware date localized to UTC
         """ 
+        raise NotImplementedError("This endpoint is not supported in this broker")
     
     def fetch_option_market_data(self, symbol: str):
         """Retrieves data of specified option. 
@@ -370,7 +364,7 @@ class BaseBroker:
             - symbol: symbol of asset
             Raises an exception if order fails. 
         """
-        raise Exception("This endpoint is not supported in this broker")
+        raise NotImplementedError("This endpoint is not supported in this broker")
     
     def buy(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
         """Buys the specified asset.
@@ -387,8 +381,13 @@ class BaseBroker:
         if quantity <= 0.0:
             raise Exception(f"Quantity cannot be less than or equal to 0: was given {quantity}")
 
-        buy_power = self.trader.account['buying_power']
-        price = self.trader.queue.get_last_symbol_interval_price(symbol, self.fetch_interval, 'close')
+        if self.trader is None:
+            buy_power = self.fetch_account()['buying_power']
+            price = self.fetch_price_history(dt.datetime.now() - dt.timedelta(days=7), dt.datetime.now(), symbol)[symbol].iloc[-1]['close']
+        else:
+            buy_power = self.trader.account['buying_power']
+            price = self.trader.queue.get_last_symbol_interval_price(symbol, self.fetch_interval, 'close')
+
         limit_price = round(price * 1.05, 2)
         total_price = limit_price * quantity
         
@@ -410,10 +409,18 @@ class BaseBroker:
         :returns: The result of order_limit(). Returns None if there is an issue with the parameters.
         """
         ret = self.buy(symbol, quantity, in_force, extended)
-        if symbol[0] == '@':
-            check = self.trader.order.fetch_crypto_order_status
+
+        if self.trader is None:
+            if symbol[0] == '@':
+                check = self.fetch_crypto_order_status
+            else:
+                check = self.fetch_stock_order_status
         else:
-            check = self.trader.order.fetch_stock_order_status
+            if symbol[0] == '@':
+                check = self.trader.order.fetch_crypto_order_status
+            else:
+                check = self.trader.order.fetch_stock_order_status
+
         while True:
             time.sleep(0.5)
             stat = check(ret["id"])
@@ -442,7 +449,11 @@ class BaseBroker:
             raise Exception(f"Quantity cannot be less than or equal to 0: was given {quantity}")
             return None
        
-        price = self.trader.queue.get_last_symbol_interval_price(symbol, self.fetch_interval, 'close') 
+        if self.trader is None:
+            price = self.fetch_price_history(dt.datetime.now() - dt.timedelta(days=7), dt.datetime.now(), symbol)[symbol].iloc[-1]['close']
+        else:
+            price = self.trader.queue.get_last_symbol_interval_price(symbol, self.fetch_interval, 'close') 
+
         limit_price = round(price * 0.95, 2)
        
         return self.order_limit('sell', symbol, quantity, limit_price, in_force, extended)
@@ -461,7 +472,10 @@ class BaseBroker:
         
         time.sleep(2)
         while True:
-            stat = self.trader.order.fetch_stock_order_status(ret["id"])
+            if self.trader is None:
+                stat = self.fetch_stock_order_status(ret["id"])
+            else:
+                stat = self.trader.order.fetch_stock_order_status(ret["id"])
             if stat['status'] == 'filled':
                 return stat
             time.sleep(1)
@@ -485,7 +499,7 @@ class BaseBroker:
             - symbol: symbol of asset
             Raises an exception if order fails. 
         """
-        raise Exception("This endpoint is not supported in this broker")
+        raise NotImplementedError("This endpoint is not supported in this broker")
     
     def buy_option(self, symbol: str=None, quantity: int=0, in_force: str='gtc'):
         """Buys the specified option.
@@ -501,8 +515,13 @@ class BaseBroker:
         if quantity <= 0.0:
             raise Exception(f"Quantity cannot be less than or equal to 0: was given {quantity}")
 
-        buy_power = self.trader.account['buying_power']
-        price = self.trader.streamer.fetch_option_market_data(symbol)['price']
+        if self.trader is None:
+            buy_power = self.fetch_account()['buying_power']
+            price = self.fetch_option_market_data(symbol)['price']
+        else:
+            buy_power = self.trader.account['buying_power']
+            price = self.trader.streamer.fetch_option_market_data(symbol)['price']
+
         limit_price = round(price * 1.05, 2)
         total_price = limit_price * quantity
         
@@ -533,7 +552,11 @@ class BaseBroker:
         #             quantity = p['quantity']
         #             break
        
-        price = self.trader.streamer.fetch_option_market_data(symbol)['price']
+        if self.trader is None:
+            price = self.fetch_option_market_data(symbol)['price']
+        else:
+            price = self.trader.streamer.fetch_option_market_data(symbol)['price']
+            
         limit_price = round(price * 0.95, 2)
        
         sym, date, option_type, strike = self.occ_to_data(symbol)

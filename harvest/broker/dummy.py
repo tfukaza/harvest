@@ -19,7 +19,11 @@ class DummyBroker(base.BaseBroker):
     randomly generated prices. When used as a broker, it paper trades.
     """
 
+    interval_list = ['1MIN', '5MIN', '15MIN', '30MIN', '1DAY']
+
     def __init__(self, account_path: str=None):
+        super().__init__()
+
         self.stocks = []
         self.options = []
         self.cryptos = []
@@ -46,18 +50,16 @@ class DummyBroker(base.BaseBroker):
                 for crypto in account['cryptos']:
                     self.cryptos.append(crypto)
 
-    def setup_run(self, watch: List[str], interval):
-        self.watch = watch
-        self.interval = interval
-        if interval not in ['1MIN', '5MIN', '15MIN', '30MIN']:
+        
+
+    def setup(self, watch: List[str], interval, trader=None, trader_main=None):
+        if interval not in self.interval_list:
             raise Exception(f'Invalid interval {interval}')
-        self.fetch_interval=interval    
 
-    def run(self) -> None:
-        raise Exception("DummyBroker cannot be used as streamer")
+        super().setup(watch, interval, interval, trader, trader_main)
 
-    @base.BaseBroker._handler_wrap
-    def _handler(self) -> pd.DataFrame:
+    @base.BaseBroker.main_wrap
+    def main(self) -> pd.DataFrame:
         results = None
         return results
 
@@ -147,7 +149,7 @@ class DummyBroker(base.BaseBroker):
         today = dt.datetime.now()
         for symbol in self.watch:
             if symbol[0] != '@':
-                results[symbol] = self.fetch_price_history(last, today, self.interval, symbol).iloc[[0]]
+                results[symbol] = self.fetch_price_history(last, today, self.interval, symbol).iloc[[-1]]
         return results
         
     def fetch_latest_crypto_price(self) -> Dict[str, pd.DataFrame]:
@@ -156,7 +158,7 @@ class DummyBroker(base.BaseBroker):
         today = dt.datetime.now()
         for symbol in self.watch:
             if symbol[0] == '@':
-                results[symbol] = self.fetch_price_history(last, today, self.interval, symbol).iloc[[0]]
+                results[symbol] = self.fetch_price_history(last, today, self.interval, symbol).iloc[[-1]]
         return results
     
     def fetch_stock_positions(self) -> List[Dict[str, Any]]:
@@ -171,7 +173,12 @@ class DummyBroker(base.BaseBroker):
     def update_option_positions(self, positions) -> List[Dict[str, Any]]:
         for r in self.options:
             occ_sym = r['occ_symbol']
-            price = self.trader.streamer.fetch_option_market_data(occ_sym)['price']
+
+            if self.trader is None:
+                price = self.fetch_price_history(dt.datetime.now() - dt.timedelta(days=7), dt.datetime.now(), symbol)[symbol].iloc[-1]['close']
+            else:
+                price = self.trader.streamer.fetch_option_market_data(occ_sym)['price']
+
             r["current_price"] = price
             r["market_value"] = price*r['quantity']*100
             r["cost_basis"] = r['avg_price']*r['quantity']*100
@@ -188,7 +195,12 @@ class DummyBroker(base.BaseBroker):
     def fetch_stock_order_status(self, id: int) -> Dict[str, Any]:
         ret = next(r for r in self.orders if r['id'] == id)
         sym = ret['symbol']
-        price = self.trader.queue.get_last_symbol_interval_price(sym, self.interval, 'close')
+
+        if self.trader is None:
+            price = self.fetch_option_market_data(occ_sym)['price']
+        else:
+            price = self.trader.queue.get_last_symbol_interval_price(sym, self.interval, 'close')
+
         qty = ret['quantity']
        
         # If order has been filled, simulate asset buy/sell
@@ -218,7 +230,7 @@ class DummyBroker(base.BaseBroker):
                     raise Exception(f"Cannot sell {sym}, is not owned")
 
                 pos['quantity'] = pos['quantity'] - qty
-                if pos['quantity'] < 0.00000001:
+                if pos['quantity'] < 1e-8:
                     lst.remove(pos)
                 self.cash += price * qty 
                 self.buying_power += price * qty 
@@ -249,7 +261,12 @@ class DummyBroker(base.BaseBroker):
         ret = next(r for r in self.orders if r['id'] == id)
         sym = ret['symbol']
         occ_sym = ret['occ_symbol']
-        price = self.trader.streamer.fetch_option_market_data(occ_sym)['price']
+
+        if self.trader is None:
+            price = self.fetch_option_market_data(occ_sym)['price']
+        else:
+            price = self.trader.streamer.fetch_option_market_data(occ_sym)['price']
+            
         qty = ret['quantity']
        
         # If order has been filled, simulate asset buy/sell
@@ -282,7 +299,7 @@ class DummyBroker(base.BaseBroker):
                 pos['quantity'] = pos['quantity'] - qty
                 self.cash += price*qty*pos['multiplier'] 
                 self.buying_power += price*qty*pos['multiplier'] 
-                if pos['quantity'] < 0.00000001:
+                if pos['quantity'] < 1e-8:
                     self.options.remove(pos)
                 
             
@@ -311,7 +328,13 @@ class DummyBroker(base.BaseBroker):
         pass
     
     def fetch_option_market_data(self, symbol: str):
-        pass
+        price = random.uniform(2, 1000)
+
+        return {
+            'price': price,
+            'ask': price, 
+            'bid': price,
+        }
     
     ########## Function for order operations ########### 
 

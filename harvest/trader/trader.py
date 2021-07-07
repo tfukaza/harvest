@@ -1,27 +1,22 @@
 # Builtins
 import asyncio
-import atexit
-import json
-import requests
-import urllib
 import re
 import datetime as dt
-from datetime import timedelta
-import sys
 import threading
-import logging
 from logging import warning, debug
 import time
+from signal import signal, SIGINT
+from sys import exit
 
 # External libraries
-import numpy as np
 import pandas as pd
 import pytz
 
 # Submodule imports
-import harvest.algo as algo
 import harvest.queue as queue
+import harvest.load as load
 from harvest.broker.dummy import DummyBroker
+from harvest.algo import BaseAlgo
 
 class Trader:
     """
@@ -46,13 +41,11 @@ class Trader:
             self.streamer = DummyBroker()
         else:
             self.streamer = streamer
-        self.streamer.setup(self.handler, self)
-            
+  
         if broker == None:
             self.broker = self.streamer
         else:
             self.broker = broker
-            self.broker.setup(self.handler, self)
 
         # Initialize date 
         now = time.mktime(time.gmtime())
@@ -75,22 +68,10 @@ class Trader:
         self.block_lock = threading.Lock() # Lock for streams that recieve data asynchronously
 
         self.algo = None
+        self.load = load.Load()
+        self.is_save = True
 
-    def run( self, load_watch=True, interval='5MIN',aggregations=[]): 
-        """Entry point to start the system. 
-        
-        :load_watch: If True, all positions will be loaded from the brokerage account. 
-            They will then be added to the watchlist automatically. Set it to False if you
-            do not want to track all positions you currently own. 
-        :interval: Specifies the interval of running the algo. 
-        :aggregations: A list of intervals. The Trader will aggregate data to the intervals specified in this list.
-            For example, if this is set to ['5MIN', '30MIN'], and interval is '1MIN', the algorithm will have access to 
-            5MIN, 30MIN aggregated candles in addition to 1MIN candles. 
-
-        TODO: If there is no internet connection, the program will shut down before starting. 
-        """
-        print(f"Starting Harvest...")
-
+    def setup(self, load_watch=True, interval='5MIN', aggregations=[]):
         self.load_watch = load_watch
         self.interval = interval
         self.aggregations = aggregations
@@ -125,9 +106,6 @@ class Trader:
         # Remove duplicates
         self.watch = list(set(self.watch))
         debug(f"Watchlist: {self.watch}")
-    
-        self.broker.setup_run(self.watch, interval)
-        self.streamer.setup_run(self.watch, interval)
 
         # Fetch interval is the interval in which the streamer
         # gets asset data. For example, Robinhood does not provide 10MIN interval data,
@@ -141,35 +119,60 @@ class Trader:
         debug(f"Aggregations: {self.aggregations}")
 
         if self.algo == None:
-            raise Exception("Algorithm was not specified. Use set_algo to specify an algorithm.")
+            print(f"No algo specified. Using BaseAlgo")
+            self.algo = BaseAlgo()
 
-        self.algo.setup(self)
+
+
+    def start(self, load_watch=True, interval='5MIN', aggregations=[]): 
+        """Entry point to start the system. 
+        
+        :load_watch: If True, all positions will be loaded from the brokerage account. 
+            They will then be added to the watchlist automatically. Set it to False if you
+            do not want to track all positions you currently own. 
+        :interval: Specifies the interval of running the algo. 
+        :aggregations: A list of intervals. The Trader will aggregate data to the intervals specified in this list.
+            For example, if this is set to ['5MIN', '30MIN'], and interval is '1MIN', the algorithm will have access to 
+            5MIN, 30MIN aggregated candles in addition to 1MIN candles. 
+
+        TODO: If there is no internet connection, the program will shut down before starting. 
+        """
+        print(f"Starting Harvest...")
+
+        self.broker.setup(self.watch, interval, self, self.main)
+        self.streamer.setup(self.watch, interval, self, self.main)
+        self.setup(load_watch, interval, aggregations)
+        self.algo.setup()
+
+        self.algo.trader = self
         self.algo.watch = self.watch
         self.algo.fetch_interval = self.fetch_interval
-        
+
         self._queue_init(self.fetch_interval) 
-        self.algo.algo_init()
 
         self.blocker = {}
         for w in self.watch:
             self.blocker[w] = False
         self.block_queue = {}
         self.needed = self.watch.copy()
+
+        self.is_save = True
         
         self.loop = asyncio.get_event_loop()
 
-        self.streamer.run()
+        self.streamer.start()
 
     async def timeout(self):
         try:
             debug("Begin timer")
             await asyncio.sleep(1)
             debug("Force flush")
-            self.handler(None, True)
+            self.main(None, True)
         except asyncio.CancelledError:
             debug("Timeout cancelled")
 
-    async def handler(self, df_dict, timestamp, flush=False):
+
+    async def main(self, df_dict, timestamp, flush: bool=False):
         """ Function called by the broker every minute
         as new stock price data is streamed in. 
 
@@ -186,17 +189,17 @@ class Trader:
         -   Data that just came in will be compared against self.watch to see if 
             any data is missing
         -   If no, data will be passed on
-        -   If yes, data will be put in a queue, and handler will wait until rest of the data coms in
-        -   After a certain timeout period, the handler will forward the data 
+        -   If yes, data will be put in a queue, and main will wait until rest of the data coms in
+        -   After a certain timeout period, the main will forward the data 
         """
-        debug(f"Handler received: \n{df_dict}")
+        debug(f"Main received: \n{df_dict}")
         
         self.block_lock.acquire()
 
         self.timestamp_prev = self.timestamp
         self.timestamp = timestamp
 
-        # If flush=True, forcefully push all data in block_queue onto handler_main
+        # If flush=True, forcefully push all data in block_queue onto main_helper
         if flush:
             # For missing data, repeat the existing one
             for n in self.needed:
@@ -204,7 +207,7 @@ class Trader:
             self.needed = self.watch.copy()
             for k, v in self.blocker.items():
                 self.blocker[k] = False
-            self.handler_main(self.block_queue)
+            self.main_helper(self.block_queue)
             self.block_queue = {}
             self.block_lock.release()
             return
@@ -234,14 +237,14 @@ class Trader:
             self.needed = self.watch.copy()
             for k, v in self.blocker.items():
                 self.blocker[k] = False
-            self.handler_main(self.block_queue)
+            self.main_helper(self.block_queue)
             self.block_queue = {}
             self.block_lock.release()
             return 
         
         self.block_lock.release()
 
-    def handler_main(self, df_dict):
+    def main_helper(self, df_dict):
 
         new_day = False
         # Init queue on a new day 
@@ -268,18 +271,18 @@ class Trader:
         if not self.is_freq(self.timestamp):
             return
 
-        meta={
+        meta = {
             'new_day':new_day
         }
 
-        self.algo.handler(meta)
+        self.algo.main(meta)
         self.broker.exit()
         self.streamer.exit()
 
     def is_freq(self, time):
         """Helper function to determine if algorithm should be invoked for the
-        current timestamp. For example, if interval is 30MIN and fetch_interval is 5MIN,
-        algorithm should be called when minutes are 25 and 55.
+        current timestamp. For example, if interval is 30MIN,
+        algorithm should be called when minutes are 0 and 30.
         """
         
         if self.fetch_interval == self.interval:
@@ -304,7 +307,6 @@ class Trader:
                 return False
 
         val = int(re.sub("[^0-9]", "", self.interval))
-        val_fetch = int(re.sub("[^0-9]", "", self.fetch_interval))
         if minutes % val == 0:
             return True 
         else: 
@@ -315,6 +317,7 @@ class Trader:
         This should also be called at the start of each trading day 
         so database is updated and cache is refreshed.
         """
+        debug("Initializing queue...")
 
         today = pytz.utc.localize(dt.datetime.utcnow().replace(microsecond=0, second=0))  # Current timestamp in UTC
         for sym in self.watch:
@@ -324,7 +327,7 @@ class Trader:
             self.queue.set_symbol_interval(sym, interval, df)
             self.queue.set_symbol_interval_update(sym, interval, df.index[-1])
            
-            # Many brokers have seperate API for intraday data, so make an API call
+            # Many brokers have separate API for intraday data, so make an API call
             # instead of aggregating interday data
             if '1DAY' in self.aggregations:
                 df = self.streamer.fetch_price_history(last, today, '1DAY', sym)
@@ -338,6 +341,13 @@ class Trader:
                 df_tmp = self.aggregate_df(df, i)
                 self.queue.set_symbol_interval(sym, i, df_tmp)
                 self.queue.set_symbol_interval_update(sym, i, df_tmp.index[-1])
+        
+        # If is_save is True, save the queue locally
+        if self.is_save:
+            for sym in self.watch:
+                for inter in [self.interval] + self.aggregations:
+                    df = self.queue.get_symbol_interval(sym, inter)
+                    self.load.append_entry(sym, inter, df)
 
     def aggregate_df(self, df, inter):
         sym = list(df.columns.levels[0])[0]
@@ -551,3 +561,8 @@ class Trader:
     
     def remove_symbol(self, symbol):
         self.watch.remove(symbol)
+    
+    def exit(self, signum, frame):
+        # TODO: Gracefully exit
+        print("\nStopping Harvest...")
+        exit(0)

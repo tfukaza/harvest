@@ -15,7 +15,7 @@ export default function Home() {
         
         <section className={styles.section} id={styles.landing}>
           <h1 className={styles.title}>
-            Algo-trading framework for <a href="https://www.merriam-webster.com/dictionary/tinker">tinkers</a> 🛠️
+            Algo-trading framework for <a href="https://www.merriam-webster.com/dictionary/tinker">tinkerers</a> 🛠️
           </h1>
           <p>
             Harvest is a simple yet robust 

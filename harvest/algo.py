@@ -16,15 +16,13 @@ class BaseAlgo:
     """
 
     def __init__(self):
-        self.watch=[]
+        self.watch = []
+        self.trader = None # Allows algo to handle the case when runs without a trader
 
-    def setup(self, trader) -> None:
-        self.trader = trader
-
-    def algo_init(self):
+    def setup(self):
         pass
 
-    def handler(self, meta = {}):
+    def main(self, meta = {}):
         pass
 
     ############ Functions to configure the algo #################
@@ -35,7 +33,7 @@ class BaseAlgo:
     def remove_symbol(self, symbol: str) -> None:
         self.watch.remove(symbol)
     
-    ############ Functions interfacing with broker #################
+    ############ Functions interfacing with broker through the trader #################
 
     def buy(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
         """Buys the specified asset.
@@ -178,9 +176,37 @@ class BaseAlgo:
         """ 
         return self.trader.fetch_option_market_data(symbol)
     
-    ########## Technical Indicaters ###############
+    ########## Technical Indicators ###############
 
-    def rsi(self, symbol: str=None, period: int=14, interval: str='5MIN', ref: str='close') -> np.array:
+    # def use_trader_prices(func):
+    #     def wrap(*args, **kwargs):
+    #         self = args[0]
+    #         if self.trader is None:
+    #             return func(*args, **kwargs)
+    #         else:
+
+    #             prices = self.trader.queue.get_symbol_interval_prices(kwargs['symbol'], kwargs['interval'], kwargs['ref'])
+    #             return func(prices, *args, **kwargs)
+    #     return wrap
+
+    def default_param(self, symbol, interval, ref, prices):
+        if symbol == None:
+            symbol = self.watch[0]
+        if self.trader is None:
+            if interval == None:
+                interval = '5MIN'
+            if prices == None:
+                raise Exception(f'No prices found for symbol {symbol}')
+        else:
+            if interval == None:
+                interval = self.trader.interval
+            if prices == None:
+                prices = self.trader.queue.get_symbol_interval_prices(symbol, interval, ref)
+           
+        
+        return symbol, interval, ref, prices
+
+    def rsi(self, symbol: str=None, period: int=14, interval: str=None, ref: str='close', prices=None) -> np.array:
         """Calculate RSI
 
         :param symbol:    Symbol to perform calculation on 
@@ -189,9 +215,8 @@ class BaseAlgo:
         :param ref:       'close', 'open', 'high', or 'low'
         :returns: A list in numpy format, containing RSI values
         """
-        if symbol == None:
-            symbol = self.watch[0]
-        prices = self.trader.queue.get_symbol_interval_prices(symbol, interval, ref)
+        symbol, interval, ref, prices = self.default_param(symbol, interval, ref, prices)
+
         ohlc = pd.DataFrame({
             'close': np.array(prices),
             'open': np.zeros(len(prices)),
@@ -201,7 +226,7 @@ class BaseAlgo:
         rsi = TA.RSI(ohlc, period=period).to_numpy()
         return rsi
     
-    def sma(self, symbol: str=None, period: int=14, interval: str='5MIN', ref: str='close') -> np.array:
+    def sma(self, symbol: str=None, period: int=14, interval: str='5MIN', ref: str='close', prices=None) -> np.array:
         """Calculate SMA
 
         :param symbol:    Symbol to perform calculation on 
@@ -210,9 +235,8 @@ class BaseAlgo:
         :param ref:       'close', 'open', 'high', or 'low'
         :returns: A list in numpy format, containing SMA values
         """
-        if symbol == None:
-            symbol = self.watch[0]
-        prices = self.trader.queue.get_symbol_interval_prices(symbol, interval, ref)
+        symbol, interval, ref, prices = self.default_param(symbol, interval, ref, prices)
+
         ohlc = pd.DataFrame({
             'close': np.array(prices),
             'open': np.zeros(len(prices)),
@@ -222,7 +246,7 @@ class BaseAlgo:
         sma = TA.SMA(ohlc, period=period).to_numpy()
         return sma
     
-    def ema(self, symbol: str=None, period: int=14, interval: str='5MIN', ref: str='close') -> np.array:
+    def ema(self, symbol: str=None, period: int=14, interval: str='5MIN', ref: str='close', prices=None) -> np.array:
         """Calculate EMA
 
         :param symbol:    Symbol to perform calculation on 
@@ -231,9 +255,8 @@ class BaseAlgo:
         :param ref:       'close', 'open', 'high', or 'low'
         :returns: A list in numpy format, containing EMA values
         """
-        if symbol == None:
-            symbol = self.watch[0]
-        prices = self.trader.queue.get_symbol_interval_prices(symbol, interval, ref)
+        symbol, interval, ref, prices = self.default_param(symbol, interval, ref, prices)
+
         ohlc = pd.DataFrame({
             'close': np.array(prices),
             'open': np.zeros(len(prices)),
@@ -243,7 +266,7 @@ class BaseAlgo:
         ema = TA.EMA(ohlc, period=period).to_numpy()
         return ema
     
-    def bbands(self, symbol: str=None, period: int=14, interval: str='5MIN', ref: str='close', dev: float=1.0) -> Tuple[np.array, np.array, np.array]:
+    def bbands(self, symbol: str=None, period: int=14, interval: str='5MIN', ref: str='close', dev: float=1.0, prices=None) -> Tuple[np.array, np.array, np.array]:
         """Calculate Bollinger Bands
 
         :param symbol:    Symbol to perform calculation on 
@@ -253,9 +276,8 @@ class BaseAlgo:
         :param dev:       Standard deviation of the bands
         :returns: A tuple of numpy lists, each a list of BBand top, average, and bottom values
         """
-        if symbol == None:
-            symbol = self.watch[0]
-        prices = self.trader.queue.get_symbol_interval_prices(symbol, interval, ref)
+        symbol, interval, ref, prices = self.default_param(symbol, interval, ref, prices)
+
         ohlc = pd.DataFrame({
             'close': np.array(prices),
             'open': np.zeros(len(prices)),
@@ -266,25 +288,25 @@ class BaseAlgo:
         t, m, b = TA.BBANDS(ohlc, period=period, std_multiplier=dev, MA=TA.SMA(ohlc, period)).T.to_numpy()
         return t, m, b
     
-    def bbands_raw(self, arr: List[float]=[], period: int=14, dev: float=1.0) -> Tuple[np.array, np.array, np.array]:
-        """Calculate Bollinger Bands using given data
+    # def bbands_raw(self, arr: List[float]=[], period: int=14, dev: float=1.0) -> Tuple[np.array, np.array, np.array]:
+    #     """Calculate Bollinger Bands using given data
 
-        :param arr: List of prices as float to use in calculation of bollinger band
-        :param symbol:    Symbol to perform calculation on 
-        :param period:    Period of BBand
-        :param interval:  Interval to perform the calculation
-        :param ref:       'close', 'open', 'high', or 'low'
-        :param dev:       Standard deviation of the bands
-        :returns: A tuple of numpy lists, each a list of BBand top, average, and bottom values
-        """
-        ohlc = pd.DataFrame({
-            'close': np.array(arr),
-            'open': np.zeros(len(arr)),
-            'high': np.zeros(len(arr)),
-            'low': np.zeros(len(arr)),
-        })
-        t, m, b = TA.BBANDS(ohlc, period=period, std_multiplier=dev, MA=TA.SMA(ohlc, period)).T.to_numpy()
-        return t, m, b
+    #     :param arr: List of prices as float to use in calculation of bollinger band
+    #     :param symbol:    Symbol to perform calculation on 
+    #     :param period:    Period of BBand
+    #     :param interval:  Interval to perform the calculation
+    #     :param ref:       'close', 'open', 'high', or 'low'
+    #     :param dev:       Standard deviation of the bands
+    #     :returns: A tuple of numpy lists, each a list of BBand top, average, and bottom values
+    #     """
+    #     ohlc = pd.DataFrame({
+    #         'close': np.array(arr),
+    #         'open': np.zeros(len(arr)),
+    #         'high': np.zeros(len(arr)),
+    #         'low': np.zeros(len(arr)),
+    #     })
+    #     t, m, b = TA.BBANDS(ohlc, period=period, std_multiplier=dev, MA=TA.SMA(ohlc, period)).T.to_numpy()
+    #     return t, m, b
 
     ############### Getters for Trader properties #################
 
@@ -328,14 +350,14 @@ class BaseAlgo:
     
     def get_candle(self, symbol: str) -> pd.DataFrame():
         if len(symbol) <= 6:
-            return self.trader.queue.get_symbol_interval(symbol, self.trader.interval).iloc[[-1]][symbol]
+            return self.trader.queue.get_symbol_interval(symbol, self.trader.interval).iloc[[-1]]
         else:
             raise Exception("Candles not available for options")
     
     def get_candle_list(self, symbol, interval=None):
         if interval == None:
             interval = self.fetch_interval
-        return self.trader.queue.get_symbol_interval(symbol, interval)[symbol]
+        return self.trader.queue.get_symbol_interval(symbol, interval)
     
     def get_returns(self, symbol) -> float:
         """Returns the return of a specified asset. 
