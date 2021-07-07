@@ -29,7 +29,7 @@ class BaseStorage:
             self.storage_lock.acquire()
 
             self.storage[symbol] = {
-                interval: data
+                interval: data,
             }
             
             self.storage_lock.release()
@@ -68,6 +68,13 @@ class BaseStorage:
         if data_start <= start and end <= data_end:
             return data.loc[start:end]
         return None 
+
+    def latest_timestamp(self, symbol: str, interval: str):
+        data = self.load(symbol, interval)
+        if data is None:
+            raise Exception("Data is none!")
+
+        return data.index[-1]
 
 
     def _append(self, current_data: pd.DataFrame, new_data: pd.DataFrame, interval: str) -> pd.DataFrame:

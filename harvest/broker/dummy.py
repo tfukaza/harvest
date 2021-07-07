@@ -2,6 +2,7 @@
 import datetime as dt
 import random
 import re
+import Queue
 from typing import Any, Dict, List, Tuple
 import logging
 from logging import critical, error, info, warning, debug
@@ -14,6 +15,7 @@ import pytz
 # Submodule imports
 import harvest.broker._base as base
 from harvest.utils import is_crypto
+from harvest.storage.base import BaseStorage
 
 class DummyBroker(base.BaseBroker):
     """DummyBroker, as its name implies, is a dummy broker class that can 
@@ -33,7 +35,8 @@ class DummyBroker(base.BaseBroker):
         self.cash = 100000.0
         self.buying_power = 100000.0
         self.multiplier = 1
-
+        self.storage = BaseStorage()
+        self.queue = Queue
         self.id = 0
 
         if account_path:
@@ -62,8 +65,14 @@ class DummyBroker(base.BaseBroker):
     def main(self) -> pd.DataFrame:
 
         if self.broker_type in ('both', 'streamer'):
-            # Fetch and update data in the storage and return the lastest data
-            df_dict = self.storage.store()
+            
+            for symbol in self.watch:
+                # Get the timestamp of the latest data we have
+                last = self.storage.latest_timestamp(symbol, self.fetch_interval)
+                # Fetch the data 
+                data = self.fetch_price_history(last, dt.datetime.now(), self.fetch_interval, symbol)
+                # Store the data 
+                self.storage.store(symbol, self.fetch_interval, data)
         if self.broker_type in ('both', 'broker'):
             # Buy and sell stocks that are in the queue
             # iterate through buy / sell queue and apply each
