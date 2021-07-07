@@ -25,7 +25,6 @@ functions = [
     a.rsi,
     a.sma,
     a.bbands,
-    a.bbands_raw,
 
     a.get_account_buying_power,
     a.get_account_equity,
