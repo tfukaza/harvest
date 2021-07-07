@@ -15,13 +15,6 @@ setup(
         'pytz'
     ],
     extras_require={
-        "TDAmeritrade": [
-            'selenium',
-            'splinter',
-            'requests',
-            'PyVirtualDisplay',
-            'tda-api==1.1.0'
-        ],
         "AlpacaMarket": [
             'alpaca-trade-api'
         ],
