@@ -351,7 +351,7 @@ class BaseAlgo:
     
     def get_candle_list(self, symbol, interval=None):
         if interval == None:
-            interval = self.interval
+            interval = self.trader.interval
         return self.trader.queue.get_symbol_interval(symbol, interval)
     
     def get_returns(self, symbol=None) -> float:
@@ -394,7 +394,7 @@ class BaseAlgo:
         :returns: Average cost of asset. Returns None if asset is not being tracked.
         """
         if interval == None:
-            interval = self.interval
+            interval = self.trader.interval
         return self.trader.queue.get_symbol_interval_prices(symbol, interval, ref)
     
     def get_time(self):
