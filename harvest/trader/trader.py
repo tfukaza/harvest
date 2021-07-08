@@ -556,8 +556,11 @@ class Trader:
     def set_algo(self, algo):
         self.algo = algo
     
-    def add_symbol(self, symbol):
-        self.watch.append(symbol)
+    def set_symbol(self, symbol):
+        if isinstance(symbol, list):
+            self.watch = symbol
+        else:
+            self.watch = [symbol]
     
     def remove_symbol(self, symbol):
         self.watch.remove(symbol)
