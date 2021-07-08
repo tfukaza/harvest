@@ -6,7 +6,7 @@ from harvest.trader import Trader
 from harvest.broker.robinhood import RobinhoodBroker
 
 class Watch(BaseAlgo):
-    def handler(self, meta):
+    def main(self, meta):
         print( self.get_price() )
 
 if __name__ == "__main__":
