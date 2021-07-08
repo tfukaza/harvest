@@ -1,12 +1,13 @@
 import styles from '../../styles/Home.module.scss'
 import Link from 'next/link'
+import StaticImage from './static_image.js'
 
 export default function Footer() {
     return (
         <footer className={styles.footer}>
             <section className={styles.section}>
             <div>
-                <img src="/wordmark.svg"></img>
+                <StaticImage src="/wordmark.svg" />
                 <Link href="https://github.com/tfukaza/harvest/issues/new?assignees=&labels=bug&template=bug_report.md&title=%5B%F0%9F%AA%B0BUG%5D">Report a Bug</Link>
                 <Link href="https://github.com/tfukaza/harvest/issues/new?assignees=&labels=enhancement%2C+question&template=feature-request.md&title=%5B%F0%9F%92%A1Feature+Request%5D">Suggest a Feature</Link>
             </div>
