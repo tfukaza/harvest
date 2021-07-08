@@ -513,7 +513,7 @@ class Trader:
             "multiplier": 1
         }
 
-    def buy(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
+    def buy(self, symbol: str, quantity: int, in_force: str, extended: bool):
         ret = self.broker.buy(symbol, quantity, in_force, extended)
         if ret == None:
             raise Exception("BUY failed")
@@ -521,11 +521,11 @@ class Trader:
         debug(f"BUY order queue: {self.order_queue}")
         return ret
     
-    def await_buy(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
+    def await_buy(self, symbol: str, quantity: int, in_force: str, extended: bool):
         ret = self.broker.await_buy(symbol, quantity, in_force, extended)
         return ret
 
-    def sell(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
+    def sell(self, symbol: str, quantity: int, in_force: str, extended: bool):
         ret = self.broker.sell(symbol, quantity, in_force, extended)
         if ret == None:
             raise Exception("SELL failed")
@@ -533,11 +533,11 @@ class Trader:
         debug(f"SELL order queue: {self.order_queue}")
         return ret
     
-    def await_sell(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
+    def await_sell(self, symbol: str, quantity: int, in_force: str, extended: bool):
         ret = self.broker.await_sell(symbol, quantity, in_force, extended)
         return ret
 
-    def buy_option(self, symbol: str=None, quantity: int=0, in_force: str='gtc'):
+    def buy_option(self, symbol: str, quantity: int, in_force: str):
         ret = self.broker.buy_option(symbol, quantity, in_force)
         if ret == None:
             raise Exception("BUY failed")
@@ -545,7 +545,7 @@ class Trader:
         debug(f"BUY order queue: {self.order_queue}")
         return ret
 
-    def sell_option(self, symbol: str=None, quantity: int=0, in_force: str='gtc'):
+    def sell_option(self, symbol: str, quantity: int, in_force: str):
         ret = self.broker.sell_option(symbol, quantity, in_force)
         if ret == None:
             raise Exception("SELL failed")
