@@ -351,21 +351,25 @@ class BaseAlgo:
     
     def get_candle_list(self, symbol, interval=None):
         if interval == None:
-            interval = self.fetch_interval
+            interval = self.interval
         return self.trader.queue.get_symbol_interval(symbol, interval)
     
-    def get_returns(self, symbol) -> float:
+    def get_returns(self, symbol=None) -> float:
         """Returns the return of a specified asset. 
 
         :param symbol:  Symbol of stock, crypto, or option. Options should be in OCC format.
         :returns: Return of asset, expressed as a decimal. Returns None if asset is not owned.
         """
+        if symbol == None:
+            symbol = self.watch[0]
         cost = self.get_cost(symbol)
         price = self.get_price(symbol)
         ret = (price - cost) / cost
         return ret
     
-    def get_max_quantity(self, symbol, round=True):
+    def get_max_quantity(self, symbol=None, round=True):
+        if symbol == None:
+            symbol = self.watch[0]
         price = self.get_price(symbol)
         power = self.get_account_buying_power()
         if round:
@@ -390,7 +394,7 @@ class BaseAlgo:
         :returns: Average cost of asset. Returns None if asset is not being tracked.
         """
         if interval == None:
-            interval = self.fetch_interval
+            interval = self.interval
         return self.trader.queue.get_symbol_interval_prices(symbol, interval, ref)
     
     def get_time(self):
