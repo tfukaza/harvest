@@ -288,25 +288,10 @@ class BaseAlgo:
         t, m, b = TA.BBANDS(ohlc, period=period, std_multiplier=dev, MA=TA.SMA(ohlc, period)).T.to_numpy()
         return t, m, b
     
-    # def bbands_raw(self, arr: List[float]=[], period: int=14, dev: float=1.0) -> Tuple[np.array, np.array, np.array]:
-    #     """Calculate Bollinger Bands using given data
-
-    #     :param arr: List of prices as float to use in calculation of bollinger band
-    #     :param symbol:    Symbol to perform calculation on 
-    #     :param period:    Period of BBand
-    #     :param interval:  Interval to perform the calculation
-    #     :param ref:       'close', 'open', 'high', or 'low'
-    #     :param dev:       Standard deviation of the bands
-    #     :returns: A tuple of numpy lists, each a list of BBand top, average, and bottom values
-    #     """
-    #     ohlc = pd.DataFrame({
-    #         'close': np.array(arr),
-    #         'open': np.zeros(len(arr)),
-    #         'high': np.zeros(len(arr)),
-    #         'low': np.zeros(len(arr)),
-    #     })
-    #     t, m, b = TA.BBANDS(ohlc, period=period, std_multiplier=dev, MA=TA.SMA(ohlc, period)).T.to_numpy()
-    #     return t, m, b
+    def crossover(self, prices_0, prices_1):
+        if len(prices_0) < 2 or len(prices_1) < 2:
+            raise Exception('There must be at least 2 datapoints to calculate crossover')
+        return prices_0[-2] < prices_1[-2] and prices_0[-1] > prices_1[-1]
 
     ############### Getters for Trader properties #################
 
