@@ -1,13 +1,14 @@
 import styles from '../../styles/Home.module.scss'
 import rc from '../../styles/rowcrop.module.css'
 import Link from 'next/link'
+import StaticImage from './static_image.js'
 
 export default function NavBar() {
     return (
         <nav className={styles.nav}>
             <div> 
                 <Link href="/" passHref>
-                    <a id={styles.logo}><img src="/wordmark.svg"></img></a>
+                    <a id={styles.logo}><StaticImage src="/wordmark.svg" /></a>
                 </Link>
             </div>
             <div>
