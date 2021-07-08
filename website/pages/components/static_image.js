@@ -6,10 +6,6 @@ const my_loader = ({ src, }) => {
 
 export default function StaticImage({props, src}) {
   return (
-    <Image
-      loader={my_loader}
-      src={src}
-      alt="Picture"
-    />
+    <img src={my_loader(src)} alt="img" />
   )
 }
