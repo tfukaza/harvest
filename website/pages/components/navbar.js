@@ -7,7 +7,7 @@ export default function NavBar() {
         <nav className={styles.nav}>
             <div> 
                 <Link href="/" passHref>
-                    <a id={styles.logo}><img src="/img/wordmark.svg"></img></a>
+                    <a id={styles.logo}><img src="/wordmark.svg"></img></a>
                 </Link>
             </div>
             <div>
