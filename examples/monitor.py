@@ -6,12 +6,11 @@ from harvest.trader import Trader
 from harvest.broker.robinhood import RobinhoodBroker
 
 class Watch(BaseAlgo):
-    def handler(self, meta):
+    def main(self, meta):
         print( self.get_price() )
 
 if __name__ == "__main__":
     t = Trader( RobinhoodBroker() )
     t.set_symbol('TWTR')
     t.set_algo(Watch())
-    
-    t.run()
+    t.start()
