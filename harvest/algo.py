@@ -2,7 +2,7 @@
 from datetime import timedelta
 import datetime as dt
 from logging import critical, error, info, warning, debug
-from typing import Any, List, Tuple 
+from typing import Any, List, Tuple
 
 # External libraries
 from finta import TA
