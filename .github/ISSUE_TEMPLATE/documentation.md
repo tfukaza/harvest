@@ -2,7 +2,7 @@
 name: Documentation
 about: Request additional documentation
 title: "[\U0001F4DDDocumentation]"
-labels: ''
+labels: documentation
 assignees: ''
 
 ---
