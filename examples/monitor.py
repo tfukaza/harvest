@@ -5,19 +5,13 @@ from harvest.algo import BaseAlgo
 from harvest.trader import Trader
 from harvest.broker.robinhood import RobinhoodBroker
 
-sym = 'TWTR'
-
-class Watch(algo.BaseAlgo):
-
-    def algo_init(self):
-        pass
-    
+class Watch(BaseAlgo):
     def handler(self, meta):
         print( self.get_price() )
 
 if __name__ == "__main__":
-    t = trader.TestTrader( RobinhoodBroker() )
-    t.add_ticker(sym)
+    t = Trader( RobinhoodBroker() )
+    t.set_symbol('TWTR')
     t.set_algo(Watch())
     
     t.run()

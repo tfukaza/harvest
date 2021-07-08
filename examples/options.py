@@ -2,29 +2,25 @@ from harvest.algo import BaseAlgo
 from harvest.trader import Trader
 from harvest.broker.robinhood import RobinhoodBroker
 
-import datetime as dt
-
 """This algorithm trades options every 5 minutes.
 To keep things simple, the logic is very basic, with emphasis on
 introducing option-related functions.  
 """
 
-sym = 'TWTR'
-
 class Option(BaseAlgo):
 
-    def algo_init(self):
+    def setup(self):
         self.hold = False
         self.occ = ''
         self.buy_qty = 0
     
-    def handler(self, meta):
+    def main(self, meta):
 
-        price = self.get_price(sym)
+        price = self.get_price()
 
         if not self.hold:
             # Get the option chain as a pandas dataframe
-            chain = self.get_chain_data(sym)
+            chain = self.get_chain_data()
             # Strike price should be greater than current price
             chain = chain[chain['strike'] > price]
             # Get calls
@@ -46,19 +42,19 @@ class Option(BaseAlgo):
 
             # Buy the option
             self.buy_option(occ, buy_qty)
-            print(f"BUY: {self.timestamp}, {occ}, {opt_price}")
+            print(f"BUY: {occ}, {opt_price}")
 
             self.hold = True
 
         elif self.hold:
             opt_price = self.get_option_market_data(self.occ)['price']
-            print(f"SELL: {self.timestamp}, {self.occ}, {opt_price}")
+            print(f"SELL: {self.occ}, {opt_price}")
             self.sell_option(self.occ, self.buy_qty)
             self.hold = False
             
 if __name__ == "__main__":
     t = Trader( RobinhoodBroker() )
-    t.set_symbol(sym)
+    t.set_symbol('TWTR')
     t.set_algo(Option())
     
     t.run(interval='5MIN')
