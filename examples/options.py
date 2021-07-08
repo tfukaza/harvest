@@ -11,7 +11,7 @@ introducing option-related functions.
 
 sym = 'TWTR'
 
-class Options(BaseAlgo):
+class Option(BaseAlgo):
 
     def algo_init(self):
         self.hold = False
@@ -51,16 +51,14 @@ class Options(BaseAlgo):
             self.hold = True
 
         elif self.hold:
-        
             opt_price = self.get_option_market_data(self.occ)['price']
             print(f"SELL: {self.timestamp}, {self.occ}, {opt_price}")
             self.sell_option(self.occ, self.buy_qty)
             self.hold = False
             
-       
 if __name__ == "__main__":
     t = Trader( RobinhoodBroker() )
-    t.add_symbol(sym)
+    t.set_symbol(sym)
     t.set_algo(Option())
     
     t.run(interval='5MIN')
