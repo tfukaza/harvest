@@ -9,19 +9,21 @@ class TestAlgo(unittest.TestCase):
     def test_rsi(self):
         algo = BaseAlgo()
         algo.add_symbol('DUMMY')
-        rsi = algo.rsi(prices)[-1]
+        rsi = algo.rsi(prices=prices)[-1]
+        
         self.assertAlmostEqual(rsi, 59.476113, places=5)
 
     def test_sma(self):
         algo = BaseAlgo()
         algo.add_symbol('DUMMY')
-        sma = algo.sma(prices)[-1]
+        sma = algo.sma(prices=prices)[-1]
+
         self.assertAlmostEqual(sma, sum(prices) / len(prices), places=5)
 
     def test_ema(self):
         algo = BaseAlgo()
         algo.add_symbol('DUMMY')
-        ema = algo.ema(prices)[-1]
+        ema = algo.ema(prices=prices)[-1]
 
         alpha = 2 / (len(prices) + 1)
         weights = [(1 - alpha) ** t for t in range(len(prices))]
@@ -32,7 +34,7 @@ class TestAlgo(unittest.TestCase):
     def test_bbands(self):
         algo = BaseAlgo()
         algo.add_symbol('DUMMY')
-        upper, middle, lower = algo.bbands(prices)
+        upper, middle, lower = algo.bbands(prices=prices)
 
         mean = sum(prices) / len(prices)
         var = sum([(price - mean) ** 2 for price in prices]) / (len(prices) - 1)

@@ -1,8 +1,9 @@
 import NavBar from '../components/navbar.js'
 import Header from '../components/header.js'
+import Footer from '../components/footer.js'
 import Link from 'next/link'
 
-import styles from './../../styles/Home.module.css'
+import styles from './../../styles/Home.module.scss'
 import rc from './../../styles/rowcrop.module.css'
 
 export default function Home() {
@@ -11,10 +12,11 @@ export default function Home() {
       <Header title="Harvest | Tutorials"></Header>
       <NavBar></NavBar>
       <main className={styles.main}>
-        <section></section>
+
 
         
         <section className={styles.section}>
+          <h1>Tutorials</h1>
           <Link href="/tutorial/starter" passHref>
           <div className={`${rc.card} ${rc.col4} ${styles.col4}`}>
             <h2>Startup Guide</h2>
@@ -37,9 +39,7 @@ export default function Home() {
         </section>
       </main>
 
-      <footer className={styles.footer}>
-        
-      </footer>
+      <Footer></Footer>
     </div>
   )
 }

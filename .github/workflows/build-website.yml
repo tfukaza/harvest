@@ -37,13 +37,16 @@ jobs:
       uses: actions/setup-node@v1
       with:
         node-version: ${{ matrix.node-version }}
-    - run: |
+    - name: Install npm
+      run: |
         cd website
         npm install
-    - run: |
+    - name: Build
+      run: |
         cd website
         BASE_PATH="/harvest" npx next build
-    - run: |
+    - name: Export
+      run: |
         cd website
         BASE_PATH="/harvest" npx next export
     - name: Deploy

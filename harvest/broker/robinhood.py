@@ -23,9 +23,11 @@ import harvest.broker._base as base
 
 class RobinhoodBroker(base.BaseBroker):
 
-    interval_list = ['1MIN', '5MIN', '15MIN', '30MIN']
+    interval_list = ['1MIN', '5MIN', '15MIN', '30MIN', '1DAY']
 
     def __init__(self, path=None):
+        super().__init__()
+
         if path == None:
             path = './secret.yaml'
         
@@ -47,7 +49,7 @@ class RobinhoodBroker(base.BaseBroker):
                     store_session=True, 
                     mfa_code=totp)
 
-        super().__init__()
+        
     
     def refresh_cred(self):
         debug("Logging out of Robinhood...")
@@ -58,7 +60,6 @@ class RobinhoodBroker(base.BaseBroker):
                     store_session=True, 
                     mfa_code=totp)
         debug("Logged into Robinhood...")
-    
     
     def _create_secret(self, path):
 
@@ -137,7 +138,7 @@ class RobinhoodBroker(base.BaseBroker):
         
         return True 
 
-    def setup_run(self, watch: List[str], interval):
+    def setup(self, watch: List[str], interval, trader=None, trader_main=None):
         self.watch_stock = []
         self.watch_crypto = []
         self.watch_crypto_fmt = []
@@ -163,9 +164,10 @@ class RobinhoodBroker(base.BaseBroker):
         
         self.option_cache = {}
 
-        super().setup_run(watch, interval, fetch_interval)
+        super().setup(watch, interval, fetch_interval, trader, trader_main)
          
-    def run(self):
+
+    def start(self):
         self.cur_sec = -1
         self.cur_min = -1
         val = int(re.sub("[^0-9]", "", self.fetch_interval))
@@ -173,30 +175,30 @@ class RobinhoodBroker(base.BaseBroker):
         # Note that 1MIN is only supported for crypto
         
         print("Running...")
-        
         if self.interval == '1MIN':
             while 1:
                 cur = dt.datetime.now()
                 seconds = cur.second
                 if seconds == 1 and seconds != self.cur_sec:
-                    self._handler()
+                    self.main()
                 self.cur_sec = seconds
         else:
             while 1:
                 cur = dt.datetime.now()
                 minutes = cur.minute
                 if minutes % val == 0 and minutes != self.cur_min:
-                    self._handler()
+                    self.main()
                 self.cur_min = minutes
+        
 
     def exit(self):
         self.option_cache = {}
 
-    @base.BaseBroker._handler_wrap
-    def _handler(self):
+    @base.BaseBroker.main_wrap
+    def main(self):
         df_dict = {}
-        df_dict.update( self.fetch_latest_stock_price() )
-        df_dict.update( self.fetch_latest_crypto_price())
+        df_dict.update(self.fetch_latest_stock_price())
+        df_dict.update(self.fetch_latest_crypto_price())
       
         return df_dict
     
@@ -205,8 +207,7 @@ class RobinhoodBroker(base.BaseBroker):
         last: dt.datetime, 
         today: dt.datetime, 
         interval: str='1MIN',
-        symbol: str = None,
-        count: int = 200):
+        symbol: str = None):
 
         df = pd.DataFrame()
 
@@ -263,7 +264,7 @@ class RobinhoodBroker(base.BaseBroker):
         
         df = pd.DataFrame.from_dict(ret)
         df = self._format_df(df, [symbol], interval, False)
-        return df.iloc[-count:]
+        return df
 
     @base.BaseBroker._exception_handler
     def fetch_latest_stock_price(self):

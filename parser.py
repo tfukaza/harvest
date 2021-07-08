@@ -25,7 +25,6 @@ functions = [
     a.rsi,
     a.sma,
     a.bbands,
-    a.bbands_raw,
 
     a.get_account_buying_power,
     a.get_account_equity,
@@ -48,8 +47,7 @@ data = []
 for func in functions:
     # Get the docstring as an object
     doc = parse(func.__doc__)
-    # Get description
-    # Get parameters: arg_name, type_name, is_optional, default, description
+
     arg_names = ['self']
     arg_names.extend([p.arg_name for p in doc.params])
     data.append({
@@ -74,7 +72,8 @@ for func in functions:
             } for par in doc.raises
         ],
     })
-    
 
 with open('./website/pages/docs-content/data.json', 'w') as f:
     json.dump(data, f)
+    print(f'Wrote {len(data)} functions to ./website/pages/docs-content/data.json')
+

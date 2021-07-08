@@ -1,8 +1,9 @@
 import NavBar from '../components/navbar.js'
 import Header from '../components/header.js'
+import Footer from '../components/footer.js'
 import CodeBlock from '../components/code.js'
 
-import styles from '../../styles/Home.module.css'
+import styles from '../../styles/Home.module.scss'
 
 export default function Module() {
   return (
@@ -171,9 +172,7 @@ if __name__ == "__main__":
         </section>
     </main>
 
-    <footer className={styles.footer}>
-        
-    </footer>
+    <Footer></Footer>
     </div>
   )
 }

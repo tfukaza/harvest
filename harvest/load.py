@@ -4,7 +4,6 @@ import datetime as dt
 
 # External libraries
 import pandas as pd
-import numpy as np 
 
 # Script to collect hourly stock price data
 DB_PATH="./db"
@@ -22,8 +21,8 @@ class Load:
         os.makedirs(DB_PATH, exist_ok=True)
 
     # get a datetime of last time database update was performed
-    def get_timestamp(self, symbol, type):
-        path = f"{DB_PATH}/{symbol}/lastSave-{type}"
+    def get_timestamp(self, symbol, interval):
+        path = f"{DB_PATH}/{symbol}/lastSave-{interval}"
         if not os.path.exists(path):
             return dt.datetime(1970, 1, 1)
         ts = open(path)
@@ -31,24 +30,24 @@ class Load:
         date = dt.datetime.strptime(ts_text, '%Y-%m-%d %H:%M')
         return date
 
-    def set_timestamp(self, symbol, date, type):
-        path = f"{DB_PATH}/{symbol}/lastSave-{type}"
+    def set_timestamp(self, symbol, date, interval):
+        path = f"{DB_PATH}/{symbol}/lastSave-{interval}"
         ts = open(path, 'w')
         ts.seek(0)
         date_str = date.strftime('%Y-%m-%d %H:%M')
         ts.write(date_str)
 
-    def append_entry(self, symbol, df, type):
-        save_path = f"{DB_PATH}/{symbol}/data-{type}" 
+    def append_entry(self, symbol, interval, df):
+        save_path = f"{DB_PATH}/{symbol}/data-{interval}" 
         save_dir = f"{DB_PATH}/{symbol}"
         if not os.path.isdir(save_dir):
             os.mkdir(save_dir)
-        data = self.get_entry(symbol, type, update=False)
+        data = self.get_entry(symbol, interval)
         data = data.append(df)
         data = data[~data.index.duplicated(keep='last')]
         data.to_pickle(save_path)
 
-    def get_entry(self, symbol, interval, update=True):
+    def get_entry(self, symbol, interval):
         path = f"{DB_PATH}/{symbol}/data-{interval}" 
         save_dir = f"{DB_PATH}/{symbol}"
         if not os.path.isdir(save_dir):
@@ -56,5 +55,6 @@ class Load:
         if not os.path.exists(path):
             data = pd.DataFrame()
             data.to_pickle(path)
+            return data
         return pd.read_pickle(path)
     

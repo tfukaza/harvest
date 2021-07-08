@@ -2,7 +2,7 @@
 from datetime import timedelta
 import datetime as dt
 from logging import critical, error, info, warning, debug
-from typing import Any, List, Tuple 
+from typing import Any, List, Tuple
 
 # External libraries
 from finta import TA
@@ -19,13 +19,10 @@ class BaseAlgo:
         self.watch = []
         self.trader = None # Allows algo to handle the case when runs without a trader
 
-    def setup(self, trader) -> None:
-        self.trader = trader
-
-    def algo_init(self):
+    def setup(self):
         pass
 
-    def handler(self, meta = {}):
+    def main(self, meta = {}):
         pass
 
     ############ Functions to configure the algo #################
@@ -38,7 +35,7 @@ class BaseAlgo:
     
     ############ Functions interfacing with broker through the trader #################
 
-    def buy(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
+    def buy(self, symbol: str=None, quantity: int=None, in_force: str='gtc', extended: bool=False):
         """Buys the specified asset.
 
         When called, Harvests places a limit order with a limit
@@ -56,9 +53,14 @@ class BaseAlgo:
 
         :raises Exception: There is an error in the order process.
         """
+        if symbol == None:
+            symbol = self.watch[0]
+        if quantity == None:
+            quantity = self.get_max_quantity(symbol)
+        
         return self.trader.buy(symbol, quantity, in_force, extended)
     
-    def sell(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
+    def sell(self, symbol: str=None, quantity: int=None, in_force: str='gtc', extended: bool=False):
         """Sells the specified asset.
 
         :param str? symbol:    Symbol of the asset to sell
@@ -73,6 +75,10 @@ class BaseAlgo:
         
         :raises Exception: There is an error in the order process.
         """
+        if symbol == None:
+            symbol = self.watch[0]
+        if quantity == None:
+            quantity = self.get_quantity(symbol)
         return self.trader.sell(symbol, quantity, in_force, extended)
 
     def await_buy(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
@@ -90,6 +96,10 @@ class BaseAlgo:
 
         :raises Exception: There is an error in the order process.
         """
+        if symbol == None:
+            symbol = self.watch[0]
+        if quantity == None:
+            quantity = self.get_max_quantity(symbol)
         return self.trader.await_buy(symbol, quantity, in_force, extended)
     
     def await_sell(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
@@ -107,9 +117,13 @@ class BaseAlgo:
 
         :raises Exception: There is an error in the order process.
         """
+        if symbol == None:
+            symbol = self.watch[0]
+        if quantity == None:
+            quantity = self.get_quantity(symbol)
         return self.trader.await_sell(symbol, quantity, in_force, extended)
 
-    def buy_option(self, symbol: str=None, quantity: int=0, in_force: str='gtc'):
+    def buy_option(self, symbol: str, quantity: int=None, in_force: str='gtc'):
         """Buys the specified option.
         
         :param str? symbol:    Symbol of the asset to buy, in OCC format. 
@@ -123,9 +137,11 @@ class BaseAlgo:
 
         :raises Exception: There is an error in the order process.
         """
+        if quantity == None:
+            quantity = self.get_max_quantity(symbol)
         return self.trader.buy_option(symbol, quantity, in_force)
     
-    def sell_option(self, symbol: str=None, quantity: int=0, in_force: str='gtc'):
+    def sell_option(self, symbol: str, quantity: int=None, in_force: str='gtc'):
         """Sells the specified option.
         
         :param str? symbol:    Symbol of the asset to buy, in OCC format. 
@@ -139,6 +155,8 @@ class BaseAlgo:
 
         :raises Exception: There is an error in the order process.
         """
+        if quantity == None:
+            quantity = self.get_quantity(symbol)
         return self.trader.sell_option(symbol, quantity, in_force)
     
     ########### Functions to trade options #################
@@ -179,21 +197,26 @@ class BaseAlgo:
         """ 
         return self.trader.fetch_option_market_data(symbol)
     
-    ########## Technical Indicaters ###############
+    ########## Technical Indicators ###############
 
-    def use_trader_prices(func):
-        def wrap(*args, **kwargs):
-            self = args[0]
-            if self.trader is None:
-                return func(*args, **kwargs)
-            else:
-                prices = self.trader.queue.get_symbol_interval_prices(kwargs['symbol'], kwargs['interval'], kwargs['ref'])
-                return func(prices, *args, **kwargs)
-        return wrap
+    def default_param(self, symbol, interval, ref, prices):
+        if symbol == None:
+            symbol = self.watch[0]
+        if self.trader is None:
+            if interval == None:
+                interval = '5MIN'
+            if prices == None:
+                raise Exception(f'No prices found for symbol {symbol}')
+        else:
+            if interval == None:
+                interval = self.trader.interval
+            if prices == None:
+                prices = self.trader.queue.get_symbol_interval_prices(symbol, interval, ref)
+           
+        
+        return symbol, interval, ref, prices
 
-
-    @use_trader_prices 
-    def rsi(self, prices, symbol: str=None, period: int=14, interval: str='5MIN', ref: str='close') -> np.array:
+    def rsi(self, symbol: str=None, period: int=14, interval: str=None, ref: str='close', prices=None) -> np.array:
         """Calculate RSI
 
         :param symbol:    Symbol to perform calculation on 
@@ -202,8 +225,7 @@ class BaseAlgo:
         :param ref:       'close', 'open', 'high', or 'low'
         :returns: A list in numpy format, containing RSI values
         """
-        if symbol == None:
-            symbol = self.watch[0]
+        symbol, interval, ref, prices = self.default_param(symbol, interval, ref, prices)
 
         ohlc = pd.DataFrame({
             'close': np.array(prices),
@@ -214,8 +236,7 @@ class BaseAlgo:
         rsi = TA.RSI(ohlc, period=period).to_numpy()
         return rsi
     
-    @use_trader_prices 
-    def sma(self, prices, symbol: str=None, period: int=14, interval: str='5MIN', ref: str='close') -> np.array:
+    def sma(self, symbol: str=None, period: int=14, interval: str='5MIN', ref: str='close', prices=None) -> np.array:
         """Calculate SMA
 
         :param symbol:    Symbol to perform calculation on 
@@ -224,8 +245,7 @@ class BaseAlgo:
         :param ref:       'close', 'open', 'high', or 'low'
         :returns: A list in numpy format, containing SMA values
         """
-        if symbol == None:
-            symbol = self.watch[0]
+        symbol, interval, ref, prices = self.default_param(symbol, interval, ref, prices)
 
         ohlc = pd.DataFrame({
             'close': np.array(prices),
@@ -236,8 +256,7 @@ class BaseAlgo:
         sma = TA.SMA(ohlc, period=period).to_numpy()
         return sma
     
-    @use_trader_prices 
-    def ema(self, prices, symbol: str=None, period: int=14, interval: str='5MIN', ref: str='close') -> np.array:
+    def ema(self, symbol: str=None, period: int=14, interval: str='5MIN', ref: str='close', prices=None) -> np.array:
         """Calculate EMA
 
         :param symbol:    Symbol to perform calculation on 
@@ -246,8 +265,7 @@ class BaseAlgo:
         :param ref:       'close', 'open', 'high', or 'low'
         :returns: A list in numpy format, containing EMA values
         """
-        if symbol == None:
-            symbol = self.watch[0]
+        symbol, interval, ref, prices = self.default_param(symbol, interval, ref, prices)
 
         ohlc = pd.DataFrame({
             'close': np.array(prices),
@@ -258,8 +276,7 @@ class BaseAlgo:
         ema = TA.EMA(ohlc, period=period).to_numpy()
         return ema
     
-    @use_trader_prices 
-    def bbands(self, prices, symbol: str=None, period: int=14, interval: str='5MIN', ref: str='close', dev: float=1.0) -> Tuple[np.array, np.array, np.array]:
+    def bbands(self, symbol: str=None, period: int=14, interval: str='5MIN', ref: str='close', dev: float=1.0, prices=None) -> Tuple[np.array, np.array, np.array]:
         """Calculate Bollinger Bands
 
         :param symbol:    Symbol to perform calculation on 
@@ -269,8 +286,7 @@ class BaseAlgo:
         :param dev:       Standard deviation of the bands
         :returns: A tuple of numpy lists, each a list of BBand top, average, and bottom values
         """
-        if symbol == None:
-            symbol = self.watch[0]
+        symbol, interval, ref, prices = self.default_param(symbol, interval, ref, prices)
 
         ohlc = pd.DataFrame({
             'close': np.array(prices),
@@ -282,25 +298,10 @@ class BaseAlgo:
         t, m, b = TA.BBANDS(ohlc, period=period, std_multiplier=dev, MA=TA.SMA(ohlc, period)).T.to_numpy()
         return t, m, b
     
-    def bbands_raw(self, arr: List[float]=[], period: int=14, dev: float=1.0) -> Tuple[np.array, np.array, np.array]:
-        """Calculate Bollinger Bands using given data
-
-        :param arr: List of prices as float to use in calculation of bollinger band
-        :param symbol:    Symbol to perform calculation on 
-        :param period:    Period of BBand
-        :param interval:  Interval to perform the calculation
-        :param ref:       'close', 'open', 'high', or 'low'
-        :param dev:       Standard deviation of the bands
-        :returns: A tuple of numpy lists, each a list of BBand top, average, and bottom values
-        """
-        ohlc = pd.DataFrame({
-            'close': np.array(arr),
-            'open': np.zeros(len(arr)),
-            'high': np.zeros(len(arr)),
-            'low': np.zeros(len(arr)),
-        })
-        t, m, b = TA.BBANDS(ohlc, period=period, std_multiplier=dev, MA=TA.SMA(ohlc, period)).T.to_numpy()
-        return t, m, b
+    def crossover(self, prices_0, prices_1):
+        if len(prices_0) < 2 or len(prices_1) < 2:
+            raise Exception('There must be at least 2 datapoints to calculate crossover')
+        return prices_0[-2] < prices_1[-2] and prices_0[-1] > prices_1[-1]
 
     ############### Getters for Trader properties #################
 
@@ -340,29 +341,43 @@ class BaseAlgo:
         else:
             for p in self.trader.option_positions:
                 if p['occ_symbol'] == symbol:
-                    return p['current_price']
+                    return p['current_price'] * p['multiplier']
     
     def get_candle(self, symbol: str) -> pd.DataFrame():
         if len(symbol) <= 6:
-            return self.trader.queue.get_symbol_interval(symbol, self.trader.interval).iloc[[-1]][symbol]
+            return self.trader.queue.get_symbol_interval(symbol, self.trader.interval).iloc[[-1]]
         else:
             raise Exception("Candles not available for options")
     
     def get_candle_list(self, symbol, interval=None):
         if interval == None:
-            interval = self.fetch_interval
-        return self.trader.queue.get_symbol_interval(symbol, interval)[symbol]
+            interval = self.interval
+        return self.trader.queue.get_symbol_interval(symbol, interval)
     
-    def get_returns(self, symbol) -> float:
+    def get_returns(self, symbol=None) -> float:
         """Returns the return of a specified asset. 
 
         :param symbol:  Symbol of stock, crypto, or option. Options should be in OCC format.
         :returns: Return of asset, expressed as a decimal. Returns None if asset is not owned.
         """
+        if symbol == None:
+            symbol = self.watch[0]
         cost = self.get_cost(symbol)
         price = self.get_price(symbol)
         ret = (price - cost) / cost
         return ret
+    
+    def get_max_quantity(self, symbol=None, round=True):
+        if symbol == None:
+            symbol = self.watch[0]
+        price = self.get_price(symbol)
+        power = self.get_account_buying_power()
+        if round:
+            qty = int(power/price)
+        else:
+            qty = power/price 
+        return qty
+
     
     def get_account_buying_power(self) -> float:
         return self.trader.account['buying_power']
@@ -379,7 +394,7 @@ class BaseAlgo:
         :returns: Average cost of asset. Returns None if asset is not being tracked.
         """
         if interval == None:
-            interval = self.fetch_interval
+            interval = self.interval
         return self.trader.queue.get_symbol_interval_prices(symbol, interval, ref)
     
     def get_time(self):

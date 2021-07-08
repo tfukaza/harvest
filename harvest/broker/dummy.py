@@ -19,7 +19,11 @@ class DummyBroker(base.BaseBroker):
     randomly generated prices. When used as a broker, it paper trades.
     """
 
+    interval_list = ['1MIN', '5MIN', '15MIN', '30MIN', '1DAY']
+
     def __init__(self, account_path: str=None):
+        super().__init__()
+
         self.stocks = []
         self.options = []
         self.cryptos = []
@@ -46,19 +50,16 @@ class DummyBroker(base.BaseBroker):
                 for crypto in account['cryptos']:
                     self.cryptos.append(crypto)
 
-        super().__init__()
+        
 
-    def setup_run(self, watch: List[str], interval):
-        if interval not in ['1MIN', '5MIN', '15MIN', '30MIN']:
+    def setup(self, watch: List[str], interval, trader=None, trader_main=None):
+        if interval not in self.interval_list:
             raise Exception(f'Invalid interval {interval}')
 
-        super().setup_run(watch, interval, interval)
+        super().setup(watch, interval, interval, trader, trader_main)
 
-    def run(self) -> None:
-        raise Exception("DummyBroker cannot be used as streamer")
-
-    @base.BaseBroker._handler_wrap
-    def _handler(self) -> pd.DataFrame:
+    @base.BaseBroker.main_wrap
+    def main(self) -> pd.DataFrame:
         results = None
         return results
 
