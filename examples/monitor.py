@@ -9,15 +9,14 @@ sym = 'TWTR'
 
 class Watch(algo.BaseAlgo):
 
-    def algo_init(self):
+    def setup(self):
         pass
     
-    def handler(self, meta):
+    def main(self, meta):
         print( self.get_price() )
 
 if __name__ == "__main__":
     t = trader.TestTrader( RobinhoodBroker() )
     t.add_ticker(sym)
     t.set_algo(Watch())
-    
-    t.run()
+    t.start()

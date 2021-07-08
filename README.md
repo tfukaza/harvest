@@ -16,19 +16,19 @@ from harvest.trader import Trader
 from harvest.broker.robinhood import RobinhoodBroker
 
 class Watch(BaseAlgo):
-    def handler(self, _):
+    def main(self, _):
         sma_long = self.sma(period=50)
         sma_short = self.sma(period=20)
         if self.crossover(sma_long, sma_short):
             self.buy()
-        elif self,crossover(sma_short, sma_long):
+        elif self.crossover(sma_short, sma_long):
             self.sell()
 
 if __name__ == "__main__":
     t = Trader( RobinhoodBroker() )
     t.set_symbol('TWTR')
     t.set_algo(Watch())
-    t.run()
+    t.start()
 ```
 
 Easy, right?

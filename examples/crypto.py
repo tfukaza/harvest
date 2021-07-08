@@ -15,12 +15,12 @@ N_r=3
 
 class Crypto(BaseAlgo):
     
-    def algo_init(self):
+    def setup(self):
         self.hold = False
         self.ret = 0
         self.cutoff = 0.0
     
-    def handler(self, meta):
+    def main(self, meta):
         
         # Get the current time as a datetime object
         self.timestamp = self.get_datetime()
@@ -111,5 +111,4 @@ if __name__ == "__main__":
     t = Trader( RobinhoodBroker())
     t.set_symbol(sym)
     t.set_algo(Crypto())
-    
-    t.run(interval=inter)
+    t.start(interval=inter)

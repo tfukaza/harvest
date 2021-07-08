@@ -4,10 +4,10 @@ from harvest.broker.robinhood import RobinhoodBroker
 
 class Crossover(BaseAlgo):
 
-    def algo_init(self):
+    def setup(self):
         pass
     
-    def handler(self, _):
+    def main(self, _):
         sma_short = self.sma(period=20)
         sma_long = self.sma(period=50)
         if self.crossover(sma_long, sma_short):
@@ -18,6 +18,5 @@ class Crossover(BaseAlgo):
 if __name__ == "__main__":
     t = Trader( RobinhoodBroker() )
     t.set_symbol('SPY')
-    t.set_algo(Crossover())
-    
-    t.run()
+    t.set_algo(Crossover()) 
+    t.start()
