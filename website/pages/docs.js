@@ -1,9 +1,10 @@
 import NavBar from './components/navbar.js'
 import Header from './components/header.js'
+import Footer from './components/footer.js'
 import Function from './components/func.js'
 import Link from 'next/link'
 
-import styles from '../styles/Home.module.css'
+import styles from '../styles/Home.module.scss'
 import doc from '../styles/Doc.module.css'
 import rc from '../styles/rowcrop.module.css'
 
@@ -38,9 +39,7 @@ export default function Home() {
         </section>
       </main>
 
-      <footer className={styles.footer}>
-        
-      </footer>
+      <Footer></Footer>
     </div>
   )
 }

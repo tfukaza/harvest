@@ -1,9 +1,10 @@
 import NavBar from './components/navbar.js'
 import Header from './components/header.js'
+import Footer from './components/footer.js'
 import Link from 'next/link'
 
 
-import styles from '../styles/Home.module.css'
+import styles from '../styles/Home.module.scss'
 import rc from '../styles/rowcrop.module.css'
 
 export default function Home() {
@@ -15,7 +16,7 @@ export default function Home() {
         
         <section className={styles.section} id={styles.landing}>
           <h1 className={styles.title}>
-            Algo-trading framework for <a href="https://www.merriam-webster.com/dictionary/tinker">tinkerers</a> 🛠️
+            Algo-trading framework for <a href="https://www.merriam-webster.com/dictionary/tinker">tinkerers</a>
           </h1>
           <p>
             Harvest is a simple yet robust 
@@ -58,9 +59,7 @@ export default function Home() {
         </section>
       </main>
 
-      <footer className={styles.footer}>
-        
-      </footer>
+      <Footer></Footer>
     </div>
   )
 }

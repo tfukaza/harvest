@@ -109,7 +109,7 @@ class Crypto(BaseAlgo):
        
 if __name__ == "__main__":
     t = Trader( RobinhoodBroker())
-    t.add_symbol(sym)
+    t.set_symbol(sym)
     t.set_algo(Crypto())
     
     t.start(interval=inter)

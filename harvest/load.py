@@ -55,5 +55,6 @@ class Load:
         if not os.path.exists(path):
             data = pd.DataFrame()
             data.to_pickle(path)
+            return data
         return pd.read_pickle(path)
     
