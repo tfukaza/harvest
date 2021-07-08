@@ -336,20 +336,23 @@ class BaseAlgo:
         :returns: Quantity of asset. 
         :raises Exception: If symbol is not currently owned.
         """
-
+        if symbol == None:
+            symbol = self.watch[0]
         search = self.trader.stock_positions + self.trader.crypto_positions
         for p in search:
             if p['symbol'] == symbol:
                 return p['quantity']
         raise Exception(f"{symbol} is not currently owned")
     
-    def get_cost(self, symbol) -> float:
+    def get_cost(self, symbol: str=None) -> float:
         """Returns the average cost of a specified asset. 
 
         :param str? symbol:  Symbol of asset. defaults to first symbol in watchlist
         :returns: Average cost of asset. Returns None if asset is not being tracked.
         :raises Exception: If symbol is not currently owned.
         """
+        if symbol == None:
+            symbol = self.watch[0]
         if len(symbol) <= 6:
             search = self.trader.stock_positions + self.trader.crypto_positions
             for p in search:
@@ -362,30 +365,96 @@ class BaseAlgo:
         
         raise Exception(f"{symbol} is not currently owned")
 
-    def get_price(self, symbol: str) -> float:
+    def get_price(self, symbol: str=None) -> float:
+        """Returns the current price of a specified asset. 
+
+        :param str? symbol: Symbol of asset. defaults to first symbol in watchlist
+        :returns:           Price of asset. 
+        :raises Exception:  If symbol is not in the watchlist.
+        """
+        if symbol == None:
+            symbol = self.watch[0]
         if len(symbol) <= 6:
-            return self.trader.queue.get_last_symbol_interval_price(symbol, self.fetch_interval, 'close')
+            return self.trader.queue.get_last_symbol_interval_price(symbol, self.trader.interval, 'close')
         else:
             for p in self.trader.option_positions:
                 if p['occ_symbol'] == symbol:
                     return p['current_price'] * p['multiplier']
+
+    def get_price_list(self, symbol:str=None, interval:list=None, ref:str='close'):
+        """Returns a list of recent prices for an asset. 
+
+        This function is not compatible with options. 
+
+        :param str? symbol:     Symbol of stock or crypto asset. defaults to first symbol in watchlist
+        :param str? interval:   Interval of data. defaults to the interval of the algorithm 
+        :param str? ref:        'close', 'open', 'high', or 'low'. defaults to 'close'
+        :returns: List of prices
+        """
+        if symbol == None:
+            symbol = self.watch[0]
+        if interval == None:
+            interval = self.trader.interval
+        if len(symbol) <= 6:
+            return self.trader.queue.get_symbol_interval_prices(symbol, interval, ref)
+        else:
+            raise Exception("Price list not available for options")
     
     def get_candle(self, symbol: str) -> pd.DataFrame():
+        """Returns the most recent candle as a pandas DataFrame
+
+        This function is not compatible with options. 
+
+        :param str? symbol:  Symbol of stock or crypto asset. defaults to first symbol in watchlist
+        :returns: Price of asset as a dataframe with the following columns:
+
+            - open
+            - high
+            - low
+            - close
+            - volume
+        
+        The index is a datetime object
+
+        :raises Exception: If symbol is not in the watchlist.
+        """
+        if symbol == None:
+            symbol = self.watch[0]
         if len(symbol) <= 6:
             return self.trader.queue.get_symbol_interval(symbol, self.trader.interval).iloc[[-1]]
         else:
             raise Exception("Candles not available for options")
     
-    def get_candle_list(self, symbol, interval=None):
+    def get_candle_list(self, symbol:str=None, interval=None) -> pd.DataFrame():
+        """Returns the candles of an asset as a pandas DataFrame
+
+        This function is not compatible with options. 
+
+        :param str? symbol:  Symbol of stock or crypto asset. defaults to first symbol in watchlist
+        :returns: Prices of asset as a dataframe with the following columns:
+
+            - open
+            - high
+            - low
+            - close
+            - volume
+        
+        The index is a datetime object
+        
+        :raises Exception: If symbol is not in the watchlist.
+        """
+        if symbol == None:
+            symbol = self.watch[0]
         if interval == None:
             interval = self.trader.interval
         return self.trader.queue.get_symbol_interval(symbol, interval)
     
     def get_returns(self, symbol=None) -> float:
-        """Returns the return of a specified asset. 
+        """Returns the return of a specified asset.
 
-        :param symbol:  Symbol of stock, crypto, or option. Options should be in OCC format.
-        :returns: Return of asset, expressed as a decimal. Returns None if asset is not owned.
+        :param str? symbol:  Symbol of stock, crypto, or option. Options should be in OCC format. 
+                        defaults to first symbol in watchlist
+        :returns: Return of asset, expressed as a decimal. 
         """
         if symbol == None:
             symbol = self.watch[0]
@@ -395,6 +464,13 @@ class BaseAlgo:
         return ret
     
     def get_max_quantity(self, symbol=None, round=True):
+        """Calculates the maximum quantity of an asset that can be bought given the current buying power. 
+
+        :param str? symbol:  Symbol of stock, crypto, or option. Options should be in OCC format. 
+                        defaults to first symbol in watchlist
+        :param bool? round:  If set to True, the result is returned as an integer. defaults to True 
+        :returns: Quantity that can be bought.
+        """
         if symbol == None:
             symbol = self.watch[0]
         price = self.get_price(symbol)
@@ -407,37 +483,50 @@ class BaseAlgo:
 
     
     def get_account_buying_power(self) -> float:
+        """Returns the current buying power of the user
+
+        :returns: The current buying power as a float.
+        """
         return self.trader.account['buying_power']
     
     def get_account_equity(self) -> float:
-        return self.trader.account['equity']
-            
-    
-    def get_price_list(self, symbol, interval=None, ref='close'):
-        """Returns a list of recent prices for an asset. 
+        """Returns the current equity.
 
-        :param symbol:  Symbol of asset.
-        :param interval: Interval of data.
-        :returns: Average cost of asset. Returns None if asset is not being tracked.
+        :returns: The current equity as a float.
         """
-        if interval == None:
-            interval = self.trader.interval
-        return self.trader.queue.get_symbol_interval_prices(symbol, interval, ref)
+        return self.trader.account['equity']
     
     def get_time(self):
+        """Returns the current hour and minute.
+
+        This returns the current time, which is different from the timestamp
+        on a ticker. For example, if you are running an algorithm every 5 minutes,
+        at 11:30am you will get a ticker for 11:25am. This function will return 
+        11:30am. 
+
+        :returns: The current time as a datetime object
+        """
         return self.trader.timestamp.time()
     
     def get_date(self):
+        """Returns the current date.
+
+        :returns: The current date as a datetime object
+        """
         return self.trader.timestamp.date() 
 
     def get_datetime(self):
-        # Note that all get_time functions return the 
-        # current time, not the timestamp of the data. 
+        """Returns the current date and time.
+
+        This returns the current time, which is different from the timestamp
+        on a ticker. For example, if you are running an algorithm every 5 minutes,
+        at 11:30am you will get a ticker for 11:25am. This function will return 
+        11:30am. 
+
+        :returns: The current date and time as a datetime object
+        """
         return self.trader.timestamp 
 
-    def get_watch(self) -> List[str]:
-        return self.watch
-    
     
     
 
