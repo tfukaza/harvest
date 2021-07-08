@@ -23,6 +23,8 @@ class DummyBroker(base.BaseBroker):
     randomly generated prices. When used as a broker, it paper trades.
     """
 
+    interval_list = ['1MIN', '5MIN', '15MIN', '30MIN', '1DAY']
+
     def __init__(self, account_path: str=None):
         super().__init__()
 
@@ -36,7 +38,7 @@ class DummyBroker(base.BaseBroker):
         self.buying_power = 100000.0
         self.multiplier = 1
         self.storage = BaseStorage()
-        self.queue = Queue
+        self.queue = Queue()
         self.id = 0
 
         if account_path:
@@ -56,7 +58,7 @@ class DummyBroker(base.BaseBroker):
         
 
     def setup(self, watch: List[str], interval, trader=None, trader_main=None):
-        if interval not in ['1MIN', '5MIN', '15MIN', '30MIN']:
+        if interval not in self.interval_list:
             raise Exception(f'Invalid interval {interval}')
 
         super().setup(watch, interval, interval, trader, trader_main)
@@ -66,6 +68,7 @@ class DummyBroker(base.BaseBroker):
 
         if self.broker_type in ('both', 'streamer'):
             
+            # For all the stocks/cryptos that we are watching
             for symbol in self.watch:
                 # Get the timestamp of the latest data we have
                 last = self.storage.latest_timestamp(symbol, self.fetch_interval)
@@ -76,14 +79,15 @@ class DummyBroker(base.BaseBroker):
         if self.broker_type in ('both', 'broker'):
             # Buy and sell stocks that are in the queue
             # iterate through buy / sell queue and apply each
-            pass
-
-        return df_dict
-        # df_dict = {}
-        # df_dict.update(self.fetch_latest_stock_price())
-        # df_dict.update(self.fetch_latest_crypto_price())
-      
-        # return df_dict
+            while not self.queue.empty():
+                order = self.queue.get()
+                side = order.pop('side', None)
+                if side == 'buy':
+                    self.buy(**order)
+                elif side == 'self':
+                    self.sell(**order)
+                else:
+                    raise Exception('Invalid side option given.')
 
     def has_interval(self, interval: str):
         return True

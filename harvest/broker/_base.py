@@ -35,7 +35,7 @@ class BaseBroker:
     """
     
     def __init__(self, path: str=None):
-        """Here, the broker should perform any authentications neccesary to 
+        """Here, the broker should perform any authentications necessary to 
         connect to the brokerage it is using.
 
         There are three broker types, 'streamer', 'broker', and 'both'. A 
@@ -53,7 +53,7 @@ class BaseBroker:
     
     def setup(self, watch: List[str], interval: str, fetch_interval: str, trader=None, trader_main=None) -> None:
         """This function is called right before the algorithm begins.
-        It should perform any configurations neccesary to start running.
+        It should perform any configurations necessary to start running.
 
         :watch: List of stocks/cryptos to watch. Cryptos are prepended with a '@'
             to distinguish them from stocks
@@ -68,8 +68,8 @@ class BaseBroker:
             keep track of. Cryptos are prepended with a '@' to distinguish them from stocks.
         :interval: A string specifying the interval to run the algorithm.
         :fetch_interval: A string specifying the interval to collect data. This is needed
-            because some brokers like Alpaca Market allow data streaming. Usualluy data streaming 
-            streams data every minute, so even if the algorithm is designed to run at a lower frequncy 
+            because some brokers like Alpaca Market allow data streaming. Usually data streaming 
+            streams data every minute, so even if the algorithm is designed to run at a lower frequency 
             (like once every 30MIN), under the hood Harvest needs to process data every minute.
         :trader: A reference to the parent Trader class
         :handler: A reference to a method in the Trader class that invokes 
@@ -105,7 +105,7 @@ class BaseBroker:
         """This function should be called at the specified interval, and return data.
         For brokers that use streaming, this often means specifying this function as a callback.
         For brokers that use polling, this often means calling whatever endpoint is needed to 
-        obtain stock/crpto data, at the specified interval.
+        obtain stock/crypto data, at the specified interval.
 
         :returns: A dictionary where each key is the symbol for an asset, and the value is the
             corresponding data in the following pandas dataframe format:
@@ -155,7 +155,7 @@ class BaseBroker:
                 except Exception as e:
                     debug(f"Error: {e}")
                     debug("Logging out and back in...")
-                    self.refresh_cred()
+                    args[0].refresh_cred()
                     tries = tries - 1 
                     debug("Retrying...")
                     continue

@@ -49,6 +49,8 @@ class TestTrader(trader.Trader):
 
         self.order_queue = []       # Queue of unfilled orders 
 
+        self.load = load.Load()
+
     def read_price_history(self, interval: str, path: str, date_format: str='%Y-%m-%d %H:%M:%S'):
         """Function to read backtesting data from a local file. 
 
@@ -80,12 +82,32 @@ class TestTrader(trader.Trader):
                 self.queue.set_symbol_interval(sym, i, df_tmp)
                 self.queue.set_symbol_interval_update(sym, i, last)
 
-    def setup(interval: str='5MIN', aggregations: List[Any]=[]):
+    def load_price_history(self, interval):
+        """Function to read backtesting data from a local file. 
+
+        :interval: The interval of the data
+        :path: Path to the local data file
+        :date_format: The format of the data's timestamps
+        TODO: Possibly allow interday data to be specified. 
+        """
+        last = dt.datetime(1970, 1, 1)
+        for sym in self.watch:
+            self.queue.init_symbol(sym, interval)
+            df = self.load.get_entry(sym, interval)
+            self.queue.set_symbol_interval(sym, interval, df)
+            self.queue.set_symbol_interval_update(sym, interval, last)
+
+            for i in self.aggregations:
+                df_tmp = self.aggregate_df(df, i)
+                self.queue.set_symbol_interval(sym, i, df_tmp)
+                self.queue.set_symbol_interval_update(sym, i, last)
+            
+    def setup(self, interval, aggregations, source, path):
         self.interval = interval
         self.aggregations = aggregations
 
-        self.streamer.setup(self.main, self, self.watch, interval)
-        self.broker.setup(self.main, self, self.watch, interval)
+        self.broker.setup(self.watch, interval, self, self.main)
+        self.streamer.setup(self.watch, interval, self, self.main)
 
         self.fetch_interval = interval
         self._setup_account()
@@ -95,8 +117,10 @@ class TestTrader(trader.Trader):
         # TODO cache data
         if source == "FETCH":
             self._queue_init(interval)
-        else:
+        elif source == "CSV":
             self.read_price_history(interval, path)
+        elif source == "LOCAL":
+            self.load_price_history(interval)
         
         conv = {
             "1MIN": 1,
@@ -147,18 +171,16 @@ class TestTrader(trader.Trader):
             be used to download latest data. 
         """
 
-        self.setup(interval, aggregations)
+        self.setup(interval, aggregations, source, path)
 
         self.algo.setup()
         self.algo.trader = self
         self.algo.watch = self.watch
         self.algo.fetch_interval = self.fetch_interval
 
-        self.main()
+        self.main(interval)
 
-        
-
-    def main():
+    def main(self, interval):
         info("Running test...")
 
         # import cProfile

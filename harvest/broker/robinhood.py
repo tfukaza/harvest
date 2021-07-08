@@ -23,7 +23,7 @@ import harvest.broker._base as base
 
 class RobinhoodBroker(base.BaseBroker):
 
-    interval_list = ['1MIN', '5MIN', '15MIN', '30MIN']
+    interval_list = ['1MIN', '5MIN', '15MIN', '30MIN', '1DAY']
 
     def __init__(self, path=None):
         super().__init__()
@@ -60,7 +60,6 @@ class RobinhoodBroker(base.BaseBroker):
                     store_session=True, 
                     mfa_code=totp)
         debug("Logged into Robinhood...")
-    
     
     def _create_secret(self, path):
 
@@ -215,8 +214,7 @@ class RobinhoodBroker(base.BaseBroker):
         last: dt.datetime, 
         today: dt.datetime, 
         interval: str='1MIN',
-        symbol: str = None,
-        count: int = 200):
+        symbol: str = None):
 
         df = pd.DataFrame()
 
@@ -273,7 +271,7 @@ class RobinhoodBroker(base.BaseBroker):
         
         df = pd.DataFrame.from_dict(ret)
         df = self._format_df(df, [symbol], interval, False)
-        return df.iloc[-count:]
+        return df
 
     @base.BaseBroker._exception_handler
     def fetch_latest_stock_price(self):
