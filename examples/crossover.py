@@ -1,6 +1,7 @@
 from harvest.algo import BaseAlgo
 from harvest.trader import Trader
 from harvest.broker.robinhood import RobinhoodBroker
+from harvest.broker.dummy import DummyBroker
 
 class Crossover(BaseAlgo):
     
@@ -15,7 +16,7 @@ class Crossover(BaseAlgo):
             self.sell(quantity=1)
 
 if __name__ == "__main__":
-    t = Trader( RobinhoodBroker() )
+    t = Trader( RobinhoodBroker(), DummyBroker() ) # This enables paper trading
     t.set_symbol('SPY')
     t.set_algo(Crossover())
     
