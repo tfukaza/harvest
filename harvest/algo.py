@@ -297,6 +297,11 @@ class BaseAlgo:
 
         t, m, b = TA.BBANDS(ohlc, period=period, std_multiplier=dev, MA=TA.SMA(ohlc, period)).T.to_numpy()
         return t, m, b
+    
+    def crossover(self, prices_0, prices_1):
+        if len(prices_0) < 2 or len(prices_1) < 2:
+            raise Exception('There must be at least 2 datapoints to calculate crossover')
+        return prices_0[-2] < prices_1[-2] and prices_0[-1] > prices_1[-1]
 
     ############### Getters for Trader properties #################
 
