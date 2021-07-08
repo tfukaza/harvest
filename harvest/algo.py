@@ -41,8 +41,8 @@ class BaseAlgo:
         When called, Harvests places a limit order with a limit
         price 5% higher than the current price. 
 
-        :param str? symbol:    Symbol of the asset to buy. defaults to first symbol in watch
-        :param float? quantity:  Quantity of asset to buy. defaults to 1
+        :param str? symbol:    Symbol of the asset to buy. defaults to first symbol in watchlist
+        :param float? quantity:  Quantity of asset to buy. defaults to buys as many as possible
         :param str? in_force:  Duration the order is in force. '{gtc}' or '{gtd}'. defaults to 'gtc'
         :param str? extended:  Whether to trade in extended hours or not. defaults to False 
         :returns: The following Python dictionary
@@ -63,10 +63,10 @@ class BaseAlgo:
     def sell(self, symbol: str=None, quantity: int=None, in_force: str='gtc', extended: bool=False):
         """Sells the specified asset.
 
-        :param str? symbol:    Symbol of the asset to sell
-        :param float? quantity:  Quantity of asset to sell
-        :param str? in_force:  Duration the order is in force
-        :param str? extended:  Whether to trade in extended hours or not. 
+        :param str? symbol:    Symbol of the asset to sell. defaults to first symbol in watchlist
+        :param float? quantity:  Quantity of asset to sell defaults to sells all
+        :param str? in_force:  Duration the order is in force. '{gtc}' or '{gtd}'. defaults to 'gtc'
+        :param str? extended:  Whether to trade in extended hours or not. defaults to False 
         :returns: A dictionary with the following keys:
 
             - type: str, 'STOCK' or 'CRYPTO'
@@ -84,10 +84,10 @@ class BaseAlgo:
     def await_buy(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
         """Buys the specified asset, and hangs the code until the order is filled. 
 
-        :param str? symbol:    Symbol of the asset to buy
-        :param float? quantity:  Quantity of asset to buy
-        :param str? in_force:  Duration the order is in force
-        :param str? extended:  Whether to trade in extended hours or not. 
+        :param str? symbol:    Symbol of the asset to buy. defaults to first symbol in watchlist
+        :param float? quantity:  Quantity of asset to buy. defaults to buys as many as possible
+        :param str? in_force:  Duration the order is in force. '{gtc}' or '{gtd}'. defaults to 'gtc'
+        :param str? extended:  Whether to trade in extended hours or not. defaults to False 
         :returns: A dictionary with the following keys:
 
             - type: 'STOCK' or 'CRYPTO'
@@ -105,10 +105,10 @@ class BaseAlgo:
     def await_sell(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
         """Sells the specified asset, and hangs the code until the order is filled. 
 
-        :param str? symbol:    Symbol of the asset to buy
-        :param float? quantity:  Quantity of asset to buy
-        :param str? in_force:  Duration the order is in force
-        :param str? extended:  Whether to trade in extended hours or not. 
+        :param str? symbol:    Symbol of the asset to sell. defaults to first symbol in watchlist
+        :param float? quantity:  Quantity of asset to sell defaults to sells all
+        :param str? in_force:  Duration the order is in force. '{gtc}' or '{gtd}'. defaults to 'gtc'
+        :param str? extended:  Whether to trade in extended hours or not. defaults to False 
         :returns: A dictionary with the following keys:
 
             - type: 'STOCK' or 'CRYPTO'
@@ -126,9 +126,9 @@ class BaseAlgo:
     def buy_option(self, symbol: str, quantity: int=None, in_force: str='gtc'):
         """Buys the specified option.
         
-        :param str? symbol:    Symbol of the asset to buy, in OCC format. 
-        :param float? quantity:  Quantity of asset to buy
-        :param str? in_force:  Duration the order is in force
+        :param str symbol:    Symbol of the asset to buy, in OCC format. 
+        :param float? quantity:  Quantity of asset to buy. defaults to buys as many as possible
+        :param str? in_force:  Duration the order is in force. '{gtc}' or '{gtd}'. defaults to 'gtc'
         :returns: A dictionary with the following keys:
 
             - type: 'OPTION'
@@ -144,9 +144,9 @@ class BaseAlgo:
     def sell_option(self, symbol: str, quantity: int=None, in_force: str='gtc'):
         """Sells the specified option.
         
-        :param str? symbol:    Symbol of the asset to buy, in OCC format. 
-        :param float? quantity:  Quantity of asset to buy
-        :param str? in_force:  Duration the order is in force
+        :param str? symbol:    Symbol of the asset to sell, in OCC format. 
+        :param float? quantity:  Quantity of asset to sell. defaults to sells all
+        :param str? in_force:  Duration the order is in force. '{gtc}' or '{gtd}'. defaults to 'gtc'
         :returns: A dictionary with the following keys:
 
             - type: 'OPTION'
@@ -161,40 +161,49 @@ class BaseAlgo:
     
     ########### Functions to trade options #################
 
-    def get_chain_info(self, symbol: str):
-        """Returns information about the symbol's options
+    def get_chain_info(self, symbol: str=None):
+        """Returns metadata about a stock's option chain
         
-        :param symbol: symbol of stock
+        :param str? symbol: symbol of stock. defaults to first symbol in watchlist
         :returns: A dict with the following keys:
             - id: ID of the option chain 
             - exp_dates: List of expiration dates, in the fomrat "YYYY-MM-DD" 
             - multiplier: Multiplier of the option, usually 100 
         """ 
+        if symbol == None:
+            symbol = self.watch[0]
         return self.trader.fetch_chain_info(symbol)
     
     def get_chain_data(self, symbol: str):
         """Returns the option chain for the specified symbol. 
         
-        :param symbol: symbol of stock
-        :returns: A dataframe in the following format:
+        :param str? symbol: symbol of stock
+        :returns: A dataframe with the follwing columns:
 
-                    exp_date strike  type    id
-            OCC
-            ---     ---      ---     ---     ---     
-        - OCC: the chain symbol in OCC format
+            - exp_date(datetime.datetime): The expiration date
+            - strike(float): Strike price
+            - type(str): 'call' or 'put'
+            - id(str): The unique ID of the option  
+        
+        The index is the {OCC} symbol of the option. 
         """ 
+        if symbol == None:
+            symbol = self.watch[0]
         return self.trader.fetch_chain_data(symbol)
     
     def get_option_market_data(self, symbol: str):
         """Retrieves data of specified option. 
 
-        :param symbol: Occ symbol of option
+        :param str? symbol: OCC symbol of option
         :returns: A dictionary:
+
             - price: price of option 
             - ask: ask price
             - bid: bid price
-            }
+        
         """ 
+        if symbol == None:
+            symbol = self.watch[0]
         return self.trader.fetch_option_market_data(symbol)
     
     ########## Technical Indicators ###############
@@ -213,16 +222,17 @@ class BaseAlgo:
             if prices == None:
                 prices = self.trader.queue.get_symbol_interval_prices(symbol, interval, ref)
            
-        
         return symbol, interval, ref, prices
 
     def rsi(self, symbol: str=None, period: int=14, interval: str=None, ref: str='close', prices=None) -> np.array:
         """Calculate RSI
 
-        :param symbol:    Symbol to perform calculation on 
-        :param period:    Period of RSI
-        :param interval:  Interval to perform the calculation
-        :param ref:       'close', 'open', 'high', or 'low'
+        :param str? symbol:     Symbol to perform calculation on. defaults to first symbol in watchlist
+        :param int? period:     Period of RSI. defaults to 14
+        :param str? interval:   Interval to perform the calculation. defaults to interval of algorithm
+        :param str? ref:        'close', 'open', 'high', or 'low'. defaults to 'close'
+        :param list? prices:    When specified, this function will use the values provided in the 
+                                list to perform calculations and ignore other parameters. defaults to None
         :returns: A list in numpy format, containing RSI values
         """
         symbol, interval, ref, prices = self.default_param(symbol, interval, ref, prices)
@@ -239,10 +249,12 @@ class BaseAlgo:
     def sma(self, symbol: str=None, period: int=14, interval: str='5MIN', ref: str='close', prices=None) -> np.array:
         """Calculate SMA
 
-        :param symbol:    Symbol to perform calculation on 
-        :param period:    Period of SMA
-        :param interval:  Interval to perform the calculation
-        :param ref:       'close', 'open', 'high', or 'low'
+        :param str? symbol:    Symbol to perform calculation on. defaults to first symbol in watchlist
+        :param int? period:    Period of SMA. defaults to 14
+        :param str? interval:  Interval to perform the calculation. defaults to interval of algorithm
+        :param str? ref:       'close', 'open', 'high', or 'low'. defaults to 'close'
+        :param list? prices:    When specified, this function will use the values provided in the 
+                                list to perform calculations and ignore other parameters. defaults to None
         :returns: A list in numpy format, containing SMA values
         """
         symbol, interval, ref, prices = self.default_param(symbol, interval, ref, prices)
@@ -259,10 +271,12 @@ class BaseAlgo:
     def ema(self, symbol: str=None, period: int=14, interval: str='5MIN', ref: str='close', prices=None) -> np.array:
         """Calculate EMA
 
-        :param symbol:    Symbol to perform calculation on 
-        :param period:    Period of EMA
-        :param interval:  Interval to perform the calculation
-        :param ref:       'close', 'open', 'high', or 'low'
+        :param str? symbol:    Symbol to perform calculation on. defaults to first symbol in watchlist
+        :param int? period:    Period of EMA. defaults to 14
+        :param str? interval:  Interval to perform the calculation. defaults to interval of algorithm
+        :param str? ref:       'close', 'open', 'high', or 'low'. defaults to 'close'
+        :param list? prices:    When specified, this function will use the values provided in the 
+                                list to perform calculations and ignore other parameters. defaults to None
         :returns: A list in numpy format, containing EMA values
         """
         symbol, interval, ref, prices = self.default_param(symbol, interval, ref, prices)
@@ -279,11 +293,13 @@ class BaseAlgo:
     def bbands(self, symbol: str=None, period: int=14, interval: str='5MIN', ref: str='close', dev: float=1.0, prices=None) -> Tuple[np.array, np.array, np.array]:
         """Calculate Bollinger Bands
 
-        :param symbol:    Symbol to perform calculation on 
-        :param period:    Period of BBand
-        :param interval:  Interval to perform the calculation
-        :param ref:       'close', 'open', 'high', or 'low'
-        :param dev:       Standard deviation of the bands
+        :param str? symbol:    Symbol to perform calculation on. defaults to first symbol in watchlist
+        :param int? period:    Period of BBands. defaults to 14
+        :param str? interval:  Interval to perform the calculation. defaults to interval of algorithm
+        :param str? ref:       'close', 'open', 'high', or 'low'. defaults to 'close'
+        :param float? dev:         Standard deviation of the bands. defaults to 1.0
+        :param list? prices:    When specified, this function will use the values provided in the 
+                                list to perform calculations and ignore other parameters. defaults to None
         :returns: A tuple of numpy lists, each a list of BBand top, average, and bottom values
         """
         symbol, interval, ref, prices = self.default_param(symbol, interval, ref, prices)
@@ -299,41 +315,52 @@ class BaseAlgo:
         return t, m, b
     
     def crossover(self, prices_0, prices_1):
+        """Performs {crossover analysis} on two sets of price data
+
+        :param list prices_0:  First set of price data.
+        :param list prices_1:  Second set of price data
+        :returns: 'True' if prices_0 most recently crossed over prices_1, 'False' otherwise
+
+        :raises Exception: If either or both price list has less than 2 values
+        """
         if len(prices_0) < 2 or len(prices_1) < 2:
             raise Exception('There must be at least 2 datapoints to calculate crossover')
         return prices_0[-2] < prices_1[-2] and prices_0[-1] > prices_1[-1]
 
     ############### Getters for Trader properties #################
 
-    def get_quantity(self, symbol: str) -> float:
+    def get_quantity(self, symbol: str=None) -> float:
         """Returns the quantity owned of a specified asset. 
 
-        :param symbol:  Symbol of asset
-        :returns: Quantity of asset. 0 if asset is not owned. 
+        :param str? symbol:  Symbol of asset. defaults to first symbol in watchlist
+        :returns: Quantity of asset. 
+        :raises Exception: If symbol is not currently owned.
         """
+
         search = self.trader.stock_positions + self.trader.crypto_positions
-        if not any([p['symbol'] == symbol for p in search]):
-            return None
         for p in search:
             if p['symbol'] == symbol:
                 return p['quantity']
+        raise Exception(f"{symbol} is not currently owned")
     
     def get_cost(self, symbol) -> float:
         """Returns the average cost of a specified asset. 
 
-        :param symbol:  Symbol of asset
+        :param str? symbol:  Symbol of asset. defaults to first symbol in watchlist
         :returns: Average cost of asset. Returns None if asset is not being tracked.
+        :raises Exception: If symbol is not currently owned.
         """
         if len(symbol) <= 6:
             search = self.trader.stock_positions + self.trader.crypto_positions
             for p in search:
                 if p['symbol'] == symbol:
                     return p['avg_price']
-            return None
         else:
             for p in self.trader.option_positions:
                 if p['occ_symbol'] == symbol:
                     return p['avg_price']
+        
+        raise Exception(f"{symbol} is not currently owned")
 
     def get_price(self, symbol: str) -> float:
         if len(symbol) <= 6:
