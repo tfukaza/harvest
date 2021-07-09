@@ -1,6 +1,6 @@
 ![Header](docs/banner.png)
 
-![tests](https://github.com/tfukaza/harvest/actions/workflows/run-tests.yml/badge.svg)
+![run tests](https://github.com/tfukaza/harvest/actions/workflows/run-tests.yml/badge.svg)
 ![website](https://github.com/tfukaza/harvest/actions/workflows/build-website.yml/badge.svg)
 
 
