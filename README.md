@@ -1,5 +1,10 @@
 ![Header](docs/banner.png)
 
+![run tests](https://github.com/tfukaza/harvest/actions/workflows/run-tests.yml/badge.svg)
+![website](https://github.com/tfukaza/harvest/actions/workflows/build-website.yml/badge.svg)
+
+
+
 **⚠️WARNING⚠️**
 Harvest is currently at **v0.0**, meaning the code is generally unstable. Use with caution. 
 - Found a bug? We'll love it if you can take your time to [file a bug report](https://github.com/tfukaza/harvest/issues/new?assignees=&labels=bug&template=bug_report.md&title=%5B%F0%9F%AA%B0BUG%5D), so we can start fixing it. 
