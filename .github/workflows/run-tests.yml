@@ -20,14 +20,26 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         python setup.py install
-    - name: Test with unittest
+
+    - name: Run tests
       run: |
-        python -m unittest discover -s test
+        pip install coverage
+        coverage run --source harvest -m unittest discover -s test
+
+    - name: Upload to CodeCov
+      uses: codecov/codecov-action@v1
+      with:
+        flags: unittests
+        name: harvest-code-coverage
+        fail_ci_if_error: true
+        verbose: true

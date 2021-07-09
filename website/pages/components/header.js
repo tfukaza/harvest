@@ -11,7 +11,7 @@ export default function Header({c, title}) {
             <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
             <meta property="og:title" content={title}/>
             <meta property="og:type" content="website"/>
-            <meta property="og:image" content={base + '/wordmark.svg'}/>
+            <meta property="og:image" content="https://tfukaza.github.io/harvest/logo.png"/>
             <link rel="icon" href="/favicon.ico" />
         </Head>
     )

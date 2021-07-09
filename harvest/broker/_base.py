@@ -114,12 +114,7 @@ class BaseBroker:
         def wrapper(*args, **kwargs):
             self = args[0]
             df = func(*args, **kwargs) 
-
-            now = time.mktime(time.gmtime())
-            now = dt.datetime.fromtimestamp(now)
-            now = now.replace(second=0, microsecond=0)
-            now = pytz.utc.localize(now)
-
+            now = dt.datetime.utcnow()
             self.trader.loop.run_until_complete(self.trader_main(df, now))
 
         return wrapper
