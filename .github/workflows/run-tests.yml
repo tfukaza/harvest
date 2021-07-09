@@ -31,9 +31,10 @@ jobs:
         python -m pip install --upgrade pip
         python setup.py install
 
-    - name: Generate Report
+    - name: Run tests
       run: |
-        python -m unittest discover -s test
+        pip install coverage
+        coverage run --source harvest -m unittest discover -s test
 
     - name: Upload to CodeCov
       uses: codecov/codecov-action@v1
