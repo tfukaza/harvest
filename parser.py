@@ -38,7 +38,6 @@ functions = [
     a.get_quantity,
     a.get_returns,
     a.get_time,
-    a.get_watch,
     
 ]
 

@@ -67,7 +67,7 @@ class Trader:
 
         self.block_lock = threading.Lock() # Lock for streams that recieve data asynchronously
 
-        self.algo = None
+        self.algo = []
         self.load = load.Load()
         self.is_save = True
 
@@ -118,9 +118,9 @@ class Trader:
             self.aggregations.append(interval)
         debug(f"Aggregations: {self.aggregations}")
 
-        if self.algo == None:
-            print(f"No algo specified. Using BaseAlgo")
-            self.algo = BaseAlgo()
+        if len(self.algo) == 0:
+            print(f"No algorithm specified. Using BaseAlgo")
+            self.algo = [BaseAlgo()]
 
 
 
@@ -142,11 +142,11 @@ class Trader:
         self.broker.setup(self.watch, interval, self, self.main)
         self.streamer.setup(self.watch, interval, self, self.main)
         self.setup(load_watch, interval, aggregations)
-        self.algo.setup()
-
-        self.algo.trader = self
-        self.algo.watch = self.watch
-        self.algo.fetch_interval = self.fetch_interval
+        for a in self.algo:
+            a.setup()
+            a.trader = self
+            a.watch = self.watch
+            a.fetch_interval = self.fetch_interval
 
         self._queue_init(self.fetch_interval) 
 
@@ -275,7 +275,8 @@ class Trader:
             'new_day':new_day
         }
 
-        self.algo.main(meta)
+        for a in self.algo:
+            a.main(meta)
         self.broker.exit()
         self.streamer.exit()
 
@@ -554,7 +555,10 @@ class Trader:
         return ret
     
     def set_algo(self, algo):
-        self.algo = algo
+        if isinstance(algo, list):
+            self.algo = algo
+        else:
+            self.algo = [algo]
     
     def set_symbol(self, symbol):
         if isinstance(symbol, list):

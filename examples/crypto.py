@@ -100,4 +100,4 @@ if __name__ == "__main__":
     t.set_symbol('@DOGE')   # Cryptocurrencies are prepended with an '@'
     t.set_algo(Crypto())
     
-    t.run(interval='30MIN') # Run the algorithm once every 30 minutes
+    t.start(interval='30MIN') # Run the algorithm once every 30 minutes

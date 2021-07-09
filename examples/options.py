@@ -57,4 +57,4 @@ if __name__ == "__main__":
     t.set_symbol('TWTR')
     t.set_algo(Option())
     
-    t.run(interval='5MIN')
+    t.start(interval='5MIN')

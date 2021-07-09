@@ -2,6 +2,9 @@
 
 **⚠️WARNING⚠️**
 Harvest is currently at **v0.0**, meaning the code is generally unstable. Use with caution. 
+- Found a bug? We'll love it if you can take your time to [file a bug report](https://github.com/tfukaza/harvest/issues/new?assignees=&labels=bug&template=bug_report.md&title=%5B%F0%9F%AA%B0BUG%5D), so we can start fixing it. 
+- Have ideas to improve or add a feature? [Submit a feature suggestion](https://github.com/tfukaza/harvest/issues/new?assignees=&labels=enhancement%2C+question&template=feature-request.md&title=%5B%F0%9F%92%A1Feature+Request%5D)!
+- Can't find the info you need? [Request documentation](https://github.com/tfukaza/harvest/issues/new?assignees=&labels=documentation&template=documentation.md&title=%5B%F0%9F%93%9DDocumentation%5D)
 
 ## What is Harvest?
 Harvest is a Python framework for algorithmic trading that packs a lot of punch:
@@ -31,7 +34,7 @@ if __name__ == "__main__":
     t = Trader( RobinhoodBroker() )
     t.set_symbol('TWTR')
     t.set_algo(Watch())
-    t.run()
+    t.start()
 ```
 
 Easy, right?
