@@ -41,7 +41,7 @@ class TestTrader(trader.Trader):
 
         self.load = load.Load()
 
-    def read_price_history(self, interval: str, path: str, date_format: str='%Y-%m-%d %H:%M:%S'):
+    def read_price_history(self, path: str, date_format: str='%Y-%m-%d %H:%M:%S'):
         """Function to read backtesting data from a local file. 
 
         :interval: The interval of the data
@@ -51,7 +51,7 @@ class TestTrader(trader.Trader):
         """
         last = dt.datetime(1970, 1, 1)
         for sym in self.watch:
-            self.queue.init_symbol(sym, interval)
+            self.queue.init_symbol(sym, self.interval)
             
             df = pd.read_csv(f"{path}/{sym}.csv")
             df = df.set_index(['timestamp'])
@@ -63,16 +63,16 @@ class TestTrader(trader.Trader):
             df = df.sort_index()
             df.columns = pd.MultiIndex.from_product([[sym], df.columns])
          
-            self.queue.set_symbol_interval(sym, interval, df)
-            self.queue.set_symbol_interval_update(sym, interval, last)
+            self.queue.set_symbol_interval(sym, self.interval, df)
+            self.queue.set_symbol_interval_update(sym, self.interval, last)
 
-            df = self.queue.get_symbol_interval(sym, interval)
+            df = self.queue.get_symbol_interval(sym, self.interval)
             for i in self.aggregations:
                 df_tmp = self.aggregate_df(df, i)
                 self.queue.set_symbol_interval(sym, i, df_tmp)
                 self.queue.set_symbol_interval_update(sym, i, last)
 
-    def load_price_history(self, interval):
+    def load_price_history(self):
         """Function to read backtesting data from a local file. 
 
         :interval: The interval of the data
@@ -81,20 +81,17 @@ class TestTrader(trader.Trader):
         TODO: Possibly allow interday data to be specified. 
         """
         last = pytz.utc.localize(dt.datetime(1970, 1, 1))
+        today = pytz.utc.localize(dt.datetime.utcnow().replace(microsecond=0, second=0))  # Current timestamp in UTC
         for sym in self.watch:
-            self.queue.init_symbol(sym, interval)
-            df = self.load.get_entry(sym, interval)
-            if df.empty:
-                warning(f"Local data for {sym}, {interval} not found. Running FETCH")
-                self._queue_init(interval)
-                return
-            self.queue.set_symbol_interval(sym, interval, df)
-            self.queue.set_symbol_interval_update(sym, interval, last)
-
-            for i in self.aggregations:
-                df_tmp = self.aggregate_df(df, i)
-                self.queue.set_symbol_interval(sym, i, df_tmp)
-                self.queue.set_symbol_interval_update(sym, i, last)
+            for i in [self.interval] + self.aggregations:
+                if i == self.interval:
+                    self.queue.init_symbol(sym, self.interval)
+                df = self.load.get_entry(sym, self.interval)
+                if df.empty:
+                    warning(f"Local data for {sym}, {self.interval} not found. Running FETCH")
+                    self.streamer.fetch_price_history(last, today, i, sym)
+                self.queue.set_symbol_interval(sym, self.interval, df)
+                self.queue.set_symbol_interval_update(sym, self.interval, last)
             
     def setup(self, source, interval, aggregations=None, path=None):
         self.interval = interval
@@ -108,14 +105,12 @@ class TestTrader(trader.Trader):
         self.df = {}
 
         # Load data into queue
-        # TODO: cache data
-        # TODO: Check if aggregated data is already provided
         if source == "FETCH":
             self._queue_init(interval)
         elif source == "CSV":
-            self.read_price_history(interval, path)
+            self.read_price_history(path)
         elif source == "LOCAL":
-            self.load_price_history(interval)
+            self.load_price_history()
         
         conv = {
             "1MIN": 1,
@@ -126,6 +121,7 @@ class TestTrader(trader.Trader):
             "1DAY": 1440
         }
 
+        # Generate the "simulated aggregation" data
         for sym in self.watch:
             df = self.queue.get_symbol_interval(sym, interval)
             rows = len(df.index)
@@ -138,17 +134,24 @@ class TestTrader(trader.Trader):
                     df_tmp = df.iloc[0:i+1]                    
                     df_tmp = df_tmp.iloc[-points:] 
                     agg_df = self.aggregate_df(df_tmp, agg)
-                    # Save the aggregated data into a new queue
+                    # Save the data into a new queue
                     self.queue.append_symbol_interval(sym, '-'+agg, agg_df.iloc[[-1]])
-   
         print("Formatting complete")
-        # Move all data to a cached dataframe,
+
+        # Save the current state of the queue
+        for s in self.watch:
+            self.load.append_entry(s, self.interval, self.queue.get_symbol_interval(s, self.interval))
+            for i in self.aggregations:
+                self.load.append_entry(s, '-'+i, self.queue.get_symbol_interval(s, '-'+i))
+                self.load.append_entry(s, i, self.queue.get_symbol_interval(s, i))
+
+        # Move all data to a cached dataframe
         for i in [self.interval] + self.aggregations:
             i = i if i == self.interval else '-'+i
             self.df[i] = {}
             for s in self.watch:
-                df_tmp = self.queue.get_symbol_interval(s, i)
-                self.df[i][s] = df_tmp.copy() 
+                df = self.queue.get_symbol_interval(s, i)
+                self.df[i][s] = df.copy() 
         
         # Trim data so start and end dates match between assets and intervals
         # data_start = pytz.utc.localize(dt.datetime(1970, 1, 1))
@@ -166,25 +169,12 @@ class TestTrader(trader.Trader):
         #     for s in self.watch:
         #         self.df[i][s] = self.df[i][s].loc[data_start:data_end]
 
+        # Reset them 
         for i in [self.interval] + self.aggregations:
             for s in self.watch:
-                if i != self.interval:
-                    self.load.append_entry(s, '-'+i, self.df['-'+i][s])
-                else:
-                    self.load.append_entry(s, i, self.df[i][s])
-                self.queue.init_symbol(s, i) 
-
-        # Save all queues, and reset them 
-        for i in [self.interval] + self.aggregations:
-            for s in self.watch:
-                if i != self.interval:
-                    self.load.append_entry(s, '-'+i, self.df['-'+i][s])
-                else:
-                    self.load.append_entry(s, i, self.df[i][s])
                 self.queue.init_symbol(s, i) 
             
         self.load_watch = True
-        
 
     def start(self, interval: str='5MIN', aggregations: List[Any]=[], source: str='LOCAL', path: str="./data"):
         """Runs backtesting. 
@@ -223,7 +213,7 @@ class TestTrader(trader.Trader):
                 self.queue.append_symbol_interval(s, interval, df)
                 # Add data to aggregation queue
                 for agg in self.aggregations:
-                    # Replace the last datapoint
+                    # Update the last datapoint
                     df = self.df['-'+agg][s].iloc[[i]]
                     self.queue.append_symbol_interval(s, agg, df, True)
         

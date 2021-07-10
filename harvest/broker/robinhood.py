@@ -213,23 +213,26 @@ class RobinhoodBroker(base.BaseBroker):
 
         if last >= today:
             return df
+
+        get_interval_fmt = ''
         
         if interval == '15SEC': # Not used
             if not symbol[0] == '@':
                 raise Exception('15SEC interval is only allowed for crypto')
-            inter = '15second'
+            get_interval_fmt = '15second'
         elif interval == '1MIN':
             if not symbol[0] == '@':
                 raise Exception('MIN interval is only allowed for crypto')
-            inter = '15second'
+            get_interval_fmt = '15second'
         elif interval == '5MIN':
-            inter = '5minute'
+            get_interval_fmt = '5minute'
         elif interval == '15MIN':
-            inter = '5minute'
+            get_interval_fmt = '5minute'
         elif interval == '30MIN':
-            inter = '5minute'
+            get_interval_fmt = '5minute'
         elif interval == '1DAY': 
-            inter = 'day'
+            get_interval_fmt = 'day'
+           
         else:
             return df
         
@@ -252,18 +255,17 @@ class RobinhoodBroker(base.BaseBroker):
         if symbol[0] == '@':
             ret = rh.get_crypto_historicals(
                 symbol[1:], 
-                interval=inter, 
-                span=span
-                )
+                interval=get_interval_fmt, 
+                span=span)
         else:
             ret = rh.get_stock_historicals(
                 symbol, 
-                interval=inter, 
-                span=span
-                )
+                interval=get_interval_fmt, 
+                span=span)
         
         df = pd.DataFrame.from_dict(ret)
-        df = self._format_df(df, [symbol], interval, False)
+        df = self._format_df(df, [symbol], interval)
+        df = self.aggregate_df(df, interval)
         return df
 
     @base.BaseBroker._exception_handler
@@ -278,7 +280,7 @@ class RobinhoodBroker(base.BaseBroker):
             if 'error' in ret or ret == None or (type(ret) == list and len(ret) == 0):
                 continue
             df_tmp = pd.DataFrame.from_dict(ret)
-            df_tmp = self._format_df(df_tmp, [s], self.interval, True)
+            df_tmp = self._format_df(df_tmp, [s], self.interval).iloc[[-1]]
             df[s] = df_tmp
         
         return df        
@@ -293,11 +295,10 @@ class RobinhoodBroker(base.BaseBroker):
                 span='hour',
                 )
             df_tmp = pd.DataFrame.from_dict(ret)
-            df_tmp = self._format_df(df_tmp, ['@'+s], self.interval, True)
+            df_tmp = self._format_df(df_tmp, ['@'+s], self.interval).iloc[[-1]]
             df['@'+s] = df_tmp
         
-        return df        
-    
+        return df       
 
     @base.BaseBroker._exception_handler
     def fetch_stock_positions(self):
@@ -641,23 +642,13 @@ class RobinhoodBroker(base.BaseBroker):
         df = df.rename(columns={"open_price": "open", "close_price": "close", "high_price" : "high", "low_price" : "low"})
         df = df[["open", "close", "high", "low", "volume"]].astype(float)
     
+        # RH doesn't support 1MIN intervals natively, so it must be
+        # aggregated from 15SEC intervals. In such case, datapoints that are not a full minute should be dropped
+        # in case too much time has passed since when the API call was made. 
         if interval == '1MIN':
-            if latest:
-                while df.index[-1].second != 45:
-                    df = df.iloc[:-1]
-                df = df[-4:]
-            op_dict = {
-                'open': 'first',
-                'high':'max',
-                'low':'min',
-                'close':'last',
-                'volume':'sum'
-            }
-            df = df.resample('1T').agg(op_dict)
-            df = df[df['open'].notna()]
-        elif latest:
-            df = df.iloc[[-1]]
-        
+            while df.index[-1].second != 45:
+                df = df.iloc[:-1]
+         
         df.columns = pd.MultiIndex.from_product([watch, df.columns])
 
         return df

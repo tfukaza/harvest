@@ -4,6 +4,7 @@ import time
 from logging import debug
 from warnings import warn
 from typing import Any, Callable, Dict, List 
+import re
 
 # External libraries
 import numpy as np
@@ -139,18 +140,18 @@ class BaseBroker:
         """
         raise NotImplementedError("This endpoint is not supported in this broker")
     
-    def fetch_latest_stock_price(self):
-        """Returns the latest prices for all stocks in self.watch
+    # def fetch_latest_stock_price(self):
+    #     """Returns the latest prices for all stocks in self.watch
 
-        :returns: A pandas dataframe, same format as _handler()
-        """
-        raise NotImplementedError("This endpoint is not supported in this broker")
+    #     :returns: A pandas dataframe, same format as _handler()
+    #     """
+    #     raise NotImplementedError("This endpoint is not supported in this broker")
 
-    def fetch_latest_crypto_price(self):
-        """Returns the latest prices for all cryptos in self.watch
+    # def fetch_latest_crypto_price(self):
+    #     """Returns the latest prices for all cryptos in self.watch
         
-        :returns: A pandas dataframe, same format as _handler()
-        """
+    #     :returns: A pandas dataframe, same format as _handler()
+    #     """
     
     def fetch_stock_positions(self):
         """Returns all current stock positions
@@ -566,3 +567,24 @@ class BaseBroker:
         option_type = 'call' if symbol[12] == 'C' else 'put'
         price = float(symbol[13:])/1000
         return sym, date, option_type, price
+    
+    def aggregate_df(self, df, interval: str):
+        sym = list(df.columns.levels[0])[0]
+        df = df[sym]
+        op_dict = {
+            'open': 'first',
+            'high':'max',
+            'low':'min',
+            'close':'last',
+            'volume':'sum'
+        }
+        val = re.sub("[^0-9]", "", interval)
+        if interval[-1] == 'N':     # MIN interval
+            val = val+'T'
+        elif interval[-1] == 'R':   # 1HR interval
+            val = 'H'
+        else:                       # 1DAY interval
+            val = 'D'
+        df = df.resample(val).agg(op_dict)
+        df.columns = pd.MultiIndex.from_product([[sym], df.columns])
+        return df

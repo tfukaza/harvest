@@ -321,28 +321,15 @@ class Trader:
         debug("Initializing queue...")
 
         today = pytz.utc.localize(dt.datetime.utcnow().replace(microsecond=0, second=0))  # Current timestamp in UTC
+        last = pytz.utc.localize(dt.datetime(1970, 1, 1))
         for sym in self.watch:
-            self.queue.init_symbol(sym, interval)
-            last = pytz.utc.localize(dt.datetime(1970, 1, 1))
-            df = self.streamer.fetch_price_history(last, today, interval, sym)
-            self.queue.set_symbol_interval(sym, interval, df)
-            self.queue.set_symbol_interval_update(sym, interval, df.index[-1])
+            for i in [self.interval] + self.aggregations:
+                if i == self.interval:
+                    self.queue.init_symbol(sym, interval)
+                df = self.streamer.fetch_price_history(last, today, i, sym)
+                self.queue.set_symbol_interval(sym, interval, df)
+                self.queue.set_symbol_interval_update(sym, interval, df.index[-1])
            
-            # Many brokers have separate API for intraday data, so make an API call
-            # instead of aggregating interday data
-            if '1DAY' in self.aggregations:
-                df = self.streamer.fetch_price_history(last, today, '1DAY', sym)
-                self.queue.set_symbol_interval(sym, '1DAY', df)
-                self.queue.set_symbol_interval_update(sym, '1DAY', df.index[-1])
-
-            df = self.queue.get_symbol_interval(sym, interval)
-            for i in self.aggregations:
-                if i == '1DAY':
-                    continue
-                df_tmp = self.aggregate_df(df, i)
-                self.queue.set_symbol_interval(sym, i, df_tmp)
-                self.queue.set_symbol_interval_update(sym, i, df_tmp.index[-1])
-        
         # If is_save is True, save the queue locally
         # if self.is_save: 
         #     for sym in self.watch:
