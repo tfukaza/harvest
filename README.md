@@ -7,12 +7,8 @@ Harvest is currently at **v0.0**, meaning the code is generally unstable. Use wi
 - Can't find the info you need? [Request documentation](https://github.com/tfukaza/harvest/issues/new?assignees=&labels=documentation&template=documentation.md&title=%5B%F0%9F%93%9DDocumentation%5D)
 
 ## What is Harvest?
-Harvest is a Python framework for algorithmic trading that packs a lot of punch:
-- Trade stocks, cryptos, even options! (if your brokerage supports them)
-- Backtest on historical data
-- Paper trading
-
-Visit Harvest's [website](https://tfukaza.github.io/harvest/) for more details.
+Harvest is a Python based framework for algorithmic trading. It provides a simple and intuitive interface to 
+Visit Harvest's [**website**](https://tfukaza.github.io/harvest/) for more details.
 
 ## Example
 Below is minimal example of a crossover strategy for `TWTR` implemented with Harvest
@@ -37,7 +33,18 @@ if __name__ == "__main__":
     t.run()
 ```
 
-Easy, right?
+## Installation
+The only prerequisite is to have **Python version 3.8 or greater**.
+
+Harvest is still early in development, so you'll have to install it directly from this repo. 
+```bash
+pip install -e git+https://github.com/tfukaza/harvest.git
+```
+Next, install the dependencies necessary for the brokerage of your choice. Currently, Harvest only supports Robinhood. 
+```bash
+pip install -e 'git+https://github.com/tfukaza/harvest.git#egg=harvest[Robinhood]'
+```
+Now you're all set!
 
 ## Disclaimer
 Harvest is an open-source passion project created by algo trading enthusiasts. 
