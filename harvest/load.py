@@ -37,14 +37,15 @@ class Load:
         date_str = date.strftime('%Y-%m-%d %H:%M')
         ts.write(date_str)
 
-    def append_entry(self, symbol, interval, df):
+    def append_entry(self, symbol, interval, df, remove_dup=True):
         save_path = f"{DB_PATH}/{symbol}/data-{interval}" 
         save_dir = f"{DB_PATH}/{symbol}"
         if not os.path.isdir(save_dir):
             os.mkdir(save_dir)
         data = self.get_entry(symbol, interval)
-        data = data.append(df)
-        data = data[~data.index.duplicated(keep='last')]
+        data = data.append(df) if not data.empty else df
+        if remove_dup:
+            data = data[~data.index.duplicated(keep='last')]
         data.to_pickle(save_path)
 
     def get_entry(self, symbol, interval):
@@ -54,7 +55,6 @@ class Load:
             os.mkdir(save_dir)
         if not os.path.exists(path):
             data = pd.DataFrame()
-            data.to_pickle(path)
             return data
         return pd.read_pickle(path)
     

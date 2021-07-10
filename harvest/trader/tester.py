@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Tuple
 # External libraries
 import pandas as pd
 from tqdm import tqdm
+import pytz
 
 # Submodule imports
 import harvest.load as load
@@ -79,10 +80,14 @@ class TestTrader(trader.Trader):
         :date_format: The format of the data's timestamps
         TODO: Possibly allow interday data to be specified. 
         """
-        last = dt.datetime(1970, 1, 1)
+        last = pytz.utc.localize(dt.datetime(1970, 1, 1))
         for sym in self.watch:
             self.queue.init_symbol(sym, interval)
             df = self.load.get_entry(sym, interval)
+            if df.empty:
+                warning(f"Local data for {sym}, {interval} not found. Running FETCH")
+                self._queue_init(interval)
+                return
             self.queue.set_symbol_interval(sym, interval, df)
             self.queue.set_symbol_interval_update(sym, interval, last)
 
@@ -91,9 +96,9 @@ class TestTrader(trader.Trader):
                 self.queue.set_symbol_interval(sym, i, df_tmp)
                 self.queue.set_symbol_interval_update(sym, i, last)
             
-    def setup(self, interval, aggregations, source, path):
+    def setup(self, source, interval, aggregations=None, path=None):
         self.interval = interval
-        self.aggregations = aggregations
+        self.aggregations = aggregations if not aggregations == None else []
 
         self.broker.setup(self.watch, interval, self, self.main)
         self.streamer.setup(self.watch, interval, self, self.main)
@@ -103,7 +108,8 @@ class TestTrader(trader.Trader):
         self.df = {}
 
         # Load data into queue
-        # TODO cache data
+        # TODO: cache data
+        # TODO: Check if aggregated data is already provided
         if source == "FETCH":
             self._queue_init(interval)
         elif source == "CSV":
@@ -126,30 +132,57 @@ class TestTrader(trader.Trader):
             print(f"Formatting {sym} data...")
             for agg in self.aggregations:
                 print(f"Formatting {agg} ...")
-                self.queue.set_symbol_interval(sym, '+'+agg, pd.DataFrame())
+                self.queue.set_symbol_interval(sym, '-'+agg, pd.DataFrame())
                 points = int(conv[agg]/conv[interval])
                 for i in tqdm(range(rows)):
                     df_tmp = df.iloc[0:i+1]                    
                     df_tmp = df_tmp.iloc[-points:] 
                     agg_df = self.aggregate_df(df_tmp, agg)
-                   
-                    self.queue.append_symbol_interval(sym, '+'+agg, agg_df.iloc[[-1]])
-        
+                    # Save the aggregated data into a new queue
+                    self.queue.append_symbol_interval(sym, '-'+agg, agg_df.iloc[[-1]])
+   
+        print("Formatting complete")
         # Move all data to a cached dataframe,
-        # and reset all queues. 
         for i in [self.interval] + self.aggregations:
-            if i != self.interval:
-                i = '+'+i
+            i = i if i == self.interval else '-'+i
             self.df[i] = {}
             for s in self.watch:
                 df_tmp = self.queue.get_symbol_interval(s, i)
                 self.df[i][s] = df_tmp.copy() 
+        
+        # Trim data so start and end dates match between assets and intervals
+        # data_start = pytz.utc.localize(dt.datetime(1970, 1, 1))
+        # data_end = pytz.utc.localize(dt.datetime.utcnow().replace(microsecond=0, second=0))
+        # for i in [self.interval] + self.aggregations:
+        #     for s in self.watch:
+        #         start = self.df[i][s].index[0]
+        #         end = self.df[i][s].index[-1]
+        #         if start > data_start:
+        #             data_start = start
+        #         if end < data_end:
+        #             data_end = end
+
+        # for i in [self.interval] + self.aggregations:
+        #     for s in self.watch:
+        #         self.df[i][s] = self.df[i][s].loc[data_start:data_end]
 
         for i in [self.interval] + self.aggregations:
             for s in self.watch:
+                if i != self.interval:
+                    self.load.append_entry(s, '-'+i, self.df['-'+i][s])
+                else:
+                    self.load.append_entry(s, i, self.df[i][s])
+                self.queue.init_symbol(s, i) 
+
+        # Save all queues, and reset them 
+        for i in [self.interval] + self.aggregations:
+            for s in self.watch:
+                if i != self.interval:
+                    self.load.append_entry(s, '-'+i, self.df['-'+i][s])
+                else:
+                    self.load.append_entry(s, i, self.df[i][s])
                 self.queue.init_symbol(s, i) 
             
-
         self.load_watch = True
         
 
@@ -190,7 +223,8 @@ class TestTrader(trader.Trader):
                 self.queue.append_symbol_interval(s, interval, df)
                 # Add data to aggregation queue
                 for agg in self.aggregations:
-                    df = self.df['+'+agg][s].iloc[[i]]
+                    # Replace the last datapoint
+                    df = self.df['-'+agg][s].iloc[[i]]
                     self.queue.append_symbol_interval(s, agg, df, True)
         
             self.algo.main({})
