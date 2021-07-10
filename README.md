@@ -1,5 +1,6 @@
 ![Header](docs/banner.png)
 
+[![codecov](https://codecov.io/gh/tfukaza/harvest/branch/main/graph/badge.svg?token=NQMXTBK2UO)](https://codecov.io/gh/tfukaza/harvest)
 ![run tests](https://github.com/tfukaza/harvest/actions/workflows/run-tests.yml/badge.svg)
 ![website](https://github.com/tfukaza/harvest/actions/workflows/build-website.yml/badge.svg)
 
