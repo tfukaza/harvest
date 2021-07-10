@@ -343,11 +343,11 @@ class Trader:
                 self.queue.set_symbol_interval_update(sym, i, df_tmp.index[-1])
         
         # If is_save is True, save the queue locally
-        if self.is_save:
-            for sym in self.watch:
-                for inter in [self.interval] + self.aggregations:
-                    df = self.queue.get_symbol_interval(sym, inter)
-                    self.load.append_entry(sym, inter, df)
+        # if self.is_save: 
+        #     for sym in self.watch:
+        #         for inter in [self.interval] + self.aggregations:
+        #             df = self.queue.get_symbol_interval(sym, inter)
+        #             self.load.append_entry(sym, inter, df)
 
     def aggregate_df(self, df, inter):
         sym = list(df.columns.levels[0])[0]
