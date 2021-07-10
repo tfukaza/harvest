@@ -21,4 +21,4 @@ if __name__ == "__main__":
     t.set_algo(Crossover())
     
     # Run the main() function once every day
-    t.run(interval='1DAY')
+    t.start(interval='1DAY')
