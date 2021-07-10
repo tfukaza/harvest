@@ -118,12 +118,10 @@ class DummyBroker(base.BaseBroker):
             if oldest_timestamp is None:
                 oldest_timestamp = end
             data = self.fetch_price_history(start, oldest_timestamp, interval, symbol)[symbol]
-            print('fetch prices', data)
             self.storage.store(symbol, interval, data)
 
         _, latest_timestamp = self.storage.data_range(symbol, interval)
         if latest_timestamp is None or end > latest_timestamp:
-            print('Hit')
             if latest_timestamp is None:
                 latest_timestamp = start 
             data = self.fetch_price_history(latest_timestamp, end, interval, symbol)[symbol]

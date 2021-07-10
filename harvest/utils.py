@@ -3,16 +3,22 @@ import datetime as dt
 
 import pandas as pd
 
-def interval_to_timedelta(interval: str):
+def expand_interval(interval: str):
 	time_search = re.search('([0-9]+)(MIN|HR|DAY)', interval)
+	value = int(time_search.group(1))
+	unit = time_search.group(2)
+
+	return value, unit
+
+def interval_to_timedelta(interval: str):
 	expanded_units = {
 		'DAY': 'days',
 		'HR': 'hours',
 		'MIN': 'minutes'
 	}
 
-	value, unit = int(time_search.group(1)), expanded_units[time_search.group(2)]
-	params = {unit: value}
+	value, unit = expand_interval(interval)
+	params = {expanded_units[unit]: value}
 	return dt.timedelta(**params)
 
 

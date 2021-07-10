@@ -11,6 +11,9 @@ class BaseStorage:
         self.storage = {}
 
     def store(self, symbol: str, interval: str, data: pd.DataFrame) -> None:
+        if data.empty:
+            return None
+
         data.index = normalize_pands_dt_index(data)
 
         if symbol in self.storage:
@@ -34,8 +37,6 @@ class BaseStorage:
 
             self.storage_lock.release()
 
-        print('Store', data.shape)
-
     def load(self, symbol: str, interval: str='', start: dt.datetime=None, end: dt.datetime=None) -> pd.DataFrame:
         self.storage_lock.acquire()
 
@@ -55,27 +56,30 @@ class BaseStorage:
             return None
 
         dt_interval = interval_to_timedelta(interval)
+
         self.storage_lock.acquire()
-        data = self.storage[symbol][interval]
+        if interval not in self.storage[symbol]:
+            intervals = [(interval, interval_to_timedelta(interval)) for interval in self.storage[symbol].keys() if interval_to_timedelta(interval) < dt_interval] 
+            if len(intervals) == 0:
+                self.storage_lock.release()
+                return None
+
+            data = self.storage[symbol][intervals[-1][0]]
+            data = self._aggregate(data, interval)
+        else:
+            data = self.storage[symbol][interval]
         self.storage_lock.release()
+
         data_start = data.index[0] - dt_interval
         data_end = data.index[-1] + dt_interval
 
         if start is None:
             start = data_start
-        else:
-            start = start.replace(second=0, microsecond=0)
 
         if end is None:
             end = data_end
-        else:
-            end = end.replace(second=0, microsecond=0)
 
-        if data_start <= start and end <= data_end:
-            return data.loc[start:end]
-
-        print('Fail')
-        return None 
+        return data.loc[start:end]
 
     def data_range(self, symbol: str, interval: str):
         data = self.load(symbol, interval)
@@ -84,6 +88,18 @@ class BaseStorage:
 
         dt_interval = interval_to_timedelta(interval)
         return data.index[0], data.index[-1]
+
+    def _aggregate(self, data: pd.DataFrame, interval: str):
+        op_dict = {
+            'open': 'first',
+            'high':'max',
+            'low':'min',
+            'close':'last',
+            'volume':'sum'
+        }
+
+        data = data.resample(interval).agg(op_dict)
+        return data
 
 
     def _append(self, current_data: pd.DataFrame, new_data: pd.DataFrame, interval: str) -> pd.DataFrame:
@@ -120,22 +136,10 @@ class BaseStorage:
 
         # If the new data ends before the current data starts
         elif new_data_end <= cur_data_start:
-            num_new_points = int((cur_data_start - new_data_end).total_seconds() // dt_interval.total_seconds())
-
-            if num_new_points > 0:
-                gap_index = [new_data_end + dt_interval * i for i in range(1, num_new_points)]
-                gap_data = pd.DataFrame(index=gap_index, columns=new_data.columns).fillna(0)
-                new_data.append(gap_data)
             return new_data.append(cur_data)
 
         # If the new data starts before the current data ends
         elif cur_data_end <= new_data_start:  
-            num_new_points = int((new_data_start - cur_data_end).total_seconds() // dt_interval.total_seconds())
-
-            if num_new_points > 0:
-                gap_index = [cur_data_end + dt_interval * i for i in range(1, num_new_points)]
-                gap_data = pd.DataFrame(index=gap_index, columns=new_data.columns).fillna(0)
-                current_data.append(gap_data)
             return current_data.append(new_data) 
 
         else:

@@ -8,7 +8,7 @@ from harvest.broker.dummy import DummyBroker
 class TestDummyBroker(unittest.TestCase):
     def test_fetch_prices(self):
         dummy = DummyBroker()
-        df = dummy.fetch_prices(dt.datetime.now() - dt.timedelta(hours=20), dt.datetime.now(), '1HR', 'PO')
+        df = dummy.fetch_prices(dt.datetime.now() - dt.timedelta(hours=50), dt.datetime.now(), '1HR', 'PO')
         self.assertEqual(list(df.columns.values), ['open', 'high', 'low', 'close', 'volume'])
 
     def test_setup(self):
@@ -138,8 +138,6 @@ class TestDummyBroker(unittest.TestCase):
         status = dummy.fetch_option_order_status(order['id'])
         self.assertEqual(status['symbol'], 'A')
         self.assertEqual(status['quantity'], 5)
-
-
 
 
 if __name__ == '__main__':
