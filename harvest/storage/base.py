@@ -31,8 +31,10 @@ class BaseStorage:
             self.storage[symbol] = {
                 interval: data,
             }
-            
+
             self.storage_lock.release()
+
+        print('Store', data.shape)
 
     def load(self, symbol: str, interval: str='', start: dt.datetime=None, end: dt.datetime=None) -> pd.DataFrame:
         self.storage_lock.acquire()
@@ -60,21 +62,28 @@ class BaseStorage:
         data_end = data.index[-1] + dt_interval
 
         if start is None:
-            start = data_start 
+            start = data_start
+        else:
+            start = start.replace(second=0, microsecond=0)
 
         if end is None:
             end = data_end
+        else:
+            end = end.replace(second=0, microsecond=0)
 
         if data_start <= start and end <= data_end:
             return data.loc[start:end]
+
+        print('Fail')
         return None 
 
-    def latest_timestamp(self, symbol: str, interval: str):
+    def data_range(self, symbol: str, interval: str):
         data = self.load(symbol, interval)
         if data is None:
-            raise Exception("Data is none!")
+            return None, None
 
-        return data.index[-1]
+        dt_interval = interval_to_timedelta(interval)
+        return data.index[0], data.index[-1]
 
 
     def _append(self, current_data: pd.DataFrame, new_data: pd.DataFrame, interval: str) -> pd.DataFrame:

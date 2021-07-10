@@ -108,16 +108,6 @@ class BaseBroker:
         timestamp should be an offset-aware datetime object in UTC timezone
         """
         raise NotImplementedError("This endpoint is not supported in this broker")
-    
-    def main_wrap(func):
-        """Wrapper to run the handler async"""
-        def wrapper(*args, **kwargs):
-            self = args[0]
-            df = func(*args, **kwargs) 
-            now = dt.datetime.utcnow()
-            self.trader.loop.run_until_complete(self.trader_main(df, now))
-
-        return wrapper
 
     def exit(self):
         """This function is called after every invocation of algo's handler. 
@@ -148,12 +138,30 @@ class BaseBroker:
             raise Exception(f"{func} failed")
         return wrapper
 
-    def fetch_price_history( self,
-        last: dt.datetime, 
-        today: dt.datetime, 
+    def fetch_price(self,
+        start: dt.datetime, 
+        end: dt.datetime, 
         interval: str='5MIN',
         symbol: str = None):
-        """Returns historical price data for the specified asset and period.
+        """Returns historical price data for the specified asset and period
+        from storage and may call fetch_price_history to populate the storage.
+
+        :last: The starting date of the period, inclusive.
+        :today: The ending date of the period, inclusive.
+        :interval: The interval of requested historical data.
+        :symbol: The stock/crypto to get data for.
+
+        :returns: A pandas dataframe, same format as _handler()
+        """
+        raise NotImplementedError("This endpoint is not supported in this broker")
+
+    def fetch_price_history(self,
+        start: dt.datetime, 
+        end: dt.datetime, 
+        interval: str='5MIN',
+        symbol: str = None):
+        """Returns historical price data for the specified asset and period 
+        from the API.
 
         :last: The starting date of the period, inclusive.
         :today: The ending date of the period, inclusive.
@@ -351,6 +359,12 @@ class BaseBroker:
             - bid: bid price
             }
         """ 
+
+    def add_to_order_queue(self, **kwargs):
+        if self.broker_type not in ('both', 'broker'):
+            raise Exception(f'Broker type: {self.broker_type} cannot buy or sell stocks/cryptos')
+
+        self.orders_queue.put(kwargs)
 
     def order_limit(self, 
         side: str, 

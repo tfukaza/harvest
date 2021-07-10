@@ -2,7 +2,7 @@
 import datetime as dt
 import random
 import re
-import Queue
+import queue
 from typing import Any, Dict, List, Tuple
 import logging
 from logging import critical, error, info, warning, debug
@@ -38,7 +38,7 @@ class DummyBroker(base.BaseBroker):
         self.buying_power = 100000.0
         self.multiplier = 1
         self.storage = BaseStorage()
-        self.queue = Queue()
+        self.orders_queue = queue.Queue()
         self.id = 0
 
         if account_path:
@@ -63,29 +63,32 @@ class DummyBroker(base.BaseBroker):
 
         super().setup(watch, interval, interval, trader, trader_main)
 
-    @base.BaseBroker.main_wrap
-    def main(self) -> pd.DataFrame:
-
+    def main(self):
         if self.broker_type in ('both', 'streamer'):
-            
             # For all the stocks/cryptos that we are watching
             for symbol in self.watch:
                 # Get the timestamp of the latest data we have
-                last = self.storage.latest_timestamp(symbol, self.fetch_interval)
+                _, latest_timestamp = self.storage.data_range(symbol, self.fetch_interval)
                 # Fetch the data 
-                data = self.fetch_price_history(last, dt.datetime.now(), self.fetch_interval, symbol)
-                # Store the data 
-                self.storage.store(symbol, self.fetch_interval, data)
+                data = self.fetch_prices(latest_timestamp, dt.datetime.now(), self.fetch_interval, symbol)
+
         if self.broker_type in ('both', 'broker'):
             # Buy and sell stocks that are in the queue
             # iterate through buy / sell queue and apply each
-            while not self.queue.empty():
-                order = self.queue.get()
+            while not self.orders_queue.empty():
+                order = self.orders_queue.get()
                 side = order.pop('side', None)
+                should_await = order.pop('await', False)
                 if side == 'buy':
-                    self.buy(**order)
-                elif side == 'self':
-                    self.sell(**order)
+                    if should_await:
+                        self.await_buy(**order)
+                    else:
+                        self.buy(**order)
+                elif side == 'sell':
+                    if should_await:
+                        self.await_sell(**order)
+                    else:
+                        self.sell(**order)
                 else:
                     raise Exception('Invalid side option given.')
 
@@ -104,9 +107,34 @@ class DummyBroker(base.BaseBroker):
             volume = max(volume + random.randint(-5, 5), 1)  
             yield open_s, high, low, close, volume
 
+    def fetch_prices(self, 
+        start: dt.datetime, 
+        end: dt.datetime, 
+        interval: str='1MIN', 
+        symbol: str=None):
+
+        oldest_timestamp, _ = self.storage.data_range(symbol, interval)
+        if oldest_timestamp is None or start < oldest_timestamp:
+            if oldest_timestamp is None:
+                oldest_timestamp = end
+            data = self.fetch_price_history(start, oldest_timestamp, interval, symbol)[symbol]
+            print('fetch prices', data)
+            self.storage.store(symbol, interval, data)
+
+        _, latest_timestamp = self.storage.data_range(symbol, interval)
+        if latest_timestamp is None or end > latest_timestamp:
+            print('Hit')
+            if latest_timestamp is None:
+                latest_timestamp = start 
+            data = self.fetch_price_history(latest_timestamp, end, interval, symbol)[symbol]
+            self.storage.store(symbol, interval, data)
+
+        return self.storage.load(symbol, interval, start, end)
+
+
     def fetch_price_history(self,
-        last: dt.datetime, 
-        today: dt.datetime, 
+        start: dt.datetime, 
+        end: dt.datetime, 
         interval: str='1MIN',
         symbol: str = None) -> pd.DataFrame:
 
@@ -125,7 +153,7 @@ class DummyBroker(base.BaseBroker):
                 print('Error')
 
         times = []
-        current = last
+        current = start
 
         stock_gen = self._generate_fake_stock_data()
         open_s = []
@@ -135,7 +163,7 @@ class DummyBroker(base.BaseBroker):
         volume = []
 
         # Fake the data 
-        while current <= today:
+        while current < end + interval:
             times.append(current.replace(tzinfo=None))
             current += interval
 
@@ -178,7 +206,7 @@ class DummyBroker(base.BaseBroker):
         today = dt.datetime.now()
         for symbol in self.watch:
             if not is_crypto(symbol):
-                results[symbol] = self.fetch_price_history(last, today, self.interval, symbol).iloc[[-1]]
+                results[symbol] = self.fetch_prices(last, today, self.interval, symbol).iloc[[-1]]
         return results
         
     def fetch_latest_crypto_price(self) -> Dict[str, pd.DataFrame]:
@@ -187,7 +215,7 @@ class DummyBroker(base.BaseBroker):
         today = dt.datetime.now()
         for symbol in self.watch:
             if is_crypto(symbol):
-                results[symbol] = self.fetch_price_history(last, today, self.interval, symbol).iloc[[-1]]
+                results[symbol] = self.fetch_prices(last, today, self.interval, symbol).iloc[[-1]]
         return results
     
     def fetch_stock_positions(self) -> List[Dict[str, Any]]:
