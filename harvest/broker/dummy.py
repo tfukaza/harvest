@@ -25,8 +25,8 @@ class DummyBroker(base.BaseBroker):
 
     interval_list = ['1MIN', '5MIN', '15MIN', '30MIN', '1DAY']
 
-    def __init__(self, account_path: str=None):
-        super().__init__()
+    def __init__(self, account_path: str=None, mode='both'):
+        super().__init__(mode='both')
 
         self.stocks = []
         self.options = []
@@ -37,8 +37,6 @@ class DummyBroker(base.BaseBroker):
         self.cash = 100000.0
         self.buying_power = 100000.0
         self.multiplier = 1
-        self.storage = BaseStorage()
-        self.orders_queue = queue.Queue()
         self.id = 0
 
         if account_path:
@@ -63,34 +61,41 @@ class DummyBroker(base.BaseBroker):
 
         super().setup(watch, interval, interval, trader, trader_main)
 
+    @base.BaseBroker.main_wrap
     def main(self):
-        if self.broker_type in ('both', 'streamer'):
-            # For all the stocks/cryptos that we are watching
-            for symbol in self.watch:
-                # Get the timestamp of the latest data we have
-                _, latest_timestamp = self.storage.data_range(symbol, self.fetch_interval)
-                # Fetch the data 
-                data = self.fetch_prices(latest_timestamp, dt.datetime.now(), self.fetch_interval, symbol)
+        df_dict = {}
+        df_dict.update(self.fetch_latest_stock_price())
+        df_dict.update(self.fetch_latest_crypto_price())
+      
+        return df_dict
 
-        if self.broker_type in ('both', 'broker'):
-            # Buy and sell stocks that are in the queue
-            # iterate through buy / sell queue and apply each
-            while not self.orders_queue.empty():
-                order = self.orders_queue.get()
-                side = order.pop('side', None)
-                should_await = order.pop('await', False)
-                if side == 'buy':
-                    if should_await:
-                        self.await_buy(**order)
-                    else:
-                        self.buy(**order)
-                elif side == 'sell':
-                    if should_await:
-                        self.await_sell(**order)
-                    else:
-                        self.sell(**order)
-                else:
-                    raise Exception('Invalid side option given.')
+        # if self.mode in ('both', 'streamer'):
+        #     # For all the stocks/cryptos that we are watching
+        #     for symbol in self.watch:
+        #         # Get the timestamp of the latest data we have
+        #         _, latest_timestamp = self.storage.data_range(symbol, self.fetch_interval)
+        #         # Fetch the data 
+        #         data = self.fetch_prices(latest_timestamp, dt.datetime.now(), self.fetch_interval, symbol)
+        #
+        # if self.mode in ('both', 'broker'):
+        #     # Buy and sell stocks that are in the queue
+        #     # iterate through buy / sell queue and apply each
+        #     while not self.orders_queue.empty():
+        #         order = self.orders_queue.get()
+        #         side = order.pop('side', None)
+        #         should_await = order.pop('await', False)
+        #         if side == 'buy':
+        #             if should_await:
+        #                 self.await_buy(**order)
+        #             else:
+        #                 self.buy(**order)
+        #         elif side == 'sell':
+        #             if should_await:
+        #                 self.await_sell(**order)
+        #             else:
+        #                 self.sell(**order)
+        #         else:
+        #             raise Exception('Invalid side option given.')
 
     def has_interval(self, interval: str):
         return True

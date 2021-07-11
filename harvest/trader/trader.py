@@ -13,7 +13,6 @@ import pandas as pd
 import pytz
 
 # Submodule imports
-import harvest.queue as queue
 import harvest.load as load
 from harvest.broker.dummy import DummyBroker
 from harvest.algo import BaseAlgo
@@ -56,7 +55,6 @@ class Trader:
         self.timestamp = self.timestamp_prev
 
         self.watch = []             # List of stocks to watch
-        self.queue = queue.Queue()  # local cache of historic price
         self.account = {}           # Local cash of account info 
 
         self.stock_positions = []   # Local cache of current stock positions
@@ -68,7 +66,6 @@ class Trader:
         self.block_lock = threading.Lock() # Lock for streams that recieve data asynchronously
 
         self.algo = []
-        self.load = load.Load()
         self.is_save = True
 
     def setup(self, load_watch=True, interval='5MIN', aggregations=[]):
@@ -150,8 +147,6 @@ class Trader:
             a.watch = self.watch
             a.fetch_interval = self.fetch_interval
 
-        self._queue_init(self.fetch_interval) 
-
         self.blocker = {}
         for w in self.watch:
             self.blocker[w] = False
@@ -172,6 +167,11 @@ class Trader:
             self.main(None, True)
         except asyncio.CancelledError:
             debug("Timeout cancelled")
+
+    async def run_on_interval(func, interval, *args, **kwargs):
+        while True:
+            await asyncio.sleep(interval)
+            func(*args, **kwargs)
 
 
     async def main(self, df_dict, timestamp, flush: bool=False):
@@ -205,7 +205,7 @@ class Trader:
         if flush:
             # For missing data, repeat the existing one
             for n in self.needed:
-                self.block_queue[n] = self.queue.get_last_symbol_interval(n, self.base_inverval)
+                self.block_queue[n] = self.streamer.storage.load(n, self.base_interval).iloc[[-1]]
             self.needed = self.watch.copy()
             for k, v in self.blocker.items():
                 self.blocker[k] = False
@@ -248,22 +248,11 @@ class Trader:
 
     def main_helper(self, df_dict):
 
-        new_day = False
-        # Init queue on a new day 
-        if self.timestamp.date() > self.timestamp_prev.date():
-            debug("Initializing queue...")
-            self._queue_init(self.fetch_interval) 
-            new_day = True
+        new_day = self.timestamp.date() > self.timestamp_prev.date()
         
         # Periodically refresh access tokens
         if new_day or (self.timestamp.hour == 3 and self.timestamp.minute == 0):
             self.streamer.refresh_cred()
-        
-        # Update the queue. If not new data is received, skip.
-        is_new = self._queue_update(df_dict, self.timestamp)
-        if not is_new:
-            debug("No new data")
-            return 
 
         # If an order was processed, fetch the latest position info
         # otherwise, calculate current positions locally
@@ -274,7 +263,7 @@ class Trader:
             return
 
         meta = {
-            'new_day':new_day
+            'new_day': new_day
         }
 
         for a in self.algo:
@@ -315,43 +304,6 @@ class Trader:
         else: 
             return False
 
-    def _queue_init(self, interval):
-        """Loads historical price data to ensure price queues are up-to-date upon program startup.
-        This should also be called at the start of each trading day 
-        so database is updated and cache is refreshed.
-        """
-        debug("Initializing queue...")
-
-        today = pytz.utc.localize(dt.datetime.utcnow().replace(microsecond=0, second=0))  # Current timestamp in UTC
-        for sym in self.watch:
-            self.queue.init_symbol(sym, interval)
-            last = pytz.utc.localize(dt.datetime(1970, 1, 1))
-            df = self.streamer.fetch_price_history(last, today, interval, sym)
-            self.queue.set_symbol_interval(sym, interval, df)
-            self.queue.set_symbol_interval_update(sym, interval, df.index[-1])
-           
-            # Many brokers have separate API for intraday data, so make an API call
-            # instead of aggregating interday data
-            if '1DAY' in self.aggregations:
-                df = self.streamer.fetch_price_history(last, today, '1DAY', sym)
-                self.queue.set_symbol_interval(sym, '1DAY', df)
-                self.queue.set_symbol_interval_update(sym, '1DAY', df.index[-1])
-
-            df = self.queue.get_symbol_interval(sym, interval)
-            for i in self.aggregations:
-                if i == '1DAY':
-                    continue
-                df_tmp = self.aggregate_df(df, i)
-                self.queue.set_symbol_interval(sym, i, df_tmp)
-                self.queue.set_symbol_interval_update(sym, i, df_tmp.index[-1])
-        
-        # If is_save is True, save the queue locally
-        # if self.is_save: 
-        #     for sym in self.watch:
-        #         for inter in [self.interval] + self.aggregations:
-        #             df = self.queue.get_symbol_interval(sym, inter)
-        #             self.load.append_entry(sym, inter, df)
-
     def aggregate_df(self, df, inter):
         sym = list(df.columns.levels[0])[0]
         df = df[sym]
@@ -370,41 +322,7 @@ class Trader:
         else:
             val = 'D'
         df = df.resample(val).agg(op_dict)
-        df.columns = pd.MultiIndex.from_product([[sym], df.columns])
         return df
-
-    def _queue_update(self, df_dict, time):
-        """Takes a df of the latest stock price info, and updates the price queue 
-        accordingly. Should be called every time handler() is invoked. 
-        """
-        debug("Queue update")
-        interval = self.fetch_interval
-        is_new = False
-
-        for sym in self.watch:
-            old_timestamp = self.queue.get_symbol_interval_update(sym, interval)
-            new_timestamp = df_dict[sym].index[-1]
-            if new_timestamp <= old_timestamp:
-                continue
-            else:
-                is_new = True
-            self.queue.append_symbol_interval(sym, interval, df_dict[sym], True)
-            self.queue.set_symbol_interval_update(sym, interval, new_timestamp) 
-
-            df_base = self.queue.get_symbol_interval(sym, interval) 
-            
-            for inter in self.aggregations:
-                # Locally aggregate data to reduce network latency
-                old_agg = self.queue.get_symbol_interval(sym, inter).index[-1]
-
-                df_tmp = df_base.loc[old_agg:]
-                df_tmp = self.aggregate_df(df_tmp, inter)
-                df_tmp = df_tmp[df_tmp[sym]['open'].notna()]
-              
-                self.queue.append_symbol_interval(sym, inter, df_tmp, True)
-                self.queue.set_symbol_interval_update(sym, interval, df_tmp.index[-1]) 
-        
-        return is_new
 
     def _update_order_queue(self):
         """Check to see if outstanding orders have been accpted or rejected
@@ -567,6 +485,9 @@ class Trader:
             self.watch = symbol
         else:
             self.watch = [symbol]
+
+    def add_symbol(self, symbol):
+        self.watch.append(symbol)
     
     def remove_symbol(self, symbol):
         self.watch.remove(symbol)

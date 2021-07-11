@@ -1,4 +1,5 @@
 # Builtins
+import re
 import datetime as dt
 import time
 from logging import debug
@@ -12,8 +13,7 @@ import pytz
 
 # Submodule imports
 from harvest.utils import is_crypto
-
-
+from harvest.storage import BaseStorage
 
 class BaseBroker:
     """Broker class communicates with various API endpoints to perform the
@@ -25,7 +25,7 @@ class BaseBroker:
         This should be initialized in setup_run (see below).
     """
     
-    def __init__(self, path: str=None):
+    def __init__(self, path: str=None, mode='both'):
         """Here, the broker should perform any authentications necessary to 
         connect to the brokerage it is using.
 
@@ -39,7 +39,13 @@ class BaseBroker:
             If not specified, should default to './secret.yaml'
         """
 
-        self.broker_type = 'both'
+        self.mode = 'both'
+        self.storage = None 
+        self.queue = None
+
+        if mode in ('both', 'streamer'):
+            self.storage = BaseStorage()
+
         self.trader = None # Allows broker to handle the case when runs without a trader
     
     def setup(self, watch: List[str], interval: str, fetch_interval: str, trader=None, trader_main=None) -> None:
@@ -91,6 +97,15 @@ class BaseBroker:
 
     def refresh_cred(self):
         raise NotImplementedError("This endpoint is not supported in this broker")
+
+    def main_wrap(func):
+        """Wrapper to run the handler async"""
+        def wrapper(*args, **kwargs):
+            self = args[0]
+            df = func(*args, **kwargs) 
+            now = dt.datetime.utcnow()
+            self.trader.loop.run_until_complete(self.trader_main(df, now))
+        return wrapper
 
     def main(self) -> Dict[str, pd.DataFrame]:
         """This function should be called at the specified interval, and return data.
@@ -359,12 +374,6 @@ class BaseBroker:
             - bid: bid price
             }
         """ 
-
-    def add_to_order_queue(self, **kwargs):
-        if self.broker_type not in ('both', 'broker'):
-            raise Exception(f'Broker type: {self.broker_type} cannot buy or sell stocks/cryptos')
-
-        self.orders_queue.put(kwargs)
 
     def order_limit(self, 
         side: str, 
