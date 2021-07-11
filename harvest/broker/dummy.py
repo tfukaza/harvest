@@ -50,13 +50,12 @@ class DummyBroker(base.BaseBroker):
                 for crypto in account['cryptos']:
                     self.cryptos.append(crypto)
 
-        
 
     def setup(self, watch: List[str], interval, trader=None, trader_main=None):
         if interval not in self.interval_list:
             raise Exception(f'Invalid interval {interval}')
 
-        super().setup(watch, interval, interval, trader, trader_main)
+        super().setup(watch, interval, trader, trader_main)
 
     @base.BaseBroker.main_wrap
     def main(self) -> pd.DataFrame:

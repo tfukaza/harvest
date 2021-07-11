@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Tuple
 
 # External libraries
 import pandas as pd
+import numpy as np
 from tqdm import tqdm
 import pytz
 
@@ -53,7 +54,7 @@ class TestTrader(trader.Trader):
         for sym in self.watch:
             self.queue.init_symbol(sym, self.interval)
             
-            df = pd.read_csv(f"{path}/{sym}.csv")
+            df = pd.read_csv(f"{path}/{sym}-{self.interval}.csv")
             df = df.set_index(['timestamp'])
             if isinstance(df.index[0], str):
                 df.index = pd.to_datetime(df.index, format=date_format) 
@@ -84,14 +85,15 @@ class TestTrader(trader.Trader):
         today = pytz.utc.localize(dt.datetime.utcnow().replace(microsecond=0, second=0))  # Current timestamp in UTC
         for sym in self.watch:
             for i in [self.interval] + self.aggregations:
-                if i == self.interval:
-                    self.queue.init_symbol(sym, self.interval)
-                df = self.load.get_entry(sym, self.interval)
+                self.queue.init_symbol(sym, i)
+                df = self.load.get_entry(sym, i)
+                df = df.dropna()
+                debug(f"got {df} for {sym}, {i}")
                 if df.empty:
-                    warning(f"Local data for {sym}, {self.interval} not found. Running FETCH")
-                    self.streamer.fetch_price_history(last, today, i, sym)
-                self.queue.set_symbol_interval(sym, self.interval, df)
-                self.queue.set_symbol_interval_update(sym, self.interval, last)
+                    warning(f"Local data for {sym}, {i} not found. Running FETCH")
+                    df = self.streamer.fetch_price_history(last, today, i, sym).dropna()
+                self.queue.set_symbol_interval(sym, i, df)
+                self.queue.set_symbol_interval_update(sym, i, last)
             
     def setup(self, source, interval, aggregations=None, path=None):
         self.interval = interval
@@ -140,9 +142,10 @@ class TestTrader(trader.Trader):
 
         # Save the current state of the queue
         for s in self.watch:
+            print("saving", self.queue.get_symbol_interval(s, self.interval))
             self.load.append_entry(s, self.interval, self.queue.get_symbol_interval(s, self.interval))
             for i in self.aggregations:
-                self.load.append_entry(s, '-'+i, self.queue.get_symbol_interval(s, '-'+i))
+                self.load.append_entry(s, '-'+i, self.queue.get_symbol_interval(s, '-'+i), False, True)
                 self.load.append_entry(s, i, self.queue.get_symbol_interval(s, i))
 
         # Move all data to a cached dataframe
@@ -183,7 +186,7 @@ class TestTrader(trader.Trader):
             be used to download latest data. 
         """
 
-        self.setup(interval, aggregations, source, path)
+        self.setup(source, interval, aggregations, path)
 
         self.algo.setup()
         self.algo.trader = self
@@ -246,4 +249,5 @@ class TestTrader(trader.Trader):
     def fetch_account(self):
         pass
 
+  
   

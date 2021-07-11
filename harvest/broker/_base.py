@@ -34,7 +34,7 @@ class BaseBroker:
         """
         self.trader = None # Allows broker to handle the case when runs without a trader
     
-    def setup(self, watch: List[str], interval: str, fetch_interval: str, trader=None, trader_main=None) -> None:
+    def setup(self, watch: List[str], interval: str, trader=None, trader_main=None) -> None:
         """This function is called right before the algorithm begins.
         It should perform any configurations necessary to start running.
 
@@ -61,7 +61,7 @@ class BaseBroker:
         
         self.watch = watch 
         self.interval = interval 
-        self.fetch_interval = fetch_interval
+        #self.fetch_interval = fetch_interval
         self.trader = trader
         self.trader_main = trader_main
            

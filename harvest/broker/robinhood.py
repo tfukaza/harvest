@@ -30,35 +30,28 @@ class RobinhoodBroker(base.BaseBroker):
 
         if path == None:
             path = './secret.yaml'
-        
         # Check if file exists
         yml_file = Path(path)
-        if yml_file.is_file():
-            with open(path, 'r') as stream:
-                self.config = yaml.safe_load(stream)
-        else:
+        if not yml_file.is_file():
             if not self._create_secret(path):
                 return 
-            with open(path, 'r') as stream:
-                self.config = yaml.safe_load(stream)
+        with open(path, 'r') as stream:
+            self.config = yaml.safe_load(stream)
+    
+        self.login()
 
+    def login(self):
         debug("Logging into Robinhood...")
         totp = pyotp.TOTP(self.config['robin_mfa']).now()
         rh.login(   self.config['robin_username'],
                     self.config['robin_password'], 
                     store_session=True, 
-                    mfa_code=totp)
-
-        
+                    mfa_code=totp)   
     
     def refresh_cred(self):
         debug("Logging out of Robinhood...")
         rh.authentication.logout()
-        totp = pyotp.TOTP(self.config['robin_mfa']).now()
-        rh.login(   self.config['robin_username'],
-                    self.config['robin_password'], 
-                    store_session=True, 
-                    mfa_code=totp)
+        self.login()
         debug("Logged into Robinhood...")
     
     def _create_secret(self, path):
@@ -166,8 +159,8 @@ class RobinhoodBroker(base.BaseBroker):
 
         super().setup(watch, interval, fetch_interval, trader, trader_main)
          
-
     def start(self):
+
         self.cur_sec = -1
         self.cur_min = -1
         val = int(re.sub("[^0-9]", "", self.fetch_interval))
@@ -263,6 +256,7 @@ class RobinhoodBroker(base.BaseBroker):
                 interval=get_interval_fmt, 
                 span=span)
         
+       
         df = pd.DataFrame.from_dict(ret)
         df = self._format_df(df, [symbol], interval)
         df = self.aggregate_df(df, interval)
