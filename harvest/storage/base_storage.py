@@ -86,8 +86,7 @@ class BaseStorage:
     
     def reset(self, symbol: str, interval:str):
         """
-        Aggregates the stock data from the interval specified in 'from' to 'to'.
-
+        Resets to an empty dataframe
         """
         self.storage_lock.acquire()
         self.storage[symbol][interval] = pd.DataFrame()

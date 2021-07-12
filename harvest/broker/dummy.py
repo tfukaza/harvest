@@ -15,7 +15,6 @@ import pytz
 # Submodule imports
 import harvest.broker._base as base
 from harvest.utils import is_crypto
-from harvest.storage.base import BaseStorage
 
 class DummyBroker(base.BaseBroker):
     """DummyBroker, as its name implies, is a dummy broker class that can 

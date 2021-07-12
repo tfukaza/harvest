@@ -14,7 +14,6 @@ import pytz
 
 # Submodule imports
 from harvest.utils import is_crypto
-from harvest.storage import BaseStorage
 
 class BaseBroker:
     """Broker class communicates with various API endpoints to perform the

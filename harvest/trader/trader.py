@@ -13,11 +13,11 @@ import pandas as pd
 import pytz
 
 # Submodule imports
-import harvest.load as load
 import harvest.utils as utils
 from harvest.storage import BaseStorage
 from harvest.broker.dummy import DummyBroker
 from harvest.algo import BaseAlgo
+from harvest.storage import BaseStorage
 
 class Trader:
     """
@@ -30,7 +30,7 @@ class Trader:
 
     interval_list = ['1MIN', '5MIN', '15MIN', '30MIN', '1HR', '1DAY']
 
-    def __init__(self, streamer=None, broker=None):      
+    def __init__(self, streamer=None, broker=None, storage=None):      
         """Initializes the Trader. 
         """
         if streamer == None:
@@ -55,14 +55,17 @@ class Trader:
         self.option_positions = []  # Local cache of current options positions
         self.crypto_positions = []  # Local cache of current crypto positions
 
-        self.order_queue = []       # Queue of unfilled orders 
+        self.order_queue = []       # Queue of unfilled orders
+
+        if storage is None
+            self.storage = BaseStorage() # Storage to hold stock/crypto data
+        else:
+            self.storage = storage
 
         self.block_lock = threading.Lock() # Lock for streams that recieve data asynchronously
 
         self.algo = []
         self.is_save = False
-
-        self.store = BaseStorage()
 
     def setup(self, interval, aggregations, sync=True):
         self.sync = sync
@@ -117,7 +120,7 @@ class Trader:
         # Initialize storage
         for s in self.watch:
             for i in self.aggregations:
-                self.store.store(s, i, self.streamer.fetch_price_history(i, s))
+                self.storage.store(s, i, self.streamer.fetch_price_history(s, i))
 
         self.load_watch = True
 
@@ -135,6 +138,12 @@ class Trader:
         ret = self.broker.fetch_order_queue()
         self.order_queue = ret
 
+<<<<<<< HEAD
+=======
+        # Can be removed
+        # self.storage_setup(self.interval)
+
+>>>>>>> 253596226e492c06f1d072c2f0c15dcae344f999
         # Get positions
         pos = self.broker.fetch_stock_positions()
         self.stock_positions = pos
@@ -193,11 +202,6 @@ class Trader:
         except asyncio.CancelledError:
             debug("Timeout cancelled")
 
-    async def run_on_interval(func, interval, *args, **kwargs):
-        while True:
-            await asyncio.sleep(interval)
-            func(*args, **kwargs)
-
     async def main(self, df_dict, timestamp, flush: bool=False):
         """ Function called by the broker every minute
         as new stock price data is streamed in. 
@@ -229,7 +233,7 @@ class Trader:
         if flush:
             # For missing data, repeat the existing one
             for n in self.needed:
-                self.block_queue[n] = self.streamer.storage.load(n, self.base_interval).iloc[[-1]]
+                self.block_queue[n] = self.storage.load(n, self.base_interval).iloc[[-1]]
             self.needed = self.watch.copy()
             for k, v in self.blocker.items():
                 self.blocker[k] = False
@@ -273,6 +277,11 @@ class Trader:
     def main_helper(self, df_dict):
 
         new_day = self.timestamp.date() > self.timestamp_prev.date()
+<<<<<<< HEAD
+=======
+        # Can be removed
+        # self.storage_update(df_dict)
+>>>>>>> 253596226e492c06f1d072c2f0c15dcae344f999
         
         # Periodically refresh access tokens
         if new_day or (self.timestamp.hour == 3 and self.timestamp.minute == 0):
@@ -280,12 +289,12 @@ class Trader:
         
         # Save the data locally
         for s in self.watch:
-            self.store.store(s, self.fetch_interval, df_dict[s])
+            self.storage.store(s, self.fetch_interval, df_dict[s])
         
         # Aggregate the data to other intervals
         for s in self.watch:
             for i in self.aggregations:
-                self.store.aggregate(s, self.fetch_interval, i)
+                self.storage.aggregate(s, self.fetch_interval, i)
 
         # If an order was processed, fetch the latest position info.
         # Otherwise, calculate current positions locally

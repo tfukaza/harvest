@@ -11,7 +11,6 @@ from tqdm import tqdm
 import pytz
 
 # Submodule imports
-import harvest.load as load
 from harvest.storage import BaseStorage
 import harvest.trader.trader as trader
 from harvest.broker.dummy import DummyBroker
@@ -32,7 +31,9 @@ class BackTester(trader.Trader):
         self.broker = DummyBroker()
 
         self.watch = []             # List of stocks to watch
-        self.store = BaseStorage()  # local cache of historic price
+
+        self.storage = BaseStorage()  # local cache of historic price
+
         self.account = {}           # Local cash of account info 
 
         self.stock_positions = []   # Local cache of current stock positions
@@ -41,6 +42,9 @@ class BackTester(trader.Trader):
 
         self.order_queue = []       # Queue of unfilled orders 
 
+
+    def read_price_history(self, interval: str, path: str, date_format: str='%Y-%m-%d %H:%M:%S'):
+        """Function to read backtesting data from a local file. """
         self.load = load.Load()
     
     def read_csv(self, path:str) -> pd.DataFrame:
@@ -68,7 +72,7 @@ class BackTester(trader.Trader):
         """
         for sym in self.watch: 
             df = self.read_csv(f"{path}/{sym}-{self.interval}.csv")
-            self.store.store(sym, self.interval, df)
+            self.storage.store(sym, self.interval, df)
             
             prev_i = self.interval
             for i in self.aggregations:
@@ -77,9 +81,9 @@ class BackTester(trader.Trader):
                 name = f"{path}/{sym}-{i}.csv"
                 if os.path.isfile(name):
                     df = self.read_csv(name)
-                    self.store.store(sym, i, df)
+                    self.storage.store(sym, i, df)
                 else:
-                    self.store.aggregate(sym, prev_i, i)
+                    self.storage.aggregate(sym, prev_i, i)
                 prev_i = i
 
     def load_price_history(self):
@@ -100,7 +104,7 @@ class BackTester(trader.Trader):
                 if df.empty:
                     warning(f"Local data for {sym}, {i} not found. Running FETCH")
                     df = self.streamer.fetch_price_history(last, today, i, sym).dropna()
-                self.store.store(sym, i, df)
+                self.storage.store(sym, i, df)
             
     def setup(self, source, interval, aggregations=None, path=None):
         self.interval = interval
@@ -132,7 +136,7 @@ class BackTester(trader.Trader):
 
         # Generate the "simulated aggregation" data
         for sym in self.watch:
-            df = self.store.load(sym, self.interval)
+            df = self.storage.load(sym, self.interval)
             rows = len(df.index)
             print(f"Formatting {sym} data...")
             for agg in self.aggregations:
@@ -141,24 +145,24 @@ class BackTester(trader.Trader):
                 for i in tqdm(range(rows)):
                     df_tmp = df.iloc[0:i+1]                    
                     df_tmp = df_tmp.iloc[-points:] 
-                    agg_df = self.store._aggregate(df_tmp, agg)
+                    agg_df = self.storage._aggregate(df_tmp, agg)
                     # Save the data into a new queue
-                    self.store.store(sym, '-'+agg, agg_df.iloc[[-1]], remove_duplicate=False)
+                    self.storage.store(sym, '-'+agg, agg_df.iloc[[-1]], remove_duplicate=False)
         print("Formatting complete")
 
         # Save the current state of the queue
         for s in self.watch:
-            self.load.append_entry(s, self.interval, self.store.load(s, self.interval))
+            self.load.append_entry(s, self.interval, self.storage.load(s, self.interval))
             for i in self.aggregations:
-                self.load.append_entry(s, '-'+i, self.store.load(s, '-'+i), False, True)
-                self.load.append_entry(s, i, self.store.load(s, i))
+                self.load.append_entry(s, '-'+i, self.storage.load(s, '-'+i), False, True)
+                self.load.append_entry(s, i, self.storage.load(s, i))
 
         # Move all data to a cached dataframe
         for i in [self.interval] + self.aggregations:
             i = i if i == self.interval else '-'+i
             self.df[i] = {}
             for s in self.watch:
-                df = self.store.load(s, i)
+                df = self.storage.load(s, i)
                 self.df[i][s] = df.copy() 
         
         # Trim data so start and end dates match between assets and intervals
@@ -180,7 +184,7 @@ class BackTester(trader.Trader):
         # Reset them 
         for i in [self.interval] + self.aggregations:
             for s in self.watch:
-                self.store.reset(s, i)
+                self.storage.reset(s, i)
             
         self.load_watch = True
 
@@ -218,12 +222,12 @@ class BackTester(trader.Trader):
             self._update_stats(df_dict, new=update, option_update=True)
             for s in self.watch:
                 df = self.df[interval][s].iloc[[i]]
-                self.store.store(s, interval, df)
+                self.storage.store(s, interval, df)
                 # Add data to aggregation queue
                 for agg in self.aggregations:
                     # Update the last datapoint
                     df = self.df['-'+agg][s].iloc[[i]]
-                    self.store.store(s, agg, df)
+                    self.storage.store(s, agg, df)
         
             self.algo.main({})
  
