@@ -15,7 +15,6 @@ import pytz
 # Submodule imports
 import harvest.broker._base as base
 from harvest.utils import is_crypto
-from harvest.storage.base import BaseStorage
 
 class DummyBroker(base.BaseBroker):
     """DummyBroker, as its name implies, is a dummy broker class that can 
@@ -25,7 +24,7 @@ class DummyBroker(base.BaseBroker):
 
     interval_list = ['1MIN', '5MIN', '15MIN', '30MIN', '1DAY']
 
-    def __init__(self, account_path: str=None, mode='both'):
+    def __init__(self, account_path: str=None):
         super().__init__(mode='both')
 
         self.stocks = []
@@ -69,34 +68,6 @@ class DummyBroker(base.BaseBroker):
       
         return df_dict
 
-        # if self.mode in ('both', 'streamer'):
-        #     # For all the stocks/cryptos that we are watching
-        #     for symbol in self.watch:
-        #         # Get the timestamp of the latest data we have
-        #         _, latest_timestamp = self.storage.data_range(symbol, self.fetch_interval)
-        #         # Fetch the data 
-        #         data = self.fetch_prices(latest_timestamp, dt.datetime.now(), self.fetch_interval, symbol)
-        #
-        # if self.mode in ('both', 'broker'):
-        #     # Buy and sell stocks that are in the queue
-        #     # iterate through buy / sell queue and apply each
-        #     while not self.orders_queue.empty():
-        #         order = self.orders_queue.get()
-        #         side = order.pop('side', None)
-        #         should_await = order.pop('await', False)
-        #         if side == 'buy':
-        #             if should_await:
-        #                 self.await_buy(**order)
-        #             else:
-        #                 self.buy(**order)
-        #         elif side == 'sell':
-        #             if should_await:
-        #                 self.await_sell(**order)
-        #             else:
-        #                 self.sell(**order)
-        #         else:
-        #             raise Exception('Invalid side option given.')
-
     def has_interval(self, interval: str):
         return True
 
@@ -112,27 +83,27 @@ class DummyBroker(base.BaseBroker):
             volume = max(volume + random.randint(-5, 5), 1)  
             yield open_s, high, low, close, volume
 
-    def fetch_prices(self, 
-        start: dt.datetime, 
-        end: dt.datetime, 
-        interval: str='1MIN', 
-        symbol: str=None):
+    # def fetch_prices(self, 
+    #     start: dt.datetime, 
+    #     end: dt.datetime, 
+    #     interval: str='1MIN', 
+    #     symbol: str=None):
 
-        oldest_timestamp, _ = self.storage.data_range(symbol, interval)
-        if oldest_timestamp is None or start < oldest_timestamp:
-            if oldest_timestamp is None:
-                oldest_timestamp = end
-            data = self.fetch_price_history(start, oldest_timestamp, interval, symbol)[symbol]
-            self.storage.store(symbol, interval, data)
+    #     oldest_timestamp, _ = self.storage.data_range(symbol, interval)
+    #     if oldest_timestamp is None or start < oldest_timestamp:
+    #         if oldest_timestamp is None:
+    #             oldest_timestamp = end
+    #         data = self.fetch_price_history(start, oldest_timestamp, interval, symbol)[symbol]
+    #         self.storage.store(symbol, interval, data)
 
-        _, latest_timestamp = self.storage.data_range(symbol, interval)
-        if latest_timestamp is None or end > latest_timestamp:
-            if latest_timestamp is None:
-                latest_timestamp = start 
-            data = self.fetch_price_history(latest_timestamp, end, interval, symbol)[symbol]
-            self.storage.store(symbol, interval, data)
+    #     _, latest_timestamp = self.storage.data_range(symbol, interval)
+    #     if latest_timestamp is None or end > latest_timestamp:
+    #         if latest_timestamp is None:
+    #             latest_timestamp = start 
+    #         data = self.fetch_price_history(latest_timestamp, end, interval, symbol)[symbol]
+    #         self.storage.store(symbol, interval, data)
 
-        return self.storage.load(symbol, interval, start, end)
+    #     return self.storage.load(symbol, interval, start, end)
 
 
     def fetch_price_history(self,
@@ -199,8 +170,6 @@ class DummyBroker(base.BaseBroker):
         results = results.loc[(open_time < results.index.time) & (results.index.time < close_time)]
         results = results[(results.index.dayofweek != 5) & (results.index.dayofweek != 6)]
 
-        results.columns = pd.MultiIndex.from_product([[symbol], results.columns])
-
         return results
 
     def fetch_latest_stock_price(self) -> Dict[str, pd.DataFrame]:
@@ -209,7 +178,7 @@ class DummyBroker(base.BaseBroker):
         today = dt.datetime.now()
         for symbol in self.watch:
             if not is_crypto(symbol):
-                results[symbol] = self.fetch_prices(last, today, self.interval, symbol).iloc[[-1]]
+                results[symbol] = self.fetch_price_history(last, today, self.interval, symbol).iloc[[-1]]
         return results
         
     def fetch_latest_crypto_price(self) -> Dict[str, pd.DataFrame]:
@@ -218,7 +187,7 @@ class DummyBroker(base.BaseBroker):
         today = dt.datetime.now()
         for symbol in self.watch:
             if is_crypto(symbol):
-                results[symbol] = self.fetch_prices(last, today, self.interval, symbol).iloc[[-1]]
+                results[symbol] = self.fetch_price_history(last, today, self.interval, symbol).iloc[[-1]]
         return results
     
     def fetch_stock_positions(self) -> List[Dict[str, Any]]:

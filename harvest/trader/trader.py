@@ -16,6 +16,7 @@ import pytz
 import harvest.load as load
 from harvest.broker.dummy import DummyBroker
 from harvest.algo import BaseAlgo
+from harvest.storage import BaseStorage
 
 class Trader:
     """
@@ -62,6 +63,7 @@ class Trader:
         self.crypto_positions = []  # Local cache of current crypto positions
 
         self.order_queue = []       # Queue of unfilled orders 
+        self.storage = BaseStorage() # Storage to hold stock/crypto data
 
         self.block_lock = threading.Lock() # Lock for streams that recieve data asynchronously
 
@@ -119,6 +121,8 @@ class Trader:
             print(f"No algorithm specified. Using BaseAlgo")
             self.algo = [BaseAlgo()]
 
+        self.storage_setup()
+
 
 
     def start(self, load_watch=True, interval='5MIN', aggregations=[], kill_switch: bool=False): 
@@ -168,11 +172,6 @@ class Trader:
         except asyncio.CancelledError:
             debug("Timeout cancelled")
 
-    async def run_on_interval(func, interval, *args, **kwargs):
-        while True:
-            await asyncio.sleep(interval)
-            func(*args, **kwargs)
-
 
     async def main(self, df_dict, timestamp, flush: bool=False):
         """ Function called by the broker every minute
@@ -205,7 +204,7 @@ class Trader:
         if flush:
             # For missing data, repeat the existing one
             for n in self.needed:
-                self.block_queue[n] = self.streamer.storage.load(n, self.base_interval).iloc[[-1]]
+                self.block_queue[n] = self.storage.load(n, self.base_interval).iloc[[-1]]
             self.needed = self.watch.copy()
             for k, v in self.blocker.items():
                 self.blocker[k] = False
@@ -249,6 +248,7 @@ class Trader:
     def main_helper(self, df_dict):
 
         new_day = self.timestamp.date() > self.timestamp_prev.date()
+        self.update_storege(df_dict)
         
         # Periodically refresh access tokens
         if new_day or (self.timestamp.hour == 3 and self.timestamp.minute == 0):
@@ -392,7 +392,56 @@ class Trader:
             
             equity = net_value + self.account['cash']
             self.account['equity'] = equity
+
+    def storage_setup(self, interval):
+    """Loads historical price data to ensure price storage are up-to-date upon program startup.
+        This should also be called at the start of each trading day 
+        so database is updated and cache is refreshed.
+        """
+        debug("Initializing storage...")
         
+        start = pytz.utc.localize(dt.datetime(1970, 1, 1))
+        end = pytz.utc.localize(dt.datetime.utcnow().replace(microsecond=0, second=0))  # Current timestamp in UTC
+
+        for symbol in self.watch:
+            
+            df = self.streamer.fetch_price_history(start, end, interval, symbol)
+            self.storage.store(symbol, interval, df)
+
+            # Many brokers have separate API for intraday data, so make an API call
+            # instead of aggregating interday data
+            if '1DAY' in self.aggregations:
+                df = self.streamer.fetch_price_history(last, today, '1DAY', symbol)
+                self.storage.store(symbol, '1DAY', df)
+
+            df = self.storage.load(symbol, interval)
+            for i in self.aggregations:
+                if i == '1DAY':
+                    continue
+                df_tmp = self.aggregate_df(df, i)
+                self.storage.store(symbol, i, df_tmp)
+
+    def storage_update(self, df_dict):
+        """Takes a dictionary of dfs of the latest stock price info, 
+        and updates the price storage accordingly. Should be called 
+        every time handler() is invoked. 
+        """
+        debug("Queue update")
+        interval = self.fetch_interval
+
+        for symbol in self.watch:
+            self.storage.store(symbol, interval, df_dict[symbol], True)
+
+            df_base = self.storage.load(symbol, interval) 
+
+            for inter in self.aggregations:
+                # Locally aggregate data to reduce network latency
+                df_tmp = self.storage.load(symbol, inter)
+                df_tmp = self.aggregate_df(df_tmp, inter)
+                df_tmp = df_tmp[df_tmp[sym]['open'].notna()]
+
+                self.storage.store(symbol, inter, df_tmp)
+
     def _setup_stats(self):
         """Initializes local cache of stocks, options, and crypto positions.
         """
