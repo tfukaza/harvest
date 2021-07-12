@@ -33,7 +33,7 @@ class BaseStorage:
         self.storage_lock = Lock()
         self.storage = {}
 
-    def store(self, symbol: str, interval: str, data: pd.DataFrame) -> None:
+    def store(self, symbol: str, interval: str, data: pd.DataFrame, remove_duplicate=True) -> None:
         """
         Stores the stock data in the storage dictionary.
         :symbol: a stock or crypto
@@ -58,7 +58,7 @@ class BaseStorage:
                 try:
                     self.storage_lock.acquire()
                     # Handles if we have stock data for the given interval
-                    intervals[interval] = self._append(intervals[interval], data, interval)
+                    intervals[interval] = self._append(intervals[interval], data, interval, remove_duplicate=remove_duplicate)
                     self.storage_lock.release()
                 except:
                     self.storage_lock.release()
@@ -84,6 +84,15 @@ class BaseStorage:
         self.storage_lock.acquire()
         data = self.storage[symbol][from]
         self.storage[symbol][to] = self._append(self.storage[symbol][to], self._aggregate(data, to))
+        self.storage_lock.release()
+    
+    def reset(self, symbol: str, interval:str):
+        """
+        Aggregates the stock data from the interval specified in 'from' to 'to'.
+
+        """
+        self.storage_lock.acquire()
+        self.storage[symbol][interval] = pd.DataFrame()
         self.storage_lock.release()
 
 
@@ -183,7 +192,7 @@ class BaseStorage:
         return data
 
 
-    def _append(self, current_data: pd.DataFrame, new_data: pd.DataFrame, interval: str) -> pd.DataFrame:
+    def _append(self, current_data: pd.DataFrame, new_data: pd.DataFrame, interval: str, remove_duplicate: bool) -> pd.DataFrame:
         """
         Appends the data as best it can with gaps in the data for weekends 
         and time when no data is collected. 
@@ -193,7 +202,8 @@ class BaseStorage:
         """
 
         new_df = current_data.append(new_data)
-        new_df = new_df[~new_df.index.duplicated(keep='last')]
+        if remove_duplicate:
+            new_df = new_df[~new_df.index.duplicated(keep='last')]
         return new_df
 
         # dt_interval = interval_to_timedelta(interval)
