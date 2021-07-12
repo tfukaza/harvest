@@ -3,8 +3,6 @@ import datetime as dt
 from threading import Lock
 from typing import Tuple
 
-from tqdm import utils
-
 import re
 
 from harvest.utils import *
@@ -181,7 +179,7 @@ class BaseStorage:
             'close':'last',
             'volume':'sum'
         }
-        val, unit = utils.expand_interval(interval)
+        val, unit = expand_interval(interval)
         if unit == 'MIN':
             val = val+'T'
         elif unit == 'HR':

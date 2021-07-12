@@ -144,7 +144,7 @@ class Trader:
         # Update option stats
         self.broker.update_option_positions(self.option_positions)
 
-    def start(self, interval, aggregations=[], sync = True, kill_switch: bool=False): 
+    def start(self, interval='5MIN', aggregations=[], sync = True, kill_switch: bool=False): 
         """Entry point to start the system. 
         
         :load_watch: If True, all positions will be loaded from the brokerage account. 
