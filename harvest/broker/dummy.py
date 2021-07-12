@@ -16,7 +16,6 @@ import pytz
 import harvest.broker._base as base
 from harvest.utils import is_crypto
 
-
 class DummyBroker(base.BaseBroker):
     """DummyBroker, as its name implies, is a dummy broker class that can 
     be useful for testing algorithms. When used as a streamer, it will return
