@@ -15,6 +15,10 @@ import pytz
 # Submodule imports
 import harvest.broker._base as base
 from harvest.utils import is_crypto
+<<<<<<< Updated upstream
+=======
+from harvest.storage import BaseStorage
+>>>>>>> Stashed changes
 
 class DummyBroker(base.BaseBroker):
     """DummyBroker, as its name implies, is a dummy broker class that can 
