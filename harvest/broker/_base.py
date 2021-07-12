@@ -26,7 +26,7 @@ class BaseBroker:
         This should be initialized in setup_run (see below).
     """
     
-    def __init__(self, path: str=None, mode='both'):
+    def __init__(self, path: str=None):
         """Here, the broker should perform any authentications necessary to 
         connect to the brokerage it is using.
 
@@ -39,13 +39,6 @@ class BaseBroker:
         :path: path to the YAML file containing credentials for the broker. 
             If not specified, should default to './secret.yaml'
         """
-
-        self.mode = 'both'
-        self.storage = None 
-        self.queue = None
-
-        if mode in ('both', 'streamer'):
-            self.storage = BaseStorage()
 
         self.trader = None # Allows broker to handle the case when runs without a trader
     
@@ -419,7 +412,7 @@ class BaseBroker:
 
         if self.trader is None:
             buy_power = self.fetch_account()['buying_power']
-            price = self.fetch_price_history(dt.datetime.now() - dt.timedelta(days=7), dt.datetime.now(), self.interval, symbol)[symbol].iloc[-1]['close']
+            price = self.fetch_price_history(dt.datetime.now() - dt.timedelta(days=7), dt.datetime.now(), self.interval, symbol).iloc[-1]['close']
         else:
             buy_power = self.trader.account['buying_power']
             price = self.trader.queue.get_last_symbol_interval_price(symbol, self.fetch_interval, 'close')
@@ -486,7 +479,7 @@ class BaseBroker:
             return None
        
         if self.trader is None:
-            price = self.fetch_price_history(dt.datetime.now() - dt.timedelta(days=7), dt.datetime.now(), self.interval, symbol)[symbol].iloc[-1]['close']
+            price = self.fetch_price_history(dt.datetime.now() - dt.timedelta(days=7), dt.datetime.now(), self.interval, symbol).iloc[-1]['close']
         else:
             price = self.trader.queue.get_last_symbol_interval_price(symbol, self.fetch_interval, 'close') 
 
@@ -635,5 +628,5 @@ class BaseBroker:
         else:                       # 1DAY interval
             val = 'D'
         df = df.resample(val).agg(op_dict)
-        df.columns = pd.MultiIndex.from_product([[sym], df.columns])
+
         return df

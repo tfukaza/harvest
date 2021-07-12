@@ -119,6 +119,8 @@ class Trader:
             for i in self.aggregations:
                 self.store.store(s, i, self.streamer.fetch_price_history(i, s))
 
+        self.load_watch = True
+
     def _setup_account(self):
         """Initializes local cache of account info. 
         For testing, it should manually be specified

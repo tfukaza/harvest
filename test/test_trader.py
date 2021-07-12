@@ -12,11 +12,11 @@ class TestTrader(unittest.TestCase):
         t.set_symbol('A')
         self.assertEqual(t.watch[0], 'A')
 
-    # def test_tester_adding_symbol(self):
-    #     dummy_broker = DummyBroker()
-    #     t = trader.TestTrader(dummy_broker)
-    #     t.set_symbol('A')
-    #     self.assertEqual(t.watch[0], 'A')
+    def test_tester_adding_symbol(self):
+        dummy_broker = DummyBroker()
+        t = trader.BackTester(dummy_broker)
+        t.set_symbol('A')
+        self.assertEqual(t.watch[0], 'A')
 
     def test_start_do_nothing(self):
         dummy_broker = DummyBroker()
