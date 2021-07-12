@@ -30,7 +30,7 @@ class Trader:
 
     interval_list = ['1MIN', '5MIN', '15MIN', '30MIN', '1HR', '1DAY']
 
-    def __init__(self, streamer=None, broker=None):      
+    def __init__(self, streamer=None, broker=None, storage=None):      
         """Initializes the Trader. 
         """
         if streamer == None:
@@ -55,8 +55,12 @@ class Trader:
         self.option_positions = []  # Local cache of current options positions
         self.crypto_positions = []  # Local cache of current crypto positions
 
-        self.order_queue = []       # Queue of unfilled orders 
-        self.storage = BaseStorage() # Storage to hold stock/crypto data
+        self.order_queue = []       # Queue of unfilled orders
+
+        if storage is None
+            self.storage = BaseStorage() # Storage to hold stock/crypto data
+        else:
+            self.storage = storage
 
         self.block_lock = threading.Lock() # Lock for streams that recieve data asynchronously
 
@@ -133,8 +137,6 @@ class Trader:
         # Get any pending orders 
         ret = self.broker.fetch_order_queue()
         self.order_queue = ret
-
-        self.storage_setup(self.interval)
 
         # Get positions
         pos = self.broker.fetch_stock_positions()
@@ -269,7 +271,6 @@ class Trader:
     def main_helper(self, df_dict):
 
         new_day = self.timestamp.date() > self.timestamp_prev.date()
-        self.storage_update(df_dict)
         
         # Periodically refresh access tokens
         if new_day or (self.timestamp.hour == 3 and self.timestamp.minute == 0):
@@ -402,56 +403,6 @@ class Trader:
             
             equity = net_value + self.account['cash']
             self.account['equity'] = equity
-
-    def storage_setup(self, interval):
-        """Loads historical price data to ensure price storage are up-to-date upon program startup.
-        This should also be called at the start of each trading day 
-        so database is updated and cache is refreshed.
-        """
-        debug("Initializing storage...")
-        
-        start = pytz.utc.localize(dt.datetime(1970, 1, 1))
-        end = pytz.utc.localize(dt.datetime.utcnow().replace(microsecond=0, second=0))  # Current timestamp in UTC
-
-        for symbol in self.watch:
-            
-            df = self.streamer.fetch_price_history(start, end, interval, symbol)
-            self.storage.store(symbol, interval, df)
-
-            # Many brokers have separate API for intraday data, so make an API call
-            # instead of aggregating interday data
-            if '1DAY' in self.aggregations:
-                df = self.streamer.fetch_price_history(last, today, '1DAY', symbol)
-                self.storage.store(symbol, '1DAY', df)
-
-            df = self.storage.load(symbol, interval)
-            for i in self.aggregations:
-                if i == '1DAY':
-                    continue
-                df_tmp = self.aggregate_df(df, i)
-                self.storage.store(symbol, i, df_tmp)
-
-    def storage_update(self, df_dict):
-        """Takes a dictionary of dfs of the latest stock price info, 
-        and updates the price storage accordingly. Should be called 
-        every time handler() is invoked. 
-        """
-        debug("Queue update")
-        interval = self.fetch_interval
-
-        for symbol in self.watch:
-            self.storage.store(symbol, interval, df_dict[symbol], True)
-
-            df_base = self.storage.load(symbol, interval) 
-
-            for inter in self.aggregations:
-                # Locally aggregate data to reduce network latency
-                df_tmp = self.storage.load(symbol, inter)
-                df_tmp = self.aggregate_df(df_tmp, inter)
-                df_tmp = df_tmp[df_tmp[sym]['open'].notna()]
-
-                self.storage.store(symbol, inter, df_tmp)
-
 
     def fetch_chain_info(self, *args, **kwargs):
         return self.streamer.fetch_chain_info(*args, **kwargs)
