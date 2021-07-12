@@ -1,0 +1,1 @@
+from harvest.storage.base import BaseStorage

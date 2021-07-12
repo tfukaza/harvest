@@ -220,7 +220,7 @@ class BaseAlgo:
             if interval == None:
                 interval = self.trader.interval
             if prices == None:
-                prices = self.trader.queue.get_symbol_interval_prices(symbol, interval, ref)
+                prices = self.trader.store.load(symbol, interval)
            
         return symbol, interval, ref, prices
 
@@ -375,7 +375,7 @@ class BaseAlgo:
         if symbol == None:
             symbol = self.watch[0]
         if len(symbol) <= 6:
-            return self.trader.queue.get_last_symbol_interval_price(symbol, self.trader.interval, 'close')
+            return self.trader.store.load(symbol, self.trader.interval)['close']
         else:
             for p in self.trader.option_positions:
                 if p['occ_symbol'] == symbol:
@@ -396,7 +396,7 @@ class BaseAlgo:
         if interval == None:
             interval = self.trader.interval
         if len(symbol) <= 6:
-            return self.trader.queue.get_symbol_interval_prices(symbol, interval, ref)
+            return self.trader.store.load(symbol, interval)[ref]
         else:
             raise Exception("Price list not available for options")
     
@@ -421,7 +421,7 @@ class BaseAlgo:
         if symbol == None:
             symbol = self.watch[0]
         if len(symbol) <= 6:
-            return self.trader.queue.get_symbol_interval(symbol, self.trader.interval).iloc[[-1]]
+            return self.trader.store.load(symbol, self.trader.interval).iloc[[-1]]
         else:
             raise Exception("Candles not available for options")
     
@@ -447,7 +447,7 @@ class BaseAlgo:
             symbol = self.watch[0]
         if interval == None:
             interval = self.trader.interval
-        return self.trader.queue.get_symbol_interval(symbol, interval)
+        return self.trader.store.load(symbol, interval)
     
     def get_returns(self, symbol=None) -> float:
         """Returns the return of a specified asset.

@@ -2,6 +2,7 @@
 import datetime as dt
 import random
 import re
+import queue
 from typing import Any, Dict, List, Tuple
 import logging
 from logging import critical, error, info, warning, debug
@@ -9,9 +10,12 @@ from logging import critical, error, info, warning, debug
 # External libraries
 import pandas as pd
 import yaml
+import pytz
 
 # Submodule imports
 import harvest.broker._base as base
+from harvest.utils import is_crypto
+from harvest.storage.base import BaseStorage
 
 class DummyBroker(base.BaseBroker):
     """DummyBroker, as its name implies, is a dummy broker class that can 
@@ -33,7 +37,6 @@ class DummyBroker(base.BaseBroker):
         self.cash = 100000.0
         self.buying_power = 100000.0
         self.multiplier = 1
-
         self.id = 0
 
         if account_path:
@@ -50,7 +53,6 @@ class DummyBroker(base.BaseBroker):
                 for crypto in account['cryptos']:
                     self.cryptos.append(crypto)
 
-        
 
     def setup(self, watch: List[str], interval, trader=None, trader_main=None):
         if interval not in self.interval_list:
@@ -59,9 +61,15 @@ class DummyBroker(base.BaseBroker):
         super().setup(watch, interval, interval, trader, trader_main)
 
     @base.BaseBroker.main_wrap
-    def main(self) -> pd.DataFrame:
-        results = None
-        return results
+    def main(self):
+        df_dict = {}
+        df_dict.update(self.fetch_latest_stock_price())
+        df_dict.update(self.fetch_latest_crypto_price())
+      
+        return df_dict
+
+    def has_interval(self, interval: str):
+        return True
 
     def _generate_fake_stock_data(self):
         open_s = random.uniform(2, 1000)
@@ -75,9 +83,10 @@ class DummyBroker(base.BaseBroker):
             volume = max(volume + random.randint(-5, 5), 1)  
             yield open_s, high, low, close, volume
 
+
     def fetch_price_history(self,
-        last: dt.datetime, 
-        today: dt.datetime, 
+        start: dt.datetime, 
+        end: dt.datetime, 
         interval: str='1MIN',
         symbol: str = None) -> pd.DataFrame:
 
@@ -96,15 +105,8 @@ class DummyBroker(base.BaseBroker):
                 print('Error')
 
         times = []
-        current = last
-        while current <= today:
-            times.append(current)
-            current += interval
+        current = start
 
-        if not symbol:
-            symbol = 'DUMMY'
-
-        # Fake the data 
         stock_gen = self._generate_fake_stock_data()
         open_s = []
         high = []
@@ -112,13 +114,20 @@ class DummyBroker(base.BaseBroker):
         close = []
         volume = []
 
-        for _ in range(len(times)):
+        # Fake the data 
+        while current < end + interval:
+            times.append(current.replace(tzinfo=None))
+            current += interval
+
             o, h, l, c, v = next(stock_gen)
             open_s.append(o)
             high.append(h)
             low.append(l)
             close.append(c)
             volume.append(v)
+
+        if not symbol:
+            symbol = 'DUMMY'            
 
         d = {
             'date': times,
@@ -139,8 +148,6 @@ class DummyBroker(base.BaseBroker):
         results = results.loc[(open_time < results.index.time) & (results.index.time < close_time)]
         results = results[(results.index.dayofweek != 5) & (results.index.dayofweek != 6)]
 
-        results.columns = pd.MultiIndex.from_product([[symbol], results.columns])
-
         return results
 
     def fetch_latest_stock_price(self) -> Dict[str, pd.DataFrame]:
@@ -148,7 +155,7 @@ class DummyBroker(base.BaseBroker):
         last = dt.datetime.now() - dt.timedelta(days=7)
         today = dt.datetime.now()
         for symbol in self.watch:
-            if symbol[0] != '@':
+            if not is_crypto(symbol):
                 results[symbol] = self.fetch_price_history(last, today, self.interval, symbol).iloc[[-1]]
         return results
         
@@ -157,7 +164,7 @@ class DummyBroker(base.BaseBroker):
         last = dt.datetime.now() - dt.timedelta(days=7)
         today = dt.datetime.now()
         for symbol in self.watch:
-            if symbol[0] == '@':
+            if is_crypto(symbol):
                 results[symbol] = self.fetch_price_history(last, today, self.interval, symbol).iloc[[-1]]
         return results
     
@@ -175,7 +182,7 @@ class DummyBroker(base.BaseBroker):
             occ_sym = r['occ_symbol']
 
             if self.trader is None:
-                price = self.fetch_price_history(dt.datetime.now() - dt.timedelta(days=7), dt.datetime.now(), symbol)[symbol].iloc[-1]['close']
+                price = self.fetch_option_market_data(occ_sym)['price']
             else:
                 price = self.trader.streamer.fetch_option_market_data(occ_sym)['price']
 
@@ -197,7 +204,7 @@ class DummyBroker(base.BaseBroker):
         sym = ret['symbol']
 
         if self.trader is None:
-            price = self.fetch_option_market_data(occ_sym)['price']
+            price = self.fetch_price_history(dt.datetime.now() - dt.timedelta(days=7), dt.datetime.now(), self.interval, sym).iloc[-1]['close']
         else:
             price = self.trader.queue.get_last_symbol_interval_price(sym, self.interval, 'close')
 
@@ -205,7 +212,7 @@ class DummyBroker(base.BaseBroker):
        
         # If order has been filled, simulate asset buy/sell
         if ret['status'] == 'filled':
-            if ret['symbol'][0] == '@': 
+            if is_crypto(ret['symbol']): 
                 lst = self.cryptos
             else:
                 lst = self.stocks
@@ -284,7 +291,7 @@ class DummyBroker(base.BaseBroker):
                         "multiplier": 100,
                         "exp_date": date,
                         "strike_price": price,
-                        "type":option_type
+                        "type": option_type
                     })
                 else:
                     pos['avg_price'] = (pos['avg_price']*pos['quantity'] + price*qty)/(qty+pos['quantity'])
@@ -347,12 +354,12 @@ class DummyBroker(base.BaseBroker):
         extended: bool=False, 
         ):
         # In this broker, all orders are filled immediately. 
-        if symbol[0] != '@':
+        if not is_crypto(symbol):
             data = {
                 'type': 'STOCK',
                 'symbol': symbol,
                 'quantity': quantity,
-                'filled_qty': 0,
+                'filled_qty': quantity,
                 'id': self.id,
                 'time_in_force': in_force,
                 'status': 'filled',
@@ -363,7 +370,7 @@ class DummyBroker(base.BaseBroker):
                 'type': 'CRYPTO',
                 'symbol': symbol,
                 'quantity': quantity,
-                'filled_qty': 0,
+                'filled_qty': quantity,
                 'id': self.id,
                 'time_in_force': in_force,
                 'status': 'filled',
