@@ -18,7 +18,7 @@ class CoverageTestCMD(Command):
 
 setup(
     name='harvest',
-    packages=['harvest', 'harvest.trader', 'harvest.broker'],
+    packages=['harvest', 'harvest.trader', 'harvest.broker', 'harvest.storage'],
     version='0.1.0',
     description='A framework providing a high-level interface for algorithmic trading.',
     author='Harvest Team',
