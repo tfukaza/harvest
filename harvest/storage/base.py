@@ -202,7 +202,7 @@ class BaseStorage:
 
         new_df = current_data.append(new_data)
         if remove_duplicate:
-            new_df = new_df[~new_df.index.duplicated(keep='last')]
+            new_df = new_df[~new_df.index.duplicated(keep='last')].sort_index()
         return new_df
 
         # dt_interval = interval_to_timedelta(interval)
