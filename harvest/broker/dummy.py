@@ -58,7 +58,7 @@ class DummyBroker(base.BaseBroker):
         if interval not in self.interval_list:
             raise Exception(f'Invalid interval {interval}')
 
-        super().setup(watch, interval, trader, trader_main)
+        super().setup(watch, interval, interval, trader, trader_main)
 
     @base.BaseBroker.main_wrap
     def main(self):
