@@ -179,9 +179,10 @@ class BaseStorage:
             'close':'last',
             'volume':'sum'
         }
-        val, unit = expand_interval(interval)
+        num, unit = expand_interval(interval)
+        num = str(num)
         if unit == 'MIN':
-            val = val+'T'
+            val = num+'T'
         elif unit == 'HR':
             val = 'H'
         else:
