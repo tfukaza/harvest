@@ -120,7 +120,7 @@ class Trader:
         # Initialize storage
         for s in self.watch:
             for i in self.aggregations:
-                self.storage.store(s, i, self.streamer.fetch_price_history(i, s))
+                self.storage.store(s, i, self.streamer.fetch_price_history(s, i))
 
         self.load_watch = True
 
@@ -138,6 +138,12 @@ class Trader:
         ret = self.broker.fetch_order_queue()
         self.order_queue = ret
 
+<<<<<<< HEAD
+=======
+        # Can be removed
+        # self.storage_setup(self.interval)
+
+>>>>>>> 253596226e492c06f1d072c2f0c15dcae344f999
         # Get positions
         pos = self.broker.fetch_stock_positions()
         self.stock_positions = pos
@@ -271,6 +277,11 @@ class Trader:
     def main_helper(self, df_dict):
 
         new_day = self.timestamp.date() > self.timestamp_prev.date()
+<<<<<<< HEAD
+=======
+        # Can be removed
+        # self.storage_update(df_dict)
+>>>>>>> 253596226e492c06f1d072c2f0c15dcae344f999
         
         # Periodically refresh access tokens
         if new_day or (self.timestamp.hour == 3 and self.timestamp.minute == 0):
