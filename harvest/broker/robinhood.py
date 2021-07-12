@@ -201,28 +201,6 @@ class RobinhoodBroker(base.BaseBroker):
 
     def has_interval(self, interval: str):
         return interval in self.interval_list
-
-    def fetch_prices(self, 
-        start: dt.datetime, 
-        end: dt.datetime, 
-        interval: str='1MIN', 
-        symbol: str=None):
-
-        oldest_timestamp, _ = self.storage.data_range(symbol, interval)
-        if oldest_timestamp is None or start < oldest_timestamp:
-            if oldest_timestamp is None:
-                oldest_timestamp = end
-            data = self.fetch_price_history(start, oldest_timestamp, interval, symbol)[symbol]
-            self.storage.store(symbol, interval, data)
-
-        _, latest_timestamp = self.storage.data_range(symbol, interval)
-        if latest_timestamp is None or end > latest_timestamp:
-            if latest_timestamp is None:
-                latest_timestamp = start 
-            data = self.fetch_price_history(latest_timestamp, end, interval, symbol)[symbol]
-            self.storage.store(symbol, interval, data)
-
-        return self.storage.load(symbol, interval, start, end)
     
     @base.BaseBroker._exception_handler
     def fetch_price_history( self,  
