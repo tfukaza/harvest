@@ -1,9 +1,11 @@
 # Builtins
+import re
 import datetime as dt
 import time
 from logging import debug
 from warnings import warn
 from typing import Any, Callable, Dict, List 
+import re
 
 # External libraries
 import numpy as np
@@ -11,12 +13,12 @@ import pandas as pd
 import pytz
 
 # Submodule imports
-import harvest.load
-
+from harvest.utils import is_crypto
+from harvest.storage import BaseStorage
 
 class BaseBroker:
     """Broker class communicates with various API endpoints to perform the
-    neccesary operations. The BaseBroker defines the interface for all Broker classes to 
+    necessary operations. The BaseBroker defines the interface for all Broker classes to 
     extend and implement.
 
     Attributes
@@ -28,12 +30,19 @@ class BaseBroker:
         """Here, the broker should perform any authentications necessary to 
         connect to the brokerage it is using.
 
+        There are three broker types, 'streamer', 'broker', and 'both'. A 
+        'streamer' is responsible for fetching data and interacting with 
+        the queue to store data. A 'broker' is used solely for buying and 
+        selling stocks, cryptos and options. Finally, 'both' is used to 
+        indicate that the broker fetch data and buy and sell stocks.
+
         :path: path to the YAML file containing credentials for the broker. 
             If not specified, should default to './secret.yaml'
         """
+
         self.trader = None # Allows broker to handle the case when runs without a trader
     
-    def setup(self, watch: List[str], interval: str, fetch_interval: str, trader=None, trader_main=None) -> None:
+    def setup(self, watch: List[str], interval: str, fetch_interval:str, trader=None, trader_main=None) -> None:
         """This function is called right before the algorithm begins.
         It should perform any configurations necessary to start running.
 
@@ -63,10 +72,34 @@ class BaseBroker:
         self.fetch_interval = fetch_interval
         self.trader = trader
         self.trader_main = trader_main
-           
+
+    def start(self, kill_switch: bool=False):
+        self.cur_sec = -1
+        self.cur_min = -1
+        val = int(re.sub("[^0-9]", "", self.fetch_interval))
+        
+        print("Running...")
+        while 1:
+            cur = dt.datetime.now()
+            minutes = cur.minute
+            if minutes % val == 0 and minutes != self.cur_min:
+                self.main()
+                if kill_switch:
+                    return
+            self.cur_min = minutes
+
 
     def refresh_cred(self):
         raise NotImplementedError("This endpoint is not supported in this broker")
+
+    def main_wrap(func):
+        """Wrapper to run the handler async"""
+        def wrapper(*args, **kwargs):
+            self = args[0]
+            df = func(*args, **kwargs) 
+            now = dt.datetime.utcnow()
+            self.trader.loop.run_until_complete(self.trader_main(df, now))
+        return wrapper
 
     def main(self) -> Dict[str, pd.DataFrame]:
         """This function should be called at the specified interval, and return data.
@@ -84,15 +117,6 @@ class BaseBroker:
         timestamp should be an offset-aware datetime object in UTC timezone
         """
         raise NotImplementedError("This endpoint is not supported in this broker")
-    
-    def main_wrap(func):
-        """Wrapper to run the handler async"""
-        def wrapper(*args, **kwargs):
-            self = args[0]
-            df = func(*args, **kwargs) 
-            now = dt.datetime.utcnow()
-            self.trader.loop.run_until_complete(self.trader_main(df, now))
-        return wrapper
 
     def exit(self):
         """This function is called after every invocation of algo's handler. 
@@ -123,12 +147,31 @@ class BaseBroker:
             raise Exception(f"{func} failed")
         return wrapper
 
-    def fetch_price_history( self,
-        last: dt.datetime, 
-        today: dt.datetime, 
-        interval: str='5MIN',
-        symbol: str = None):
-        """Returns historical price data for the specified asset and period.
+    # def fetch_price(self,
+    #     start: dt.datetime, 
+    #     end: dt.datetime, 
+    #     interval: str='5MIN',
+    #     symbol: str = None):
+    #     """Returns historical price data for the specified asset and period
+    #     from storage and may call fetch_price_history to populate the storage.
+
+    #     :last: The starting date of the period, inclusive.
+    #     :today: The ending date of the period, inclusive.
+    #     :interval: The interval of requested historical data.
+    #     :symbol: The stock/crypto to get data for.
+
+    #     :returns: A pandas dataframe, same format as _handler()
+    #     """
+    #     raise NotImplementedError("This endpoint is not supported in this broker")
+
+    def fetch_price_history(self,
+        symbol: str,
+        interval: str,
+        start: dt.datetime=None, 
+        end: dt.datetime=None, 
+        ):
+        """Returns historical price data for the specified asset and period 
+        from the API.
 
         :last: The starting date of the period, inclusive.
         :today: The ending date of the period, inclusive.
@@ -139,18 +182,18 @@ class BaseBroker:
         """
         raise NotImplementedError("This endpoint is not supported in this broker")
     
-    def fetch_latest_stock_price(self):
-        """Returns the latest prices for all stocks in self.watch
+    # def fetch_latest_stock_price(self):
+    #     """Returns the latest prices for all stocks in self.watch
 
-        :returns: A pandas dataframe, same format as _handler()
-        """
-        raise NotImplementedError("This endpoint is not supported in this broker")
+    #     :returns: A pandas dataframe, same format as _handler()
+    #     """
+    #     raise NotImplementedError("This endpoint is not supported in this broker")
 
-    def fetch_latest_crypto_price(self):
-        """Returns the latest prices for all cryptos in self.watch
+    # def fetch_latest_crypto_price(self):
+    #     """Returns the latest prices for all cryptos in self.watch
         
-        :returns: A pandas dataframe, same format as _handler()
-        """
+    #     :returns: A pandas dataframe, same format as _handler()
+    #     """
     
     def fetch_stock_positions(self):
         """Returns all current stock positions
@@ -369,7 +412,7 @@ class BaseBroker:
 
         if self.trader is None:
             buy_power = self.fetch_account()['buying_power']
-            price = self.fetch_price_history(dt.datetime.now() - dt.timedelta(days=7), dt.datetime.now(), symbol)[symbol].iloc[-1]['close']
+            price = self.fetch_price_history(dt.datetime.now() - dt.timedelta(days=7), dt.datetime.now(), self.interval, symbol).iloc[-1]['close']
         else:
             buy_power = self.trader.account['buying_power']
             price = self.trader.queue.get_last_symbol_interval_price(symbol, self.fetch_interval, 'close')
@@ -397,12 +440,12 @@ class BaseBroker:
         ret = self.buy(symbol, quantity, in_force, extended)
 
         if self.trader is None:
-            if symbol[0] == '@':
+            if is_crypto(symbol):
                 check = self.fetch_crypto_order_status
             else:
                 check = self.fetch_stock_order_status
         else:
-            if symbol[0] == '@':
+            if is_crypto(symbol):
                 check = self.trader.order.fetch_crypto_order_status
             else:
                 check = self.trader.order.fetch_stock_order_status
@@ -436,7 +479,7 @@ class BaseBroker:
             return None
        
         if self.trader is None:
-            price = self.fetch_price_history(dt.datetime.now() - dt.timedelta(days=7), dt.datetime.now(), symbol)[symbol].iloc[-1]['close']
+            price = self.fetch_price_history(dt.datetime.now() - dt.timedelta(days=7), dt.datetime.now(), self.interval, symbol).iloc[-1]['close']
         else:
             price = self.trader.queue.get_last_symbol_interval_price(symbol, self.fetch_interval, 'close') 
 
@@ -566,3 +609,24 @@ class BaseBroker:
         option_type = 'call' if symbol[12] == 'C' else 'put'
         price = float(symbol[13:])/1000
         return sym, date, option_type, price
+    
+    def aggregate_df(self, df, interval: str):
+        sym = list(df.columns.levels[0])[0]
+        df = df[sym]
+        op_dict = {
+            'open': 'first',
+            'high':'max',
+            'low':'min',
+            'close':'last',
+            'volume':'sum'
+        }
+        val = re.sub("[^0-9]", "", interval)
+        if interval[-1] == 'N':     # MIN interval
+            val = val+'T'
+        elif interval[-1] == 'R':   # 1HR interval
+            val = 'H'
+        else:                       # 1DAY interval
+            val = 'D'
+        df = df.resample(val).agg(op_dict)
+
+        return df

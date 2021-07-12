@@ -13,4 +13,5 @@ if __name__ == "__main__":
     t = Trader( RobinhoodBroker() )
     t.set_symbol('TWTR')
     t.set_algo(Watch())
+
     t.start()
