@@ -13,7 +13,6 @@ import pandas as pd
 import pytz
 
 # Submodule imports
-import harvest.load as load
 import harvest.utils as utils
 from harvest.storage import BaseStorage
 from harvest.broker.dummy import DummyBroker
@@ -57,14 +56,12 @@ class Trader:
         self.crypto_positions = []  # Local cache of current crypto positions
 
         self.order_queue = []       # Queue of unfilled orders 
-        self.store = BaseStorage() # Storage to hold stock/crypto data
+        self.storage = BaseStorage() # Storage to hold stock/crypto data
 
         self.block_lock = threading.Lock() # Lock for streams that recieve data asynchronously
 
         self.algo = []
         self.is_save = False
-
-        self.store = BaseStorage()
 
     def setup(self, interval, aggregations, sync=True):
         self.sync = sync
@@ -119,7 +116,7 @@ class Trader:
         # Initialize storage
         for s in self.watch:
             for i in self.aggregations:
-                self.store.store(s, i, self.streamer.fetch_price_history(i, s))
+                self.storage.store(s, i, self.streamer.fetch_price_history(i, s))
 
         self.load_watch = True
 
@@ -137,7 +134,7 @@ class Trader:
         ret = self.broker.fetch_order_queue()
         self.order_queue = ret
 
-        self.storage_setup()
+        self.storage_setup(self.interval)
 
         # Get positions
         pos = self.broker.fetch_stock_positions()
@@ -272,7 +269,7 @@ class Trader:
     def main_helper(self, df_dict):
 
         new_day = self.timestamp.date() > self.timestamp_prev.date()
-        self.update_storege(df_dict)
+        self.storage_update(df_dict)
         
         # Periodically refresh access tokens
         if new_day or (self.timestamp.hour == 3 and self.timestamp.minute == 0):
@@ -280,12 +277,12 @@ class Trader:
         
         # Save the data locally
         for s in self.watch:
-            self.store.store(s, self.fetch_interval, df_dict[s])
+            self.storage.store(s, self.fetch_interval, df_dict[s])
         
         # Aggregate the data to other intervals
         for s in self.watch:
             for i in self.aggregations:
-                self.store.aggregate(s, self.fetch_interval, i)
+                self.storage.aggregate(s, self.fetch_interval, i)
 
         # If an order was processed, fetch the latest position info.
         # Otherwise, calculate current positions locally
@@ -407,7 +404,7 @@ class Trader:
             self.account['equity'] = equity
 
     def storage_setup(self, interval):
-    """Loads historical price data to ensure price storage are up-to-date upon program startup.
+        """Loads historical price data to ensure price storage are up-to-date upon program startup.
         This should also be called at the start of each trading day 
         so database is updated and cache is refreshed.
         """
