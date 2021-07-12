@@ -159,8 +159,8 @@ class RobinhoodBroker(base.BaseBroker):
 
         super().setup(watch, interval, fetch_interval, trader, trader_main)
          
-    def start(self):
 
+    def start(self, kill_switch: bool=False):
         self.cur_sec = -1
         self.cur_min = -1
         val = int(re.sub("[^0-9]", "", self.fetch_interval))
@@ -175,6 +175,8 @@ class RobinhoodBroker(base.BaseBroker):
                 if seconds == 1 and seconds != self.cur_sec:
                     self.main()
                 self.cur_sec = seconds
+                if kill_switch:
+                    return
         else:
             while 1:
                 cur = dt.datetime.now()
@@ -182,6 +184,8 @@ class RobinhoodBroker(base.BaseBroker):
                 if minutes % val == 0 and minutes != self.cur_min:
                     self.main()
                 self.cur_min = minutes
+                if kill_switch:
+                    return
         
 
     def exit(self):
@@ -194,17 +198,26 @@ class RobinhoodBroker(base.BaseBroker):
         df_dict.update(self.fetch_latest_crypto_price())
       
         return df_dict
+
+    def has_interval(self, interval: str):
+        return interval in self.interval_list
     
     @base.BaseBroker._exception_handler
-    def fetch_price_history( self,
-        last: dt.datetime, 
-        today: dt.datetime, 
-        interval: str='1MIN',
-        symbol: str = None):
+    def fetch_price_history( self,  
+        symbol: str,
+        interval: str,
+        start: dt.datetime = None, 
+        end: dt.datetime = None, 
+       ):
+
+        if start is None:  
+            start = dt.datetime(1970, 1, 1)
+        if end is None:
+            end = dt.datetime.now()
 
         df = pd.DataFrame()
 
-        if last >= today:
+        if start >= end:
             return df
 
         get_interval_fmt = ''
@@ -229,7 +242,7 @@ class RobinhoodBroker(base.BaseBroker):
         else:
             return df
         
-        delta = today - last 
+        delta = end - start 
         delta = delta.total_seconds()
         delta = delta / 3600
         if interval == 'DAY' and delta < 24:

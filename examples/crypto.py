@@ -16,8 +16,7 @@ class Crypto(BaseAlgo):
         self.ret = 0
         self.cutoff = 0.0
     
-    def main(self, _):
-        
+    def main(self, _):        
         # Get the current time as a datetime object
         self.timestamp = self.get_datetime()
 

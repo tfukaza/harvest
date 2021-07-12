@@ -15,7 +15,7 @@ import harvest.queue as queue
 import harvest.trader.trader as trader
 from harvest.broker.dummy import DummyBroker
 
-class TestTrader(trader.Trader):
+class BackTester(trader.Trader):
     """
     This class replaces several key functions to allow backtesting
     on histroical data. 
