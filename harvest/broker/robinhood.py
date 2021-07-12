@@ -30,35 +30,28 @@ class RobinhoodBroker(base.BaseBroker):
 
         if path == None:
             path = './secret.yaml'
-        
         # Check if file exists
         yml_file = Path(path)
-        if yml_file.is_file():
-            with open(path, 'r') as stream:
-                self.config = yaml.safe_load(stream)
-        else:
+        if not yml_file.is_file():
             if not self._create_secret(path):
                 return 
-            with open(path, 'r') as stream:
-                self.config = yaml.safe_load(stream)
+        with open(path, 'r') as stream:
+            self.config = yaml.safe_load(stream)
+    
+        self.login()
 
+    def login(self):
         debug("Logging into Robinhood...")
         totp = pyotp.TOTP(self.config['robin_mfa']).now()
         rh.login(   self.config['robin_username'],
                     self.config['robin_password'], 
                     store_session=True, 
-                    mfa_code=totp)
-
-        
+                    mfa_code=totp)   
     
     def refresh_cred(self):
         debug("Logging out of Robinhood...")
         rh.authentication.logout()
-        totp = pyotp.TOTP(self.config['robin_mfa']).now()
-        rh.login(   self.config['robin_username'],
-                    self.config['robin_password'], 
-                    store_session=True, 
-                    mfa_code=totp)
+        self.login()
         debug("Logged into Robinhood...")
     
     def _create_secret(self, path):
@@ -232,37 +225,46 @@ class RobinhoodBroker(base.BaseBroker):
         return self.storage.load(symbol, interval, start, end)
     
     @base.BaseBroker._exception_handler
-    def fetch_price_history( self,
-        last: dt.datetime, 
-        today: dt.datetime, 
-        interval: str='1MIN',
-        symbol: str = None):
+    def fetch_price_history( self,  
+        symbol: str,
+        interval: str,
+        start: dt.datetime = None, 
+        end: dt.datetime = None, 
+       ):
+
+        if start is None:  
+            start = dt.datetime(1970, 1, 1)
+        if end is None:
+            end = dt.datetime.now()
 
         df = pd.DataFrame()
 
-        if last >= today:
+        if start >= end:
             return df
+
+        get_interval_fmt = ''
         
         if interval == '15SEC': # Not used
             if not symbol[0] == '@':
                 raise Exception('15SEC interval is only allowed for crypto')
-            inter = '15second'
+            get_interval_fmt = '15second'
         elif interval == '1MIN':
             if not symbol[0] == '@':
                 raise Exception('MIN interval is only allowed for crypto')
-            inter = '15second'
+            get_interval_fmt = '15second'
         elif interval == '5MIN':
-            inter = '5minute'
+            get_interval_fmt = '5minute'
         elif interval == '15MIN':
-            inter = '5minute'
+            get_interval_fmt = '5minute'
         elif interval == '30MIN':
-            inter = '5minute'
+            get_interval_fmt = '5minute'
         elif interval == '1DAY': 
-            inter = 'day'
+            get_interval_fmt = 'day'
+           
         else:
             return df
         
-        delta = today - last 
+        delta = end - start 
         delta = delta.total_seconds()
         delta = delta / 3600
         if interval == 'DAY' and delta < 24:
@@ -281,18 +283,18 @@ class RobinhoodBroker(base.BaseBroker):
         if symbol[0] == '@':
             ret = rh.get_crypto_historicals(
                 symbol[1:], 
-                interval=inter, 
-                span=span
-                )
+                interval=get_interval_fmt, 
+                span=span)
         else:
             ret = rh.get_stock_historicals(
                 symbol, 
-                interval=inter, 
-                span=span
-                )
+                interval=get_interval_fmt, 
+                span=span)
         
+       
         df = pd.DataFrame.from_dict(ret)
-        df = self._format_df(df, [symbol], interval, False)
+        df = self._format_df(df, [symbol], interval)
+        df = self.aggregate_df(df, interval)
         return df
 
     @base.BaseBroker._exception_handler
@@ -307,7 +309,7 @@ class RobinhoodBroker(base.BaseBroker):
             if 'error' in ret or ret == None or (type(ret) == list and len(ret) == 0):
                 continue
             df_tmp = pd.DataFrame.from_dict(ret)
-            df_tmp = self._format_df(df_tmp, [s], self.interval, True)
+            df_tmp = self._format_df(df_tmp, [s], self.interval).iloc[[-1]]
             df[s] = df_tmp
         
         return df        
@@ -322,11 +324,10 @@ class RobinhoodBroker(base.BaseBroker):
                 span='hour',
                 )
             df_tmp = pd.DataFrame.from_dict(ret)
-            df_tmp = self._format_df(df_tmp, ['@'+s], self.interval, True)
+            df_tmp = self._format_df(df_tmp, ['@'+s], self.interval).iloc[[-1]]
             df['@'+s] = df_tmp
         
-        return df        
-    
+        return df       
 
     @base.BaseBroker._exception_handler
     def fetch_stock_positions(self):
@@ -670,23 +671,13 @@ class RobinhoodBroker(base.BaseBroker):
         df = df.rename(columns={"open_price": "open", "close_price": "close", "high_price" : "high", "low_price" : "low"})
         df = df[["open", "close", "high", "low", "volume"]].astype(float)
     
+        # RH doesn't support 1MIN intervals natively, so it must be
+        # aggregated from 15SEC intervals. In such case, datapoints that are not a full minute should be dropped
+        # in case too much time has passed since when the API call was made. 
         if interval == '1MIN':
-            if latest:
-                while df.index[-1].second != 45:
-                    df = df.iloc[:-1]
-                df = df[-4:]
-            op_dict = {
-                'open': 'first',
-                'high':'max',
-                'low':'min',
-                'close':'last',
-                'volume':'sum'
-            }
-            df = df.resample('1T').agg(op_dict)
-            df = df[df['open'].notna()]
-        elif latest:
-            df = df.iloc[[-1]]
-        
+            while df.index[-1].second != 45:
+                df = df.iloc[:-1]
+         
         df.columns = pd.MultiIndex.from_product([watch, df.columns])
 
         return df

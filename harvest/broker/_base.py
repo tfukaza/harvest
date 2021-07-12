@@ -5,6 +5,7 @@ import time
 from logging import debug
 from warnings import warn
 from typing import Any, Callable, Dict, List 
+import re
 
 # External libraries
 import numpy as np
@@ -16,7 +17,7 @@ from harvest.utils import is_crypto
 
 class BaseBroker:
     """Broker class communicates with various API endpoints to perform the
-    neccesary operations. The BaseBroker defines the interface for all Broker classes to 
+    necessary operations. The BaseBroker defines the interface for all Broker classes to 
     extend and implement.
 
     Attributes
@@ -40,7 +41,7 @@ class BaseBroker:
 
         self.trader = None # Allows broker to handle the case when runs without a trader
     
-    def setup(self, watch: List[str], interval: str, fetch_interval: str, trader=None, trader_main=None) -> None:
+    def setup(self, watch: List[str], interval: str, fetch_interval:str, trader=None, trader_main=None) -> None:
         """This function is called right before the algorithm begins.
         It should perform any configurations necessary to start running.
 
@@ -145,28 +146,29 @@ class BaseBroker:
             raise Exception(f"{func} failed")
         return wrapper
 
-    def fetch_price(self,
-        start: dt.datetime, 
-        end: dt.datetime, 
-        interval: str='5MIN',
-        symbol: str = None):
-        """Returns historical price data for the specified asset and period
-        from storage and may call fetch_price_history to populate the storage.
+    # def fetch_price(self,
+    #     start: dt.datetime, 
+    #     end: dt.datetime, 
+    #     interval: str='5MIN',
+    #     symbol: str = None):
+    #     """Returns historical price data for the specified asset and period
+    #     from storage and may call fetch_price_history to populate the storage.
 
-        :last: The starting date of the period, inclusive.
-        :today: The ending date of the period, inclusive.
-        :interval: The interval of requested historical data.
-        :symbol: The stock/crypto to get data for.
+    #     :last: The starting date of the period, inclusive.
+    #     :today: The ending date of the period, inclusive.
+    #     :interval: The interval of requested historical data.
+    #     :symbol: The stock/crypto to get data for.
 
-        :returns: A pandas dataframe, same format as _handler()
-        """
-        raise NotImplementedError("This endpoint is not supported in this broker")
+    #     :returns: A pandas dataframe, same format as _handler()
+    #     """
+    #     raise NotImplementedError("This endpoint is not supported in this broker")
 
     def fetch_price_history(self,
-        start: dt.datetime, 
-        end: dt.datetime, 
-        interval: str='5MIN',
-        symbol: str = None):
+        symbol: str,
+        interval: str,
+        start: dt.datetime=None, 
+        end: dt.datetime=None, 
+        ):
         """Returns historical price data for the specified asset and period 
         from the API.
 
@@ -179,18 +181,18 @@ class BaseBroker:
         """
         raise NotImplementedError("This endpoint is not supported in this broker")
     
-    def fetch_latest_stock_price(self):
-        """Returns the latest prices for all stocks in self.watch
+    # def fetch_latest_stock_price(self):
+    #     """Returns the latest prices for all stocks in self.watch
 
-        :returns: A pandas dataframe, same format as _handler()
-        """
-        raise NotImplementedError("This endpoint is not supported in this broker")
+    #     :returns: A pandas dataframe, same format as _handler()
+    #     """
+    #     raise NotImplementedError("This endpoint is not supported in this broker")
 
-    def fetch_latest_crypto_price(self):
-        """Returns the latest prices for all cryptos in self.watch
+    # def fetch_latest_crypto_price(self):
+    #     """Returns the latest prices for all cryptos in self.watch
         
-        :returns: A pandas dataframe, same format as _handler()
-        """
+    #     :returns: A pandas dataframe, same format as _handler()
+    #     """
     
     def fetch_stock_positions(self):
         """Returns all current stock positions
@@ -409,7 +411,7 @@ class BaseBroker:
 
         if self.trader is None:
             buy_power = self.fetch_account()['buying_power']
-            price = self.fetch_price_history(dt.datetime.now() - dt.timedelta(days=7), dt.datetime.now(), self.interval, symbol)[symbol].iloc[-1]['close']
+            price = self.fetch_price_history(dt.datetime.now() - dt.timedelta(days=7), dt.datetime.now(), self.interval, symbol).iloc[-1]['close']
         else:
             buy_power = self.trader.account['buying_power']
             price = self.trader.queue.get_last_symbol_interval_price(symbol, self.fetch_interval, 'close')
@@ -476,7 +478,7 @@ class BaseBroker:
             return None
        
         if self.trader is None:
-            price = self.fetch_price_history(dt.datetime.now() - dt.timedelta(days=7), dt.datetime.now(), self.interval, symbol)[symbol].iloc[-1]['close']
+            price = self.fetch_price_history(dt.datetime.now() - dt.timedelta(days=7), dt.datetime.now(), self.interval, symbol).iloc[-1]['close']
         else:
             price = self.trader.queue.get_last_symbol_interval_price(symbol, self.fetch_interval, 'close') 
 
@@ -606,3 +608,24 @@ class BaseBroker:
         option_type = 'call' if symbol[12] == 'C' else 'put'
         price = float(symbol[13:])/1000
         return sym, date, option_type, price
+    
+    def aggregate_df(self, df, interval: str):
+        sym = list(df.columns.levels[0])[0]
+        df = df[sym]
+        op_dict = {
+            'open': 'first',
+            'high':'max',
+            'low':'min',
+            'close':'last',
+            'volume':'sum'
+        }
+        val = re.sub("[^0-9]", "", interval)
+        if interval[-1] == 'N':     # MIN interval
+            val = val+'T'
+        elif interval[-1] == 'R':   # 1HR interval
+            val = 'H'
+        else:                       # 1DAY interval
+            val = 'D'
+        df = df.resample(val).agg(op_dict)
+
+        return df

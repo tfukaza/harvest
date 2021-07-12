@@ -25,7 +25,7 @@ class DummyBroker(base.BaseBroker):
     interval_list = ['1MIN', '5MIN', '15MIN', '30MIN', '1DAY']
 
     def __init__(self, account_path: str=None):
-        super().__init__(mode='both')
+        super().__init__()
 
         self.stocks = []
         self.options = []
@@ -52,7 +52,6 @@ class DummyBroker(base.BaseBroker):
                 for crypto in account['cryptos']:
                     self.cryptos.append(crypto)
 
-        
 
     def setup(self, watch: List[str], interval, trader=None, trader_main=None):
         if interval not in self.interval_list:
@@ -204,7 +203,7 @@ class DummyBroker(base.BaseBroker):
         sym = ret['symbol']
 
         if self.trader is None:
-            price = self.fetch_price_history(dt.datetime.now() - dt.timedelta(days=7), dt.datetime.now(), self.interval, sym)[sym].iloc[-1]['close']
+            price = self.fetch_price_history(dt.datetime.now() - dt.timedelta(days=7), dt.datetime.now(), self.interval, sym).iloc[-1]['close']
         else:
             price = self.trader.queue.get_last_symbol_interval_price(sym, self.interval, 'close')
 

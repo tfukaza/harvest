@@ -14,14 +14,14 @@ import pytz
 
 # Submodule imports
 import harvest.load as load
+import harvest.utils as utils
+from harvest.storage import BaseStorage
 from harvest.broker.dummy import DummyBroker
 from harvest.algo import BaseAlgo
 from harvest.storage import BaseStorage
 
 class Trader:
     """
-
-    Parameters:
     :watch: Watchlist containing all stock and cryptos to monitor.
         The user may or may not own them. Note it does NOT contain options. 
     :broker: Both the broker and streamer store a Broker object.
@@ -33,8 +33,6 @@ class Trader:
 
     def __init__(self, streamer=None, broker=None):      
         """Initializes the Trader. 
-        :streamer:
-        :broker:
         """
         if streamer == None:
             warning("Streamer not specified, using DummyBroker")
@@ -48,11 +46,7 @@ class Trader:
             self.broker = broker
 
         # Initialize date 
-        now = time.mktime(time.gmtime())
-        now = dt.datetime.fromtimestamp(now)
-        now = now.replace(second=0, microsecond=0)
-        now = pytz.utc.localize(now)
-        self.timestamp_prev = now
+        self.timestamp_prev = pytz.utc.localize(dt.datetime.utcnow().replace(microsecond=0, second=0))
         self.timestamp = self.timestamp_prev
 
         self.watch = []             # List of stocks to watch
@@ -63,15 +57,17 @@ class Trader:
         self.crypto_positions = []  # Local cache of current crypto positions
 
         self.order_queue = []       # Queue of unfilled orders 
-        self.storage = BaseStorage() # Storage to hold stock/crypto data
+        self.store = BaseStorage() # Storage to hold stock/crypto data
 
         self.block_lock = threading.Lock() # Lock for streams that recieve data asynchronously
 
         self.algo = []
-        self.is_save = True
+        self.is_save = False
 
-    def setup(self, load_watch=True, interval='5MIN', aggregations=[]):
-        self.load_watch = load_watch
+        self.store = BaseStorage()
+
+    def setup(self, interval, aggregations, sync=True):
+        self.sync = sync
         self.interval = interval
         self.aggregations = aggregations
 
@@ -83,13 +79,16 @@ class Trader:
         int_i = self.interval_list.index(interval)
         for agg in aggregations:
             if self.interval_list.index(agg) <= int_i:
-                raise Exception(f"""Interval '{interval}' is less than aggregation interval '{agg}'\n
+                raise Exception(f"""Interval '{interval}' is greater than aggregation interval '{agg}'\n
                                     All intervals in aggregations must be greater than specified interval '{interval}'""")
 
+        # Instantiate the account
         self._setup_account()
-        self._setup_stats()
 
-        if load_watch:
+        # If sync is on, call the broker to load pending orders and 
+        # all positions currently held.
+        if sync:
+            self._setup_stats()
             for s in self.stock_positions:
                 self.watch.append(s['symbol'])
             for s in self.option_positions:
@@ -100,32 +99,58 @@ class Trader:
                 self.watch.append(s['symbol'])     
 
         if len(self.watch) == 0:
-            raise Exception(f"No stock or crypto was specified. Use add_symbol() to specify an asset to watch.")
+            raise Exception(f"No stock or crypto was specified.")
 
         # Remove duplicates
         self.watch = list(set(self.watch))
         debug(f"Watchlist: {self.watch}")
 
-        # Fetch interval is the interval in which the streamer
-        # gets asset data. For example, Robinhood does not provide 10MIN interval data,
-        # so Trader must runs at 5MIN and aggregate it to 10MIN.
-        # This also means fetch_interval is always a shorter interval than 'interval'
         self.fetch_interval = self.streamer.fetch_interval
         debug(f"Interval: {interval}\nFetch interval: {self.fetch_interval}")
 
         if interval != self.fetch_interval:
-            self.aggregations.append(interval)
+            self.aggregations.insert(0, interval)
         debug(f"Aggregations: {self.aggregations}")
 
         if len(self.algo) == 0:
             print(f"No algorithm specified. Using BaseAlgo")
             self.algo = [BaseAlgo()]
+        
+        # Initialize storage
+        for s in self.watch:
+            for i in self.aggregations:
+                self.store.store(s, i, self.streamer.fetch_price_history(i, s))
+
+        self.load_watch = True
+
+    def _setup_account(self):
+        """Initializes local cache of account info. 
+        For testing, it should manually be specified
+        """
+        ret = self.broker.fetch_account()
+        self.account = ret
+    
+    def _setup_stats(self):
+        """Initializes local cache of stocks, options, and crypto positions.
+        """
+        # Get any pending orders 
+        ret = self.broker.fetch_order_queue()
+        self.order_queue = ret
 
         self.storage_setup()
 
+        # Get positions
+        pos = self.broker.fetch_stock_positions()
+        self.stock_positions = pos
+        pos = self.broker.fetch_option_positions()
+        self.option_positions = pos
+        pos = self.broker.fetch_crypto_positions()
+        self.crypto_positions = pos
 
+        # Update option stats
+        self.broker.update_option_positions(self.option_positions)
 
-    def start(self, load_watch=True, interval='5MIN', aggregations=[], kill_switch: bool=False): 
+    def start(self, interval='5MIN', aggregations=[], sync = True, kill_switch: bool=False): 
         """Entry point to start the system. 
         
         :load_watch: If True, all positions will be loaded from the brokerage account. 
@@ -143,7 +168,7 @@ class Trader:
 
         self.broker.setup(self.watch, interval, self, self.main)
         self.streamer.setup(self.watch, interval, self, self.main)
-        self.setup(load_watch, interval, aggregations)
+        self.setup(interval, aggregations, sync)
 
         for a in self.algo:
             a.setup()
@@ -172,7 +197,6 @@ class Trader:
         except asyncio.CancelledError:
             debug("Timeout cancelled")
 
-
     async def main(self, df_dict, timestamp, flush: bool=False):
         """ Function called by the broker every minute
         as new stock price data is streamed in. 
@@ -193,7 +217,7 @@ class Trader:
         -   If yes, data will be put in a queue, and main will wait until rest of the data coms in
         -   After a certain timeout period, the main will forward the data 
         """
-        debug(f"Main received: \n{df_dict}")
+        debug(f"Received: \n{df_dict}")
         
         self.block_lock.acquire()
 
@@ -230,7 +254,7 @@ class Trader:
         for t in symbols:    
             self.blocker[t] = True
         
-        # if all data has been received, send off the data
+        # If all data has been received, pass on the data
         if len(self.needed) == 0:
             debug("All data received")
             debug(self.block_queue)
@@ -253,9 +277,18 @@ class Trader:
         # Periodically refresh access tokens
         if new_day or (self.timestamp.hour == 3 and self.timestamp.minute == 0):
             self.streamer.refresh_cred()
+        
+        # Save the data locally
+        for s in self.watch:
+            self.store.store(s, self.fetch_interval, df_dict[s])
+        
+        # Aggregate the data to other intervals
+        for s in self.watch:
+            for i in self.aggregations:
+                self.store.aggregate(s, self.fetch_interval, i)
 
-        # If an order was processed, fetch the latest position info
-        # otherwise, calculate current positions locally
+        # If an order was processed, fetch the latest position info.
+        # Otherwise, calculate current positions locally
         update = self._update_order_queue()
         self._update_stats(df_dict, new=update, option_update=True)
         
@@ -303,26 +336,6 @@ class Trader:
             return True 
         else: 
             return False
-
-    def aggregate_df(self, df, inter):
-        sym = list(df.columns.levels[0])[0]
-        df = df[sym]
-        op_dict = {
-            'open': 'first',
-            'high':'max',
-            'low':'min',
-            'close':'last',
-            'volume':'sum'
-        }
-        val = re.sub("[^0-9]", "", inter)
-        if inter[-1] == 'N':
-            val = val+'T'
-        elif inter[-1] == 'R':
-            val = 'H'
-        else:
-            val = 'D'
-        df = df.resample(val).agg(op_dict)
-        return df
 
     def _update_order_queue(self):
         """Check to see if outstanding orders have been accpted or rejected
@@ -442,26 +455,6 @@ class Trader:
 
                 self.storage.store(symbol, inter, df_tmp)
 
-    def _setup_stats(self):
-        """Initializes local cache of stocks, options, and crypto positions.
-        """
-        # Get any pending orders 
-        ret = self.broker.fetch_order_queue()
-        self.order_queue = ret
-
-        # Get positions
-        pos = self.broker.fetch_stock_positions()
-        self.stock_positions = pos
-        pos = self.broker.fetch_option_positions()
-        self.option_positions = pos
-        pos = self.broker.fetch_crypto_positions()
-        self.crypto_positions = pos
-
-        # Get account stats
-        ret = self.broker.fetch_account()
-        self.account = ret
-        # Update option stats
-        self.broker.update_option_positions(self.option_positions)
 
     def fetch_chain_info(self, *args, **kwargs):
         return self.streamer.fetch_chain_info(*args, **kwargs)
@@ -471,17 +464,6 @@ class Trader:
     
     def fetch_option_market_data(self, *args, **kwargs):
         return self.streamer.fetch_option_market_data(*args, **kwargs)
-
-    def _setup_account(self):
-        """Initializes local cache of account info. 
-        For testing, it should manually be specified
-        """
-        self.account = {
-            "equity": 0.0,
-            "cash": 0.0,
-            "buying_power": 0.0,
-            "multiplier": 1
-        }
 
     def buy(self, symbol: str, quantity: int, in_force: str, extended: bool):
         ret = self.broker.buy(symbol, quantity, in_force, extended)
