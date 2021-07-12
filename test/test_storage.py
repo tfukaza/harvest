@@ -7,7 +7,7 @@ import pandas as pd
 from pandas.util.testing import assert_frame_equal
 
 from harvest.utils import normalize_pands_dt_index
-from harvest.storage.base import BaseStorage 
+from harvest.storage import BaseStorage 
 
 
 def gen_data(points: int=50):

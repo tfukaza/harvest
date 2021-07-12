@@ -16,6 +16,7 @@ import pytz
 import harvest.broker._base as base
 from harvest.utils import is_crypto
 
+
 class DummyBroker(base.BaseBroker):
     """DummyBroker, as its name implies, is a dummy broker class that can 
     be useful for testing algorithms. When used as a streamer, it will return
@@ -82,28 +83,6 @@ class DummyBroker(base.BaseBroker):
             high = max(open_s, close) + random.uniform(0.001, 1)
             volume = max(volume + random.randint(-5, 5), 1)  
             yield open_s, high, low, close, volume
-
-    # def fetch_prices(self, 
-    #     start: dt.datetime, 
-    #     end: dt.datetime, 
-    #     interval: str='1MIN', 
-    #     symbol: str=None):
-
-    #     oldest_timestamp, _ = self.storage.data_range(symbol, interval)
-    #     if oldest_timestamp is None or start < oldest_timestamp:
-    #         if oldest_timestamp is None:
-    #             oldest_timestamp = end
-    #         data = self.fetch_price_history(start, oldest_timestamp, interval, symbol)[symbol]
-    #         self.storage.store(symbol, interval, data)
-
-    #     _, latest_timestamp = self.storage.data_range(symbol, interval)
-    #     if latest_timestamp is None or end > latest_timestamp:
-    #         if latest_timestamp is None:
-    #             latest_timestamp = start 
-    #         data = self.fetch_price_history(latest_timestamp, end, interval, symbol)[symbol]
-    #         self.storage.store(symbol, interval, data)
-
-    #     return self.storage.load(symbol, interval, start, end)
 
 
     def fetch_price_history(self,

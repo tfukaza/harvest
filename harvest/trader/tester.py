@@ -9,8 +9,6 @@ from tqdm import tqdm
 import pytz
 
 # Submodule imports
-import harvest.load as load
-import harvest.queue as queue
 import harvest.trader.trader as trader
 from harvest.broker.dummy import DummyBroker
 
@@ -30,7 +28,6 @@ class TestTrader(trader.Trader):
         self.broker = DummyBroker()
 
         self.watch = []             # List of stocks to watch
-        self.queue = queue.Queue()  # local cache of historic price
         self.account = {}           # Local cash of account info 
 
         self.stock_positions = []   # Local cache of current stock positions
@@ -38,8 +35,6 @@ class TestTrader(trader.Trader):
         self.crypto_positions = []  # Local cache of current crypto positions
 
         self.order_queue = []       # Queue of unfilled orders 
-
-        self.load = load.Load()
 
     def read_price_history(self, interval: str, path: str, date_format: str='%Y-%m-%d %H:%M:%S'):
         """Function to read backtesting data from a local file. 
