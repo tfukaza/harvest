@@ -76,14 +76,14 @@ class BaseStorage:
 
             self.storage_lock.release()
 
-    def aggregate(self, symbol: str, from: str, to:str):
+    def aggregate(self, symbol: str, base: str, target: str):
         """
         Aggregates the stock data from the interval specified in 'from' to 'to'.
 
         """
         self.storage_lock.acquire()
-        data = self.storage[symbol][from]
-        self.storage[symbol][to] = self._append(self.storage[symbol][to], self._aggregate(data, to))
+        data = self.storage[symbol][base]
+        self.storage[symbol][target] = self._append(self.storage[symbol][target], self._aggregate(data, target))
         self.storage_lock.release()
     
     def reset(self, symbol: str, interval:str):
