@@ -23,7 +23,7 @@ class TestTrader(unittest.TestCase):
         t = trader.Trader(dummy_broker)
         t.add_symbol('A')
         t.set_algo(BaseAlgo())
-        t.start(kill_switch=True)
+        t.start('1MIN', kill_switch=True)
         self.assertTrue(True)
 
 

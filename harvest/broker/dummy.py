@@ -14,7 +14,7 @@ import pytz
 
 # Submodule imports
 import harvest.broker._base as base
-from harvest.utils import is_crypto
+from harvest.utils import *
 
 class DummyBroker(base.BaseBroker):
     """DummyBroker, as its name implies, is a dummy broker class that can 
@@ -91,23 +91,19 @@ class DummyBroker(base.BaseBroker):
         ) -> pd.DataFrame:
 
         if start is None:  
-            start = dt.datetime(1970, 1, 1)
+            start = now() - dt.timedelta(days=100)
         if end is None:
-            end = dt.datetime.now()
+            end = now()
 
-        interval_parsed = re.search('([0-9]*)([A-Z]*)', interval)
-        if interval_parsed:
-            value = interval_parsed.group(1)
-            unit = interval_parsed.group(2)
-            
-            if unit == 'MIN':
-                interval = dt.timedelta(minutes=int(value))
-            elif unit == 'HR':
-                interval = dt.timedelta(hours=int(value))
-            elif unit == 'DAY':
-                interval = dt.timedelta(days=int(value))
-            else:
-                print('Error')
+        value, unit = expand_interval(interval)
+        if unit == 'MIN':
+            interval = dt.timedelta(minutes=int(value))
+        elif unit == 'HR':
+            interval = dt.timedelta(hours=int(value))
+        elif unit == 'DAY':
+            interval = dt.timedelta(days=int(value))
+        else:
+            print('Error')
 
         times = []
         current = start
@@ -135,7 +131,7 @@ class DummyBroker(base.BaseBroker):
             symbol = 'DUMMY'            
 
         d = {
-            'date': times,
+            'timestamp': times,
             'open': open_s,
             'high': high,
             'low': low, 
@@ -143,15 +139,17 @@ class DummyBroker(base.BaseBroker):
             'volume': volume
         }
 
-        results = pd.DataFrame(data=d).set_index('date')
+        results = pd.DataFrame(data=d).set_index('timestamp')
         open_time = dt.time(hour=13, minute=30)
         close_time = dt.time(hour=20)
 
         results.index = times
-        results.index.rename('date', inplace=True)
+        results.index.rename('timestamp', inplace=True)
 
         results = results.loc[(open_time < results.index.time) & (results.index.time < close_time)]
         results = results[(results.index.dayofweek != 5) & (results.index.dayofweek != 6)]
+
+        results.columns = pd.MultiIndex.from_product([[symbol], results.columns])
 
         return results
 
@@ -210,7 +208,7 @@ class DummyBroker(base.BaseBroker):
         sym = ret['symbol']
 
         if self.trader is None:
-            price = self.fetch_price_history(sym, self.interval, dt.datetime.now() - dt.timedelta(days=7), dt.datetime.now()).iloc[-1]['close']
+            price = self.fetch_price_history(sym, self.interval, dt.datetime.now() - dt.timedelta(days=7), dt.datetime.now())[sym]['close'][-1]
         else:
             price = self.trader.queue.get_last_symbol_interval_price(sym, self.interval, 'close')
 

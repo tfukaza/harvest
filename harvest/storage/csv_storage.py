@@ -35,8 +35,8 @@ class CSVStorage(BaseStorage):
             symbol, interval = file_search.group(1), file_search.group(2)
             data = pd.read_csv(join(self.save_dir, file), index_col=0, parse_dates=True)
             data.index = pd.to_datetime(data.index, unit='s')
+            data.columns = pd.MultiIndex.from_product([[symbol], data.columns])
             super().store(symbol, interval, data)
-
 
     def store(self, symbol: str, interval: str, data: pd.DataFrame) -> None:
         """
@@ -51,7 +51,7 @@ class CSVStorage(BaseStorage):
 
         if not data.empty:
             self.storage_lock.acquire()
-            self.storage[symbol][interval].to_csv(self.save_dir + f'/{symbol}-{interval}.csv')
+            self.storage[symbol][interval][symbol].to_csv(self.save_dir + f'/{symbol}-{interval}.csv')
             self.storage_lock.release()
 
         

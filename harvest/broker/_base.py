@@ -13,6 +13,7 @@ import pandas as pd
 import pytz
 
 # Submodule imports
+import harvest.utils as util
 from harvest.utils import *
 
 class BaseBroker:
@@ -75,18 +76,18 @@ class BaseBroker:
     def start(self, kill_switch: bool=False):
         self.cur_sec = -1
         self.cur_min = -1
-        val = int(re.sub("[^0-9]", "", self.fetch_interval))
+        val, _ = expand_interval(self.fetch_interval)
         
         print("Running...")
+        if kill_switch:
+            self.main()
+            return
         while 1:
             cur = dt.datetime.now()
             minutes = cur.minute
             if minutes % val == 0 and minutes != self.cur_min:
                 self.main()
-                if kill_switch:
-                    return
             self.cur_min = minutes
-
 
     def refresh_cred(self):
         pass
@@ -96,7 +97,7 @@ class BaseBroker:
         def wrapper(*args, **kwargs):
             self = args[0]
             df = func(*args, **kwargs) 
-            now = now()
+            now = util.now()
             self.trader.loop.run_until_complete(self.trader_main(df, now))
         return wrapper
 

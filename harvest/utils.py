@@ -28,7 +28,7 @@ def normalize_pands_dt_index(df: pd.DataFrame):
 	return df.index.floor('min')
 
 def aggregate_df(df, interval: str):
-	sym = list(df.columns.levels[0])[0]
+	sym = df.columns[0][0]
 	df = df[sym]
 	op_dict = {
 		'open': 'first',
@@ -58,14 +58,15 @@ def epoch_zero():
 ############ Functions used for testing #################
 
 
-def gen_data(points: int=50):
-    index = [dt.datetime.now() - dt.timedelta(minutes=1) * i for i in range(points)][::-1]
-    df = pd.DataFrame(index=index, columns=['low', 'high', 'close', 'open', 'volume'])
-    df['low'] = [random.random() for _ in range(points)]
-    df['high'] = [random.random() for _ in range(points)]
-    df['close'] = [random.random() for _ in range(points)]
-    df['open'] = [random.random() for _ in range(points)]
-    df['volume'] = [random.random() for _ in range(points)]
-    df.index = normalize_pands_dt_index(df)
-
-    return df
+def gen_data(symbol:str, points: int=50):
+	index = [dt.datetime.now() - dt.timedelta(minutes=1) * i for i in range(points)][::-1]
+	df = pd.DataFrame(index=index, columns=['low', 'high', 'close', 'open', 'volume'])
+	df['low'] = [random.random() for _ in range(points)]
+	df['high'] = [random.random() for _ in range(points)]
+	df['close'] = [random.random() for _ in range(points)]
+	df['open'] = [random.random() for _ in range(points)]
+	df['volume'] = [random.random() for _ in range(points)]
+	df.index = normalize_pands_dt_index(df)
+	df.columns = pd.MultiIndex.from_product([[symbol], df.columns])
+	
+	return df

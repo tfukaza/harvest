@@ -13,7 +13,7 @@ import pandas as pd
 import pytz
 
 # Submodule imports
-import harvest.utils as utils
+from harvest.utils import *
 from harvest.storage import BaseStorage
 from harvest.broker.dummy import DummyBroker
 from harvest.algo import BaseAlgo
@@ -45,7 +45,7 @@ class Trader:
             self.broker = broker
 
         # Initialize date 
-        self.timestamp_prev = self.now()
+        self.timestamp_prev = now()
         self.timestamp = self.timestamp_prev
 
         self.watch = []             # List of stocks to watch
@@ -88,6 +88,7 @@ class Trader:
 
         # If sync is on, call the broker to load pending orders and 
         # all positions currently held.
+        print(f"Sync: {sync}")
         if sync:
             self._setup_stats()
             for s in self.stock_positions:
@@ -104,20 +105,22 @@ class Trader:
 
         # Remove duplicates
         self.watch = list(set(self.watch))
-        debug(f"Watchlist: {self.watch}")
+        print(f"Watchlist: {self.watch}")
 
         self.fetch_interval = self.streamer.fetch_interval
-        debug(f"Interval: {interval}\nFetch interval: {self.fetch_interval}")
+        print(f"Interval: {interval}\nFetch interval: {self.fetch_interval}")
 
         if interval != self.fetch_interval:
             self.aggregations.insert(0, interval)
-        debug(f"Aggregations: {self.aggregations}")
+        print(f"Aggregations: {self.aggregations}")
 
         if len(self.algo) == 0:
             print(f"No algorithm specified. Using BaseAlgo")
             self.algo = [BaseAlgo()]
         
         self.storage_init()
+
+        print("Setup complete")
 
         self.load_watch = True
     
@@ -138,10 +141,12 @@ class Trader:
     def _setup_stats(self):
         """Initializes local cache of stocks, options, and crypto positions.
         """
+        print("Fetching orders")
         # Get any pending orders 
         ret = self.broker.fetch_order_queue()
         self.order_queue = ret
 
+        print("Fetching positions")
         # Get positions
         pos = self.broker.fetch_stock_positions()
         self.stock_positions = pos
@@ -150,6 +155,7 @@ class Trader:
         pos = self.broker.fetch_crypto_positions()
         self.crypto_positions = pos
 
+        print("Fetching option data")
         # Update option stats
         self.broker.update_option_positions(self.option_positions)
 
@@ -173,6 +179,7 @@ class Trader:
         self.streamer.setup(self.watch, interval, self, self.main)
         self.setup(interval, aggregations, sync)
 
+        print(f"Initializing algorithms...")
         for a in self.algo:
             a.setup()
             a.trader = self
