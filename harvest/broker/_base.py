@@ -89,7 +89,7 @@ class BaseBroker:
 
 
     def refresh_cred(self):
-        raise NotImplementedError("This endpoint is not supported in this broker")
+        pass
 
     def main_wrap(func):
         """Wrapper to run the handler async"""
@@ -123,6 +123,9 @@ class BaseBroker:
         """
         pass
 
+    def has_interval(self, interval: str):
+        return interval in self.interval_list
+
     def _exception_handler( func ):
         """Wrapper to handle unexpected errors in the wrapped function. 
         Most functions should be wrapped with this to properly handle errors, such as
@@ -146,23 +149,6 @@ class BaseBroker:
             raise Exception(f"{func} failed")
         return wrapper
 
-    # def fetch_price(self,
-    #     start: dt.datetime, 
-    #     end: dt.datetime, 
-    #     interval: str='5MIN',
-    #     symbol: str = None):
-    #     """Returns historical price data for the specified asset and period
-    #     from storage and may call fetch_price_history to populate the storage.
-
-    #     :last: The starting date of the period, inclusive.
-    #     :today: The ending date of the period, inclusive.
-    #     :interval: The interval of requested historical data.
-    #     :symbol: The stock/crypto to get data for.
-
-    #     :returns: A pandas dataframe, same format as _handler()
-    #     """
-    #     raise NotImplementedError("This endpoint is not supported in this broker")
-
     def fetch_price_history(self,
         symbol: str,
         interval: str,
@@ -180,19 +166,6 @@ class BaseBroker:
         :returns: A pandas dataframe, same format as _handler()
         """
         raise NotImplementedError("This endpoint is not supported in this broker")
-    
-    # def fetch_latest_stock_price(self):
-    #     """Returns the latest prices for all stocks in self.watch
-
-    #     :returns: A pandas dataframe, same format as _handler()
-    #     """
-    #     raise NotImplementedError("This endpoint is not supported in this broker")
-
-    # def fetch_latest_crypto_price(self):
-    #     """Returns the latest prices for all cryptos in self.watch
-        
-    #     :returns: A pandas dataframe, same format as _handler()
-    #     """
     
     def fetch_stock_positions(self):
         """Returns all current stock positions
@@ -603,29 +576,13 @@ class BaseBroker:
         return occ
     
     def occ_to_data(self, symbol: str):
-        sym = symbol[0:6].replace(' ', '')
-        date =  dt.datetime.strptime(symbol[6:12], '%y%m%d')
-        option_type = 'call' if symbol[12] == 'C' else 'put'
-        price = float(symbol[13:])/1000
+        sym = ''
+        while symbol[0].isalpha():
+            sym = sym + symbol[0]
+            symbol = symbol[1:]
+        symbol = symbol.replace(' ', '')
+        date =  dt.datetime.strptime(symbol[0:6], '%y%m%d')
+        option_type = 'call' if symbol[6] == 'C' else 'put'
+        price = float(symbol[7:])/1000
         return sym, date, option_type, price
     
-    def aggregate_df(self, df, interval: str):
-        sym = list(df.columns.levels[0])[0]
-        df = df[sym]
-        op_dict = {
-            'open': 'first',
-            'high':'max',
-            'low':'min',
-            'close':'last',
-            'volume':'sum'
-        }
-        val = re.sub("[^0-9]", "", interval)
-        if interval[-1] == 'N':     # MIN interval
-            val = val+'T'
-        elif interval[-1] == 'R':   # 1HR interval
-            val = 'H'
-        else:                       # 1DAY interval
-            val = 'D'
-        df = df.resample(val).agg(op_dict)
-
-        return df

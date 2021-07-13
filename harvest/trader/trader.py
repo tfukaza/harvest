@@ -45,7 +45,7 @@ class Trader:
             self.broker = broker
 
         # Initialize date 
-        self.timestamp_prev = pytz.utc.localize(dt.datetime.utcnow().replace(microsecond=0, second=0))
+        self.timestamp_prev = self.now()
         self.timestamp = self.timestamp_prev
 
         self.watch = []             # List of stocks to watch
@@ -117,12 +117,16 @@ class Trader:
             print(f"No algorithm specified. Using BaseAlgo")
             self.algo = [BaseAlgo()]
         
-        # Initialize storage
-        for s in self.watch:
-            for i in self.aggregations:
-                self.storage.store(s, i, self.streamer.fetch_price_history(s, i))
+        self.storage_init()
 
         self.load_watch = True
+    
+    def storage_init(self):
+        """Initializes the storage.
+        """
+        for s in self.watch:
+            for i in [self.fetch_interval] + self.aggregations:
+                self.storage.store(s, i, self.streamer.fetch_price_history(s, i))
 
     def _setup_account(self):
         """Initializes local cache of account info. 
@@ -475,3 +479,9 @@ class Trader:
         # TODO: Gracefully exit
         print("\nStopping Harvest...")
         exit(0)
+    
+    def now(self):
+        return pytz.utc.localize(dt.datetime.utcnow().replace(microsecond=0, second=0))
+    
+    def epoch_zero(self):
+        return pytz.utc.localize(dt.datetime(1970, 1, 1))

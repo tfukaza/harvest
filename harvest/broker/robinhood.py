@@ -20,6 +20,7 @@ import pytz
 
 # Submodule imports
 import harvest.broker._base as base
+from harvest.utils import *
 
 class RobinhoodBroker(base.BaseBroker):
 
@@ -198,9 +199,6 @@ class RobinhoodBroker(base.BaseBroker):
         df_dict.update(self.fetch_latest_crypto_price())
       
         return df_dict
-
-    def has_interval(self, interval: str):
-        return interval in self.interval_list
     
     @base.BaseBroker._exception_handler
     def fetch_price_history( self,  
@@ -272,7 +270,7 @@ class RobinhoodBroker(base.BaseBroker):
        
         df = pd.DataFrame.from_dict(ret)
         df = self._format_df(df, [symbol], interval)
-        df = self.aggregate_df(df, interval)
+        df = aggregate_df(df, interval)
         return df
 
     @base.BaseBroker._exception_handler
