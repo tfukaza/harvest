@@ -97,7 +97,7 @@ class RobinhoodBroker(base.BaseBroker):
                 continue
             break
 
-        print(f"""💬 Good! Robinhood should now be asking you for a 6-digit passcode. Type in: {totp}""")
+        print(f"""💬 Good! Robinhood should now be asking you for a 6-digit passcode. Type in: {totp} ---""")
         print(f"""⚠️  Beware, this passcode expires in a few seconds! If you couldn't type it in time, it should be regenerated.""")
         
         select = ''
@@ -105,7 +105,7 @@ class RobinhoodBroker(base.BaseBroker):
             select = input("""❓ Do you want to generate a new passcode? (y/n)[n]""")
             if select == 'y':
                 totp  = pyotp.TOTP(mfa).now()
-                print("\n💬 New passcode: {totp}")
+                print(f"\n💬 New passcode: {totp} ---")
             else:
                 select = 'n'
 
