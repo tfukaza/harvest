@@ -104,7 +104,7 @@ class YahooStreamer(base.BaseBroker):
         elif unit == 'HR':
             get_fmt = f'{val}h'      
         else:
-            return df
+            get_fmt = '1d'      
         
         if interval == '1MIN':
             period = '5d'
@@ -114,8 +114,10 @@ class YahooStreamer(base.BaseBroker):
             period='max'
         
         df = yf.download(symbol, period=period, interval=get_fmt, prepost=True)
+        debug(df)
         df = self._format_df(df, symbol)
         df = df.loc[start:end]
+        
         return df
 
     @base.BaseBroker._exception_handler
@@ -158,7 +160,7 @@ class YahooStreamer(base.BaseBroker):
     def fetch_chain_info(self, symbol: str):
         return {
             "id": "n/a", 
-            "exp_dates": list(self.watch_ticker[symbol].options),
+            "exp_dates": [ dt.datetime.strptime(s, "%Y-%m-%d") for s in self.watch_ticker[symbol].options],
             "multiplier": 100
         }    
 
@@ -168,20 +170,20 @@ class YahooStreamer(base.BaseBroker):
         if bool(self.option_cache) and symbol in self.option_cache:
             return self.option_cache[symbol]
         
-        df = pd.DataFrame(columns=["occ_symbol", "exp_date", "strike", "type"])
+        df = pd.DataFrame(columns=["contractSymbol", "exp_date", "strike", "type"])
         
-        dates = self.fetch_chain_data(symbol)['exp_dates']
+        dates = self.fetch_chain_info(symbol)['exp_dates']
         for d in dates:
-            chain = self.watch_ticker[symbol].option_chain(d)
+            chain = self.watch_ticker[symbol].option_chain(d.strftime("%Y-%m-%d"))
             puts = chain.puts
             puts['type'] = 'put'
             calls = chain.calls
             calls['type'] = 'call'
-            df.append(puts)
-            df.append(calls)
+            df = df.append(puts)
+            df = df.append(calls)
 
         df = df.rename(columns={"contractSymbol": "occ_symbol"})
-        df['exp_date'] = df.apply(lambda x: self.occ_to_data(x.occ_symbol)[1], axis=1)
+        df['exp_date'] = df.apply(lambda x: self.occ_to_data(x['occ_symbol'])[1], axis=1)
         df = df[["occ_symbol", "exp_date", "strike", "type"]]
         df.set_index('occ_symbol', inplace=True)
 
@@ -216,9 +218,15 @@ class YahooStreamer(base.BaseBroker):
     
     def _format_df(self, df: pd.DataFrame, symbol: str):
         df.reset_index(inplace=True)
-        df['timestamp'] = df['Datetime']
+        ts_name = df.columns[0]
+        df['timestamp'] = df[ts_name]
         df = df.set_index(['timestamp'])
-        df = df.drop(['Datetime'], axis=1)
+        d = df.index[0]
+        if d.tzinfo is None or d.tzinfo.utcoffset(d) is None:
+            df = df.tz_localize('UTC')
+        else:
+            df = df.tz_convert(tz='UTC')
+        df = df.drop([ts_name], axis=1)
         df = df.rename(columns={"Open": "open", "Close": "close", "High" : "high", "Low" : "low", "Volume" : "volume"})
         df = df[["open", "close", "high", "low", "volume"]].astype(float)
     

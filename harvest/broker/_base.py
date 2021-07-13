@@ -576,9 +576,13 @@ class BaseBroker:
         return occ
     
     def occ_to_data(self, symbol: str):
-        sym = symbol[0:6].replace(' ', '')
-        date =  dt.datetime.strptime(symbol[6:12], '%y%m%d')
-        option_type = 'call' if symbol[12] == 'C' else 'put'
-        price = float(symbol[13:])/1000
+        sym = ''
+        while symbol[0].isalpha():
+            sym = sym + symbol[0]
+            symbol = symbol[1:]
+        symbol = symbol.replace(' ', '')
+        date =  dt.datetime.strptime(symbol[0:6], '%y%m%d')
+        option_type = 'call' if symbol[6] == 'C' else 'put'
+        price = float(symbol[7:])/1000
         return sym, date, option_type, price
     
