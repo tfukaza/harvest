@@ -146,7 +146,6 @@ class BaseStorage:
         # beginning and end of the data.
         if start is None:
             start = data.index[0]
-
         if end is None:
             end = data.index[-1]
 

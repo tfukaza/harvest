@@ -175,15 +175,10 @@ class BackTester(trader.Trader):
         # for i in [self.interval] + self.aggregations:
         #     for s in self.watch:
         #         self.df[i][s] = self.df[i][s].loc[data_start:data_end]
-
-        # Reset them 
-        for i in [self.interval] + self.aggregations:
-            for s in self.watch:
-                self.storage.reset(s, i)
             
         self.load_watch = True
 
-    def start(self, interval: str='5MIN', aggregations: List[Any]=[], source: str='LOCAL', path: str="./data"):
+    def start(self, interval: str='5MIN', aggregations: List[Any]=[], source: str='LOCAL', path: str="./data", kill_switch: bool=False):
         """Runs backtesting. 
 
         :source: 'LOCAL' if backtesting data is in a local file, 'FETCH' if the streamer should 
@@ -192,11 +187,15 @@ class BackTester(trader.Trader):
 
         self.setup(source, interval, aggregations, path)
 
-        self.algo.setup()
-        self.algo.trader = self
-        self.algo.watch = self.watch
-        self.algo.fetch_interval = self.fetch_interval
+        for a in self.algo:
+            a.setup()
+            a.trader = self
+            a.watch = self.watch
+            a.fetch_interval = self.fetch_interval
 
+        if kill_switch:
+            return 
+            
         self.main(interval)
 
     def main(self, interval):
@@ -205,6 +204,10 @@ class BackTester(trader.Trader):
         # import cProfile
         # pr = cProfile.Profile()
         # pr.enable()
+         # Reset them 
+        for i in [self.interval] + self.aggregations:
+            for s in self.watch:
+                self.storage.reset(s, i)
         
         rows = len(self.df[interval][self.watch[0]].index)
         for i in range(rows):

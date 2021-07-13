@@ -30,11 +30,11 @@ class PickleStorage(BaseStorage):
         files = [f for f in listdir(self.save_dir) if isfile(join(self.save_dir, f))]
 
         for file in files:
-            file_search = re.search('^([\w]+)-([\w]+).pickle$', file)
+            file_search = re.search('^([\w]+)--?([\w]+).pickle$', file)
             symbol, interval = file_search.group(1), file_search.group(2)
             super().store(symbol, interval, pd.read_pickle(join(self.save_dir, file)))
 
-    def store(self, symbol: str, interval: str, data: pd.DataFrame) -> None:
+    def store(self, symbol: str, interval: str, data: pd.DataFrame, remove_duplicate: bool=True) -> None:
         """
         Stores the stock data in the storage dictionary and as a csv file.
         :symbol: a stock or crypto
@@ -43,7 +43,7 @@ class PickleStorage(BaseStorage):
         :data: a pandas dataframe that has stock data and has a datetime 
             index
         """
-        super().store(symbol, interval, data)
+        super().store(symbol, interval, data, remove_duplicate)
 
         if not data.empty:
             self.storage_lock.acquire()
