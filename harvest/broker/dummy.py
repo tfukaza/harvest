@@ -157,20 +157,21 @@ class DummyBroker(base.BaseBroker):
 
     def fetch_latest_stock_price(self) -> Dict[str, pd.DataFrame]:
         results = {}
-        last = dt.datetime.now() - dt.timedelta(days=7)
         today = dt.datetime.now()
+        last = today - dt.timedelta(days=7)
+        
         for symbol in self.watch:
             if not is_crypto(symbol):
-                results[symbol] = self.fetch_price_history(last, today, self.interval, symbol).iloc[[-1]]
+                results[symbol] = self.fetch_price_history(symbol, self.interval, last, today).iloc[[-1]]
         return results
         
     def fetch_latest_crypto_price(self) -> Dict[str, pd.DataFrame]:
         results = {}
-        last = dt.datetime.now() - dt.timedelta(days=7)
         today = dt.datetime.now()
+        last = today - dt.timedelta(days=7)
         for symbol in self.watch:
             if is_crypto(symbol):
-                results[symbol] = self.fetch_price_history(last, today, self.interval, symbol).iloc[[-1]]
+                results[symbol] = self.fetch_price_history(symbol, self.interval, last, today).iloc[[-1]]
         return results
     
     def fetch_stock_positions(self) -> List[Dict[str, Any]]:
@@ -209,7 +210,7 @@ class DummyBroker(base.BaseBroker):
         sym = ret['symbol']
 
         if self.trader is None:
-            price = self.fetch_price_history(dt.datetime.now() - dt.timedelta(days=7), dt.datetime.now(), self.interval, sym).iloc[-1]['close']
+            price = self.fetch_price_history(sym, self.interval, dt.datetime.now() - dt.timedelta(days=7), dt.datetime.now()).iloc[-1]['close']
         else:
             price = self.trader.queue.get_last_symbol_interval_price(sym, self.interval, 'close')
 
