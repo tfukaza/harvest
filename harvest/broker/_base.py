@@ -582,23 +582,3 @@ class BaseBroker:
         price = float(symbol[13:])/1000
         return sym, date, option_type, price
     
-    def aggregate_df(self, df, interval: str):
-        sym = list(df.columns.levels[0])[0]
-        df = df[sym]
-        op_dict = {
-            'open': 'first',
-            'high':'max',
-            'low':'min',
-            'close':'last',
-            'volume':'sum'
-        }
-        val = re.sub("[^0-9]", "", interval)
-        if interval[-1] == 'N':     # MIN interval
-            val = val+'T'
-        elif interval[-1] == 'R':   # 1HR interval
-            val = 'H'
-        else:                       # 1DAY interval
-            val = 'D'
-        df = df.resample(val).agg(op_dict)
-
-        return df

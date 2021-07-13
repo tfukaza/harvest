@@ -138,9 +138,6 @@ class Trader:
         ret = self.broker.fetch_order_queue()
         self.order_queue = ret
 
-        # Can be removed
-        # self.storage_setup(self.interval)
-
         # Get positions
         pos = self.broker.fetch_stock_positions()
         self.stock_positions = pos
@@ -274,8 +271,6 @@ class Trader:
     def main_helper(self, df_dict):
 
         new_day = self.timestamp.date() > self.timestamp_prev.date()
-        # Can be removed
-        # self.storage_update(df_dict)
         
         # Periodically refresh access tokens
         if new_day or (self.timestamp.hour == 3 and self.timestamp.minute == 0):

@@ -20,6 +20,7 @@ import pytz
 
 # Submodule imports
 import harvest.broker._base as base
+from harvest.utils import *
 
 class RobinhoodBroker(base.BaseBroker):
 
@@ -269,7 +270,7 @@ class RobinhoodBroker(base.BaseBroker):
        
         df = pd.DataFrame.from_dict(ret)
         df = self._format_df(df, [symbol], interval)
-        df = self.aggregate_df(df, interval)
+        df = aggregate_df(df, interval)
         return df
 
     @base.BaseBroker._exception_handler
