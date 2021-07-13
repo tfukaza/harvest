@@ -1,4 +1,5 @@
 import re
+import random
 import datetime as dt
 
 import pandas as pd
@@ -27,3 +28,19 @@ def is_crypto(symbol: str):
 
 def normalize_pands_dt_index(df: pd.DataFrame):
 	return df.index.floor('min')
+
+
+############ Functions used for testing #################
+
+
+def gen_data(points: int=50):
+    index = [dt.datetime.now() - dt.timedelta(minutes=1) * i for i in range(points)][::-1]
+    df = pd.DataFrame(index=index, columns=['low', 'high', 'close', 'open', 'volume'])
+    df['low'] = [random.random() for _ in range(points)]
+    df['high'] = [random.random() for _ in range(points)]
+    df['close'] = [random.random() for _ in range(points)]
+    df['open'] = [random.random() for _ in range(points)]
+    df['volume'] = [random.random() for _ in range(points)]
+    df.index = normalize_pands_dt_index(df)
+
+    return df

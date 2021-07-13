@@ -1,16 +1,17 @@
 import re
-from os import listdir
+from os import listdir, makedirs
 from os.path import isfile, join
 import pandas as pd
 import datetime as dt
 from typing import Tuple
 
+from harvest.storage import BaseStorage
 
 """
 This module serves as a storage system for pandas dataframes in with csv files.
 """
 
-class PickleStorage:
+class PickleStorage(BaseStorage):
     """
     An extension of the basic storage that saves data in csv files.
     """
@@ -23,7 +24,8 @@ class PickleStorage:
         """
         self.save_dir = save_dir
 
-        self.storage_lock.acquire()
+        # if the data dir does not exists, create it
+        makedirs(self.save_dir, exist_ok=True)
 
         files = [f for f in listdir(self.save_dir) if isfile(join(self.save_dir, f))]
 
@@ -31,8 +33,6 @@ class PickleStorage:
             file_search = re.search('^([\w]+)-([\w]+).pickle$', file)
             symbol, interval = file_search.group(1), file_search.group(2)
             super().store(symbol, interval, pd.read_pickle(join(self.save_dir, file)))
-
-        self.storage_lock.release()
 
     def store(self, symbol: str, interval: str, data: pd.DataFrame) -> None:
         """

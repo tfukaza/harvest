@@ -11,13 +11,14 @@
 *.egg-info
 *.ipynb_checkpoints
 
-build/
-dist/
-
 # ignore generated files
 
 build/
 dist/
+
+# ignore stock storage files
+
+data/
 
 # ignore coverage files
 

@@ -1,16 +1,18 @@
 import re
-from os import listdir
+from os import listdir, makedirs
 from os.path import isfile, join
 import pandas as pd
 import datetime as dt
 from typing import Tuple
+
+from harvest.storage import BaseStorage
 
 
 """
 This module serves as a storage system for pandas dataframes in with csv files.
 """
 
-class CSVStorage:
+class CSVStorage(BaseStorage):
     """
     An extension of the basic storage that saves data in csv files.
     """
@@ -23,16 +25,18 @@ class CSVStorage:
         """
         self.save_dir = save_dir
 
-        self.storage_lock.acquire()
+         # if the data dir does not exists, create it
+        makedirs(self.save_dir, exist_ok=True)
 
         files = [f for f in listdir(self.save_dir) if isfile(join(self.save_dir, f))]
 
         for file in files:
             file_search = re.search('^([\w]+)-([\w]+).csv$', file)
             symbol, interval = file_search.group(1), file_search.group(2)
-            super().store(symbol, interval, pd.read_csv(join(self.save_dir, file)))
+            data = pd.read_csv(join(self.save_dir, file), index_col=0, parse_dates=True)
+            data.index = pd.to_datetime(data.index, unit='s')
+            super().store(symbol, interval, data)
 
-        self.storage_lock.release()
 
     def store(self, symbol: str, interval: str, data: pd.DataFrame) -> None:
         """
