@@ -45,7 +45,7 @@ The only prerequisite is to have **Python version 3.8 or greater**.
 
 Harvest is still early in development, so you'll have to install it directly from this repo. 
 ```bash
-pip install -e git+https://github.com/tfukaza/harvest.git
+pip install -e 'git+https://github.com/tfukaza/harvest.git#egg=harvest'
 ```
 Next, install the dependencies necessary for the brokerage of your choice. Currently, Harvest only supports Robinhood. 
 ```bash
