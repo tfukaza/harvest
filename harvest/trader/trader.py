@@ -480,8 +480,3 @@ class Trader:
         print("\nStopping Harvest...")
         exit(0)
     
-    def now(self):
-        return pytz.utc.localize(dt.datetime.utcnow().replace(microsecond=0, second=0))
-    
-    def epoch_zero(self):
-        return pytz.utc.localize(dt.datetime(1970, 1, 1))

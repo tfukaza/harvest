@@ -90,8 +90,8 @@ class BackTester(trader.Trader):
         :date_format: The format of the data's timestamps
         TODO: Possibly allow interday data to be specified. 
         """
-        last = self.epoch_zero()
-        today = self.now()
+        last = epoch_zero()
+        today = now()
         for s in self.watch:
             for i in [self.interval] + self.aggregations:
                 df = self.storage.open(s, i)

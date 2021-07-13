@@ -13,7 +13,7 @@ import pandas as pd
 import pytz
 
 # Submodule imports
-from harvest.utils import is_crypto
+from harvest.utils import *
 
 class BaseBroker:
     """Broker class communicates with various API endpoints to perform the
@@ -96,7 +96,7 @@ class BaseBroker:
         def wrapper(*args, **kwargs):
             self = args[0]
             df = func(*args, **kwargs) 
-            now = dt.datetime.utcnow()
+            now = now()
             self.trader.loop.run_until_complete(self.trader_main(df, now))
         return wrapper
 
@@ -384,7 +384,7 @@ class BaseBroker:
 
         if self.trader is None:
             buy_power = self.fetch_account()['buying_power']
-            price = self.fetch_price_history( symbol, self.interval, dt.datetime.now() - dt.timedelta(days=7), dt.datetime.now()).iloc[-1]['close']
+            price = self.fetch_price_history( symbol, self.interval, now() - dt.timedelta(days=7), now())[symbol]['close'][-1]
         else:
             buy_power = self.trader.account['buying_power']
             price = self.trader.queue.get_last_symbol_interval_price(symbol, self.fetch_interval, 'close')
@@ -451,7 +451,7 @@ class BaseBroker:
             return None
        
         if self.trader is None:
-            price = self.fetch_price_history(symbol, self.interval, dt.datetime.now() - dt.timedelta(days=7), dt.datetime.now()).iloc[-1]['close']
+            price = self.fetch_price_history(symbol, self.interval, now() - dt.timedelta(days=7), now())[symbol]['close'][-1]
         else:
             price = self.trader.queue.get_last_symbol_interval_price(symbol, self.fetch_interval, 'close') 
 

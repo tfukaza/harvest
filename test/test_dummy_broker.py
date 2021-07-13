@@ -8,7 +8,7 @@ from harvest.broker.dummy import DummyBroker
 class TestDummyBroker(unittest.TestCase):
     def test_fetch_prices(self):
         dummy = DummyBroker()
-        df = dummy.fetch_price_history('PO', '1HR', dt.datetime.now() - dt.timedelta(hours=50), dt.datetime.now())
+        df = dummy.fetch_price_history('PO', '1HR', dt.datetime.now() - dt.timedelta(hours=50), dt.datetime.now())['PO']
         self.assertEqual(list(df.columns.values), ['open', 'high', 'low', 'close', 'volume'])
 
     def test_setup(self):

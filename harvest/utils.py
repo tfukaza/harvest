@@ -2,6 +2,7 @@ import re
 import random
 import datetime as dt
 
+import pytz
 import pandas as pd
 
 def expand_interval(interval: str):
@@ -48,6 +49,11 @@ def aggregate_df(df, interval: str):
 
 	return df
 
+def now():
+	return pytz.utc.localize(dt.datetime.utcnow().replace(microsecond=0, second=0))
+
+def epoch_zero():
+	return pytz.utc.localize(dt.datetime(1970, 1, 1))
 
 ############ Functions used for testing #################
 
