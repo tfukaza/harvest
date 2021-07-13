@@ -74,14 +74,14 @@ class BaseStorage:
 
             self.storage_lock.release()
 
-    def aggregate(self, symbol: str, base: str, target: str):
+    def aggregate(self, symbol: str, base: str, target: str, remove_duplicate: bool=True):
         """
         Aggregates the stock data from the interval specified in 'from' to 'to'.
 
         """
         self.storage_lock.acquire()
         data = self.storage[symbol][base]
-        self.storage[symbol][target] = self._append(self.storage[symbol][target], aggregate_df(data, target))
+        self.storage[symbol][target] = self._append(self.storage[symbol][target], aggregate_df(data, target), remove_duplicate)
         self.storage_lock.release()
     
     def reset(self, symbol: str, interval:str):

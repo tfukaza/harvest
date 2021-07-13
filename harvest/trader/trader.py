@@ -117,12 +117,16 @@ class Trader:
             print(f"No algorithm specified. Using BaseAlgo")
             self.algo = [BaseAlgo()]
         
-        # Initialize storage
+        self.storage_init()
+
+        self.load_watch = True
+    
+    def storage_init(self):
+        """Initializes the storage.
+        """
         for s in self.watch:
             for i in [self.fetch_interval] + self.aggregations:
                 self.storage.store(s, i, self.streamer.fetch_price_history(s, i))
-
-        self.load_watch = True
 
     def _setup_account(self):
         """Initializes local cache of account info. 

@@ -49,5 +49,9 @@ class PickleStorage(BaseStorage):
             self.storage_lock.acquire()
             self.storage[symbol][interval].to_pickle(self.save_dir + f'/{symbol}-{interval}.pickle')
             self.storage_lock.release()
+    
+    def open(self, symbol: str, interval: str):
+        return pd.read_pickle(self.save_dir + f'/{symbol}-{interval}.pickle')
+
 
         

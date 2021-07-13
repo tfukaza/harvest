@@ -11,9 +11,10 @@ from tqdm import tqdm
 import pytz
 
 # Submodule imports
-from harvest.storage import BaseStorage
+from harvest.storage import PickleStorage
 import harvest.trader.trader as trader
 from harvest.broker.dummy import DummyBroker
+from harvest.utils import *
 
 class BackTester(trader.Trader):
     """
@@ -32,7 +33,7 @@ class BackTester(trader.Trader):
 
         self.watch = []             # List of stocks to watch
 
-        self.storage = BaseStorage()  # local cache of historic price
+        self.storage = PickleStorage()  # local cache of historic price
 
         self.account = {}           # Local cash of account info 
 
@@ -42,10 +43,6 @@ class BackTester(trader.Trader):
 
         self.order_queue = []       # Queue of unfilled orders 
 
-
-    def read_price_history(self, interval: str, path: str, date_format: str='%Y-%m-%d %H:%M:%S'):
-        """Function to read backtesting data from a local file. """
-        self.load = load.Load()
     
     def read_csv(self, path:str) -> pd.DataFrame:
         """Reads a CSV file and returns a Pandas DataFrame. 
@@ -62,13 +59,12 @@ class BackTester(trader.Trader):
         df = df.sort_index()
         return df
 
-    def read_price_history(self, path: str, date_format: str='%Y-%m-%d %H:%M:%S'):
+    def read_csv_data(self, path: str, date_format: str='%Y-%m-%d %H:%M:%S'):
         """Function to read backtesting data from a local CSV file. 
 
         :interval: The interval of the data
         :path: Path to the local data file
         :date_format: The format of the data's timestamps
-        TODO: Possibly allow interday data to be specified. 
         """
         for sym in self.watch: 
             df = self.read_csv(f"{path}/{sym}-{self.interval}.csv")
@@ -86,7 +82,7 @@ class BackTester(trader.Trader):
                     self.storage.aggregate(sym, prev_i, i)
                 prev_i = i
 
-    def load_price_history(self):
+    def read_pickle_data(self):
         """Function to read backtesting data from a local file. 
 
         :interval: The interval of the data
@@ -94,17 +90,17 @@ class BackTester(trader.Trader):
         :date_format: The format of the data's timestamps
         TODO: Possibly allow interday data to be specified. 
         """
-        last = pytz.utc.localize(dt.datetime(1970, 1, 1))
-        today = pytz.utc.localize(dt.datetime.utcnow().replace(microsecond=0, second=0))  
-        for sym in self.watch:
+        last = self.epoch_zero()
+        today = self.now()
+        for s in self.watch:
             for i in [self.interval] + self.aggregations:
-                df = self.load.get_entry(sym, i)
+                df = self.storage.open(s, i)
                 df = df.dropna()
-                debug(f"got {df} for {sym}, {i}")
+                debug(f"Got {df} for {s}, {i}")
                 if df.empty:
-                    warning(f"Local data for {sym}, {i} not found. Running FETCH")
-                    df = self.streamer.fetch_price_history(last, today, i, sym).dropna()
-                self.storage.store(sym, i, df)
+                    warning(f"Local data for {s}, {i} not found. Running FETCH")
+                    df = self.streamer.fetch_price_history(last, today, i, s).dropna()
+                self.storage.store(s, i, df)
             
     def setup(self, source, interval, aggregations=None, path=None):
         self.interval = interval
@@ -119,11 +115,11 @@ class BackTester(trader.Trader):
 
         # Load data into queue
         if source == "FETCH":
-            self._queue_init(interval)
+            self.storage_init()
         elif source == "CSV":
-            self.read_price_history(path)
-        elif source == "LOCAL":
-            self.load_price_history()
+            self.read_csv_data(path)
+        elif source == "PICKLE":
+            self.read_pickle_data()
         
         conv = {
             "1MIN": 1,
@@ -145,17 +141,16 @@ class BackTester(trader.Trader):
                 for i in tqdm(range(rows)):
                     df_tmp = df.iloc[0:i+1]                    
                     df_tmp = df_tmp.iloc[-points:] 
-                    agg_df = self.storage._aggregate(df_tmp, agg)
-                    # Save the data into a new queue
+                    agg_df = aggregate_df(df_tmp, agg)
                     self.storage.store(sym, '-'+agg, agg_df.iloc[[-1]], remove_duplicate=False)
         print("Formatting complete")
 
-        # Save the current state of the queue
-        for s in self.watch:
-            self.load.append_entry(s, self.interval, self.storage.load(s, self.interval))
-            for i in self.aggregations:
-                self.load.append_entry(s, '-'+i, self.storage.load(s, '-'+i), False, True)
-                self.load.append_entry(s, i, self.storage.load(s, i))
+        # # Save the current state of the queue
+        # for s in self.watch:
+        #     self.load.append_entry(s, self.interval, self.storage.load(s, self.interval))
+        #     for i in self.aggregations:
+        #         self.load.append_entry(s, '-'+i, self.storage.load(s, '-'+i), False, True)
+        #         self.load.append_entry(s, i, self.storage.load(s, i))
 
         # Move all data to a cached dataframe
         for i in [self.interval] + self.aggregations:
