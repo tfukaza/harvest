@@ -74,7 +74,7 @@ class YahooStreamer(base.BaseBroker):
         for s in self.watch_stock:
             df = yf.download(s, period='1d', interval=self.interval_fmt, prepost=True)
             df = df.iloc[[-1]]
-            df = self._format_df(df, [s])
+            df = self._format_df(df, s)
             df_dict[s] = df
         return df_dict
     
@@ -85,6 +85,8 @@ class YahooStreamer(base.BaseBroker):
         start: dt.datetime = None, 
         end: dt.datetime = None, 
        ):
+
+        debug(f"Fetching {symbol} {interval} price history")
 
         if start is None:  
             start = self.trader.epoch_zero()
@@ -104,15 +106,15 @@ class YahooStreamer(base.BaseBroker):
         else:
             return df
         
-        if interval == '1DAY':
-            period = 'max'
-        elif interval in ['1MIN', '5MIN', '15MIN', '30MIN', '1HR']:
+        if interval == '1MIN':
+            period = '5d'
+        elif interval in ['5MIN', '15MIN', '30MIN', '1HR']:
             period = '1mo'
         else:
             period='max'
         
         df = yf.download(symbol, period=period, interval=get_fmt, prepost=True)
-        df = self._format_df(df, [symbol])
+        df = self._format_df(df, symbol)
         df = df.loc[start:end]
         return df
 
@@ -212,14 +214,14 @@ class YahooStreamer(base.BaseBroker):
     def order_option_limit(self, side: str, symbol: str, quantity: int, limit_price: float, option_type, exp_date: dt.datetime, strike, in_force: str='gtc'):
         raise Exception("Not implemented")
     
-    def _format_df(self, df: pd.DataFrame, watch: List[str]):
+    def _format_df(self, df: pd.DataFrame, symbol: str):
         df.reset_index(inplace=True)
-        df['timestamp'] = pytz.timezone('UTC').normalize(df['Datetime'])
+        df['timestamp'] = df['Datetime']
         df = df.set_index(['timestamp'])
         df = df.drop(['Datetime'], axis=1)
         df = df.rename(columns={"Open": "open", "Close": "close", "High" : "high", "Low" : "low", "Volume" : "volume"})
         df = df[["open", "close", "high", "low", "volume"]].astype(float)
     
-        df.columns = pd.MultiIndex.from_product([watch, df.columns])
+        df.columns = pd.MultiIndex.from_product([[symbol], df.columns])
 
         return df

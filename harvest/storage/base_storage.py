@@ -56,7 +56,7 @@ class BaseStorage:
                 try:
                     self.storage_lock.acquire()
                     # Handles if we have stock data for the given interval
-                    intervals[interval] = self._append(intervals[interval], data, interval, remove_duplicate=remove_duplicate)
+                    intervals[interval] = self._append(intervals[interval], data, remove_duplicate=remove_duplicate)
                     self.storage_lock.release()
                 except:
                     self.storage_lock.release()
@@ -166,7 +166,7 @@ class BaseStorage:
         dt_interval = interval_to_timedelta(interval)
         return data.index[0], data.index[-1]
 
-    def _append(self, current_data: pd.DataFrame, new_data: pd.DataFrame, interval: str, remove_duplicate: bool) -> pd.DataFrame:
+    def _append(self, current_data: pd.DataFrame, new_data: pd.DataFrame, remove_duplicate: bool=True) -> pd.DataFrame:
         """
         Appends the data as best it can with gaps in the data for weekends 
         and time when no data is collected. 
