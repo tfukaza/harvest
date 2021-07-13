@@ -34,7 +34,7 @@ jobs:
     - name: Run tests
       run: |
         pip install coverage
-        python setup.py test
+        coverage run --source harvest -m unittest discover -s test
 
     - name: Upload to CodeCov
       uses: codecov/codecov-action@v1
