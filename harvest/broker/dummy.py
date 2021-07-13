@@ -84,10 +84,16 @@ class DummyBroker(base.BaseBroker):
 
 
     def fetch_price_history(self,
-        start: dt.datetime, 
-        end: dt.datetime, 
-        interval: str='1MIN',
-        symbol: str = None) -> pd.DataFrame:
+        symbol: str,
+        interval: str,
+        start: dt.datetime=None, 
+        end: dt.datetime=None
+        ) -> pd.DataFrame:
+
+        if start is None:  
+            start = dt.datetime(1970, 1, 1)
+        if end is None:
+            end = dt.datetime.now()
 
         interval_parsed = re.search('([0-9]*)([A-Z]*)', interval)
         if interval_parsed:
