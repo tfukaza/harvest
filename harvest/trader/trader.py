@@ -5,6 +5,7 @@ import datetime as dt
 import threading
 from logging import warning, debug
 import time
+import sys
 from signal import signal, SIGINT
 from sys import exit
 
@@ -33,6 +34,10 @@ class Trader:
     def __init__(self, streamer=None, broker=None, storage=None):      
         """Initializes the Trader. 
         """
+
+        if sys.version_info[0] < 3 or sys.version_info[1] < 8:
+            raise Exception("Harvest requires Python 3.8 or above.")
+
         if streamer == None:
             warning("Streamer not specified, using DummyBroker")
             self.streamer = DummyBroker()
