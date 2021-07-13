@@ -2,9 +2,9 @@
 import datetime as dt
 from logging import critical, error, info, warning, debug
 from typing import Any, Dict, List, Tuple
+import pytz
 
 # External libraries
-import dateutil.parser as parser
 import pandas as pd
 import yfinance as yf
 
@@ -87,9 +87,9 @@ class YahooStreamer(base.BaseBroker):
        ):
 
         if start is None:  
-            start = dt.datetime(1970, 1, 1)
+            start = self.trader.epoch_zero()
         if end is None:
-            end = dt.datetime.now()
+            end = self.trader.now()
 
         df = pd.DataFrame()
 
@@ -214,7 +214,7 @@ class YahooStreamer(base.BaseBroker):
     
     def _format_df(self, df: pd.DataFrame, watch: List[str]):
         df.reset_index(inplace=True)
-        df['timestamp'] = df['Datetime']
+        df['timestamp'] = pytz.timezone('UTC').normalize(df['Datetime'])
         df = df.set_index(['timestamp'])
         df = df.drop(['Datetime'], axis=1)
         df = df.rename(columns={"Open": "open", "Close": "close", "High" : "high", "Low" : "low", "Volume" : "volume"})

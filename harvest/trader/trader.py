@@ -45,7 +45,7 @@ class Trader:
             self.broker = broker
 
         # Initialize date 
-        self.timestamp_prev = pytz.utc.localize(dt.datetime.utcnow().replace(microsecond=0, second=0))
+        self.timestamp_prev = self.now()
         self.timestamp = self.timestamp_prev
 
         self.watch = []             # List of stocks to watch
@@ -119,7 +119,7 @@ class Trader:
         
         # Initialize storage
         for s in self.watch:
-            for i in self.aggregations:
+            for i in [self.fetch_interval] + self.aggregations:
                 self.storage.store(s, i, self.streamer.fetch_price_history(s, i))
 
         self.load_watch = True
@@ -480,3 +480,9 @@ class Trader:
         # TODO: Gracefully exit
         print("\nStopping Harvest...")
         exit(0)
+    
+    def now(self):
+        return pytz.utc.localize(dt.datetime.utcnow().replace(microsecond=0, second=0))
+    
+    def epoch_zero(self):
+        return pytz.utc.localize(dt.datetime(1970, 1, 1))
