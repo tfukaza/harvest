@@ -89,7 +89,7 @@ class BaseBroker:
 
 
     def refresh_cred(self):
-        raise NotImplementedError("This endpoint is not supported in this broker")
+        pass
 
     def main_wrap(func):
         """Wrapper to run the handler async"""
@@ -122,6 +122,9 @@ class BaseBroker:
         The intended purpose is for brokers to clear any cache it may have created.
         """
         pass
+
+    def has_interval(self, interval: str):
+        return interval in self.interval_list
 
     def _exception_handler( func ):
         """Wrapper to handle unexpected errors in the wrapped function. 
