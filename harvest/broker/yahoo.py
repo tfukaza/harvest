@@ -26,7 +26,7 @@ class YahooStreamer(base.BaseBroker):
         if interval not in self.interval_list:
             raise Exception(f'Invalid interval {interval}')
         for s in watch:
-            if s[0] == '@':
+            if is_crypto(s):
                 raise Exception(f"Cannot stream {s}: Cryptocurrencies are not supported in YahooStreamer")
             else:
                 self.watch_stock.append(s)
