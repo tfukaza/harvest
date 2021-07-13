@@ -2,7 +2,7 @@ import pandas as pd
 import datetime as dt
 from threading import Lock
 from typing import Tuple
-
+from logging import debug
 import re
 
 from harvest.utils import *
@@ -56,7 +56,7 @@ class BaseStorage:
                 try:
                     self.storage_lock.acquire()
                     # Handles if we have stock data for the given interval
-                    intervals[interval] = self._append(intervals[interval], data, interval, remove_duplicate=remove_duplicate)
+                    intervals[interval] = self._append(intervals[interval], data, remove_duplicate=remove_duplicate)
                     self.storage_lock.release()
                 except:
                     self.storage_lock.release()
@@ -81,7 +81,7 @@ class BaseStorage:
         """
         self.storage_lock.acquire()
         data = self.storage[symbol][base]
-        self.storage[symbol][target] = self._append(self.storage[symbol][target], self._aggregate(data, target))
+        self.storage[symbol][target] = self._append(self.storage[symbol][target], aggregate_df(data, target))
         self.storage_lock.release()
     
     def reset(self, symbol: str, interval:str):
@@ -166,31 +166,7 @@ class BaseStorage:
         dt_interval = interval_to_timedelta(interval)
         return data.index[0], data.index[-1]
 
-    def _aggregate(self, data: pd.DataFrame, interval: str) -> pd.DataFrame:
-        """
-        :data: a pandas dataframe that needs to be aggregated
-        :interval: the new time between data points
-        """
-        op_dict = {
-            'open': 'first',
-            'high':'max',
-            'low':'min',
-            'close':'last',
-            'volume':'sum'
-        }
-        num, unit = expand_interval(interval)
-        num = str(num)
-        if unit == 'MIN':
-            val = num+'T'
-        elif unit == 'HR':
-            val = 'H'
-        else:
-            val = 'D'
-        data = data.resample(val).agg(op_dict)
-        return data
-
-
-    def _append(self, current_data: pd.DataFrame, new_data: pd.DataFrame, interval: str, remove_duplicate: bool) -> pd.DataFrame:
+    def _append(self, current_data: pd.DataFrame, new_data: pd.DataFrame, remove_duplicate: bool=True) -> pd.DataFrame:
         """
         Appends the data as best it can with gaps in the data for weekends 
         and time when no data is collected. 

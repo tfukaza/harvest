@@ -375,7 +375,7 @@ class BaseAlgo:
         if symbol == None:
             symbol = self.watch[0]
         if len(symbol) <= 6:
-            return self.trader.storage.load(symbol, self.trader.interval)['close']
+            return self.trader.storage.load(symbol, self.trader.interval)[symbol]['close'][-1]
         else:
             for p in self.trader.option_positions:
                 if p['occ_symbol'] == symbol:
@@ -396,7 +396,7 @@ class BaseAlgo:
         if interval == None:
             interval = self.trader.interval
         if len(symbol) <= 6:
-            return self.trader.storage.load(symbol, interval)[ref]
+            return self.trader.storage.load(symbol, interval)[symbol][ref]
         else:
             raise Exception("Price list not available for options")
     

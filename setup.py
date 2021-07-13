@@ -40,6 +40,9 @@ setup(
         "Robinhood": [
             'pyotp',
             'robin_stocks'
+        ],
+        "Yahoo": [ 
+            "yfinance"
         ]
     }
 )
