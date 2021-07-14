@@ -220,7 +220,7 @@ class BaseAlgo:
             if interval == None:
                 interval = self.trader.interval
             if prices == None:
-                prices = self.trader.storage.load(symbol, interval)
+                prices = self.trader.storage.load(symbol, interval)[symbol][ref]
            
         return symbol, interval, ref, prices
 
