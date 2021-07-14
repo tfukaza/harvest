@@ -44,10 +44,10 @@ t_func = [
 ]
 
 b_func = [
-    b.start
+    b.start,
 ]
 
-def generate_json(class, functions):
+def generate_json(class_name, functions):
     data = []
     for func in functions:
 
@@ -78,7 +78,7 @@ def generate_json(class, functions):
             ],
         })
 
-    with open(f'./website/pages/docs-content/{class}.json', 'w') as f:
+    with open(f'./website/pages/docs-content/{class_name}.json', 'w') as f:
         json.dump(data, f)
 
 generate_json(a.__name__, a_func)
