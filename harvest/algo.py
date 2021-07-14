@@ -23,15 +23,7 @@ class BaseAlgo:
         pass
 
     def main(self, meta = {}):
-        pass
-
-    ############ Functions to configure the algo #################
-
-    def add_symbol(self, symbol: str) -> None:
-        self.watch.append(symbol)
-    
-    def remove_symbol(self, symbol: str) -> None:
-        self.watch.remove(symbol)
+        raise NotImplementedError("main() method needs to be implemted.")
     
     ############ Functions interfacing with broker through the trader #################
 

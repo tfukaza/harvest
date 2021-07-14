@@ -167,16 +167,13 @@ class Trader:
     def start(self, interval='5MIN', aggregations=[], sync = True, kill_switch: bool=False): 
         """Entry point to start the system. 
         
-        :load_watch: If True, all positions will be loaded from the brokerage account. 
-            They will then be added to the watchlist automatically. Set it to False if you
-            do not want to track all positions you currently own. 
-        :interval: Specifies the interval of running the algo. 
-        :aggregations: A list of intervals. The Trader will aggregate data to the intervals specified in this list.
+        :param str? interval: The interval to run the algorithm. defaults to '5MIN'
+        :param list[str]? aggregations: A list of intervals. The Trader will aggregate data to the intervals specified in this list.
             For example, if this is set to ['5MIN', '30MIN'], and interval is '1MIN', the algorithm will have access to 
-            5MIN, 30MIN aggregated candles in addition to 1MIN candles. 
-        :kill_switch: If true, kills the infinite loop in streamer.start so we can test this flow.
+            5MIN, 30MIN aggregated data in addition to 1MIN data. defaults to None
+        :param bool? sync: If true, the system will sync with the broker and fetch current positions and pending orders. defaults to true. 
+        :kill_switch: If true, kills the infinite loop in streamer. Primarily used for testing. defaults to False.
 
-        TODO: If there is no internet connection, the program will shut down before starting. 
         """
         print(f"Starting Harvest...")
 
@@ -470,22 +467,31 @@ class Trader:
         return ret
     
     def set_algo(self, algo):
+        """Specifies the algorithm to use.
+
+        :param Algo algo: The algorithm to use. You can either pass in a single Algo class, or a 
+            list of Algo classes. 
+        """
         if isinstance(algo, list):
             self.algo = algo
         else:
             self.algo = [algo]
     
     def set_symbol(self, symbol):
+        """Specifies the symbol(s) to watch.
+        
+        Cryptocurrencies should be prepended with an `@` to differentiate them from stocks. 
+        For example, '@ETH' will refer to Etherium, while 'ETH' will refer to Ethan Allen Interiors. 
+        If this method was previously called, the symbols specified earlier will be replaced with the
+        new symbols.
+        
+        :symbol str symbol: Ticker Symbol(s) of stock or cryptocurrency to watch. 
+            It can either be a string, or a list of strings. 
+        """
         if isinstance(symbol, list):
             self.watch = symbol
         else:
             self.watch = [symbol]
-
-    def add_symbol(self, symbol):
-        self.watch.append(symbol)
-    
-    def remove_symbol(self, symbol):
-        self.watch.remove(symbol)
     
     def exit(self, signum, frame):
         # TODO: Gracefully exit
