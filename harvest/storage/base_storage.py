@@ -137,7 +137,7 @@ class BaseStorage:
                 return None
 
             data = self.storage[symbol][intervals[-1][0]]
-            data = self._aggregate(data, interval)
+            data = aggregate_df(data, interval)
         else:
             data = self.storage[symbol][interval]
         self.storage_lock.release()

@@ -13,7 +13,8 @@ import pandas as pd
 import pytz
 
 # Submodule imports
-from harvest.utils import is_crypto
+import harvest.utils as util
+from harvest.utils import *
 
 class BaseBroker:
     """Broker class communicates with various API endpoints to perform the
@@ -75,18 +76,18 @@ class BaseBroker:
     def start(self, kill_switch: bool=False):
         self.cur_sec = -1
         self.cur_min = -1
-        val = int(re.sub("[^0-9]", "", self.fetch_interval))
+        val, _ = expand_interval(self.fetch_interval)
         
         print("Running...")
+        if kill_switch:
+            self.main()
+            return
         while 1:
             cur = dt.datetime.now()
             minutes = cur.minute
             if minutes % val == 0 and minutes != self.cur_min:
                 self.main()
-                if kill_switch:
-                    return
             self.cur_min = minutes
-
 
     def refresh_cred(self):
         pass
@@ -96,7 +97,7 @@ class BaseBroker:
         def wrapper(*args, **kwargs):
             self = args[0]
             df = func(*args, **kwargs) 
-            now = dt.datetime.utcnow()
+            now = util.now()
             self.trader.loop.run_until_complete(self.trader_main(df, now))
         return wrapper
 
@@ -384,7 +385,7 @@ class BaseBroker:
 
         if self.trader is None:
             buy_power = self.fetch_account()['buying_power']
-            price = self.fetch_price_history(dt.datetime.now() - dt.timedelta(days=7), dt.datetime.now(), self.interval, symbol).iloc[-1]['close']
+            price = self.fetch_price_history( symbol, self.interval, now() - dt.timedelta(days=7), now())[symbol]['close'][-1]
         else:
             buy_power = self.trader.account['buying_power']
             price = self.trader.queue.get_last_symbol_interval_price(symbol, self.fetch_interval, 'close')
@@ -451,7 +452,7 @@ class BaseBroker:
             return None
        
         if self.trader is None:
-            price = self.fetch_price_history(dt.datetime.now() - dt.timedelta(days=7), dt.datetime.now(), self.interval, symbol).iloc[-1]['close']
+            price = self.fetch_price_history(symbol, self.interval, now() - dt.timedelta(days=7), now())[symbol]['close'][-1]
         else:
             price = self.trader.queue.get_last_symbol_interval_price(symbol, self.fetch_interval, 'close') 
 
