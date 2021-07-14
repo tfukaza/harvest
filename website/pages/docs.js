@@ -8,7 +8,9 @@ import styles from '../styles/Home.module.scss'
 import doc from '../styles/Doc.module.css'
 import rc from '../styles/rowcrop.module.css'
 
-import algos from './docs-content/data.json'
+import algos from './docs-content/BaseAlgo.json'
+import trader from './docs-content/Trader.json'
+import backtester from './docs-content/BackTester.json'
 
 export default function Home() {
   let algo_items = [];
