@@ -91,7 +91,12 @@ class DummyBroker(base.BaseBroker):
         ) -> pd.DataFrame:
 
         if start is None:  
-            start = now() - dt.timedelta(days=100)
+            if interval in ['1MIN', '5MIN', '15MIN', '30MIN']:
+                start = now() - dt.timedelta(days=7)
+            elif interval == '1HR':
+                start = now() - dt.timedelta(days=31)
+            else:
+                start = now() - dt.timedelta(days=365)
         if end is None:
             end = now()
 

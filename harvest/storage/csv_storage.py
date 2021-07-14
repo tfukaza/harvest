@@ -38,7 +38,7 @@ class CSVStorage(BaseStorage):
             data.columns = pd.MultiIndex.from_product([[symbol], data.columns])
             super().store(symbol, interval, data)
 
-    def store(self, symbol: str, interval: str, data: pd.DataFrame) -> None:
+    def store(self, symbol: str, interval: str, data: pd.DataFrame, remove_duplicate: bool=True) -> None:
         """
         Stores the stock data in the storage dictionary and as a csv file.
         :symbol: a stock or crypto
@@ -47,7 +47,7 @@ class CSVStorage(BaseStorage):
         :data: a pandas dataframe that has stock data and has a datetime 
             index
         """
-        super().store(symbol, interval, data)
+        super().store(symbol, interval, data, remove_duplicate)
 
         if not data.empty:
             self.storage_lock.acquire()
