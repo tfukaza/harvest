@@ -6,7 +6,7 @@ import threading
 from logging import warning, debug
 import time
 import sys
-from signal import signal, SIGINT
+from signal import signal, SIGINT, SIGABRT
 from sys import exit
 
 # External libraries
@@ -34,6 +34,7 @@ class Trader:
     def __init__(self, streamer=None, broker=None, storage=None):      
         """Initializes the Trader. 
         """
+        signal(SIGINT, self.exit)
 
         if sys.version_info[0] < 3 or sys.version_info[1] < 8:
             raise Exception("Harvest requires Python 3.8 or above.")
@@ -491,4 +492,5 @@ class Trader:
         # TODO: Gracefully exit
         print("\nStopping Harvest...")
         exit(0)
+    
     

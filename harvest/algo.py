@@ -526,6 +526,14 @@ class BaseAlgo:
         :returns: The current date and time as a datetime object
         """
         return self.trader.timestamp 
+    
+    # Used for testing
+    def add_symbol(self, symbol:str):
+        """Adds a symbol to the watchlist. 
+
+        :param str symbol: Symbol of stock or crypto asset. 
+        """
+        self.watch.append(symbol)
 
     
     
