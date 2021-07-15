@@ -3,12 +3,12 @@ import unittest
 # Submodule imports
 from harvest.trader import BackTester
 from harvest.algo import BaseAlgo
-from harvest.broker.dummy import DummyBroker
+from harvest.api.dummy import DummyStreamer
 
 class TestTester(unittest.TestCase):    
 
     def test_tester_adding_symbol(self):
-        dummy_broker = DummyBroker()
+        dummy_broker = DummyStreamer()
         t = BackTester(dummy_broker)
         t.set_symbol('A')
         self.assertEqual(t.watch[0], 'A')
@@ -18,7 +18,7 @@ class TestTester(unittest.TestCase):
         to ensure it can run without crashing.
         """
         t = BackTester()
-        t.add_symbol('A')
+        t.set_symbol('A')
         t.set_algo(BaseAlgo())
         t.start('1MIN', ['5MIN', '30MIN', '1DAY'], source='FETCH', kill_switch=True)
         self.assertTrue(True)
@@ -27,7 +27,7 @@ class TestTester(unittest.TestCase):
         """ 
         """
         t = BackTester()
-        t.add_symbol('A')
+        t.set_symbol('A')
         t.set_algo(BaseAlgo())
         t.start('1MIN', ['1DAY'], source='FETCH', kill_switch=True)
         

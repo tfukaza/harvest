@@ -20,7 +20,7 @@ class DummyStreamer(API):
     interval_list = ['1MIN', '5MIN', '15MIN', '30MIN', '1HR', '1DAY']
 
     def __init__(self, path: str=None):
-        super().__init__(path)
+        self.trader = None
 
     def setup(self, watch: List[str], interval, trader=None, trader_main=None):
         super().setup(watch, interval, interval, trader, trader_main)

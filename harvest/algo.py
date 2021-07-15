@@ -23,7 +23,7 @@ class BaseAlgo:
         pass
 
     def main(self, meta = {}):
-        raise NotImplementedError("main() method needs to be implemted.")
+        pass
     
     ############ Functions interfacing with broker through the trader #################
 

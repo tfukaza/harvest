@@ -20,8 +20,7 @@ class PaperBroker(API):
     interval_list = ['1MIN', '5MIN', '15MIN', '30MIN', '1DAY']
 
     def __init__(self, account_path: str=None):
-        super().__init__()
-
+        
         self.stocks = []
         self.options = []
         self.cryptos = []
@@ -108,7 +107,7 @@ class PaperBroker(API):
         sym = ret['symbol']
 
         if self.trader is None:
-            price = self.fetch_price_history(sym, self.interval, dt.datetime.now() - dt.timedelta(days=7), dt.datetime.now())[sym]['close'][-1]
+            price = self.streamer.fetch_price_history(sym, self.interval, dt.datetime.now() - dt.timedelta(days=7), dt.datetime.now())[sym]['close'][-1]
         else:
             price = self.trader.queue.get_last_symbol_interval_price(sym, self.interval, 'close')
 
@@ -174,7 +173,7 @@ class PaperBroker(API):
         occ_sym = ret['occ_symbol']
 
         if self.trader is None:
-            price = self.fetch_option_market_data(occ_sym)['price']
+            price = self.streamer.fetch_option_market_data(occ_sym)['price']
         else:
             price = self.trader.streamer.fetch_option_market_data(occ_sym)['price']
             

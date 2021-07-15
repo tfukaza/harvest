@@ -464,7 +464,7 @@ class API:
 
         if self.trader is None:
             buy_power = self.fetch_account()['buying_power']
-            price = self.fetch_price_history( symbol, self.interval, now() - dt.timedelta(days=7), now())[symbol]['close'][-1]
+            price = self.streamer.fetch_price_history( symbol, self.interval, now() - dt.timedelta(days=7), now())[symbol]['close'][-1]
         else:
             buy_power = self.trader.account['buying_power']
             price = self.trader.queue.get_last_symbol_interval_price(symbol, self.fetch_interval, 'close')
@@ -499,9 +499,9 @@ class API:
                 check = self.fetch_stock_order_status
         else:
             if is_crypto(symbol):
-                check = self.trader.order.fetch_crypto_order_status
+                check = self.trader.broker.fetch_crypto_order_status
             else:
-                check = self.trader.order.fetch_stock_order_status
+                check = self.trader.broker.fetch_stock_order_status
 
         while True:
             time.sleep(0.5)
@@ -525,7 +525,7 @@ class API:
             raise Exception(f"Quantity cannot be less than or equal to 0: was given {quantity}")
        
         if self.trader is None:
-            price = self.fetch_price_history(symbol, self.interval, now() - dt.timedelta(days=7), now())[symbol]['close'][-1]
+            price = self.streamer.fetch_price_history(symbol, self.interval, now() - dt.timedelta(days=7), now())[symbol]['close'][-1]
         else:
             price = self.trader.queue.get_last_symbol_interval_price(symbol, self.fetch_interval, 'close') 
 
@@ -551,7 +551,7 @@ class API:
             if self.trader is None:
                 stat = self.fetch_stock_order_status(ret["id"])
             else:
-                stat = self.trader.order.fetch_stock_order_status(ret["id"])
+                stat = self.trader.broker.fetch_stock_order_status(ret["id"])
             if stat['status'] == 'filled':
                 return stat
             time.sleep(1)
@@ -573,7 +573,7 @@ class API:
 
         if self.trader is None:
             buy_power = self.fetch_account()['buying_power']
-            price = self.fetch_option_market_data(symbol)['price']
+            price = self.streamer.fetch_option_market_data(symbol)['price']
         else:
             buy_power = self.trader.account['buying_power']
             price = self.trader.streamer.fetch_option_market_data(symbol)['price']
@@ -605,7 +605,7 @@ class API:
             raise Exception(f"Quantity cannot be less than or equal to 0: was given {quantity}")
        
         if self.trader is None:
-            price = self.fetch_option_market_data(symbol)['price']
+            price = self.streamer.fetch_option_market_data(symbol)['price']
         else:
             price = self.trader.streamer.fetch_option_market_data(symbol)['price']
             
