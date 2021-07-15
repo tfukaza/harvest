@@ -5,7 +5,7 @@ from harvest import trader
 from harvest.algo import BaseAlgo
 from harvest.api.dummy import DummyStreamer
 from harvest.api.paper import PaperBroker
-from harvest.api.robinhood import Robinhood
+#from harvest.api.robinhood import Robinhood
 
 class TestTrader(unittest.TestCase):    
     def test_trader_adding_symbol(self):
