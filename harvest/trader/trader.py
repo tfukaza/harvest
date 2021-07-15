@@ -1,22 +1,21 @@
 # Builtins
 import asyncio
+from harvest.api.paper import PaperBroker
 import re
-import datetime as dt
 import threading
 from logging import warning, debug
-import time
 import sys
 from signal import signal, SIGINT, SIGABRT
 from sys import exit
 
 # External libraries
 import pandas as pd
-import pytz
 
 # Submodule imports
 from harvest.utils import *
 from harvest.storage import BaseStorage
-from harvest.broker.dummy import DummyBroker
+from harvest.api.dummy import DummyStreamer
+from harvest.api.paper import PaperBroker
 from harvest.algo import BaseAlgo
 from harvest.storage import BaseStorage
 
@@ -39,14 +38,19 @@ class Trader:
         if sys.version_info[0] < 3 or sys.version_info[1] < 8:
             raise Exception("Harvest requires Python 3.8 or above.")
 
+        is_dummy = False
         if streamer == None:
             warning("Streamer not specified, using DummyBroker")
-            self.streamer = DummyBroker()
+            self.streamer = DummyStreamer()
+            is_dummy = True
         else:
             self.streamer = streamer
   
         if broker == None:
-            self.broker = self.streamer
+            if is_dummy:
+                self.broker = PaperBroker()
+            else:
+                self.broker = self.streamer
         else:
             self.broker = broker
 

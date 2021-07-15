@@ -2,17 +2,16 @@
 import datetime as dt
 from logging import critical, error, info, warning, debug
 from typing import Any, Dict, List, Tuple
-import pytz
 
 # External libraries
 import pandas as pd
 import yfinance as yf
 
 # Submodule imports
-import harvest.broker._base as base
+from harvest.api._base import API
 from harvest.utils import *
 
-class YahooStreamer(base.BaseBroker):
+class YahooStreamer(API):
 
     interval_list = ['1MIN', '5MIN', '15MIN', '30MIN', '1HR']
 
@@ -68,7 +67,6 @@ class YahooStreamer(base.BaseBroker):
     def exit(self):
         self.option_cache = {}
 
-    @base.BaseBroker.main_wrap
     def main(self):
         df_dict = {}
         for s in self.watch_stock:
@@ -76,9 +74,11 @@ class YahooStreamer(base.BaseBroker):
             df = df.iloc[[-1]]
             df = self._format_df(df, s)
             df_dict[s] = df
-        return df_dict
+        self.trader_main(df_dict)
+
+    # -------------- Streamer methods -------------- #
     
-    @base.BaseBroker._exception_handler
+    @API._exception_handler
     def fetch_price_history( self,  
         symbol: str,
         interval: str,
@@ -119,44 +119,8 @@ class YahooStreamer(base.BaseBroker):
         df = df.loc[start:end]
         
         return df
-
-    @base.BaseBroker._exception_handler
-    def fetch_stock_positions(self):
-        raise Exception("Not implemented")
-
-    @base.BaseBroker._exception_handler
-    def fetch_option_positions(self):
-        raise Exception("Not implemented")
     
-    @base.BaseBroker._exception_handler
-    def fetch_crypto_positions(self, key=None):
-        raise Exception("Not implemented")
-    
-    @base.BaseBroker._exception_handler
-    def update_option_positions(self, positions: List[Any]):
-        raise Exception("Not implemented")
-
-    @base.BaseBroker._exception_handler
-    def fetch_account(self):
-        raise Exception("Not implemented")
-
-    @base.BaseBroker._exception_handler
-    def fetch_stock_order_status(self, id):
-        raise Exception("Not implemented")
-    
-    @base.BaseBroker._exception_handler
-    def fetch_option_order_status(self, id):
-        raise Exception("Not implemented")
-    
-    @base.BaseBroker._exception_handler
-    def fetch_crypto_order_status(self, id):
-        raise Exception("Not implemented")
-    
-    @base.BaseBroker._exception_handler
-    def fetch_order_queue(self):
-        raise Exception("Not implemented")
-    
-    @base.BaseBroker._exception_handler
+    @API._exception_handler
     def fetch_chain_info(self, symbol: str):
         return {
             "id": "n/a", 
@@ -164,7 +128,7 @@ class YahooStreamer(base.BaseBroker):
             "multiplier": 100
         }    
 
-    @base.BaseBroker._exception_handler
+    @API._exception_handler
     def fetch_chain_data(self, symbol: str):
 
         if bool(self.option_cache) and symbol in self.option_cache:
@@ -190,9 +154,8 @@ class YahooStreamer(base.BaseBroker):
         self.option_cache[symbol] = df
         return df
     
-    @base.BaseBroker._exception_handler
+    @API._exception_handler
     def fetch_option_market_data(self, symbol: str):
-      
         _, date, _, _ = self.occ_to_data(symbol)
         chain = self.watch_ticker[symbol].option_chain(date)
         df = chain.loc[symbol]
@@ -202,8 +165,44 @@ class YahooStreamer(base.BaseBroker):
                 'bid': df['bid'][0]
             }
 
-    # Order functions are not wrapped in the exception handler to prevent duplicate 
-    # orders from being made. 
+    # ------------- Broker methods ------------- #
+    
+    @API._exception_handler
+    def fetch_stock_positions(self):
+        raise Exception("Not implemented")
+
+    @API._exception_handler
+    def fetch_option_positions(self):
+        raise Exception("Not implemented")
+    
+    @API._exception_handler
+    def fetch_crypto_positions(self, key=None):
+        raise Exception("Not implemented")
+    
+    @API._exception_handler
+    def update_option_positions(self, positions: List[Any]):
+        raise Exception("Not implemented")
+
+    @API._exception_handler
+    def fetch_account(self):
+        raise Exception("Not implemented")
+
+    @API._exception_handler
+    def fetch_stock_order_status(self, id):
+        raise Exception("Not implemented")
+    
+    @API._exception_handler
+    def fetch_option_order_status(self, id):
+        raise Exception("Not implemented")
+    
+    @API._exception_handler
+    def fetch_crypto_order_status(self, id):
+        raise Exception("Not implemented")
+    
+    @API._exception_handler
+    def fetch_order_queue(self):
+        raise Exception("Not implemented")
+
     def order_limit(self, 
         side: str, 
         symbol: str,
@@ -216,6 +215,8 @@ class YahooStreamer(base.BaseBroker):
     def order_option_limit(self, side: str, symbol: str, quantity: int, limit_price: float, option_type, exp_date: dt.datetime, strike, in_force: str='gtc'):
         raise Exception("Not implemented")
     
+    # ------------- Helper methods ------------- #
+
     def _format_df(self, df: pd.DataFrame, symbol: str):
         df.reset_index(inplace=True)
         ts_name = df.columns[0]

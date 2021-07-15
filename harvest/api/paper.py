@@ -1,22 +1,17 @@
 # Builtins
 import datetime as dt
-import random
-import re
-import queue
 from typing import Any, Dict, List, Tuple
-import logging
 from logging import critical, error, info, warning, debug
 
 # External libraries
 import pandas as pd
 import yaml
-import pytz
 
 # Submodule imports
-import harvest.broker._base as base
+from harvest.api._base import API
 from harvest.utils import *
 
-class PaperBroker(base.BaseBroker):
+class PaperBroker(API):
     """DummyBroker, as its name implies, is a dummy broker class that can 
     be useful for testing algorithms. When used as a streamer, it will return
     randomly generated prices. When used as a broker, it paper trades.
