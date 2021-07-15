@@ -109,7 +109,7 @@ class PaperBroker(API):
         if self.trader is None:
             price = self.streamer.fetch_price_history(sym, self.interval, dt.datetime.now() - dt.timedelta(days=7), dt.datetime.now())[sym]['close'][-1]
         else:
-            price = self.trader.queue.get_last_symbol_interval_price(sym, self.interval, 'close')
+            price = self.trader.storage.load(sym, self.interval)[sym]['close'][-1]
 
         qty = ret['quantity']
        

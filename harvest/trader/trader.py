@@ -38,16 +38,14 @@ class Trader:
         if sys.version_info[0] < 3 or sys.version_info[1] < 8:
             raise Exception("Harvest requires Python 3.8 or above.")
 
-        is_dummy = False
         if streamer == None:
             warning("Streamer not specified, using DummyBroker")
             self.streamer = DummyStreamer()
-            is_dummy = True
         else:
             self.streamer = streamer
   
         if broker == None:
-            if is_dummy:
+            if isinstance(self.streamer, DummyStreamer):
                 self.broker = PaperBroker()
             else:
                 self.broker = self.streamer
@@ -210,7 +208,7 @@ class Trader:
             debug("Begin timer")
             await asyncio.sleep(1)
             debug("Force flush")
-            self.main(None, True)
+            await self.main_async(None, now(), True)
         except asyncio.CancelledError:
             debug("Timeout cancelled")
 
@@ -248,7 +246,7 @@ class Trader:
         if flush:
             # For missing data, repeat the existing one
             for n in self.needed:
-                self.block_queue[n] = self.storage.load(n, self.base_interval).iloc[[-1]]
+                self.block_queue[n] = self.storage.load(n, self.fetch_interval).iloc[[-1]]
             self.needed = self.watch.copy()
             for k, v in self.blocker.items():
                 self.blocker[k] = False

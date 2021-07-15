@@ -465,7 +465,7 @@ class BaseAlgo:
         """
         if symbol == None:
             symbol = self.watch[0]
-        price = self.get_price(symbol)
+        price = self.get_price(symbol) * 1.05
         power = self.get_account_buying_power()
         if round:
             qty = int(power/price)

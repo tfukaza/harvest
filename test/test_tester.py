@@ -20,7 +20,7 @@ class TestTester(unittest.TestCase):
         t = BackTester()
         t.set_symbol('A')
         t.set_algo(BaseAlgo())
-        t.start('1MIN', ['5MIN', '30MIN', '1DAY'], source='FETCH', kill_switch=True)
+        t.start('1MIN', ['5MIN'], source='FETCH', kill_switch=True)
         self.assertTrue(True)
     
     def test_check_aggregation(self):
