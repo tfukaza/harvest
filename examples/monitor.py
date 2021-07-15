@@ -11,7 +11,7 @@ class Watch(BaseAlgo):
 
 if __name__ == "__main__":
     t = Trader( RobinhoodBroker() )
-    t.set_symbol('TWTR')
+    t.set_symbol('@BTC')
     t.set_algo(Watch())
 
-    t.start()
+    t.start('1MIN')
