@@ -1,11 +1,15 @@
 # Builtins
 import unittest
+import time
 # Submodule imports
 from harvest import trader
 from harvest.algo import BaseAlgo
 from harvest.api.dummy import DummyStreamer
 from harvest.api.paper import PaperBroker
 #from harvest.api.robinhood import Robinhood
+
+
+from harvest.utils import gen_data
 
 class TestTrader(unittest.TestCase):    
     def test_trader_adding_symbol(self):
@@ -49,6 +53,40 @@ class TestTrader(unittest.TestCase):
         t = trader.Trader()
         with self.assertRaises(Exception):
             t.start('30MIN', ['5MIN', '1DAY'])
+    
+    def test_timeout(self):
+        t = trader.Trader()
+        t.set_symbol(['A', 'B'])
+        t.start('1MIN', kill_switch=True)
+
+        # Save the last datapoint of B
+        b_data = t.storage.load('B', '1MIN')['B']['close'][-1]
+        # Only send data for A
+        data = {
+            'A': gen_data('A', 1)
+        }
+        t.main(data)
+        # Wait for the timeout
+        time.sleep(2)
+        # Check if B has been duplicated
+        self.assertEqual(b_data, t.storage.load('B', '1MIN')['B']['close'][-1])
+    
+    def test_timeout_cancel(self):
+        t = trader.Trader()
+        t.set_symbol(['A', 'B'])
+        t.start('1MIN', kill_switch=True)
+
+        a_new = gen_data('A', 1)
+        b_new = gen_data('B', 1)
+        # Only send data for A
+        data = {'A': a_new}
+        t.main(data)
+        time.sleep(0.3)
+        data = {'B': b_new}
+        t.main(data)
+        # Check that the new data has been stored
+        self.assertEqual(a_new['A']['close'][-1], t.storage.load('A', '1MIN')['A']['close'][-1])
+        self.assertEqual(b_new['B']['close'][-1], t.storage.load('B', '1MIN')['B']['close'][-1])
 
 if __name__ == '__main__':
     unittest.main()

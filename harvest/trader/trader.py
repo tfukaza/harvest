@@ -208,7 +208,7 @@ class Trader:
             debug("Begin timer")
             await asyncio.sleep(1)
             debug("Force flush")
-            self.main(None, True)
+            await self.main_async(None, now(), True)
         except asyncio.CancelledError:
             debug("Timeout cancelled")
 
@@ -246,7 +246,7 @@ class Trader:
         if flush:
             # For missing data, repeat the existing one
             for n in self.needed:
-                self.block_queue[n] = self.storage.load(n, self.base_interval).iloc[[-1]]
+                self.block_queue[n] = self.storage.load(n, self.fetch_interval).iloc[[-1]]
             self.needed = self.watch.copy()
             for k, v in self.blocker.items():
                 self.blocker[k] = False
