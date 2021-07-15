@@ -13,7 +13,8 @@ import pytz
 # Submodule imports
 from harvest.storage import PickleStorage
 import harvest.trader.trader as trader
-from harvest.broker.dummy import DummyBroker
+from harvest.api.dummy import DummyStreamer
+from harvest.api.paper import PaperBroker
 from harvest.utils import *
 
 class BackTester(trader.Trader):
@@ -26,10 +27,10 @@ class BackTester(trader.Trader):
         """Initializes the TestTrader. 
         """
         if streamer == None:
-            self.streamer = DummyBroker()
+            self.streamer = DummyStreamer()
         else:
             self.streamer = streamer
-        self.broker = DummyBroker()
+        self.broker = PaperBroker()
 
         self.watch = []             # List of stocks to watch
 
