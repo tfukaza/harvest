@@ -10,38 +10,42 @@ function get_def(word){
     }
 }
 
+function parse_tooltips(text){
+
+    if (text === undefined) text = "";
+    // Match any {} patterns
+    let regex = /{[^{}]+}/g;
+    let matches = text.match(regex);
+    let desc_split = text.split(regex);
+
+    let nodes = [];
+    let word = '';
+    let tooltip = null;
+    for (let d of desc_split){
+        nodes.push(d);
+        if (matches !== null && matches.length > 0){
+            word = matches.shift().replace(/[{}]/g, '');
+            tooltip = <span dangerouslySetInnerHTML={{ __html: get_def(word) }}></span>;
+            nodes.push(<span className={doc.lookup}>{tooltip}{word}</span>)
+        }
+    }
+
+    return [nodes, matches];
+}
+
+
 function generate_params(dict){
     let params=[]
     // Parse through method parameters
     for (let v of dict["params"]){
-
-        let desc_text = v["desc"];
-        if (desc_text === undefined) desc_text = "";
-    
-        // Match any {} patterns
-        let regex = /{[^{}]+}/g;
-        let matches = desc_text.match(regex);
-        let desc_split = desc_text.split(regex);
-
-        let nodes = [];
-        let word = '';
-        let tooltip = null;
-        for (let d of desc_split){
-            nodes.push(d);
-            if (matches !== null && matches.length > 0){
-                word = matches.shift().replace(/[{}]/g, '');
-                tooltip = <span>{get_def(word)}</span>;
-                nodes.push(<span className={doc.lookup}>{tooltip}{word}</span>)
-            }
-        }
-
+        let nodes = parse_tooltips(v["desc"]);
         params.push(
             <div>
                 <p className={doc.paramName}>• {v["name"]}</p>
                 <p className={doc.paramType}>&nbsp;({v["type"]}):</p>
-                <p>{nodes}</p>
+                <p>{nodes[0]}</p>
                 <p className={doc.paramDef}>{v["default"]}</p>
-                <p>{matches}</p>
+                <p>{nodes[1]}</p>
             </div>
         );   
     }
