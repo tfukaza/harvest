@@ -38,16 +38,14 @@ class Trader:
         if sys.version_info[0] < 3 or sys.version_info[1] < 8:
             raise Exception("Harvest requires Python 3.8 or above.")
 
-        is_dummy = False
         if streamer == None:
             warning("Streamer not specified, using DummyBroker")
             self.streamer = DummyStreamer()
-            is_dummy = True
         else:
             self.streamer = streamer
   
         if broker == None:
-            if is_dummy:
+            if isinstance(self.streamer, DummyStreamer):
                 self.broker = PaperBroker()
             else:
                 self.broker = self.streamer
