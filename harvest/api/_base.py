@@ -1,72 +1,91 @@
 # Builtins
-import re
 import datetime as dt
 import time
 from logging import debug
-from warnings import warn
 from typing import Any, Callable, Dict, List 
-import re
+from pathlib import Path
+import yaml
+import traceback
 
 # External libraries
-import numpy as np
 import pandas as pd
-import pytz
 
 # Submodule imports
-import harvest.utils as util
 from harvest.utils import *
 
-class BaseBroker:
-    """Broker class communicates with various API endpoints to perform the
-    necessary operations. The BaseBroker defines the interface for all Broker classes to 
+class API:
+    """
+    The API class communicates with various API endpoints to perform the
+    necessary operations. The Base class defines the interface for all API classes to 
     extend and implement.
 
     Attributes
+    :interval_list: A list of supported intervals.
     :fetch_interval: A string indicating the interval the broker fetches the latest asset data.  
         This should be initialized in setup_run (see below).
     """
     
-    def __init__(self, path: str=None):
-        """Here, the broker should perform any authentications necessary to 
-        connect to the brokerage it is using.
+    def __init__(self, path: str):
+        """
+        Here, you should perform any authentications necessary to 
+        communicate with the API this class is using. 
 
-        There are three broker types, 'streamer', 'broker', and 'both'. A 
+        There are three API class types, 'streamer', 'broker', and 'both'. A 
         'streamer' is responsible for fetching data and interacting with 
         the queue to store data. A 'broker' is used solely for buying and 
         selling stocks, cryptos and options. Finally, 'both' is used to 
         indicate that the broker fetch data and buy and sell stocks.
+        
+        All subclass implementations should call this __init__ method
+        using `super().__init__(path)`.
 
-        :path: path to the YAML file containing credentials for the broker. 
-            If not specified, should default to './secret.yaml'
+        :path: path to the YAML file containing credentials to communicate with the API. 
+            If not specified, defaults to './secret.yaml'
         """
-
         self.trader = None # Allows broker to handle the case when runs without a trader
+        
+        if path == None:
+            path = './secret.yaml'
+        # Check if file exists
+        yml_file = Path(path)
+        if not yml_file.is_file():
+            if not self.no_secret(path):
+                return 
+        with open(path, 'r') as stream:
+            self.config = yaml.safe_load(stream)
     
+    def no_secret(self, path: str): 
+        """
+        This method is called when the yaml file with credentials 
+        is not found. """
+        raise Exception(f"{path} was not found")
+    
+    def refresh_cred(self):
+        """
+        Most API endpoints, for security reasons, require a refresh of the access token
+        every now and then. This method should perform a refresh of the access token. 
+        """
+        pass
+
     def setup(self, watch: List[str], interval: str, fetch_interval:str, trader=None, trader_main=None) -> None:
-        """This function is called right before the algorithm begins.
-        It should perform any configurations necessary to start running.
+        """
+        This function is called right before the algorithm begins.
 
-        :watch: List of stocks/cryptos to watch. Cryptos are prepended with a '@'
-            to distinguish them from stocks
-        :interval: Interval to call the algo's handler 
-        :fetch_interval: Interval to do fetch stock/crypto data
+        On top of performing any configurations and input checks,
+        this method must initialize the following attributes:
         
-        Regardless of the implementation, this method must initialize 
-        the following attributes:
-
-        
-        :watch: A list containing strings of stock/crypto (but not option) symbols this broker should 
+        :watch: A list containing strings of stock/crypto (but not option) symbols this class should 
             keep track of. Cryptos are prepended with a '@' to distinguish them from stocks.
         :interval: A string specifying the interval to run the algorithm.
-        :fetch_interval: A string specifying the interval to collect data. This is needed
-            because some brokers like Alpaca Market allow data streaming. Usually data streaming 
-            streams data every minute, so even if the algorithm is designed to run at a lower frequency 
-            (like once every 30MIN), under the hood Harvest needs to process data every minute.
-        :trader: A reference to the parent Trader class
-        :handler: A reference to a method in the Trader class that invokes 
+        :fetch_interval: A string specifying the interval to collect data. 
+            For example, say a broker only provides 1MIN data. If the user wants to 
+            run the algorithm at 5MIN, fetch_interval should be set to '1MIN'.
+            The Trader class will then automatically resample the 1MIN data to 
+            5MIN data.
+        :trader: A reference to the Trader class. 
+        :trader_main: A reference to a method in the Trader class that invokes 
             the algorithm
         """
-        
         self.watch = watch 
         self.interval = interval 
         self.fetch_interval = fetch_interval
@@ -74,61 +93,73 @@ class BaseBroker:
         self.trader_main = trader_main
 
     def start(self, kill_switch: bool=False):
-        self.cur_sec = -1
+        """
+        This method begins streaming data from the API.
+
+        The default implementation below is for polling the API.
+        If your brokerage provides a streaming API, you should override
+        this method and configure it to use that API. In that case,
+        make sure to set the callback function to self.main().
+
+        :kill_switch: A flag to indicate whether the algorithm should stop 
+            after a single iteration. Usually used for testing.
+        """
+        self.cur_hr = -1
         self.cur_min = -1
-        val, _ = expand_interval(self.fetch_interval)
+        val, unit = expand_interval(self.fetch_interval)
         
         print("Running...")
         if kill_switch:
             self.main()
             return
-        while 1:
-            cur = dt.datetime.now()
-            minutes = cur.minute
-            if minutes % val == 0 and minutes != self.cur_min:
-                self.main()
-            self.cur_min = minutes
-
-    def refresh_cred(self):
-        pass
-
-    def main_wrap(func):
-        """Wrapper to run the handler async"""
-        def wrapper(*args, **kwargs):
-            self = args[0]
-            df = func(*args, **kwargs) 
-            now = util.now()
-            self.trader.loop.run_until_complete(self.trader_main(df, now))
-        return wrapper
+        
+        if unit == 'MIN':
+            while 1:
+                cur = dt.datetime.now()
+                minutes = cur.minute
+                if minutes % val == 0 and minutes != self.cur_min:
+                    self.main()
+                self.cur_min = minutes
+        elif unit == 'HR':
+            while 1:
+                cur = dt.datetime.now()
+                minutes = cur.minute
+                if minutes == 0 and minutes != self.cur_min:
+                    self.main()
+                self.cur_min = minutes
+        else:
+            raise Exception(f"Unsupported interval {self.fetch_interval}")
 
     def main(self) -> Dict[str, pd.DataFrame]:
-        """This function should be called at the specified interval, and return data.
+        """
+        This function should be called at the specified interval, and return data.
         For brokers that use streaming, this often means specifying this function as a callback.
         For brokers that use polling, this often means calling whatever endpoint is needed to 
         obtain stock/crypto data, at the specified interval.
 
-        :returns: A dictionary where each key is the symbol for an asset, and the value is the
-            corresponding data in the following pandas dataframe format:
+        This method should create a dictionary where each key is the symbol for an asset, 
+        and the value is the corresponding data in the following pandas dataframe format:
                       Symbol                              
                       open   high    low close   volume       
             timestamp
             ---       ---    ---     --- ---     ---         
 
-        timestamp should be an offset-aware datetime object in UTC timezone
+        timestamp should be an offset-aware datetime object in UTC timezone.
+        
+        The dictionary should be passed to the trader by calling `self.trader_main(dict)` 
         """
         raise NotImplementedError("This endpoint is not supported in this broker")
 
     def exit(self):
-        """This function is called after every invocation of algo's handler. 
+        """
+        This function is called after every invocation of algo's handler. 
         The intended purpose is for brokers to clear any cache it may have created.
         """
         pass
 
-    def has_interval(self, interval: str):
-        return interval in self.interval_list
-
     def _exception_handler( func ):
-        """Wrapper to handle unexpected errors in the wrapped function. 
+        """
+        Wrapper to handle unexpected errors in the wrapped function. 
         Most functions should be wrapped with this to properly handle errors, such as
         when internet connection is lost. 
 
@@ -142,13 +173,16 @@ class BaseBroker:
                     return func(*args, **kwargs) 
                 except Exception as e:
                     debug(f"Error: {e}")
-                    debug("Logging out and back in...")
-                    args[0].refresh_cred()
+                    traceback.print_exc()
+                    # debug("Logging out and back in...")
+                    # args[0].refresh_cred()
                     tries = tries - 1 
                     debug("Retrying...")
                     continue
             raise Exception(f"{func} failed")
         return wrapper
+
+    # -------------- Streamer methods -------------- #
 
     def fetch_price_history(self,
         symbol: str,
@@ -156,20 +190,60 @@ class BaseBroker:
         start: dt.datetime=None, 
         end: dt.datetime=None, 
         ):
-        """Returns historical price data for the specified asset and period 
-        from the API.
+        """
+        Fetches historical price data for the specified asset and period 
+        using the API.
 
-        :last: The starting date of the period, inclusive.
-        :today: The ending date of the period, inclusive.
-        :interval: The interval of requested historical data.
-        :symbol: The stock/crypto to get data for.
-
-        :returns: A pandas dataframe, same format as _handler()
+        :param symbol: The stock/crypto to get data for.
+        :param interval: The interval of requested historical data.
+        :param start: The starting date of the period, inclusive.
+        :param end: The ending date of the period, inclusive.
+        :returns: A pandas dataframe, same format as main()
         """
         raise NotImplementedError("This endpoint is not supported in this broker")
+
+    def fetch_chain_info(self, symbol: str):
+        """
+        Returns information about the symbol's options
+        
+        :param symbol: Stock symbol. Cannot use crypto.
+        :returns: A dict with the following keys and values:
+            - id: ID of the option chain 
+            - exp_dates: List of expiration dates as datetime objects
+            - multiplier: Multiplier of the option, usually 100 
+        """ 
     
+    def fetch_chain_data(self, symbol: str):
+        """
+        Returns the option chain for the specified symbol. 
+        
+        :param symbol: Stock symbol. Cannot use crypto.
+        :returns: A dataframe in the following format:
+
+                    exp_date strike  type   
+            OCC
+            ---     ---      ---     ---        
+        exp_date should be a timezone-aware datetime object localized to UTC
+        """ 
+        raise NotImplementedError("This endpoint is not supported in this broker")
+    
+    def fetch_option_market_data(self, symbol: str):
+        """
+        Retrieves data of specified option. 
+
+        :param symbol:    OCC symbol of option
+        :returns:   A dictionary:
+            - price: price of option 
+            - ask: ask price
+            - bid: bid price
+        """
+        raise NotImplementedError("This endpoint is not supported in this broker") 
+    
+    # ------------- Broker methods ------------- #
+
     def fetch_stock_positions(self):
-        """Returns all current stock positions
+        """
+        Returns all current stock positions
         
         :returns: A list of dictionaries with the following keys and values:
             - symbol: Ticker symbol of the stock
@@ -179,11 +253,12 @@ class BaseBroker:
         raise NotImplementedError("This endpoint is not supported in this broker")
 
     def fetch_option_positions(self):
-        """Returns all current option positions
+        """
+        Returns all current option positions
         
         :returns: A list of dictionaries with the following keys and values:
             - symbol: Ticker symbol of the underlying stock
-            - occ_symbol: OCC symbol of option
+            - occ_symbol: OCC symbol of the option
             - avg_price: Average price the option was bought at
             - quantity: Quantity owned
             - multiplier: How many stocks each option represents
@@ -194,7 +269,8 @@ class BaseBroker:
         raise NotImplementedError("This endpoint is not supported in this broker")
 
     def fetch_crypto_positions(self):
-        """Returns all current crypto positions
+        """
+        Returns all current crypto positions
         
         :returns: A list of dictionaries with the following keys and values:
             - symbol: Ticker symbol for the crypto, prepended with an '@'
@@ -204,8 +280,10 @@ class BaseBroker:
         raise NotImplementedError("This endpoint is not supported in this broker")
     
     def update_option_positions(self, positions: List[Any]):
-        """Updates entries in option_positions list. This is needed as options are priced
-        based on various metrics, and cannot be easily calculated from stock prices. 
+        """
+        Updates entries in option_positions list with the latest option price. 
+        This is needed as options are priced based on various metrics, 
+        and cannot be easily calculated from stock prices. 
 
         :positions: The option_positions list in the Trader class. 
         :returns: Nothing
@@ -213,18 +291,20 @@ class BaseBroker:
         raise NotImplementedError("This endpoint is not supported in this broker")
 
     def fetch_account(self):
-        """Returns current account information from the brokerage. 
+        """
+        Returns current account information from the brokerage. 
         
         :returns: A dictionary with the following keys and values:
             - equity: Total assets in the brokerage
             - cash: Total cash in the brokerage
             - buying_power: Total buying power
-            - multiplier: Scale of leverge, if leveraging
+            - multiplier: Scale of leverage, if leveraging
         """
         raise NotImplementedError("This endpoint is not supported in this broker")
     
     def fetch_stock_order_status(self, id):
-        """Returns the status of a stock order with the given id.
+        """
+        Returns the status of a stock order with the given id.
 
         :id: ID of the stock order 
         
@@ -241,7 +321,8 @@ class BaseBroker:
         raise NotImplementedError("This endpoint is not supported in this broker")
     
     def fetch_option_order_status(self, id):
-        """Returns the status of a option order with the given id.
+        """
+        Returns the status of a option order with the given id.
 
         :id: ID of the option order 
         
@@ -258,7 +339,8 @@ class BaseBroker:
         raise NotImplementedError("This endpoint is not supported in this broker")
     
     def fetch_crypto_order_status(self, id):
-        """Returns the status of a crypto order with the given id.
+        """
+        Returns the status of a crypto order with the given id.
 
         :id: ID of the crypto order 
         
@@ -275,7 +357,8 @@ class BaseBroker:
         raise NotImplementedError("This endpoint is not supported in this broker")
     
     def fetch_order_queue(self):
-        """Returns all current pending orders 
+        """
+        Returns all current pending orders 
         
         returns: A list of dictionaries with the following keys and values:
             For stocks:
@@ -310,38 +393,7 @@ class BaseBroker:
         """
         raise NotImplementedError("This endpoint is not supported in this broker")
 
-    def fetch_chain_info(self, symbol: str):
-        """Returns information about the symbol's options
-        
-        :returns: A dict with the following keys and values:
-            - id: ID of the option chain 
-            - exp_dates: List of expiration dates, in the fomrat "YYYY-MM-DD" 
-            - multiplier: Multiplier of the option, usually 100 
-        """ 
-    
-    def fetch_chain_data(self, symbol: str):
-        """Returns the option chain for the specified symbol. 
-        
-        :symbol: symbol 
-        :returns: A dataframe in the following format:
-
-                    exp_date strike  type    id
-            OCC
-            ---     ---      ---     ---     ---     
-        exp_date should be a timezone-aware date localized to UTC
-        """ 
-        raise NotImplementedError("This endpoint is not supported in this broker")
-    
-    def fetch_option_market_data(self, symbol: str):
-        """Retrieves data of specified option. 
-
-        :symbol:    Occ symbol of option
-        :returns:   A dictionary:
-            - price: price of option 
-            - ask: ask price
-            - bid: bid price
-            }
-        """ 
+    # --------------- Methods for Trading --------------- #
 
     def order_limit(self, 
         side: str, 
@@ -351,7 +403,8 @@ class BaseBroker:
         in_force: str='gtc', 
         extended: bool=False, 
         ):
-        """Places a limit order. 
+        """
+        Places a limit order. 
 
         :symbol:    symbol of asset
         :side:      'buy' or 'sell'
@@ -368,8 +421,34 @@ class BaseBroker:
         """
         raise NotImplementedError("This endpoint is not supported in this broker")
     
+    def order_option_limit(self, side: str, symbol: str, quantity: float, limit_price: float, type: str, 
+        exp_date: dt.datetime, strike: float, in_force: str='gtc'):
+        """
+        Order an option.
+
+        :side:      'buy' or 'sell'
+        :symbol:    symbol of asset
+        :in_force:  
+        :limit_price: limit price
+        :quantity:  quantity to sell or buy
+        :exp_date:  expiration date
+        :strike:    strike price
+        :type:      'call' or 'put'
+
+        :returns: A dictionary with the following keys and values:
+            - type: 'OPTION'
+            - id: ID of order
+            - symbol: symbol of asset
+            Raises an exception if order fails. 
+        """
+        raise NotImplementedError("This endpoint is not supported in this broker")
+
+    # -------------- Built-in methods -------------- #
+    # These do not need to be re-implemented in a subclass
+
     def buy(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
-        """Buys the specified asset.
+        """
+        Buys the specified asset.
 
         :symbol:    Symbol of the asset to buy
         :quantity:  Quantity of asset to buy
@@ -401,7 +480,8 @@ class BaseBroker:
         return self.order_limit('buy', symbol, quantity, limit_price, in_force, extended)
     
     def await_buy(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
-        """Buys the specified asset, and hangs the code until the order is filled. 
+        """
+        Buys the specified asset, and hangs the code until the order is filled. 
 
         :symbol:    Symbol of the asset to buy
         :quantity:  Quantity of asset to buy
@@ -441,15 +521,8 @@ class BaseBroker:
         """
         if symbol == None:
             symbol = self.watch[0]
-        
-        # if isinstance(quantity, str):
-        #     for p in self.trader.stock_positions + self.trader.crypto_positions:
-        #         if p['symbol'] == symbol:
-        #             quantity = p['quantity']
-        #             break
         if quantity <= 0.0:
             raise Exception(f"Quantity cannot be less than or equal to 0: was given {quantity}")
-            return None
        
         if self.trader is None:
             price = self.fetch_price_history(symbol, self.interval, now() - dt.timedelta(days=7), now())[symbol]['close'][-1]
@@ -461,7 +534,8 @@ class BaseBroker:
         return self.order_limit('sell', symbol, quantity, limit_price, in_force, extended)
 
     def await_sell(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
-        """Sells the specified asset, and hangs the code until the order is filled. 
+        """
+        Sells the specified asset, and hangs the code until the order is filled. 
 
         :symbol:    Symbol of the asset to buy
         :quantity:  Quantity of asset to buy
@@ -482,29 +556,9 @@ class BaseBroker:
                 return stat
             time.sleep(1)
        
-    def order_option_limit(self, side: str, symbol: str, quantity: float, limit_price: float, type: str, 
-        exp_date: dt.datetime, strike: float, in_force: str='gtc'):
-        """Order an option.
-
-        :side:      'buy' or 'sell'
-        :symbol:    symbol of asset
-        :in_force:  
-        :limit_price: limit price
-        :quantity:  quantity to sell or buy
-        :exp_date:  expiration date
-        :strike:    strike price
-        :type:      'call' or 'put'
-
-        :returns: A dictionary with the following keys and values:
-            - type: 'OPTION'
-            - id: ID of order
-            - symbol: symbol of asset
-            Raises an exception if order fails. 
-        """
-        raise NotImplementedError("This endpoint is not supported in this broker")
-    
     def buy_option(self, symbol: str=None, quantity: int=0, in_force: str='gtc'):
-        """Buys the specified option.
+        """
+        Buys the specified option.
         
         :symbol:    Symbol of the asset to buy, in OCC format. 
         :quantity:  Quantity of asset to buy
@@ -536,7 +590,8 @@ class BaseBroker:
         return self.order_option_limit('buy', sym, quantity, limit_price, option_type, date, strike, in_force=in_force)
 
     def sell_option(self, symbol: str=None, quantity: int=0, in_force: str='gtc'):
-        """Sells the sepcified option.
+        """
+        Sells the specified option.
         
         :symbol:    Symbol of the asset to buy, in OCC format. 
         :quantity:  Quantity of asset to buy
@@ -548,11 +603,6 @@ class BaseBroker:
             raise Exception("Option symbol was not specified")
         if quantity <= 0.0:
             raise Exception(f"Quantity cannot be less than or equal to 0: was given {quantity}")
-        # if isinstance(quantity, str):
-        #     for p in self.trader.stock_positions + self.trader.crypto_positions + self.trader.option_positions:
-        #         if p['symbol'] == symbol:
-        #             quantity = p['quantity']
-        #             break
        
         if self.trader is None:
             price = self.fetch_option_market_data(symbol)['price']
@@ -564,16 +614,19 @@ class BaseBroker:
         sym, date, option_type, strike = self.occ_to_data(symbol)
         return self.order_option_limit('sell', sym, quantity, limit_price, option_type, date, strike, in_force=in_force)
 
-    ############# Helper functions #################
+    # -------------- Helper methods -------------- #
+    
+    def has_interval(self, interval: str):
+        return interval in self.interval_list
 
     def data_to_occ(self, symbol: str, date: dt.datetime, option_type: str, price: float):
-        """Converts data into a OCC format string 
+        """
+        Converts data into a OCC format string 
         """
         occ = symbol+((6-len(symbol))*' ')
         occ = occ+date.strftime('%y%m%d')
         occ = occ+'C' if option_type == 'call' else occ+'P'
         occ = occ+f'{int(price*1000):08}'
-
         return occ
     
     def occ_to_data(self, symbol: str):

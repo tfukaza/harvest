@@ -7,7 +7,6 @@ import threading
 from logging import critical, error, info, warning, debug
 from typing import Any, Dict, List, Tuple
 import time
-from pathlib import Path
 from getpass import getpass
 
 # External libraries
@@ -15,30 +14,18 @@ import dateutil.parser as parser
 import pandas as pd
 import pyotp
 import robin_stocks.robinhood as rh
-import yaml
 import pytz 
 
 # Submodule imports
 import harvest.broker._base as base
 from harvest.utils import *
 
-class RobinhoodBroker(base.BaseBroker):
+class Robinhood(base.Base):
 
     interval_list = ['1MIN', '5MIN', '15MIN', '30MIN', '1DAY']
 
     def __init__(self, path=None):
-        super().__init__()
-
-        if path == None:
-            path = './secret.yaml'
-        # Check if file exists
-        yml_file = Path(path)
-        if not yml_file.is_file():
-            if not self._create_secret(path):
-                return 
-        with open(path, 'r') as stream:
-            self.config = yaml.safe_load(stream)
-    
+        super().__init__(path)
         self.login()
 
     def login(self):
@@ -55,7 +42,7 @@ class RobinhoodBroker(base.BaseBroker):
         self.login()
         debug("Logged into Robinhood...")
     
-    def _create_secret(self, path):
+    def no_secret(self, path):
 
         print("""⚠️  Hmm, looks like you haven't set up login credentials for Robinhood yet.""")
 
@@ -133,22 +120,7 @@ class RobinhoodBroker(base.BaseBroker):
         return True 
 
     def setup(self, watch: List[str], interval, trader=None, trader_main=None):
-        self.watch_stock = []
-        self.watch_crypto = []
-        self.watch_crypto_fmt = []
-
-        if interval not in self.interval_list:
-            raise Exception(f'Invalid interval {interval}')
-
-        for s in watch:
-            if s[0] == '@':
-                self.watch_crypto_fmt.append(s[1:])
-                self.watch_crypto.append(s)
-            else:
-                self.watch_stock.append(s)
-        if len(self.watch_stock) > 0 and interval == '1MIN':
-            raise Exception(f'Interval {interval} is only supported for crypto')
-        
+       
         if interval == '1MIN':
             self.interval_fmt = '15second'
             fetch_interval = '1MIN'
@@ -156,49 +128,33 @@ class RobinhoodBroker(base.BaseBroker):
             self.interval_fmt = '5minute'
             fetch_interval = '5MIN'
         
-        self.option_cache = {}
-
         super().setup(watch, interval, fetch_interval, trader, trader_main)
-         
 
-    def start(self, kill_switch: bool=False):
-        self.cur_sec = -1
-        self.cur_min = -1
-        val = int(re.sub("[^0-9]", "", self.fetch_interval))
-        # RH does not support per minute intervals, so instead 15second intervals are used
-        # Note that 1MIN is only supported for crypto
+        self.watch_stock = []
+        self.watch_crypto = []
+        self.watch_crypto_fmt = []
+        if interval not in self.interval_list:
+            raise Exception(f'Invalid interval {interval}')
+        for s in watch:
+            if is_crypto(s):
+                self.watch_crypto_fmt.append(s[1:])
+                self.watch_crypto.append(s)
+            else:
+                self.watch_stock.append(s)
+        if len(self.watch_stock) > 0 and interval == '1MIN':
+            raise Exception(f'Interval {interval} is only supported for crypto')
         
-        print("Running...")
-        if self.interval == '1MIN':
-            while 1:
-                cur = dt.datetime.now()
-                seconds = cur.second
-                if seconds == 1 and seconds != self.cur_sec:
-                    self.main()
-                self.cur_sec = seconds
-                if kill_switch:
-                    return
-        else:
-            while 1:
-                cur = dt.datetime.now()
-                minutes = cur.minute
-                if minutes % val == 0 and minutes != self.cur_min:
-                    self.main()
-                self.cur_min = minutes
-                if kill_switch:
-                    return
-        
+        self.option_cache = {}
 
     def exit(self):
         self.option_cache = {}
 
-    @base.BaseBroker.main_wrap
     def main(self):
         df_dict = {}
         df_dict.update(self.fetch_latest_stock_price())
         df_dict.update(self.fetch_latest_crypto_price())
       
-        return df_dict
+        self.trader_main(df_dict)
     
     @base.BaseBroker._exception_handler
     def fetch_price_history( self,  

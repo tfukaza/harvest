@@ -213,7 +213,10 @@ class Trader:
         except asyncio.CancelledError:
             debug("Timeout cancelled")
 
-    async def main(self, df_dict, timestamp, flush: bool=False):
+    def main(self, df):
+        self.loop.run_until_complete(self.main_async(df, now()))
+
+    async def main_async(self, df_dict, timestamp, flush: bool=False):
         """ Function called by the broker every minute
         as new stock price data is streamed in. 
 
