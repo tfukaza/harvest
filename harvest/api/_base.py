@@ -467,7 +467,7 @@ class API:
             price = self.streamer.fetch_price_history( symbol, self.interval, now() - dt.timedelta(days=7), now())[symbol]['close'][-1]
         else:
             buy_power = self.trader.account['buying_power']
-            price = self.trader.queue.get_last_symbol_interval_price(symbol, self.fetch_interval, 'close')
+            price = self.trader.storage.load(symbol, self.interval)[symbol]['close'][-1]
 
         limit_price = round(price * 1.05, 2)
         total_price = limit_price * quantity
@@ -527,7 +527,7 @@ class API:
         if self.trader is None:
             price = self.streamer.fetch_price_history(symbol, self.interval, now() - dt.timedelta(days=7), now())[symbol]['close'][-1]
         else:
-            price = self.trader.queue.get_last_symbol_interval_price(symbol, self.fetch_interval, 'close') 
+            price = self.trader.storage.load(symbol, self.interval)[symbol]['close'][-1]
 
         limit_price = round(price * 0.95, 2)
        
