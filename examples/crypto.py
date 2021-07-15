@@ -19,6 +19,7 @@ class Crypto(BaseAlgo):
     def main(self, _):        
         # Get the current time as a datetime object
         self.timestamp = self.get_datetime()
+        print(f"Time: {self.timestamp}")
 
         # Get a list of price history for Dogecoin
         # When a symbol is not specified, it defaults to the first symbol on 
@@ -59,7 +60,7 @@ class Crypto(BaseAlgo):
 
         if not self.hold:
             if self.buy_eval(trends, prices, candles):
-                print(f"BUY: {self.timestamp}, {sym}, {prices[-1]}")
+                print(f"BUY: {self.timestamp}, {prices[-1]}")
                 # Get how much Dogecoin we can buy
                 buy_qty = self.get_max_quantity(round=False)
                 self.buy_qty = buy_qty
@@ -75,9 +76,9 @@ class Crypto(BaseAlgo):
             # Get how much returns you have made in Dogecoin so far
             ret = self.get_returns()
             if self.sell_eval(ret):
-                print(f"SELL: {self.timestamp}, {sym}, {prices[-1]}")
+                print(f"SELL: {self.timestamp}, {prices[-1]}")
                 # Sell Dogecoin
-                self.sell(sym, self.buy_qty)
+                self.sell(quantity=self.buy_qty)
                 self.hold = False
             else:
                 print(f"HOLD: {ret}")
@@ -99,4 +100,4 @@ if __name__ == "__main__":
     t.set_symbol('@DOGE')   # Cryptocurrencies are prepended with an '@'
     t.set_algo(Crypto())
     
-    t.start(interval='30MIN') # Run the algorithm once every 30 minutes
+    t.start(interval='1MIN') # Run the algorithm once every 30 minutes

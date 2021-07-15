@@ -24,14 +24,6 @@ class BaseAlgo:
 
     def main(self, meta = {}):
         pass
-
-    ############ Functions to configure the algo #################
-
-    def add_symbol(self, symbol: str) -> None:
-        self.watch.append(symbol)
-    
-    def remove_symbol(self, symbol: str) -> None:
-        self.watch.remove(symbol)
     
     ############ Functions interfacing with broker through the trader #################
 
@@ -126,7 +118,7 @@ class BaseAlgo:
     def buy_option(self, symbol: str, quantity: int=None, in_force: str='gtc'):
         """Buys the specified option.
         
-        :param str symbol:    Symbol of the asset to buy, in OCC format. 
+        :param str symbol:    Symbol of the asset to buy, in {OCC} format. 
         :param float? quantity:  Quantity of asset to buy. defaults to buys as many as possible
         :param str? in_force:  Duration the order is in force. '{gtc}' or '{gtd}'. defaults to 'gtc'
         :returns: A dictionary with the following keys:
@@ -144,7 +136,7 @@ class BaseAlgo:
     def sell_option(self, symbol: str, quantity: int=None, in_force: str='gtc'):
         """Sells the specified option.
         
-        :param str? symbol:    Symbol of the asset to sell, in OCC format. 
+        :param str? symbol:    Symbol of the asset to sell, in {OCC} format. 
         :param float? quantity:  Quantity of asset to sell. defaults to sells all
         :param str? in_force:  Duration the order is in force. '{gtc}' or '{gtd}'. defaults to 'gtc'
         :returns: A dictionary with the following keys:
@@ -194,7 +186,7 @@ class BaseAlgo:
     def get_option_market_data(self, symbol: str):
         """Retrieves data of specified option. 
 
-        :param str? symbol: OCC symbol of option
+        :param str? symbol: {OCC} symbol of option
         :returns: A dictionary:
 
             - price: price of option 
@@ -220,7 +212,7 @@ class BaseAlgo:
             if interval == None:
                 interval = self.trader.interval
             if prices == None:
-                prices = self.trader.storage.load(symbol, interval)
+                prices = self.trader.storage.load(symbol, interval)[symbol][ref]
            
         return symbol, interval, ref, prices
 
@@ -452,7 +444,7 @@ class BaseAlgo:
     def get_returns(self, symbol=None) -> float:
         """Returns the return of a specified asset.
 
-        :param str? symbol:  Symbol of stock, crypto, or option. Options should be in OCC format. 
+        :param str? symbol:  Symbol of stock, crypto, or option. Options should be in {OCC} format. 
                         defaults to first symbol in watchlist
         :returns: Return of asset, expressed as a decimal. 
         """
@@ -466,7 +458,7 @@ class BaseAlgo:
     def get_max_quantity(self, symbol=None, round=True):
         """Calculates the maximum quantity of an asset that can be bought given the current buying power. 
 
-        :param str? symbol:  Symbol of stock, crypto, or option. Options should be in OCC format. 
+        :param str? symbol:  Symbol of stock, crypto, or option. Options should be in {OCC} format. 
                         defaults to first symbol in watchlist
         :param bool? round:  If set to True, the result is returned as an integer. defaults to True 
         :returns: Quantity that can be bought.
@@ -526,6 +518,14 @@ class BaseAlgo:
         :returns: The current date and time as a datetime object
         """
         return self.trader.timestamp 
+    
+    # Used for testing
+    def add_symbol(self, symbol:str):
+        """Adds a symbol to the watchlist. 
+
+        :param str symbol: Symbol of stock or crypto asset. 
+        """
+        self.watch.append(symbol)
 
     
     

@@ -95,7 +95,7 @@ t = Trader( RobinhoodBroker() )`}>
                 </p>
                 <CodeBlock
                     lang="python"
-                    value={`t.add_symbol('TWTR')`}></CodeBlock>
+                    value={`t.set_symbol('TWTR')`}></CodeBlock>
                 
                 <p>At this point, we define our algorithm. Algorithms are created by extending the BaseAlgo class.
                 </p>
@@ -103,10 +103,10 @@ t = Trader( RobinhoodBroker() )`}>
                 <CodeBlock
                     lang="python"
                     value={`class Twitter(BaseAlgo):
-                    def algo_init(self):
+                    def setup(self):
                         pass
 
-                    def handler(self, meta):
+                    def main(self, meta):
                         pass`}></CodeBlock>
 
                 <p>every Algo must define two functions
@@ -117,10 +117,10 @@ t = Trader( RobinhoodBroker() )`}>
                 <CodeBlock
                     lang="python"
                     value={`class Twitter(BaseAlgo):
-    def algo_init(self):
+    def setup(self):
         self.hold = False
 
-    def handler(self, meta):
+    def main(self, meta):
         if self.hold:
             self.sell('TWTR', 1)
             self.hold = False
@@ -137,10 +137,10 @@ from harvest.trader import Trader
 from harvest.broker.robinhood import RobinhoodBroker
 
 class Twitter(BaseAlgo):
-    def algo_init(self):
+    def setup(self):
         self.hold = False
 
-    def handler(self, meta):
+    def main(self, meta):
         if self.hold:
             self.sell('TWTR', 1)    
             self.hold = False
@@ -150,9 +150,9 @@ class Twitter(BaseAlgo):
 
 if __name__ == "__main__":
     t = Trader( RobinhoodBroker(), None )
-    t.add_symbol('TWTR')
+    t.set_symbol('TWTR')
     t.set_algo(Twitter())
-    t.run(interval='1DAY')`}></CodeBlock>
+    t.run('1DAY')`}></CodeBlock>
 
                 <p>By specifying interval=&#39;1DAY&#39; in run, the handler function will be called once every day.</p>
 

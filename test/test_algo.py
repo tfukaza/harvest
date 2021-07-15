@@ -1,4 +1,5 @@
 # Builtins
+from harvest import trader
 import unittest
 
 from harvest.algo import BaseAlgo 
@@ -44,6 +45,17 @@ class TestAlgo(unittest.TestCase):
         self.assertAlmostEqual(middle[-1], expected_middle, places=5)
         self.assertAlmostEqual(upper[-1], expected_middle + std, places=5)
         self.assertAlmostEqual(lower[-1], expected_middle - std, places=5)
+    
+    def test_bbands_trader(self):
+        t = trader.Trader()
+        t.set_symbol('DUMMY')
+        t.set_algo(BaseAlgo())
+        t.start("1MIN", kill_switch=True)
+
+        upper, middle, lower = t.algo[0].bbands()
+
+        self.assertEqual(True, True)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -3,47 +3,24 @@ import pathlib
 import unittest
 import datetime as dt
 
-from harvest.broker.dummy import DummyBroker 
+from harvest.api.paper import PaperBroker 
+from harvest.api.dummy import DummyStreamer
 
-class TestDummyBroker(unittest.TestCase):
-    def test_fetch_prices(self):
-        dummy = DummyBroker()
-        df = dummy.fetch_price_history('PO', '1HR', dt.datetime.now() - dt.timedelta(hours=50), dt.datetime.now())['PO']
-        self.assertEqual(list(df.columns.values), ['open', 'high', 'low', 'close', 'volume'])
-
-    def test_setup(self):
-        dummy = DummyBroker()
-        watch = ['A', 'B', 'C', '@D']
-        dummy.setup(watch, '1MIN')
-        self.assertEqual(dummy.watch, watch)
-
-    def test_get_stock_price(self):
-        dummy = DummyBroker()
-        watch = ['A', 'B', 'C', '@D']
-        dummy.setup(watch, '1MIN')
-        d = dummy.fetch_latest_stock_price()
-        self.assertEqual(len(d), 3)
-
-    def test_get_crypto_price(self):
-        dummy = DummyBroker()
-        watch = ['A', 'B', 'C', '@D']
-        dummy.setup(watch, '1MIN')
-        d = dummy.fetch_latest_crypto_price()
-        self.assertTrue('@D' in d)
-        self.assertEqual(d['@D'].shape, (1, 5))
+class TestPaperBroker(unittest.TestCase):
 
     def test_account(self):
-        dummy = DummyBroker()
+        dummy = PaperBroker()
+        dummy.streamer = DummyStreamer()
         d = dummy.fetch_account()
-        self.assertEqual(d['equity'], 100000.0)
-        self.assertEqual(d['cash'], 100000.0)
-        self.assertEqual(d['buying_power'], 100000.0)
+        self.assertEqual(d['equity'], 1000000.0)
+        self.assertEqual(d['cash'], 1000000.0)
+        self.assertEqual(d['buying_power'], 1000000.0)
         self.assertEqual(d['multiplier'], 1)
-        
 
     def test_dummy_account(self):
         directory = pathlib.Path(__file__).parent.resolve()
-        dummy = DummyBroker(str(directory) + '/../dummy_account.yaml')
+        dummy = PaperBroker(str(directory) + '/../dummy_account.yaml')
+        dummy.streamer = DummyStreamer()
         stocks = dummy.fetch_stock_positions()
         self.assertEqual(len(stocks), 2)
         self.assertEqual(stocks[0]['symbol'], 'A')
@@ -57,7 +34,8 @@ class TestDummyBroker(unittest.TestCase):
         self.assertEqual(cryptos[0]['quantity'], 2)
 
     def test_buy_order_limit(self):
-        dummy = DummyBroker() 
+        dummy = PaperBroker() 
+        dummy.streamer = DummyStreamer()
         dummy.setup(['A'], '1MIN')
         order = dummy.order_limit('buy', 'A', 5, 25)
         self.assertEqual(order['type'], 'STOCK')
@@ -74,7 +52,8 @@ class TestDummyBroker(unittest.TestCase):
         self.assertEqual(status['status'], 'filled')
 
     def test_buy(self):
-        dummy = DummyBroker() 
+        dummy = PaperBroker() 
+        dummy.streamer = DummyStreamer()
         dummy.setup(['A'], '1MIN')
         order = dummy.buy('A', 5)
         self.assertEqual(order['type'], 'STOCK')
@@ -92,7 +71,8 @@ class TestDummyBroker(unittest.TestCase):
 
     def test_sell_order_limit(self):
         directory = pathlib.Path(__file__).parent.resolve()
-        dummy = DummyBroker(str(directory) + '/../dummy_account.yaml') 
+        dummy = PaperBroker(str(directory) + '/../dummy_account.yaml') 
+        dummy.streamer = DummyStreamer()
         dummy.setup(['A'], '1MIN')
         order = dummy.order_limit('sell', 'A', 2, 3)
         self.assertEqual(order['type'], 'STOCK')
@@ -110,7 +90,8 @@ class TestDummyBroker(unittest.TestCase):
 
     def test_sell(self):
         directory = pathlib.Path(__file__).parent.resolve()
-        dummy = DummyBroker(str(directory) + '/../dummy_account.yaml')
+        dummy = PaperBroker(str(directory) + '/../dummy_account.yaml')
+        dummy.streamer = DummyStreamer()
         dummy.setup(['A'], '1MIN')
         order = dummy.sell('A', 2)
         self.assertEqual(order['type'], 'STOCK')
@@ -127,7 +108,8 @@ class TestDummyBroker(unittest.TestCase):
         self.assertEqual(status['status'], 'filled')
 
     def test_order_option_limit(self):
-        dummy = DummyBroker() 
+        dummy = PaperBroker() 
+        dummy.streamer = DummyStreamer()
         dummy.setup(['A'], '1MIN')
         exp_date = dt.datetime.now() + dt.timedelta(hours=5)
         order = dummy.order_option_limit('buy', 'A', 5, 25.75, 'OPTION', exp_date, 31.25)

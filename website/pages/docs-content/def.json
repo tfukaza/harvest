@@ -1,3 +1,5 @@
 {
-    "gtc":"Good-Til-Cancelled"
+    "gtc":"Good-Til-Cancelled. Order will be pending until it is filled or cancelled",
+    "gtd":"Good-Til-Day. If the order is not filled by the end of the trading day, it will be cancelled",
+    "OCC": "A standard for identifying option securities. See <a href='https://en.wikipedia.org/wiki/Option_symbol'>the Wikipedia page</a> for details."
 }
