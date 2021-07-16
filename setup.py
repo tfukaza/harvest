@@ -31,7 +31,8 @@ setup(
         'finta',
         'pyyaml',
         'tqdm',
-        'pytz'
+        'pytz',
+        "yfinance"
     ],
     extras_require={
         "AlpacaMarket": [
@@ -40,9 +41,6 @@ setup(
         "Robinhood": [
             'pyotp',
             'robin_stocks'
-        ],
-        "Yahoo": [ 
-            "yfinance"
         ]
     }
 )
