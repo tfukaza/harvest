@@ -69,6 +69,7 @@ class TestTrader(unittest.TestCase):
         # Wait for the timeout
         time.sleep(2)
         # Check if B has been duplicated
+        self.assertEqual(b_data, t.storage.load('B', '1MIN')['B']['close'][-2])
         self.assertEqual(b_data, t.storage.load('B', '1MIN')['B']['close'][-1])
     
     def test_timeout_cancel(self):
