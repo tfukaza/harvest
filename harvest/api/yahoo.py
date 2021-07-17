@@ -31,7 +31,6 @@ class YahooStreamer(API):
                 self.watch_stock.append(s)
                 self.watch_ticker[s] = yf.Ticker(s)
         
-        self.fetch_interval = interval
         val, unit = expand_interval(interval)
         if unit == 'MIN':
             self.interval_fmt = f'{val}m'
@@ -39,7 +38,7 @@ class YahooStreamer(API):
             self.interval_fmt = f'{val}h'
 
         self.option_cache = {}
-        super().setup(watch, interval, self.fetch_interval, trader, trader_main)
+        super().setup(watch, interval, interval, trader, trader_main)
 
     def exit(self):
         self.option_cache = {}
