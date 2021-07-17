@@ -325,8 +325,8 @@ class BaseAlgo:
         """Returns the quantity owned of a specified asset. 
 
         :param str? symbol:  Symbol of asset. defaults to first symbol in watchlist
-        :returns: Quantity of asset. 
-        :raises Exception: If symbol is not currently owned.
+        :returns: Quantity of asset as float. 0 if quantity is not owned.
+        :raises: 
         """
         if symbol == None:
             symbol = self.watch[0]
@@ -334,7 +334,7 @@ class BaseAlgo:
         for p in search:
             if p['symbol'] == symbol:
                 return p['quantity']
-        raise Exception(f"{symbol} is not currently owned")
+        return 0
     
     def get_cost(self, symbol: str=None) -> float:
         """Returns the average cost of a specified asset. 
@@ -372,6 +372,8 @@ class BaseAlgo:
             for p in self.trader.option_positions:
                 if p['occ_symbol'] == symbol:
                     return p['current_price'] * p['multiplier']
+            return self.get_option_market_data(symbol)['price']
+            
 
     def get_price_list(self, symbol:str=None, interval:list=None, ref:str='close'):
         """Returns a list of recent prices for an asset. 

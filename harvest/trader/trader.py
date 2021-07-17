@@ -7,6 +7,8 @@ from logging import warning, debug
 import sys
 from signal import signal, SIGINT, SIGABRT
 from sys import exit
+import time
+import datetime as dt
 
 # External libraries
 import pandas as pd
@@ -203,89 +205,60 @@ class Trader:
 
         self.streamer.start(kill_switch)
 
-    async def timeout(self):
-        try:
-            debug("Begin timer")
-            await asyncio.sleep(1)
+    def timeout(self):
+        debug("Begin timer")
+        time.sleep(1)
+        if not self.all_recv:
             debug("Force flush")
-            await self.main_async(None, now(), True)
-        except asyncio.CancelledError:
-            debug("Timeout cancelled")
+            self.flush()
 
-    def main(self, df):
-        self.loop.run_until_complete(self.main_async(df, now()))
+    def main(self, df_dict):
 
-    async def main_async(self, df_dict, timestamp, flush: bool=False):
-        """ Function called by the broker every minute
-        as new stock price data is streamed in. 
-
-        :df_dict: A list of dataframes
-        :timestamp: The time when the dataframes were generated, in other words the current time.
-            This is needed since the timestamp of data != current time. For example, when the Robinhood API
-            is called at midnight, it returns a data with the timestamp of market close time. 
-        
-            Services like Alpaca Market and Polygon.io offer websocket streaming
-        to get real-time stock info. The downside of this is that in turn for
-        millesecond latencies, price data do not come in synchronously. 
-        Sometimes data may be missing all together. Harvest takes the follwing approach
-        to solve this:
-        -   Data that just came in will be compared against self.watch to see if 
-            any data is missing
-        -   If no, data will be passed on
-        -   If yes, data will be put in a queue, and main will wait until rest of the data coms in
-        -   After a certain timeout period, the main will forward the data 
-        """
         debug(f"Received: \n{df_dict}")
-        
-        self.block_lock.acquire()
 
-        self.timestamp_prev = self.timestamp
-        self.timestamp = timestamp
-
-        # If flush=True, forcefully push all data in block_queue onto main_helper
-        if flush:
-            # For missing data, repeat the existing one
-            for n in self.needed:
-                self.block_queue[n] = self.storage.load(n, self.fetch_interval).iloc[[-1]]
-            self.needed = self.watch.copy()
-            for k, v in self.blocker.items():
-                self.blocker[k] = False
-            self.main_helper(self.block_queue)
-            self.block_queue = {}
-            self.block_lock.release()
-            return
-
-        # If this is a first df to arrive for a given timestamp, 
-        # start the timeout counter
-        if all(not v for v in self.blocker.values()):
-            self.task = self.loop.create_task(self.timeout())
+        if len(self.needed) == len(self.watch):
+            self.timestamp_prev = self.timestamp
+            self.timestamp = now()
+            first = True
 
         symbols = [k for k, v in df_dict.items()]
         debug(f"Got data for: {symbols}")
         self.needed = list(set(self.needed) - set(symbols))
         debug(f"Still need data for: {self.needed}")
  
-        if not bool(self.block_queue):
-            self.block_queue = df_dict 
-        else:
-            self.block_queue.update(df_dict)
-        for t in symbols:    
-            self.blocker[t] = True
+        self.block_queue.update(df_dict)
+        debug(self.block_queue)
         
         # If all data has been received, pass on the data
         if len(self.needed) == 0:
             debug("All data received")
-            debug(self.block_queue)
-            self.task.cancel()
             self.needed = self.watch.copy()
-            for k, v in self.blocker.items():
-                self.blocker[k] = False
             self.main_helper(self.block_queue)
             self.block_queue = {}
-            self.block_lock.release()
+            self.needed = self.watch.copy()
+            self.all_recv = True
             return 
         
-        self.block_lock.release()
+        # If there are data that has not been received, 
+        # start a timer 
+        if first:
+            timer = threading.Thread(target=self.timeout, daemon=True)
+            timer.start()
+            self.all_recv = False
+        
+        
+    def flush(self):
+        # For missing data, repeat the existing one
+        got  = list(set(self.watch) - set(self.needed))[0]
+        timestamp = self.block_queue[got].index[-1]
+        for n in self.needed:
+            data = self.storage.load(n, self.fetch_interval).iloc[[-1]].copy()
+            data.index = [timestamp]
+            self.block_queue[n] = data
+        self.needed = self.watch.copy()
+        self.main_helper(self.block_queue)
+        self.block_queue = {}
+        return
 
     def main_helper(self, df_dict):
 

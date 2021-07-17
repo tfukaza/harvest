@@ -16,7 +16,7 @@ class YahooStreamer(API):
     interval_list = ['1MIN', '5MIN', '15MIN', '30MIN', '1HR']
 
     def __init__(self, path=None):
-        super().__init__()
+        pass
 
     def setup(self, watch: List[str], interval, trader=None, trader_main=None):
         self.watch_stock = []
@@ -40,29 +40,6 @@ class YahooStreamer(API):
 
         self.option_cache = {}
         super().setup(watch, interval, self.fetch_interval, trader, trader_main)
-
-    def start(self, kill_switch: bool=False):
-        self.cur_sec = -1
-        self.cur_min = -1
-        val, unit = expand_interval(self.fetch_interval)
-        if unit == 'MIN':
-            while 1:
-                cur = dt.datetime.now()
-                minutes = cur.minute
-                if minutes % val == 0 and minutes != self.cur_min:
-                    self.main()
-                self.cur_min = minutes
-                if kill_switch:
-                    return
-        elif unit == 'HR':
-            while 1:
-                cur = dt.datetime.now()
-                minutes = cur.minute
-                if minutes == 0 and minutes != self.cur_min:
-                    self.main()
-                self.cur_min = minutes
-                if kill_switch:
-                    return
 
     def exit(self):
         self.option_cache = {}
@@ -229,7 +206,7 @@ class YahooStreamer(API):
             df = df.tz_convert(tz='UTC')
         df = df.drop([ts_name], axis=1)
         df = df.rename(columns={"Open": "open", "Close": "close", "High" : "high", "Low" : "low", "Volume" : "volume"})
-        df = df[["open", "close", "high", "low", "volume"]].astype(float)
+        df = df[["open", "high", "low", "close", "volume"]].astype(float)
     
         df.columns = pd.MultiIndex.from_product([[symbol], df.columns])
 
