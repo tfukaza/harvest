@@ -25,7 +25,7 @@ class API:
         This should be initialized in setup_run (see below).
     """
     
-    def __init__(self, path: str):
+    def __init__(self, path: str=None):
         """
         Here, you should perform any authentications necessary to 
         communicate with the API this class is using. 
@@ -467,7 +467,7 @@ class API:
             price = self.streamer.fetch_price_history( symbol, self.interval, now() - dt.timedelta(days=7), now())[symbol]['close'][-1]
         else:
             buy_power = self.trader.account['buying_power']
-            price = self.trader.queue.get_last_symbol_interval_price(symbol, self.fetch_interval, 'close')
+            price = self.trader.storage.load(symbol, self.interval)[symbol]['close'][-1]
 
         limit_price = round(price * 1.05, 2)
         total_price = limit_price * quantity
@@ -527,7 +527,7 @@ class API:
         if self.trader is None:
             price = self.streamer.fetch_price_history(symbol, self.interval, now() - dt.timedelta(days=7), now())[symbol]['close'][-1]
         else:
-            price = self.trader.queue.get_last_symbol_interval_price(symbol, self.fetch_interval, 'close') 
+            price = self.trader.storage.load(symbol, self.interval)[symbol]['close'][-1]
 
         limit_price = round(price * 0.95, 2)
        
@@ -583,7 +583,7 @@ class API:
         
         if total_price >= buy_power:
             raise Exception(f"""   Not enough buying power 🏦.\n
-                        Total price ({price} * {quantity} * 1.05 = {limit_price}) exceeds buying power {buy_power}.\n 
+                        Total price ({price} * {quantity} * 1.05 = {limit_price*quantity}) exceeds buying power {buy_power}.\n 
                         Reduce purchase quantity or increase buying power.""")
         
         sym, date, option_type, strike = self.occ_to_data(symbol)
