@@ -42,6 +42,7 @@ class TestYahooStreamer(unittest.TestCase):
         yh.setup(watch, '1MIN', None, None)
         data = yh.fetch_chain_data('LMND')
         self.assertGreater(len(data), 0)
+        self.assertListEqual(list(data.columns), ["occ_symbol", "exp_date", "strike", "type"])
 
 if __name__ == '__main__':
     unittest.main()
