@@ -114,18 +114,22 @@ class API:
             return
         
         if unit == 'MIN':
+            sleep = val * 60 - 10
             while 1:
                 cur = dt.datetime.now()
                 minutes = cur.minute
                 if minutes % val == 0 and minutes != self.cur_min:
                     self.main()
+                    time.sleep(sleep)
                 self.cur_min = minutes
         elif unit == 'HR':
+            sleep = val * 3600 - 60
             while 1:
                 cur = dt.datetime.now()
                 minutes = cur.minute
                 if minutes == 0 and minutes != self.cur_min:
                     self.main()
+                    time.sleep(sleep)
                 self.cur_min = minutes
         else:
             raise Exception(f"Unsupported interval {self.fetch_interval}")

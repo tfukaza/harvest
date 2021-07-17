@@ -16,6 +16,8 @@ class TestYahooStreamer(unittest.TestCase):
         watch = ['SPY', 'AAPL']
         yh.setup(watch, '1MIN')
         self.assertEqual(yh.watch, watch)
+        self.assertEqual(yh.watch_stock, watch)
+        self.assertListEqual(list(yh.watch_ticker.keys()), watch)
     
     def test_main(self):
         def test_main(df):
@@ -26,6 +28,21 @@ class TestYahooStreamer(unittest.TestCase):
         watch = ['SPY', 'AAPL']
         yh.setup(watch, '1MIN', None, test_main)
         yh.main()        
+    
+    def test_chain_info(self):
+        yh = YahooStreamer()
+        watch = ['SPY']
+        yh.setup(watch, '1MIN', None, None)
+        info = yh.fetch_chain_info('SPY')
+        self.assertGreater(len(info['exp_dates']), 0)
+    
+    def test_chain_data(self):
+        yh = YahooStreamer()
+        watch = ['LMND']
+        yh.setup(watch, '1MIN', None, None)
+        data = yh.fetch_chain_data('LMND')
+        self.assertGreater(len(data), 0)
+        self.assertListEqual(list(data.columns), ["exp_date", "strike", "type"])
 
 if __name__ == '__main__':
     unittest.main()

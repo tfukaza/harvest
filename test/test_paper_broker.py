@@ -68,6 +68,15 @@ class TestPaperBroker(unittest.TestCase):
         self.assertEqual(status['side'], 'buy')
         self.assertEqual(status['time_in_force'], 'gtc')
         self.assertEqual(status['status'], 'filled')
+    
+    def test_await_buy(self):
+        broker = PaperBroker() 
+        broker.streamer = DummyStreamer()
+        broker.setup(['A'], '1MIN')
+        stat = 'filled'
+        broker.fetch_crypto_order_status = lambda x: {'status': stat}
+        order = broker.await_buy('A', 5)
+        self.assertEqual(order['symbol'], 'A')
 
     def test_sell_order_limit(self):
         directory = pathlib.Path(__file__).parent.resolve()
