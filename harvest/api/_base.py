@@ -25,7 +25,7 @@ class API:
         This should be initialized in setup_run (see below).
     """
     
-    def __init__(self, path: str):
+    def __init__(self, path: str=None):
         """
         Here, you should perform any authentications necessary to 
         communicate with the API this class is using. 

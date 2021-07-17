@@ -16,6 +16,16 @@ class TestYahooStreamer(unittest.TestCase):
         watch = ['SPY', 'AAPL']
         yh.setup(watch, '1MIN')
         self.assertEqual(yh.watch, watch)
+    
+    def test_main(self):
+        def test_main(df):
+            self.assertEqual(len(df), 2)
+            self.assertEqual(df['SPY'].columns[0][0], 'SPY')
+            
+        yh = YahooStreamer()
+        watch = ['SPY', 'AAPL']
+        yh.setup(watch, '1MIN', None, test_main)
+        yh.main()        
 
 if __name__ == '__main__':
     unittest.main()

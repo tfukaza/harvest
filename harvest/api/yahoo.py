@@ -16,7 +16,7 @@ class YahooStreamer(API):
     interval_list = ['1MIN', '5MIN', '15MIN', '30MIN', '1HR']
 
     def __init__(self, path=None):
-        super().__init__()
+        pass
 
     def setup(self, watch: List[str], interval, trader=None, trader_main=None):
         self.watch_stock = []
@@ -206,7 +206,7 @@ class YahooStreamer(API):
             df = df.tz_convert(tz='UTC')
         df = df.drop([ts_name], axis=1)
         df = df.rename(columns={"Open": "open", "Close": "close", "High" : "high", "Low" : "low", "Volume" : "volume"})
-        df = df[["open", "close", "high", "low", "volume"]].astype(float)
+        df = df[["open", "high", "low", "close", "volume"]].astype(float)
     
         df.columns = pd.MultiIndex.from_product([[symbol], df.columns])
 
