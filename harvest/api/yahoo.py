@@ -41,29 +41,6 @@ class YahooStreamer(API):
         self.option_cache = {}
         super().setup(watch, interval, self.fetch_interval, trader, trader_main)
 
-    def start(self, kill_switch: bool=False):
-        self.cur_sec = -1
-        self.cur_min = -1
-        val, unit = expand_interval(self.fetch_interval)
-        if unit == 'MIN':
-            while 1:
-                cur = dt.datetime.now()
-                minutes = cur.minute
-                if minutes % val == 0 and minutes != self.cur_min:
-                    self.main()
-                self.cur_min = minutes
-                if kill_switch:
-                    return
-        elif unit == 'HR':
-            while 1:
-                cur = dt.datetime.now()
-                minutes = cur.minute
-                if minutes == 0 and minutes != self.cur_min:
-                    self.main()
-                self.cur_min = minutes
-                if kill_switch:
-                    return
-
     def exit(self):
         self.option_cache = {}
 

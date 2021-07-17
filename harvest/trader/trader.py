@@ -217,6 +217,8 @@ class Trader:
         debug(f"Received: \n{df_dict}")
 
         if len(self.needed) == len(self.watch):
+            self.timestamp_prev = self.timestamp
+            self.timestamp = now()
             first = True
 
         symbols = [k for k, v in df_dict.items()]
