@@ -47,14 +47,22 @@ class YahooStreamer(API):
 
     def main(self):
         df_dict = {}
-        names = ' '.join(self.watch_stock + self.watch_crypto)
-        df = yf.download(names, period='1d', interval=self.interval_fmt, prepost=True)
-        for s in self.watch_stock + self.watch_crypto:
-            original_s = s
-            if s[-3:] == 'USD':
-                s = '@'+s[:-4]
-            df = self._format_df(df[original_s], s)
-            df_dict[s] = df
+        combo = self.watch_stock + self.watch_crypto
+        if len(combo) == 1:
+            df = yf.download(combo[0], period='1d', interval=self.interval_fmt, prepost=True)
+            df = self._format_df(df, combo[0])
+            df_dict[combo[0]] = df
+        else:
+            names = ' '.join(self.watch_stock + self.watch_crypto)
+            df = yf.download(names, period='1d', interval=self.interval_fmt, prepost=True)
+            for s in combo:
+                df_tmp = df.iloc[:, df.columns.get_level_values(1)==s]
+                df_tmp.columns = df_tmp.columns.droplevel(1)
+                if s[-3:] == 'USD':
+                    s = '@'+s[:-4]
+                df_tmp = self._format_df(df_tmp, s)
+                df_dict[s] = df_tmp
+                print(df_tmp)
         self.trader_main(df_dict)
 
     # -------------- Streamer methods -------------- #
@@ -219,4 +227,4 @@ class YahooStreamer(API):
     
         df.columns = pd.MultiIndex.from_product([[symbol], df.columns])
 
-        return df
+        return df.dropna()
