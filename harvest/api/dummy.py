@@ -33,6 +33,12 @@ class DummyStreamer(API):
         self.trader_main(df_dict)
     
     def fetch_latest_stock_price(self) -> Dict[str, pd.DataFrame]:
+        """
+        Gets fake stock data in the last three day interval and  returns the last 
+        value. The reason the last three days are needed is because no data is returned
+        when the stock market is closed, e.g. weekends.
+        """
+
         results = {}
         today = now()
         last = today - dt.timedelta(days=3)
@@ -43,15 +49,27 @@ class DummyStreamer(API):
         return results
         
     def fetch_latest_crypto_price(self) -> Dict[str, pd.DataFrame]:
+        """
+        Gets fake crypto data in the last three day interval and  returns the last 
+        value. The reason the last three days are needed is because no data is returned
+        when the stock market is closed, e.g. weekends.
+        """
+
         results = {}
         today = dt.datetime.now()
-        last = today - dt.timedelta(days=7)
+        last = today - dt.timedelta(days=3)
         for symbol in self.watch:
             if is_crypto(symbol):
                 results[symbol] = self.fetch_price_history(symbol, self.interval, last, today).iloc[[-1]]
         return results
 
     def _generate_fake_stock_data(self):
+        """
+        Generates fake open, close, low, high, and volume data points for stock and crypto data.
+        Each data point is dependent on the previous one and there is no bias to whether the
+        stock will go up or down over time.
+        """
+
         open_s = random.uniform(2, 1000)
         volume = random.randint(1, 1e7)
 
@@ -90,7 +108,7 @@ class DummyStreamer(API):
         elif unit == 'DAY':
             interval = dt.timedelta(days=int(value))
         else:
-            print('Error')
+            error(f'Interval unit was {unit} not MIN, HR, or DAY!')
 
         times = []
         current = start
@@ -112,10 +130,7 @@ class DummyStreamer(API):
             high.append(h)
             low.append(l)
             close.append(c)
-            volume.append(v)
-
-        if not symbol:
-            symbol = 'DUMMY'            
+            volume.append(v)         
 
         d = {
             'timestamp': times,
@@ -133,6 +148,7 @@ class DummyStreamer(API):
         results.index = times
         results.index.rename('timestamp', inplace=True)
 
+        # Removes datapoints when the stock marked is closed. Does not handle holidays.
         results = results.loc[(open_time < results.index.time) & (results.index.time < close_time)]
         results = results[(results.index.dayofweek != 5) & (results.index.dayofweek != 6)]
 

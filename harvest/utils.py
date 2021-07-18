@@ -11,7 +11,7 @@ def expand_interval(interval: str):
 	unit = time_search.group(2)
 	return value, unit
 
-def interval_to_timedelta(interval: str):
+def interval_to_timedelta(interval: str) -> dt.timedelta:
 	expanded_units = {
 		'DAY': 'days',
 		'HR': 'hours',
@@ -21,13 +21,13 @@ def interval_to_timedelta(interval: str):
 	params = {expanded_units[unit]: value}
 	return dt.timedelta(**params)
 
-def is_crypto(symbol: str):
+def is_crypto(symbol: str) -> bool:
 	return symbol[0] == '@'
 
 def normalize_pands_dt_index(df: pd.DataFrame):
 	return df.index.floor('min')
 
-def aggregate_df(df, interval: str):
+def aggregate_df(df, interval: str) -> pd.DataFrame:
 	sym = df.columns[0][0]
 	df = df[sym]
 	op_dict = {
@@ -49,16 +49,22 @@ def aggregate_df(df, interval: str):
 
 	return df
 
-def now():
+def now() -> dt.datetime:
+	"""
+	Returns the current time precise to the minute in the UTC timezone
+	"""
 	return pytz.utc.localize(dt.datetime.utcnow().replace(microsecond=0, second=0))
 
-def epoch_zero():
+def epoch_zero() -> dt.datetime:
+    """
+    Returns a datetime object corresponding to midnight 1/1/1970 UTC
+    """
 	return pytz.utc.localize(dt.datetime(1970, 1, 1))
 
 ############ Functions used for testing #################
 
 
-def gen_data(symbol:str, points: int=50):
+def gen_data(symbol:str, points: int=50) -> pd.DataFrame:
 	n = now()
 	index = [n - dt.timedelta(minutes=1) * i for i in range(points)][::-1]
 	df = pd.DataFrame(index=index, columns=['low', 'high', 'close', 'open', 'volume'])
