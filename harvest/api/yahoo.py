@@ -20,13 +20,15 @@ class YahooStreamer(API):
 
     def setup(self, watch: List[str], interval, trader=None, trader_main=None):
         self.watch_stock = []
+        self.watch_crypto = []
         self.watch_ticker = {}
 
         if interval not in self.interval_list:
             raise Exception(f'Invalid interval {interval}')
         for s in watch:
             if is_crypto(s):
-                raise Exception(f"Cannot stream {s}: Cryptocurrencies are not supported in YahooStreamer")
+                self.watch_crypto.append(s[1:]+"-USD")
+                self.watch_ticker[s] = yf.Ticker(s[1:]+"-USD")
             else:
                 self.watch_stock.append(s)
                 self.watch_ticker[s] = yf.Ticker(s)
@@ -45,10 +47,13 @@ class YahooStreamer(API):
 
     def main(self):
         df_dict = {}
-        for s in self.watch_stock:
-            df = yf.download(s, period='1d', interval=self.interval_fmt, prepost=True)
-            df = df.iloc[[-1]]
-            df = self._format_df(df, s)
+        names = ' '.join(self.watch_stock + self.watch_crypto)
+        df = yf.download(names, period='1d', interval=self.interval_fmt, prepost=True)
+        for s in self.watch_stock + self.watch_crypto:
+            original_s = s
+            if s[-3:] == 'USD':
+                s = '@'+s[:-4]
+            df = self._format_df(df[original_s], s)
             df_dict[s] = df
         self.trader_main(df_dict)
 
@@ -89,10 +94,16 @@ class YahooStreamer(API):
         else:
             period='max'
         
+        crypto = False
+        if is_crypto(symbol):
+            symbol = symbol[1:]+"-USD"
+            crypto = True
+        
         df = yf.download(symbol, period=period, interval=get_fmt, prepost=True)
-        debug(df)
+        if crypto:
+            symbol = '@'+symbol[:-4]
         df = self._format_df(df, symbol)
-        df = df.loc[start.replace(tzinfo=pytz.UTC):end.replace(tzinfo=pytz.UTC)]
+        df = df.loc[start:end]
         return df
     
     @API._exception_handler
