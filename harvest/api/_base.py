@@ -1,7 +1,7 @@
 # Builtins
 import datetime as dt
 import time
-from logging import debug
+from logging import debug, warning
 from typing import Any, Callable, Dict, List 
 from pathlib import Path
 import yaml
@@ -450,7 +450,7 @@ class API:
     # -------------- Built-in methods -------------- #
     # These do not need to be re-implemented in a subclass
 
-    def buy(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
+    def buy(self, symbol: str, quantity: int, in_force: str='gtc', extended: bool=False):
         """
         Buys the specified asset.
 
@@ -461,8 +461,6 @@ class API:
 
         :returns: The result of order_limit(). Returns None if there is an issue with the parameters.
         """
-        if symbol == None:
-            symbol = self.watch[0]
         if quantity <= 0.0:
             raise Exception(f"Quantity cannot be less than or equal to 0: was given {quantity}")
 
@@ -477,9 +475,7 @@ class API:
         total_price = limit_price * quantity
         
         if total_price >= buy_power:
-            raise Exception(f"""   Not enough buying power 🏦.\n
-                        Total price ({price} * {quantity} * 1.05 = {limit_price}) exceeds buying power {buy_power}.\n 
-                        Reduce purchase quantity or increase buying power.""")
+            raise Exception(f"""Not enough buying power.\n Total price ({price} * {quantity} * 1.05 = {limit_price*quantity}) exceeds buying power {buy_power}.\n Reduce purchase quantity or increase buying power.""")
         
         return self.order_limit('buy', symbol, quantity, limit_price, in_force, extended)
     
@@ -526,7 +522,8 @@ class API:
         if symbol == None:
             symbol = self.watch[0]
         if quantity <= 0.0:
-            raise Exception(f"Quantity cannot be less than or equal to 0: was given {quantity}")
+            warning(f"Quantity cannot be less than or equal to 0: was given {quantity}")
+            return None
        
         if self.trader is None:
             price = self.streamer.fetch_price_history(symbol, self.interval, now() - dt.timedelta(days=7), now())[symbol]['close'][-1]

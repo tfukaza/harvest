@@ -8,8 +8,7 @@ from harvest.api.dummy import DummyStreamer
 class TestTester(unittest.TestCase):    
 
     def test_tester_adding_symbol(self):
-        dummy_broker = DummyStreamer()
-        t = BackTester(dummy_broker)
+        t = BackTester(DummyStreamer())
         t.set_symbol('A')
         self.assertEqual(t.watch[0], 'A')
 
@@ -17,7 +16,7 @@ class TestTester(unittest.TestCase):
         """ Do a quick run-through of the BackTester 
         to ensure it can run without crashing.
         """
-        t = BackTester()
+        t = BackTester(DummyStreamer())
         t.set_symbol('A')
         t.set_algo(BaseAlgo())
         t.start('1MIN', ['5MIN'], source='FETCH', kill_switch=True)
@@ -26,7 +25,7 @@ class TestTester(unittest.TestCase):
     def test_check_aggregation(self):
         """ 
         """
-        t = BackTester()
+        t = BackTester(DummyStreamer())
         t.set_symbol('A')
         t.set_algo(BaseAlgo())
         t.start('1MIN', ['1DAY'], source='FETCH', kill_switch=True)

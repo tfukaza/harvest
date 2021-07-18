@@ -1,6 +1,5 @@
 # Builtins
 import asyncio
-from harvest.api.paper import PaperBroker
 import re
 import threading
 from logging import warning, debug
@@ -16,6 +15,7 @@ import pandas as pd
 # Submodule imports
 from harvest.utils import *
 from harvest.storage import BaseStorage
+from harvest.api.yahoo import YahooStreamer
 from harvest.api.dummy import DummyStreamer
 from harvest.api.paper import PaperBroker
 from harvest.algo import BaseAlgo
@@ -41,13 +41,13 @@ class Trader:
             raise Exception("Harvest requires Python 3.8 or above.")
 
         if streamer == None:
-            warning("Streamer not specified, using DummyBroker")
-            self.streamer = DummyStreamer()
+            warning("Streamer not specified, using YahooStreamer")
+            self.streamer = YahooStreamer()
         else:
             self.streamer = streamer
   
         if broker == None:
-            if isinstance(self.streamer, DummyStreamer):
+            if isinstance(self.streamer, YahooStreamer) or isinstance(self.streamer, DummyStreamer):
                 self.broker = PaperBroker()
             else:
                 self.broker = self.streamer
@@ -420,7 +420,8 @@ class Trader:
     def sell(self, symbol: str, quantity: int, in_force: str, extended: bool):
         ret = self.broker.sell(symbol, quantity, in_force, extended)
         if ret == None:
-            raise Exception("SELL failed")
+            warning("SELL failed")
+            return None
         self.order_queue.append(ret)
         debug(f"SELL order queue: {self.order_queue}")
         return ret

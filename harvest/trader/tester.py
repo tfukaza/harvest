@@ -13,7 +13,7 @@ import pytz
 # Submodule imports
 from harvest.storage import PickleStorage
 import harvest.trader.trader as trader
-from harvest.api.dummy import DummyStreamer
+from harvest.api.yahoo import YahooStreamer
 from harvest.api.paper import PaperBroker
 from harvest.utils import *
 
@@ -27,7 +27,7 @@ class BackTester(trader.Trader):
         """Initializes the TestTrader. 
         """
         if streamer == None:
-            self.streamer = DummyStreamer()
+            self.streamer = YahooStreamer()
         else:
             self.streamer = streamer
         self.broker = PaperBroker()
@@ -100,8 +100,9 @@ class BackTester(trader.Trader):
                 debug(f"Got {df} for {s}, {i}")
                 if df.empty:
                     warning(f"Local data for {s}, {i} not found. Running FETCH")
-                    df = self.streamer.fetch_price_history(last, today, i, s).dropna()
+                    df = self.streamer.fetch_price_history(s, i).dropna()
                 self.storage.store(s, i, df)
+                print(df)
             
     def setup(self, source, interval, aggregations=None, path=None):
         self.interval = interval
@@ -221,6 +222,9 @@ class BackTester(trader.Trader):
                 self.storage.reset(s, i)
         
         rows = len(self.df[interval][self.watch[0]].index)
+        count = 0
+        if rows < 100:
+            return
         for i in range(rows):
             df_dict = {}
             for s in self.watch:
@@ -238,7 +242,11 @@ class BackTester(trader.Trader):
                     df = self.df['-'+agg][s].iloc[[i]]
                     self.storage.store(s, agg, df)
         
-            self.algo.main({})
+            if count < 100:
+                count += 1
+                continue
+            for a in self.algo:
+                a.main({})
  
         # pr.disable()
         # import pstats 
