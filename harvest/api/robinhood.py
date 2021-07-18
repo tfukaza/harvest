@@ -1,44 +1,25 @@
 # Builtins
 import datetime as dt
-from datetime import timedelta
-import logging
-import re
-import threading
 from logging import critical, error, info, warning, debug
 from typing import Any, Dict, List, Tuple
-import time
-from pathlib import Path
 from getpass import getpass
 
 # External libraries
-import dateutil.parser as parser
 import pandas as pd
 import pyotp
 import robin_stocks.robinhood as rh
-import yaml
 import pytz 
 
 # Submodule imports
-import harvest.broker._base as base
+from harvest.api._base import API
 from harvest.utils import *
 
-class RobinhoodBroker(base.BaseBroker):
+class Robinhood(API):
 
     interval_list = ['1MIN', '5MIN', '15MIN', '30MIN', '1DAY']
 
     def __init__(self, path=None):
-        super().__init__()
-
-        if path == None:
-            path = './secret.yaml'
-        # Check if file exists
-        yml_file = Path(path)
-        if not yml_file.is_file():
-            if not self._create_secret(path):
-                return 
-        with open(path, 'r') as stream:
-            self.config = yaml.safe_load(stream)
-    
+        super().__init__(path)
         self.login()
 
     def login(self):
@@ -55,7 +36,7 @@ class RobinhoodBroker(base.BaseBroker):
         self.login()
         debug("Logged into Robinhood...")
     
-    def _create_secret(self, path):
+    def no_secret(self, path):
 
         print("""⚠️  Hmm, looks like you haven't set up login credentials for Robinhood yet.""")
 
@@ -133,22 +114,7 @@ class RobinhoodBroker(base.BaseBroker):
         return True 
 
     def setup(self, watch: List[str], interval, trader=None, trader_main=None):
-        self.watch_stock = []
-        self.watch_crypto = []
-        self.watch_crypto_fmt = []
-
-        if interval not in self.interval_list:
-            raise Exception(f'Invalid interval {interval}')
-
-        for s in watch:
-            if s[0] == '@':
-                self.watch_crypto_fmt.append(s[1:])
-                self.watch_crypto.append(s)
-            else:
-                self.watch_stock.append(s)
-        if len(self.watch_stock) > 0 and interval == '1MIN':
-            raise Exception(f'Interval {interval} is only supported for crypto')
-        
+       
         if interval == '1MIN':
             self.interval_fmt = '15second'
             fetch_interval = '1MIN'
@@ -156,51 +122,69 @@ class RobinhoodBroker(base.BaseBroker):
             self.interval_fmt = '5minute'
             fetch_interval = '5MIN'
         
-        self.option_cache = {}
-
         super().setup(watch, interval, fetch_interval, trader, trader_main)
-         
 
-    def start(self, kill_switch: bool=False):
-        self.cur_sec = -1
-        self.cur_min = -1
-        val = int(re.sub("[^0-9]", "", self.fetch_interval))
-        # RH does not support per minute intervals, so instead 15second intervals are used
-        # Note that 1MIN is only supported for crypto
+        self.watch_stock = []
+        self.watch_crypto = []
+        self.watch_crypto_fmt = []
+        if interval not in self.interval_list:
+            raise Exception(f'Invalid interval {interval}')
+        for s in watch:
+            if is_crypto(s):
+                self.watch_crypto_fmt.append(s[1:])
+                self.watch_crypto.append(s)
+            else:
+                self.watch_stock.append(s)
+        if len(self.watch_stock) > 0 and interval == '1MIN':
+            raise Exception(f'Interval {interval} is only supported for crypto')
         
-        print("Running...")
-        if self.interval == '1MIN':
-            while 1:
-                cur = dt.datetime.now()
-                seconds = cur.second
-                if seconds == 1 and seconds != self.cur_sec:
-                    self.main()
-                self.cur_sec = seconds
-                if kill_switch:
-                    return
-        else:
-            while 1:
-                cur = dt.datetime.now()
-                minutes = cur.minute
-                if minutes % val == 0 and minutes != self.cur_min:
-                    self.main()
-                self.cur_min = minutes
-                if kill_switch:
-                    return
-        
+        self.option_cache = {}
 
     def exit(self):
         self.option_cache = {}
 
-    @base.BaseBroker.main_wrap
     def main(self):
         df_dict = {}
         df_dict.update(self.fetch_latest_stock_price())
         df_dict.update(self.fetch_latest_crypto_price())
       
-        return df_dict
+        self.trader_main(df_dict)
     
-    @base.BaseBroker._exception_handler
+    @API._exception_handler
+    def fetch_latest_stock_price(self):
+        df={}
+        for s in self.watch_stock:
+            ret = rh.get_stock_historicals(
+                s,
+                interval=self.interval_fmt, 
+                span='day', 
+                )
+            if 'error' in ret or ret == None or (type(ret) == list and len(ret) == 0):
+                continue
+            df_tmp = pd.DataFrame.from_dict(ret)
+            df_tmp = self._format_df(df_tmp, [s], self.interval).iloc[[-1]]
+            df[s] = df_tmp
+        
+        return df        
+
+    @API._exception_handler
+    def fetch_latest_crypto_price(self):
+        df={}
+        for s in self.watch_crypto_fmt:
+            ret = rh.get_crypto_historicals(
+                s, 
+                interval=self.interval_fmt, 
+                span='hour',
+                )
+            df_tmp = pd.DataFrame.from_dict(ret)
+            df_tmp = self._format_df(df_tmp, ['@'+s], self.interval).iloc[[-1]]
+            df['@'+s] = df_tmp
+        
+        return df       
+
+    # -------------- Streamer methods -------------- #
+    
+    @API._exception_handler
     def fetch_price_history( self,  
         symbol: str,
         interval: str,
@@ -272,40 +256,67 @@ class RobinhoodBroker(base.BaseBroker):
         df = self._format_df(df, [symbol], interval)
         df = aggregate_df(df, interval)
         return df
+    
+    @API._exception_handler
+    def fetch_chain_info(self, symbol: str):
+        ret = rh.get_chains(symbol)
+        return {
+            "id": ret["id"], 
+            "exp_dates": ret["expiration_dates"],
+            "multiplier": ret["trade_value_multiplier"], 
+        }    
 
-    @base.BaseBroker._exception_handler
-    def fetch_latest_stock_price(self):
-        df={}
-        for s in self.watch_stock:
-            ret = rh.get_stock_historicals(
-                s,
-                interval=self.interval_fmt, 
-                span='day', 
-                )
-            if 'error' in ret or ret == None or (type(ret) == list and len(ret) == 0):
-                continue
-            df_tmp = pd.DataFrame.from_dict(ret)
-            df_tmp = self._format_df(df_tmp, [s], self.interval).iloc[[-1]]
-            df[s] = df_tmp
+    @API._exception_handler
+    def fetch_chain_data(self, symbol: str):
+
+        if bool(self.option_cache) and symbol in self.option_cache:
+            return self.option_cache[symbol]
         
-        return df        
+        ret = rh.find_tradable_options(symbol)
+        exp_date = []
+        strike = []
+        type = []
+        id = []
+        occ = []
+        for entry in ret:
+            date = entry["expiration_date"]
+            date = dt.datetime.strptime(date, '%Y-%m-%d')
+            date = pytz.utc.localize(date)
+            exp_date.append(date)
+            price = float(entry["strike_price"])
+            strike.append(price)
+            type.append(entry["type"])
+            id.append(entry["id"])    
 
-    @base.BaseBroker._exception_handler
-    def fetch_latest_crypto_price(self):
-        df={}
-        for s in self.watch_crypto_fmt:
-            ret = rh.get_crypto_historicals(
-                s, 
-                interval=self.interval_fmt, 
-                span='hour',
-                )
-            df_tmp = pd.DataFrame.from_dict(ret)
-            df_tmp = self._format_df(df_tmp, ['@'+s], self.interval).iloc[[-1]]
-            df['@'+s] = df_tmp
-        
-        return df       
+            occ.append(self.data_to_occ(symbol, date, type[-1], price))
 
-    @base.BaseBroker._exception_handler
+        df = pd.DataFrame({'occ_symbol':occ,'exp_date':exp_date,'strike':strike,'type':type,'id':id})
+        df = df.set_index('occ_symbol')
+
+        self.option_cache[symbol] = df
+        return df
+    
+    @API._exception_handler
+    def fetch_option_market_data(self, symbol: str):
+      
+        sym, date, type, price = self.occ_to_data(symbol)
+        ret = rh.get_option_market_data(
+            sym,
+            date.strftime('%Y-%m-%d'),
+            str(price),
+            type
+        )
+        ret = ret[0][0]
+        return {
+                'price': float(ret['adjusted_mark_price']),
+                'ask': float(ret['ask_price']),
+                'bid': float(ret['bid_price'])
+            }
+
+    
+    # ------------- Broker methods ------------- #
+
+    @API._exception_handler
     def fetch_stock_positions(self):
         ret = rh.get_open_stock_positions()
         pos = []
@@ -323,7 +334,7 @@ class RobinhoodBroker(base.BaseBroker):
             ) 
         return pos
 
-    @base.BaseBroker._exception_handler
+    @API._exception_handler
     def fetch_option_positions(self):
         ret = rh.get_open_option_positions()
         pos = []
@@ -348,7 +359,7 @@ class RobinhoodBroker(base.BaseBroker):
     
         return pos 
     
-    @base.BaseBroker._exception_handler
+    @API._exception_handler
     def fetch_crypto_positions(self, key=None):
         ret = rh.get_crypto_positions()
         pos = []
@@ -370,7 +381,7 @@ class RobinhoodBroker(base.BaseBroker):
             )
         return pos 
     
-    @base.BaseBroker._exception_handler
+    @API._exception_handler
     def update_option_positions(self, positions: List[Any]):
         for r in positions:
             sym, date, type, price = self.occ_to_data(r['occ_symbol'])
@@ -385,7 +396,7 @@ class RobinhoodBroker(base.BaseBroker):
             r["market_value"] = float(upd['adjusted_mark_price']) * r['quantity']
             r["cost_basis"] = r['avg_price'] * r['quantity']
 
-    @base.BaseBroker._exception_handler
+    @API._exception_handler
     def fetch_account(self):
         ret = rh.load_phoenix_account()
         ret = {
@@ -396,7 +407,7 @@ class RobinhoodBroker(base.BaseBroker):
         }
         return ret
 
-    @base.BaseBroker._exception_handler
+    @API._exception_handler
     def fetch_stock_order_status(self, id):
         ret = rh.get_stock_order_info(id)
         return {
@@ -410,7 +421,7 @@ class RobinhoodBroker(base.BaseBroker):
             "status":ret['status'],
         }
     
-    @base.BaseBroker._exception_handler
+    @API._exception_handler
     def fetch_option_order_status(self, id):
         ret = rh.get_option_order_info(id)
         return {
@@ -424,7 +435,7 @@ class RobinhoodBroker(base.BaseBroker):
             "status":ret['state'],
         }
     
-    @base.BaseBroker._exception_handler
+    @API._exception_handler
     def fetch_crypto_order_status(self, id):
         ret = rh.get_crypto_order_info(id)
         return {
@@ -439,7 +450,7 @@ class RobinhoodBroker(base.BaseBroker):
             "status":ret['state'],
         }
     
-    @base.BaseBroker._exception_handler
+    @API._exception_handler
     def fetch_order_queue(self):
         queue = []
         ret = rh.get_all_open_stock_orders()
@@ -493,62 +504,6 @@ class RobinhoodBroker(base.BaseBroker):
             } )
         return queue
     
-    @base.BaseBroker._exception_handler
-    def fetch_chain_info(self, symbol: str):
-        ret = rh.get_chains(symbol)
-        return {
-            "id": ret["id"], 
-            "exp_dates": ret["expiration_dates"],
-            "multiplier": ret["trade_value_multiplier"], 
-        }    
-
-    @base.BaseBroker._exception_handler
-    def fetch_chain_data(self, symbol: str):
-
-        if bool(self.option_cache) and symbol in self.option_cache:
-            return self.option_cache[symbol]
-        
-        ret = rh.find_tradable_options(symbol)
-        exp_date = []
-        strike = []
-        type = []
-        id = []
-        occ = []
-        for entry in ret:
-            date = entry["expiration_date"]
-            date = dt.datetime.strptime(date, '%Y-%m-%d')
-            date = pytz.utc.localize(date)
-            exp_date.append(date)
-            price = float(entry["strike_price"])
-            strike.append(price)
-            type.append(entry["type"])
-            id.append(entry["id"])    
-
-            occ.append(self.data_to_occ(symbol, date, type[-1], price))
-
-        df = pd.DataFrame({'occ_symbol':occ,'exp_date':exp_date,'strike':strike,'type':type,'id':id})
-        df = df.set_index('occ_symbol')
-
-        self.option_cache[symbol] = df
-        return df
-    
-    @base.BaseBroker._exception_handler
-    def fetch_option_market_data(self, symbol: str):
-      
-        sym, date, type, price = self.occ_to_data(symbol)
-        ret = rh.get_option_market_data(
-            sym,
-            date.strftime('%Y-%m-%d'),
-            str(price),
-            type
-        )
-        ret = ret[0][0]
-        return {
-                'price': float(ret['adjusted_mark_price']),
-                'ask': float(ret['ask_price']),
-                'bid': float(ret['bid_price'])
-            }
-
     # Order functions are not wrapped in the exception handler to prevent duplicate 
     # orders from being made. 
     def order_limit(self, 

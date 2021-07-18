@@ -51,7 +51,11 @@ class PickleStorage(BaseStorage):
             self.storage_lock.release()
     
     def open(self, symbol: str, interval: str):
-        return pd.read_pickle(self.save_dir + f'/{symbol}-{interval}.pickle')
+        name = self.save_dir + f'/{symbol}-{interval}.pickle'
+        if isfile(name):
+            return pd.read_pickle(name)
+        else:
+            return pd.DataFrame()
 
 
         

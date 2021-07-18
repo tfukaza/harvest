@@ -1,22 +1,23 @@
 # Builtins
 import asyncio
 import re
-import datetime as dt
 import threading
 from logging import warning, debug
-import time
 import sys
-from signal import signal, SIGINT
+from signal import signal, SIGINT, SIGABRT
 from sys import exit
+import time
+import datetime as dt
 
 # External libraries
 import pandas as pd
-import pytz
 
 # Submodule imports
 from harvest.utils import *
 from harvest.storage import BaseStorage
-from harvest.broker.dummy import DummyBroker
+from harvest.api.yahoo import YahooStreamer
+from harvest.api.dummy import DummyStreamer
+from harvest.api.paper import PaperBroker
 from harvest.algo import BaseAlgo
 from harvest.storage import BaseStorage
 
@@ -34,18 +35,22 @@ class Trader:
     def __init__(self, streamer=None, broker=None, storage=None):      
         """Initializes the Trader. 
         """
+        signal(SIGINT, self.exit)
 
         if sys.version_info[0] < 3 or sys.version_info[1] < 8:
             raise Exception("Harvest requires Python 3.8 or above.")
 
         if streamer == None:
-            warning("Streamer not specified, using DummyBroker")
-            self.streamer = DummyBroker()
+            warning("Streamer not specified, using YahooStreamer")
+            self.streamer = YahooStreamer()
         else:
             self.streamer = streamer
   
         if broker == None:
-            self.broker = self.streamer
+            if isinstance(self.streamer, YahooStreamer) or isinstance(self.streamer, DummyStreamer):
+                self.broker = PaperBroker()
+            else:
+                self.broker = self.streamer
         else:
             self.broker = broker
 
@@ -167,16 +172,13 @@ class Trader:
     def start(self, interval='5MIN', aggregations=[], sync = True, kill_switch: bool=False): 
         """Entry point to start the system. 
         
-        :load_watch: If True, all positions will be loaded from the brokerage account. 
-            They will then be added to the watchlist automatically. Set it to False if you
-            do not want to track all positions you currently own. 
-        :interval: Specifies the interval of running the algo. 
-        :aggregations: A list of intervals. The Trader will aggregate data to the intervals specified in this list.
+        :param str? interval: The interval to run the algorithm. defaults to '5MIN'
+        :param list[str]? aggregations: A list of intervals. The Trader will aggregate data to the intervals specified in this list.
             For example, if this is set to ['5MIN', '30MIN'], and interval is '1MIN', the algorithm will have access to 
-            5MIN, 30MIN aggregated candles in addition to 1MIN candles. 
-        :kill_switch: If true, kills the infinite loop in streamer.start so we can test this flow.
+            5MIN, 30MIN aggregated data in addition to 1MIN data. defaults to None
+        :param bool? sync: If true, the system will sync with the broker and fetch current positions and pending orders. defaults to true. 
+        :kill_switch: If true, kills the infinite loop in streamer. Primarily used for testing. defaults to False.
 
-        TODO: If there is no internet connection, the program will shut down before starting. 
         """
         print(f"Starting Harvest...")
 
@@ -203,86 +205,60 @@ class Trader:
 
         self.streamer.start(kill_switch)
 
-    async def timeout(self):
-        try:
-            debug("Begin timer")
-            await asyncio.sleep(1)
+    def timeout(self):
+        debug("Begin timer")
+        time.sleep(1)
+        if not self.all_recv:
             debug("Force flush")
-            self.main(None, True)
-        except asyncio.CancelledError:
-            debug("Timeout cancelled")
+            self.flush()
 
-    async def main(self, df_dict, timestamp, flush: bool=False):
-        """ Function called by the broker every minute
-        as new stock price data is streamed in. 
+    def main(self, df_dict):
 
-        :df_dict: A list of dataframes
-        :timestamp: The time when the dataframes were generated, in other words the current time.
-            This is needed since the timestamp of data != current time. For example, when the Robinhood API
-            is called at midnight, it returns a data with the timestamp of market close time. 
-        
-            Services like Alpaca Market and Polygon.io offer websocket streaming
-        to get real-time stock info. The downside of this is that in turn for
-        millesecond latencies, price data do not come in synchronously. 
-        Sometimes data may be missing all together. Harvest takes the follwing approach
-        to solve this:
-        -   Data that just came in will be compared against self.watch to see if 
-            any data is missing
-        -   If no, data will be passed on
-        -   If yes, data will be put in a queue, and main will wait until rest of the data coms in
-        -   After a certain timeout period, the main will forward the data 
-        """
         debug(f"Received: \n{df_dict}")
-        
-        self.block_lock.acquire()
 
-        self.timestamp_prev = self.timestamp
-        self.timestamp = timestamp
-
-        # If flush=True, forcefully push all data in block_queue onto main_helper
-        if flush:
-            # For missing data, repeat the existing one
-            for n in self.needed:
-                self.block_queue[n] = self.storage.load(n, self.base_interval).iloc[[-1]]
-            self.needed = self.watch.copy()
-            for k, v in self.blocker.items():
-                self.blocker[k] = False
-            self.main_helper(self.block_queue)
-            self.block_queue = {}
-            self.block_lock.release()
-            return
-
-        # If this is a first df to arrive for a given timestamp, 
-        # start the timeout counter
-        if all(not v for v in self.blocker.values()):
-            self.task = self.loop.create_task(self.timeout())
+        if len(self.needed) == len(self.watch):
+            self.timestamp_prev = self.timestamp
+            self.timestamp = now()
+            first = True
 
         symbols = [k for k, v in df_dict.items()]
         debug(f"Got data for: {symbols}")
         self.needed = list(set(self.needed) - set(symbols))
         debug(f"Still need data for: {self.needed}")
  
-        if not bool(self.block_queue):
-            self.block_queue = df_dict 
-        else:
-            self.block_queue.update(df_dict)
-        for t in symbols:    
-            self.blocker[t] = True
+        self.block_queue.update(df_dict)
+        debug(self.block_queue)
         
         # If all data has been received, pass on the data
         if len(self.needed) == 0:
             debug("All data received")
-            debug(self.block_queue)
-            self.task.cancel()
             self.needed = self.watch.copy()
-            for k, v in self.blocker.items():
-                self.blocker[k] = False
             self.main_helper(self.block_queue)
             self.block_queue = {}
-            self.block_lock.release()
+            self.needed = self.watch.copy()
+            self.all_recv = True
             return 
         
-        self.block_lock.release()
+        # If there are data that has not been received, 
+        # start a timer 
+        if first:
+            timer = threading.Thread(target=self.timeout, daemon=True)
+            timer.start()
+            self.all_recv = False
+        
+        
+    def flush(self):
+        # For missing data, repeat the existing one
+        got  = list(set(self.watch) - set(self.needed))[0]
+        timestamp = self.block_queue[got].index[-1]
+        for n in self.needed:
+            data = self.storage.load(n, self.fetch_interval).iloc[[-1]].copy()
+            data.index = [timestamp]
+            self.block_queue[n] = data
+        self.needed = self.watch.copy()
+        self.main_helper(self.block_queue)
+        self.block_queue = {}
+        return
 
     def main_helper(self, df_dict):
 
@@ -444,7 +420,8 @@ class Trader:
     def sell(self, symbol: str, quantity: int, in_force: str, extended: bool):
         ret = self.broker.sell(symbol, quantity, in_force, extended)
         if ret == None:
-            raise Exception("SELL failed")
+            warning("SELL failed")
+            return None
         self.order_queue.append(ret)
         debug(f"SELL order queue: {self.order_queue}")
         return ret
@@ -470,25 +447,35 @@ class Trader:
         return ret
     
     def set_algo(self, algo):
+        """Specifies the algorithm to use.
+
+        :param Algo algo: The algorithm to use. You can either pass in a single Algo class, or a 
+            list of Algo classes. 
+        """
         if isinstance(algo, list):
             self.algo = algo
         else:
             self.algo = [algo]
     
     def set_symbol(self, symbol):
+        """Specifies the symbol(s) to watch.
+        
+        Cryptocurrencies should be prepended with an `@` to differentiate them from stocks. 
+        For example, '@ETH' will refer to Etherium, while 'ETH' will refer to Ethan Allen Interiors. 
+        If this method was previously called, the symbols specified earlier will be replaced with the
+        new symbols.
+        
+        :symbol str symbol: Ticker Symbol(s) of stock or cryptocurrency to watch. 
+            It can either be a string, or a list of strings. 
+        """
         if isinstance(symbol, list):
             self.watch = symbol
         else:
             self.watch = [symbol]
-
-    def add_symbol(self, symbol):
-        self.watch.append(symbol)
-    
-    def remove_symbol(self, symbol):
-        self.watch.remove(symbol)
     
     def exit(self, signum, frame):
         # TODO: Gracefully exit
         print("\nStopping Harvest...")
         exit(0)
+    
     

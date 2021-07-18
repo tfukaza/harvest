@@ -13,7 +13,8 @@ import pytz
 # Submodule imports
 from harvest.storage import PickleStorage
 import harvest.trader.trader as trader
-from harvest.broker.dummy import DummyBroker
+from harvest.api.yahoo import YahooStreamer
+from harvest.api.paper import PaperBroker
 from harvest.utils import *
 
 class BackTester(trader.Trader):
@@ -26,10 +27,10 @@ class BackTester(trader.Trader):
         """Initializes the TestTrader. 
         """
         if streamer == None:
-            self.streamer = DummyBroker()
+            self.streamer = YahooStreamer()
         else:
             self.streamer = streamer
-        self.broker = DummyBroker()
+        self.broker = PaperBroker()
 
         self.watch = []             # List of stocks to watch
 
@@ -99,8 +100,9 @@ class BackTester(trader.Trader):
                 debug(f"Got {df} for {s}, {i}")
                 if df.empty:
                     warning(f"Local data for {s}, {i} not found. Running FETCH")
-                    df = self.streamer.fetch_price_history(last, today, i, s).dropna()
+                    df = self.streamer.fetch_price_history(s, i).dropna()
                 self.storage.store(s, i, df)
+                print(df)
             
     def setup(self, source, interval, aggregations=None, path=None):
         self.interval = interval
@@ -178,11 +180,21 @@ class BackTester(trader.Trader):
             
         self.load_watch = True
 
-    def start(self, interval: str='5MIN', aggregations: List[Any]=[], source: str='LOCAL', path: str="./data", kill_switch: bool=False):
+    def start(self, interval: str='5MIN', aggregations: List[Any]=[], source: str='PICKLE', path: str="./data", kill_switch: bool=False):
         """Runs backtesting. 
 
-        :source: 'LOCAL' if backtesting data is in a local file, 'FETCH' if the streamer should 
-            be used to download latest data. 
+        The interface is very similar to the Trader class, with some additional parameters for specifying 
+        backtesting configurations.
+
+        :param str? interval: The interval to run the algorithm on. defaults to '5MIN'.
+        :param List[str]? aggregations: The aggregations to run. defaults to [].
+        :param str? source: The source of backtesting data. 
+            'FETCH' will pull the latest data using the broker (if specified). 
+            'CSV' will read data from a locally saved CSV file.   
+            'PICKLE' will read data from a locally saved pickle file, generated using the Trader class.
+            defaults to 'PICKLE'.
+        :param str? path: The path to the directory which backtesting data is stored. 
+            This parameter must be set accordingly if 'source' is set to 'CSV' or 'PICKLE'. defaults to './data'.
         """
 
         self.setup(source, interval, aggregations, path)
@@ -210,6 +222,9 @@ class BackTester(trader.Trader):
                 self.storage.reset(s, i)
         
         rows = len(self.df[interval][self.watch[0]].index)
+        count = 0
+        if rows < 100:
+            return
         for i in range(rows):
             df_dict = {}
             for s in self.watch:
@@ -227,7 +242,11 @@ class BackTester(trader.Trader):
                     df = self.df['-'+agg][s].iloc[[i]]
                     self.storage.store(s, agg, df)
         
-            self.algo.main({})
+            if count < 100:
+                count += 1
+                continue
+            for a in self.algo:
+                a.main({})
  
         # pr.disable()
         # import pstats 
