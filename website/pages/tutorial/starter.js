@@ -73,7 +73,7 @@ export default function Module() {
                     lang="python"
                     value={`from harvest.algo import BaseAlgo
 from harvest.trader import Trader
-from harvest.broker.robinhood import RobinhoodBroker`}>
+from harvest.broker.robinhood import Robinhood`}>
                 </CodeBlock>
 
                 <p>Then we create a Trader, which will 
@@ -82,7 +82,7 @@ from harvest.broker.robinhood import RobinhoodBroker`}>
                 <CodeBlock
                     lang="python"
                     value={`if __name__ == "__main__":
-t = Trader( RobinhoodBroker() )`}>
+t = Trader( Robinhood() )`}>
                 </CodeBlock>
                 <p>
                 Few things happen here, and don&#39;t worry, this is as complex as Harvest will get (for now).
@@ -134,7 +134,7 @@ t = Trader( RobinhoodBroker() )`}>
                     lang="python"
                     value={`from harvest.algo import BaseAlgo
 from harvest.trader import Trader
-from harvest.broker.robinhood import RobinhoodBroker
+from harvest.broker.robinhood import Robinhood
 
 class Twitter(BaseAlgo):
     def setup(self):
@@ -149,7 +149,7 @@ class Twitter(BaseAlgo):
             self.hold = True
 
 if __name__ == "__main__":
-    t = Trader( RobinhoodBroker(), None )
+    t = Trader( RobinhoodBroker())
     t.set_symbol('TWTR')
     t.set_algo(Twitter())
     t.run('1DAY')`}></CodeBlock>
