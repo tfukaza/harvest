@@ -65,9 +65,9 @@ class YahooStreamer(API):
         debug(f"Fetching {symbol} {interval} price history")
 
         if start is None:  
-            start = self.trader.epoch_zero()
+            start = epoch_zero()
         if end is None:
-            end = self.trader.now()
+            end = now()
 
         df = pd.DataFrame()
 

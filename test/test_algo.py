@@ -1,6 +1,7 @@
 # Builtins
 from harvest import algo
 from harvest.trader import Trader
+from harvest.api.dummy import DummyStreamer
 import unittest
 
 from harvest.algo import BaseAlgo 
@@ -50,7 +51,7 @@ class TestAlgo(unittest.TestCase):
         self.assertAlmostEqual(lower[-1], expected_middle - std, places=5)
     
     def test_bbands_trader(self):
-        t = Trader()
+        t = Trader(DummyStreamer())
         t.set_symbol('DUMMY')
         t.set_algo(BaseAlgo())
         t.start("1MIN", kill_switch=True)
@@ -60,7 +61,7 @@ class TestAlgo(unittest.TestCase):
         self.assertEqual(True, True)
     
     def test_buy_sell(self):
-        t = Trader()
+        t = Trader(DummyStreamer())
         t.set_symbol('A')
         t.set_algo(BaseAlgo())
         t.start("1MIN", kill_switch=True)
@@ -84,7 +85,7 @@ class TestAlgo(unittest.TestCase):
         self.assertEqual(p['quantity'], 1)
     
     def test_buy_sell_auto(self):
-        t = Trader()
+        t = Trader(DummyStreamer())
         t.set_symbol('A')
         t.set_algo(BaseAlgo())
         t.start("1MIN", kill_switch=True)

@@ -457,7 +457,7 @@ class BaseAlgo:
         ret = (price - cost) / cost
         return ret
     
-    def get_max_quantity(self, symbol=None, round=True):
+    def get_max_quantity(self, symbol=None, round_result=True):
         """Calculates the maximum quantity of an asset that can be bought given the current buying power. 
 
         :param str? symbol:  Symbol of stock, crypto, or option. Options should be in {OCC} format. 
@@ -467,9 +467,9 @@ class BaseAlgo:
         """
         if symbol == None:
             symbol = self.watch[0]
-        price = self.get_price(symbol) * 1.05
+        price = round(self.get_price(symbol) * 1.05, 2)
         power = self.get_account_buying_power()
-        if round:
+        if round_result:
             qty = int(power/price)
         else:
             qty = power/price 
