@@ -299,7 +299,7 @@ class Trader:
         current timestamp. For example, if interval is 30MIN,
         algorithm should be called when minutes are 0 and 30.
         """
-        time = time.as_timezone(pytz.timezone('UTC'))
+        time = time.astimezone(pytz.timezone('UTC'))
         if self.fetch_interval == self.interval:
             return True 
 
