@@ -416,7 +416,7 @@ class BaseAlgo:
         if symbol == None:
             symbol = self.watch[0]
         if len(symbol) <= 6:
-            return self.trader.storage.load(symbol, self.trader.interval).iloc[[-1]]
+            return self.trader.storage.load(symbol, self.trader.interval).iloc[[-1]][symbol]
         else:
             warning("Candles not available for options")
             return None
@@ -443,7 +443,7 @@ class BaseAlgo:
             symbol = self.watch[0]
         if interval == None:
             interval = self.trader.interval
-        return self.trader.storage.load(symbol, interval)
+        return self.trader.storage.load(symbol, interval)[symbol]
     
     def get_returns(self, symbol=None) -> float:
         """Returns the return of a specified asset.

@@ -1,6 +1,6 @@
 from harvest.algo import BaseAlgo
 from harvest.trader import Trader
-from harvest.broker.robinhood import RobinhoodBroker
+from harvest.api.robinhood import Robinhood
 
 """This algorithm trades options every 5 minutes.
 To keep things simple, the logic is very basic, with emphasis on
@@ -53,7 +53,7 @@ class Option(BaseAlgo):
             self.hold = False
             
 if __name__ == "__main__":
-    t = Trader( RobinhoodBroker() )
+    t = Trader( Robinhood() )
     t.set_symbol('TWTR')
     t.set_algo(Option())
     
