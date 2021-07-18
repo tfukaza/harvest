@@ -44,12 +44,43 @@ class BackTester(trader.Trader):
 
         self.order_queue = []       # Queue of unfilled orders 
 
+    def read_pickle_data(self):
+        """Function to read backtesting data from a local file. 
+
+        :interval: The interval of the data
+        :path: Path to the local data file
+        :date_format: The format of the data's timestamps
+        """
+        for s in self.watch:
+            for i in [self.interval] + self.aggregations:
+                df = self.storage.open(s, i).dropna()
+                if df.empty or now() - df.index[-1] > dt.timedelta(days=1):
+                    warning(f"Running FETCH")
+                    df = self.streamer.fetch_price_history(s, i).dropna()
+                self.storage.store(s, i, df)
+
+    def read_csv_data(self, path: str, date_format: str='%Y-%m-%d %H:%M:%S'):
+        """Function to read backtesting data from a local CSV file. 
+
+        :interval: The interval of the data
+        :path: Path to the local data file
+        :date_format: The format of the data's timestamps
+        """
+        for s in self.watch: 
+            for i in [self.interval] + self.aggregations:
+                df = self.read_csv(f"{path}/{s}-{i}.csv").dropna()
+                if df.empty:
+                    warning(f"Running FETCH")
+                    df = self.streamer.fetch_price_history(s, i).dropna()
+                self.storage.store(s, self.interval, df)
     
     def read_csv(self, path:str) -> pd.DataFrame:
         """Reads a CSV file and returns a Pandas DataFrame. 
 
         :path: Path to the CSV file. 
         """
+        if not os.path.isfile(path):
+            return pd.DataFrame()
         df = pd.read_csv(path)
         df = df.set_index(['timestamp'])
         if isinstance(df.index[0], str):
@@ -59,50 +90,6 @@ class BackTester(trader.Trader):
         df = df[["open", "high", "low", "close", "volume"]].astype(float)
         df = df.sort_index()
         return df
-
-    def read_csv_data(self, path: str, date_format: str='%Y-%m-%d %H:%M:%S'):
-        """Function to read backtesting data from a local CSV file. 
-
-        :interval: The interval of the data
-        :path: Path to the local data file
-        :date_format: The format of the data's timestamps
-        """
-        for sym in self.watch: 
-            df = self.read_csv(f"{path}/{sym}-{self.interval}.csv")
-            self.storage.store(sym, self.interval, df)
-            
-            prev_i = self.interval
-            for i in self.aggregations:
-                # If the user supplied data for aggregate intervals, read it. 
-                # Otherwise, aggregate the original data. 
-                name = f"{path}/{sym}-{i}.csv"
-                if os.path.isfile(name):
-                    df = self.read_csv(name)
-                    self.storage.store(sym, i, df)
-                else:
-                    self.storage.aggregate(sym, prev_i, i)
-                prev_i = i
-
-    def read_pickle_data(self):
-        """Function to read backtesting data from a local file. 
-
-        :interval: The interval of the data
-        :path: Path to the local data file
-        :date_format: The format of the data's timestamps
-        TODO: Possibly allow interday data to be specified. 
-        """
-        last = epoch_zero()
-        today = now()
-        for s in self.watch:
-            for i in [self.interval] + self.aggregations:
-                df = self.storage.open(s, i)
-                df = df.dropna()
-                debug(f"Got {df} for {s}, {i}")
-                if df.empty:
-                    warning(f"Local data for {s}, {i} not found. Running FETCH")
-                    df = self.streamer.fetch_price_history(s, i).dropna()
-                self.storage.store(s, i, df)
-                print(df)
             
     def setup(self, source, interval, aggregations=None, path=None):
         self.interval = interval
@@ -115,14 +102,13 @@ class BackTester(trader.Trader):
         self._setup_account()
         self.df = {}
 
-        # Load data into queue
-        if source == "FETCH":
-            self.storage_init()
+        if source == "PICKLE":
+            self.read_pickle_data()
         elif source == "CSV":
             self.read_csv_data(path)
-        elif source == "PICKLE":
-            self.read_pickle_data()
-        
+        else:
+            raise Exception(f"Invalid source {source}. Must be 'PICKLE' or 'CSV'")
+       
         conv = {
             "1MIN": 1,
             "5MIN": 5,
@@ -222,9 +208,6 @@ class BackTester(trader.Trader):
                 self.storage.reset(s, i)
         
         rows = len(self.df[interval][self.watch[0]].index)
-        count = 0
-        if rows < 100:
-            return
         for i in range(rows):
             df_dict = {}
             for s in self.watch:
@@ -235,16 +218,13 @@ class BackTester(trader.Trader):
             self._update_stats(df_dict, new=update, option_update=True)
             for s in self.watch:
                 df = self.df[interval][s].iloc[[i]]
-                self.storage.store(s, interval, df)
+                self.storage.store(s, interval, df, save_pickle=False)
                 # Add data to aggregation queue
                 for agg in self.aggregations:
                     # Update the last datapoint
                     df = self.df['-'+agg][s].iloc[[i]]
                     self.storage.store(s, agg, df)
         
-            if count < 100:
-                count += 1
-                continue
             for a in self.algo:
                 a.main({})
  

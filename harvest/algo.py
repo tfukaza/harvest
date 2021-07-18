@@ -392,7 +392,8 @@ class BaseAlgo:
         if len(symbol) <= 6:
             return self.trader.storage.load(symbol, interval)[symbol][ref]
         else:
-            raise Exception("Price list not available for options")
+            warning("Price list not available for options")
+            return None
     
     def get_candle(self, symbol: str) -> pd.DataFrame():
         """Returns the most recent candle as a pandas DataFrame
@@ -417,7 +418,8 @@ class BaseAlgo:
         if len(symbol) <= 6:
             return self.trader.storage.load(symbol, self.trader.interval).iloc[[-1]]
         else:
-            raise Exception("Candles not available for options")
+            warning("Candles not available for options")
+            return None
     
     def get_candle_list(self, symbol:str=None, interval=None) -> pd.DataFrame():
         """Returns the candles of an asset as a pandas DataFrame
@@ -467,15 +469,17 @@ class BaseAlgo:
         """
         if symbol == None:
             symbol = self.watch[0]
-        price = round(self.get_price(symbol) * 1.05, 2)
+
         power = self.get_account_buying_power()
+        price = self.get_price(symbol)
         if round_result:
+            price = round(price * 1.05, 2)
             qty = int(power/price)
         else:
+            price = price * 1.05
             qty = power/price 
         return qty
 
-    
     def get_account_buying_power(self) -> float:
         """Returns the current buying power of the user
 

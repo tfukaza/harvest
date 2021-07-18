@@ -34,7 +34,7 @@ class PickleStorage(BaseStorage):
             symbol, interval = file_search.group(1), file_search.group(2)
             super().store(symbol, interval, pd.read_pickle(join(self.save_dir, file)))
 
-    def store(self, symbol: str, interval: str, data: pd.DataFrame, remove_duplicate: bool=True) -> None:
+    def store(self, symbol: str, interval: str, data: pd.DataFrame, remove_duplicate: bool=True, save_pickle: bool=True) -> None:
         """
         Stores the stock data in the storage dictionary and as a csv file.
         :symbol: a stock or crypto
@@ -45,7 +45,7 @@ class PickleStorage(BaseStorage):
         """
         super().store(symbol, interval, data, remove_duplicate)
 
-        if not data.empty:
+        if not data.empty and save_pickle:
             self.storage_lock.acquire()
             self.storage[symbol][interval].to_pickle(self.save_dir + f'/{symbol}-{interval}.pickle')
             self.storage_lock.release()
