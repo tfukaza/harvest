@@ -34,8 +34,8 @@ class DummyStreamer(API):
     
     def fetch_latest_stock_price(self) -> Dict[str, pd.DataFrame]:
         results = {}
-        today = dt.datetime.now()
-        last = today - dt.timedelta(days=7)
+        today = now()
+        last = today - dt.timedelta(days=3)
         
         for symbol in self.watch:
             if not is_crypto(symbol):
@@ -104,7 +104,7 @@ class DummyStreamer(API):
 
         # Fake the data 
         while current < end + interval:
-            times.append(current.replace(tzinfo=None))
+            times.append(current)
             current += interval
 
             o, h, l, c, v = next(stock_gen)

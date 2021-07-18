@@ -10,9 +10,6 @@ from harvest.api.paper import PaperBroker
 
 import datetime as dt
 
-import logging
-logging.basicConfig(level=logging.DEBUG)
-
 from harvest.utils import gen_data
 
 class TestTrader(unittest.TestCase):    

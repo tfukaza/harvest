@@ -161,8 +161,6 @@ class BaseStorage:
         data = self.load(symbol, interval)
         if data is None:
             return None, None
-
-        dt_interval = interval_to_timedelta(interval)
         return data.index[0], data.index[-1]
 
     def _append(self, current_data: pd.DataFrame, new_data: pd.DataFrame, remove_duplicate: bool=True) -> pd.DataFrame:

@@ -90,7 +90,7 @@ class TestAlgo(unittest.TestCase):
         t.set_algo(BaseAlgo())
         t.start("1MIN", kill_switch=True)
 
-        price = t.storage.load('A', '1MIN')['A']['close'][-1] * 1.05
+        price = round(t.storage.load('A', '1MIN')['A']['close'][-1] * 1.05, 2)
         qty = int(1000000/price)
         t.algo[0].buy()
         a_new = gen_data('A', 1)
