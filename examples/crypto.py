@@ -1,14 +1,14 @@
 from harvest.algo import BaseAlgo
 from harvest.trader import Trader
-from harvest.broker.robinhood import RobinhoodBroker
+from harvest.api.robinhood import Robinhood
+from harvest.api.paper import PaperBroker
 
-"""This algorithm trades everyone's favorite cryptocurrency, Dogecoin. 
+"""This algorithm trades Dogecoin. 
 It also demonstrates some built-in functions.
 """
 
 # Constants
 N=3
-
 class Crypto(BaseAlgo):
     
     def setup(self):
@@ -96,7 +96,7 @@ class Crypto(BaseAlgo):
         return c
        
 if __name__ == "__main__":
-    t = Trader( RobinhoodBroker())
+    t = Trader( Robinhood(), PaperBroker())
     t.set_symbol('@DOGE')   # Cryptocurrencies are prepended with an '@'
     t.set_algo(Crypto())
     

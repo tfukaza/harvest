@@ -462,8 +462,8 @@ class API:
         :returns: The result of order_limit(). Returns None if there is an issue with the parameters.
         """
         if quantity <= 0.0:
-            raise Exception(f"Quantity cannot be less than or equal to 0: was given {quantity}")
-
+            warning(f"Quantity cannot be less than or equal to 0: was given {quantity}")
+            return None
         if self.trader is None:
             buy_power = self.fetch_account()['buying_power']
             price = self.streamer.fetch_price_history( symbol, self.interval, now() - dt.timedelta(days=7), now())[symbol]['close'][-1]
@@ -475,8 +475,9 @@ class API:
         total_price = limit_price * quantity
         
         if total_price >= buy_power:
-            raise Exception(f"""Not enough buying power.\n Total price ({price} * {quantity} * 1.05 = {limit_price*quantity}) exceeds buying power {buy_power}.\n Reduce purchase quantity or increase buying power.""")
-        
+            warning(f"""Not enough buying power.\n Total price ({price} * {quantity} * 1.05 = {limit_price*quantity}) exceeds buying power {buy_power}.\n Reduce purchase quantity or increase buying power.""")
+            return None
+
         return self.order_limit('buy', symbol, quantity, limit_price, in_force, extended)
     
     def await_buy(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
@@ -557,7 +558,7 @@ class API:
                 return stat
             time.sleep(1)
        
-    def buy_option(self, symbol: str=None, quantity: int=0, in_force: str='gtc'):
+    def buy_option(self, symbol: str, quantity: int=0, in_force: str='gtc'):
         """
         Buys the specified option.
         
@@ -567,11 +568,9 @@ class API:
 
         :returns: The result of order_option_limit(). Returns None if there is an issue with the parameters.
         """
-        if symbol == None:
-            raise Exception("Option symbol was not specified")
         if quantity <= 0.0:
-            raise Exception(f"Quantity cannot be less than or equal to 0: was given {quantity}")
-
+            warning(f"Quantity cannot be less than or equal to 0: was given {quantity}")
+            return None
         if self.trader is None:
             buy_power = self.fetch_account()['buying_power']
             price = self.streamer.fetch_option_market_data(symbol)['price']
@@ -583,14 +582,15 @@ class API:
         total_price = limit_price * quantity
         
         if total_price >= buy_power:
-            raise Exception(f"""   Not enough buying power 🏦.\n
-                        Total price ({price} * {quantity} * 1.05 = {limit_price*quantity}) exceeds buying power {buy_power}.\n 
-                        Reduce purchase quantity or increase buying power.""")
+            warning(f"""
+Not enough buying power 🏦.\n
+Total price ({price} * {quantity} * 1.05 = {limit_price*quantity}) exceeds buying power {buy_power}.\n
+Reduce purchase quantity or increase buying power.""")
         
         sym, date, option_type, strike = self.occ_to_data(symbol)
         return self.order_option_limit('buy', sym, quantity, limit_price, option_type, date, strike, in_force=in_force)
 
-    def sell_option(self, symbol: str=None, quantity: int=0, in_force: str='gtc'):
+    def sell_option(self, symbol: str, quantity: int=0, in_force: str='gtc'):
         """
         Sells the specified option.
         
@@ -600,11 +600,9 @@ class API:
 
         :returns: The result of order_option_limit(). Returns None if there is an issue with the parameters.
         """
-        if symbol == None:
-            raise Exception("Option symbol was not specified")
         if quantity <= 0.0:
-            raise Exception(f"Quantity cannot be less than or equal to 0: was given {quantity}")
-       
+            warning(f"Quantity cannot be less than or equal to 0: was given {quantity}")
+            return None
         if self.trader is None:
             price = self.streamer.fetch_option_market_data(symbol)['price']
         else:
