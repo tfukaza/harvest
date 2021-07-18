@@ -92,8 +92,7 @@ class YahooStreamer(API):
         df = yf.download(symbol, period=period, interval=get_fmt, prepost=True)
         debug(df)
         df = self._format_df(df, symbol)
-        df = df.loc[start:end]
-        
+        df = df.loc[start.replace(tzinfo=pytz.UTC):end.replace(tzinfo=pytz.UTC)]
         return df
     
     @API._exception_handler
