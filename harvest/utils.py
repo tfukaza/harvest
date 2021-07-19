@@ -47,7 +47,7 @@ def aggregate_df(df, interval: str):
 	df = df.resample(val).agg(op_dict)
 	df.columns = pd.MultiIndex.from_product([[sym], df.columns])
 
-	return df
+	return df.dropna()
 
 def now():
 	return pytz.utc.localize(dt.datetime.utcnow().replace(microsecond=0, second=0))

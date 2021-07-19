@@ -611,4 +611,4 @@ class Robinhood(API):
          
         df.columns = pd.MultiIndex.from_product([watch, df.columns])
 
-        return df
+        return df.dropna()
