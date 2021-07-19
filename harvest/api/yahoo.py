@@ -118,7 +118,7 @@ class YahooStreamer(API):
     def fetch_chain_info(self, symbol: str):
         return {
             "id": "n/a", 
-            "exp_dates": [ str_to_day(s) for s in self.watch_ticker[symbol].options],
+            "exp_dates": [ str_to_date(s) for s in self.watch_ticker[symbol].options],
             "multiplier": 100
         }    
 
@@ -146,7 +146,7 @@ class YahooStreamer(API):
         if not symbol in self.option_cache:
             self.option_cache[symbol] = {}
         self.option_cache[symbol][date] = df
-        
+
         return df
     
     @API._exception_handler
