@@ -52,7 +52,8 @@ class TestYahooStreamer(unittest.TestCase):
         yh = YahooStreamer()
         watch = ['LMND']
         yh.setup(watch, '1MIN', None, None)
-        data = yh.fetch_chain_data('LMND')
+        dates = yh.fetch_chain_info('LMND')['exp_dates']
+        data = yh.fetch_chain_data('LMND', dates[0])
         self.assertGreater(len(data), 0)
         self.assertListEqual(list(data.columns), ["exp_date", "strike", "type"])
 
