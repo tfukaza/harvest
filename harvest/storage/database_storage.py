@@ -124,7 +124,7 @@ class DBStorage(BaseStorage):
         if end is None:
             end = data.index[-1]
 
-        return data.loc[(df.index >= start) & (df.index <= end)]
+        return data.loc[(data.index >= start) & (data.index <= end)]
 
 
     def data_range(self, symbol: str, interval: str) -> Tuple[dt.datetime]:
