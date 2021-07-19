@@ -116,7 +116,7 @@ class API:
         if unit == 'MIN':
             sleep = val * 60 - 10
             while 1:
-                cur = dt.datetime.now()
+                cur = now()
                 minutes = cur.minute
                 if minutes % val == 0 and minutes != self.cur_min:
                     self.main()
@@ -125,14 +125,22 @@ class API:
         elif unit == 'HR':
             sleep = val * 3600 - 60
             while 1:
-                cur = dt.datetime.now()
+                cur = now()
                 minutes = cur.minute
                 if minutes == 0 and minutes != self.cur_min:
                     self.main()
                     time.sleep(sleep)
                 self.cur_min = minutes
         else:
-            raise Exception(f"Unsupported interval {self.fetch_interval}")
+            while 1:
+                cur = now()
+                minutes = cur.minute
+                hours = cur.hour
+                if hours == 19 and minutes == 50:
+                    self.main()
+                    time.sleep(80000)
+                self.cur_min = minutes
+            
 
     def main(self) -> Dict[str, pd.DataFrame]:
         """

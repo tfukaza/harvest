@@ -299,7 +299,7 @@ class Trader:
         current timestamp. For example, if interval is 30MIN,
         algorithm should be called when minutes are 0 and 30.
         """
-        
+        time = time.astimezone(pytz.timezone('UTC'))
         if self.fetch_interval == self.interval:
             return True 
 
@@ -315,8 +315,8 @@ class Trader:
                 return False
         
         if self.interval == '1DAY':
-            #TODO use market close time 
-            if minutes == 0 and hours == 16:
+            # TODO: Use API to get real-time market hours
+            if minutes == 50 and hours == 19:
                 return True 
             else:
                 return False
