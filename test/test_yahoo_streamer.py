@@ -21,13 +21,25 @@ class TestYahooStreamer(unittest.TestCase):
     
     def test_main(self):
         def test_main(df):
-            self.assertEqual(len(df), 2)
+            self.assertEqual(len(df), 3)
+            self.assertEqual(df['SPY'].columns[0][0], 'SPY')
+            self.assertEqual(df['AAPL'].columns[0][0], 'AAPL')
+            self.assertEqual(df['@BTC'].columns[0][0], '@BTC')
+            
+        yh = YahooStreamer()
+        watch = ['SPY', 'AAPL', '@BTC']
+        yh.setup(watch, '1MIN', None, test_main)
+        yh.main()        
+    
+    def test_main_single(self):
+        def test_main(df):
+            self.assertEqual(len(df), 1)
             self.assertEqual(df['SPY'].columns[0][0], 'SPY')
             
         yh = YahooStreamer()
-        watch = ['SPY', 'AAPL']
+        watch = ['SPY']
         yh.setup(watch, '1MIN', None, test_main)
-        yh.main()        
+        yh.main()      
     
     def test_chain_info(self):
         yh = YahooStreamer()

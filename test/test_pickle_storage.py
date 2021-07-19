@@ -40,6 +40,17 @@ class TestCSVStorage(unittest.TestCase):
 
         assert_frame_equal(loaded_data, data)
 
+    def test_open(self):
+        storage = PickleStorage(self.storage_dir)
+        data = gen_data('A', 50)
+        storage.store('A', '1MIN', data.copy(True))
+
+        loaded_data = storage.open('A', '1MIN')
+        assert_frame_equal(loaded_data, data)
+
+        empty_data = storage.open('I_DONT', 'EXISTS')
+        assert_frame_equal(empty_data, pd.DataFrame())
+
     @classmethod
     def tearDownClass(self):
         path = pathlib.Path(self.storage_dir)
