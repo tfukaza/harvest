@@ -272,7 +272,7 @@ class Robinhood(API):
         if bool(self.option_cache) and symbol in self.option_cache and date in self.option_cache[symbol]:
             return self.option_cache[symbol][date]
         
-        ret = rh.find_tradable_options(symbol, day_to_str(date))
+        ret = rh.find_tradable_options(symbol, date_to_str(date))
         exp_date = []
         strike = []
         type = []
