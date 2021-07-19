@@ -261,18 +261,18 @@ class Robinhood(API):
     def fetch_chain_info(self, symbol: str):
         ret = rh.get_chains(symbol)
         return {
-            "id": ret["id"], 
-            "exp_dates": ret["expiration_dates"],
+            "id": "n/a", 
+            "exp_dates": [str_to_day(s) for s in ret["expiration_dates"]],
             "multiplier": ret["trade_value_multiplier"], 
         }    
 
     @API._exception_handler
-    def fetch_chain_data(self, symbol: str):
+    def fetch_chain_data(self, symbol: str, date: dt.datetime):
 
-        if bool(self.option_cache) and symbol in self.option_cache:
-            return self.option_cache[symbol]
+        if bool(self.option_cache) and symbol in self.option_cache and date in self.option_cache[symbol]:
+            return self.option_cache[symbol][date]
         
-        ret = rh.find_tradable_options(symbol)
+        ret = rh.find_tradable_options(symbol, day_to_str(date))
         exp_date = []
         strike = []
         type = []
@@ -293,7 +293,10 @@ class Robinhood(API):
         df = pd.DataFrame({'occ_symbol':occ,'exp_date':exp_date,'strike':strike,'type':type,'id':id})
         df = df.set_index('occ_symbol')
 
-        self.option_cache[symbol] = df
+        if not symbol in self.option_cache:
+            self.option_cache[symbol] = {}
+        self.option_cache[symbol][date] = df
+
         return df
     
     @API._exception_handler

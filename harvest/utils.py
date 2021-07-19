@@ -55,6 +55,12 @@ def now():
 def epoch_zero():
 	return pytz.utc.localize(dt.datetime(1970, 1, 1))
 
+def day_to_str(day):
+	return day.strftime('%Y-%m-%d')
+
+def str_to_day(day):
+	return dt.datetime.strptime(day, '%Y-%m-%d')
+
 ############ Functions used for testing #################
 
 

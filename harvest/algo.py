@@ -166,7 +166,7 @@ class BaseAlgo:
             symbol = self.watch[0]
         return self.trader.fetch_chain_info(symbol)
     
-    def get_chain_data(self, symbol: str):
+    def get_chain_data(self, symbol: str, date: dt.datetime):
         """Returns the option chain for the specified symbol. 
         
         :param str? symbol: symbol of stock
@@ -181,7 +181,7 @@ class BaseAlgo:
         """ 
         if symbol == None:
             symbol = self.watch[0]
-        return self.trader.fetch_chain_data(symbol)
+        return self.trader.fetch_chain_data(symbol, date)
     
     def get_option_market_data(self, symbol: str):
         """Retrieves data of specified option. 
