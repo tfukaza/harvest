@@ -24,7 +24,7 @@ def interval_to_timedelta(interval: str):
 def is_crypto(symbol: str):
 	return symbol[0] == '@'
 
-def normalize_pands_dt_index(df: pd.DataFrame):
+def normalize_pandas_dt_index(df: pd.DataFrame):
 	return df.index.floor('min')
 
 def aggregate_df(df, interval: str):
@@ -62,12 +62,13 @@ def gen_data(symbol:str, points: int=50):
 	n = now()
 	index = [n - dt.timedelta(minutes=1) * i for i in range(points)][::-1]
 	df = pd.DataFrame(index=index, columns=['low', 'high', 'close', 'open', 'volume'])
+	df.index.rename('timestamp', inplace=True)
 	df['low'] = [random.random() for _ in range(points)]
 	df['high'] = [random.random() for _ in range(points)]
 	df['close'] = [random.random() for _ in range(points)]
 	df['open'] = [random.random() for _ in range(points)]
 	df['volume'] = [random.random() for _ in range(points)]
-	#df.index = normalize_pands_dt_index(df)
+	#df.index = normalize_pandas_dt_index(df)
 	df.columns = pd.MultiIndex.from_product([[symbol], df.columns])
 	
 	return df

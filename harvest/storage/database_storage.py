@@ -5,16 +5,19 @@ from typing import Tuple
 
 from sqlalchemy import create_engine, select
 from sqlalchemy import Column, Integer, String, DateTime, Float, String
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import declarative_base, sessionmaker
 
 from harvest.storage import BaseStorage
+from harvest.utils import *
 
 """
 This module serves as a storage system for pandas dataframes in with csv files.
 """
 
+Base = declarative_base()
+
 class Asset(Base):
-    __tablename__ = 'Assets'
+    __tablename__ = 'asset'
     
     symbol = Column('symbol', String, primary_key=True)
     interval = Column('interval', String, primary_key=True)
@@ -35,29 +38,14 @@ class DBStorage(BaseStorage):
     An extension of the basic storage that saves data in csv files.
     """
 
-    def __init__(self, db_path: str='foo.db'):
-        super().__init__()
+    def __init__(self, db: str='sqlite:///data.db'):
         """
         Adds a directory to save data to. Loads any data that is currently in the
         directory.
         """
-        self.engine = create_engine(f'sqlite:///{db_path}')
-
-        Base = declarative_base()
-        Base.metadata.create_all(engine)
-        Session = sessionmaker(engine)
-
-
-        with Session.begin() as session:
-            results = session.execute(select(Asset.symbol, Asset.interval).distinct())
-            results = tuple(results)
-            for symbol, interval in results:
-                data = session.execute(select(Asset.timestamp, Asset.open_, Asset.close, Asset.high, Asset.low, Asset.volume).where(Asset.symbol == symbol and Asset.interval == interval))
-                df = pd.DataFrame(data, columns=['timestamp', 'open_', 'close', 'high', 'low', 'volume'])
-                df.set_index('timestamp', inplace=True)
-                df.rename(columns={'open_': 'open'})
-                df.columns = pd.MultiIndex.from_product([[symbol], data.columns])
-                super().store(symbol, interval, df)
+        engine = create_engine(db)
+        Base.metadata.create_all(engine)        
+        self.Session = sessionmaker(engine)
 
     def store(self, symbol: str, interval: str, data: pd.DataFrame, remove_duplicate: bool=True) -> None:
         """
@@ -68,21 +56,81 @@ class DBStorage(BaseStorage):
         :data: a pandas dataframe that has stock data and has a datetime 
             index
         """
-        super().store(symbol, interval, data, remove_duplicate)
 
         if not data.empty:
-            self.storage_lock.acquire()
 
-            df = self.storage[symbol][interval]
-            df.columns = [column[1] for column in df.columns]
-            df.rename(columns={'open': 'open_'}, inplace=True)
-            df['timestamp'] = df.index 
-            df['symbol'] = symbol
-            df['interval'] = interval
-            data = df.to_dict(records)
+            data.index = normalize_pandas_dt_index(data)
+            data.columns = [column[1] for column in data.columns]
+            data.rename(columns={'open': 'open_'}, inplace=True)
+            data['timestamp'] = data.index 
+            data['symbol'] = symbol
+            data['interval'] = interval
+            data = data.to_dict('records')
 
-            with Session.begin() as session:
-                session.add_all([Asset(**d) for d in data])
+            with self.Session.begin() as session:
+                [session.merge(Asset(**d)) for d in data]
                 session.commit()
 
-            self.storage_lock.release()
+    def aggregate(self, symbol: str, base: str, target: str, remove_duplicate: bool=True):
+        """
+        Aggregates the stock data from the interval specified in 'from' to 'to'.
+        """
+
+        data = self.load(symbol, base)
+        agg_data = self._append(self.load(symbol, target), aggregate_df(data, target), remove_duplicate)
+        self.store(symbol, target, agg_data)
+    
+
+    def reset(self, symbol: str, interval: str):
+        """
+        Resets to an empty dataframe
+        """
+        
+        with self.Session.begin() as session:
+            session.execute(Asset.__table__.delete().where(Asset.symbol == symbol and Asset.interval == interval))
+            session.commit()
+
+
+    def load(self, symbol: str, interval: str='', start: dt.datetime=None, end: dt.datetime=None) -> pd.DataFrame:
+        """
+        Loads the stock data given the symbol and interval. May return only
+        a subset of the data if start and end are given and there is a gap 
+        between the last data point and the given end datetime.
+
+        If the specified interval does not exist, it will attempt to generate it by
+        aggregating data. 
+        :symbol: a stock or crypto
+        :interval: the interval between each data point, must be at least
+             1 minute
+        :start: a datetime object 
+        """
+         
+        with self.Session.begin() as session:
+            data = session.execute(select(Asset.timestamp, Asset.open_, Asset.close, Asset.high, Asset.low, Asset.volume).where(Asset.symbol == symbol and Asset.interval == interval))
+            data = pd.DataFrame(data, columns=['timestamp', 'open_', 'close', 'high', 'low', 'volume'])
+
+            if data.empty:
+                return None
+
+            data.set_index('timestamp', inplace=True)
+            data.index = data.index.tz_localize(tz='UTC')
+            data.rename(columns={'open_': 'open'}, inplace=True)
+            data.columns = pd.MultiIndex.from_product([[symbol], data.columns])
+
+        # If the start and end are not defined, then set them to the 
+        # beginning and end of the data.
+        if start is None:
+            start = data.index[0]
+        if end is None:
+            end = data.index[-1]
+
+        return data.loc[(df.index >= start) & (df.index <= end)]
+
+
+    def data_range(self, symbol: str, interval: str) -> Tuple[dt.datetime]:
+        return super().data_range(symbol, interval)
+
+    def _append(self, current_data: pd.DataFrame, new_data: pd.DataFrame, remove_duplicate: bool=True) -> pd.DataFrame:
+        return super()._append(current_data, new_data, remove_duplicate)
+
+        
