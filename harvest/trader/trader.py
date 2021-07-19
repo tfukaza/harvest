@@ -265,7 +265,7 @@ class Trader:
         new_day = self.timestamp.date() > self.timestamp_prev.date()
         
         # Periodically refresh access tokens
-        if new_day or (self.timestamp.hour == 3 and self.timestamp.minute == 0):
+        if self.timestamp.hour % 12 == 0 and self.timestamp.minute == 0:
             self.streamer.refresh_cred()
         
         # Save the data locally
