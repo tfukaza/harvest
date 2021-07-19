@@ -188,10 +188,10 @@ class Trader:
 
         print(f"Initializing algorithms...")
         for a in self.algo:
-            a.setup()
             a.trader = self
             a.watch = self.watch
             a.fetch_interval = self.fetch_interval
+            a.setup()
 
         self.blocker = {}
         for w in self.watch:

@@ -455,6 +455,9 @@ class BaseAlgo:
         if symbol == None:
             symbol = self.watch[0]
         cost = self.get_cost(symbol)
+        # For options, apply the multiplier 
+        if len(symbol) > 6:
+            cost = cost * 100
         price = self.get_price(symbol)
         ret = (price - cost) / cost
         return ret
@@ -494,6 +497,36 @@ class BaseAlgo:
         """
         return self.trader.account['equity']
     
+    def get_account_stock_positions(self) -> List:
+        """Returns the current stock positions.
+
+        :returns: A list of dictionaries with the following keys:
+            - symbol
+            - quantity
+            - avg_price
+        """
+        return self.trader.stock_positions
+    
+    def get_account_crypto_positions(self) -> List:
+        """Returns the current crypto positions.
+
+        :returns: A list of dictionaries with the following keys:
+            - symbol
+            - quantity
+            - avg_price
+        """
+        return self.trader.crypto_positions
+    
+    def get_account_option_positions(self) -> List:
+        """Returns the current option positions.
+
+        :returns: A list of dictionaries with the following keys:
+            - symbol
+            - quantity
+            - avg_price
+        """
+        return self.trader.option_positions
+
     def get_time(self):
         """Returns the current hour and minute.
 
