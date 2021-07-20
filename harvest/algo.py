@@ -133,10 +133,10 @@ class BaseAlgo:
             quantity = self.get_max_quantity(symbol)
         return self.trader.buy_option(symbol, quantity, in_force)
     
-    def sell_option(self, symbol: str, quantity: int=None, in_force: str='gtc'):
+    def sell_option(self, symbol: str=None, quantity: int=None, in_force: str='gtc'):
         """Sells the specified option.
         
-        :param str? symbol:    Symbol of the asset to sell, in {OCC} format. 
+        :param str? symbol: Symbol of the asset to sell, in {OCC} format. defaults to sell all positions
         :param float? quantity:  Quantity of asset to sell. defaults to sells all
         :param str? in_force:  Duration the order is in force. '{gtc}' or '{gtd}'. defaults to 'gtc'
         :returns: A dictionary with the following keys:
@@ -147,9 +147,14 @@ class BaseAlgo:
 
         :raises Exception: There is an error in the order process.
         """
-        if quantity == None:
-            quantity = self.get_quantity(symbol)
-        return self.trader.sell_option(symbol, quantity, in_force)
+        if symbol == None:
+            symbol = [s['occ_symbol'] for s in self.get_account_option_positions]
+        else:
+            symbol = [symbol]
+        for s in symbol:
+            if quantity == None:
+                quantity = self.get_quantity(symbol)
+            return self.trader.sell_option(symbol, quantity, in_force)
     
     ########### Functions to trade options #################
 
@@ -563,6 +568,8 @@ class BaseAlgo:
         :returns: The current date and time as a datetime object
         """
         return self.trader.timestamp 
+    
+
     
     # Used for testing
     def add_symbol(self, symbol:str):
