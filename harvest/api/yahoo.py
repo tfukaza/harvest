@@ -118,34 +118,35 @@ class YahooStreamer(API):
     def fetch_chain_info(self, symbol: str):
         return {
             "id": "n/a", 
-            "exp_dates": [ dt.datetime.strptime(s, "%Y-%m-%d") for s in self.watch_ticker[symbol].options],
+            "exp_dates": [ str_to_date(s) for s in self.watch_ticker[symbol].options],
             "multiplier": 100
         }    
 
     @API._exception_handler
-    def fetch_chain_data(self, symbol: str):
+    def fetch_chain_data(self, symbol: str, date: dt.datetime):
 
-        if bool(self.option_cache) and symbol in self.option_cache:
-            return self.option_cache[symbol]
+        if bool(self.option_cache) and symbol in self.option_cache and date in self.option_cache[symbol]:
+            return self.option_cache[symbol][date]
         
         df = pd.DataFrame(columns=["contractSymbol", "exp_date", "strike", "type"])
         
-        dates = self.fetch_chain_info(symbol)['exp_dates']
-        for d in dates:
-            chain = self.watch_ticker[symbol].option_chain(d.strftime("%Y-%m-%d"))
-            puts = chain.puts
-            puts['type'] = 'put'
-            calls = chain.calls
-            calls['type'] = 'call'
-            df = df.append(puts)
-            df = df.append(calls)
+        chain = self.watch_ticker[symbol].option_chain(date_to_str(date))
+        puts = chain.puts
+        puts['type'] = 'put'
+        calls = chain.calls
+        calls['type'] = 'call'
+        df = df.append(puts)
+        df = df.append(calls)
 
         df = df.rename(columns={"contractSymbol": "occ_symbol"})
         df['exp_date'] = df.apply(lambda x: self.occ_to_data(x['occ_symbol'])[1], axis=1)
         df = df[["occ_symbol", "exp_date", "strike", "type"]]
         df.set_index('occ_symbol', inplace=True)
 
-        self.option_cache[symbol] = df
+        if not symbol in self.option_cache:
+            self.option_cache[symbol] = {}
+        self.option_cache[symbol][date] = df
+
         return df
     
     @API._exception_handler
