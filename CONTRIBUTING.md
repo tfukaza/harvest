@@ -38,7 +38,8 @@ Have an idea for a feature? Great! Take the following steps to make it part of H
 2. [Submit a feature suggestion](https://github.com/tfukaza/harvest/issues/new?assignees=&labels=enhancement%2C+question&template=feature-request.md&title=%5B%F0%9F%92%A1Feature+Request%5D).
 3. Ask people to around and see if they like your idea. **Merging new code requires the approval of at least 1 reviewer**, so you want as many people onboard with you as possible.
 4. If people like your idea, begin writing your code 💻
-5. Push your code, make a PR, and request review.
-6. If your code is approved, congratulate yourself and hit the merge button.
+5. Conduct tests as described in the Testing section.
+6. Push your code, make a PR, and request review.
+7. If your code is approved, congratulate yourself and hit the merge button.
 
 
