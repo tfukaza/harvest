@@ -20,13 +20,15 @@ class YahooStreamer(API):
 
     def setup(self, watch: List[str], interval, trader=None, trader_main=None):
         self.watch_stock = []
+        self.watch_crypto = []
         self.watch_ticker = {}
 
         if interval not in self.interval_list:
             raise Exception(f'Invalid interval {interval}')
         for s in watch:
             if is_crypto(s):
-                raise Exception(f"Cannot stream {s}: Cryptocurrencies are not supported in YahooStreamer")
+                self.watch_crypto.append(s[1:]+"-USD")
+                self.watch_ticker[s] = yf.Ticker(s[1:]+"-USD")
             else:
                 self.watch_stock.append(s)
                 self.watch_ticker[s] = yf.Ticker(s)
@@ -45,11 +47,22 @@ class YahooStreamer(API):
 
     def main(self):
         df_dict = {}
-        for s in self.watch_stock:
-            df = yf.download(s, period='1d', interval=self.interval_fmt, prepost=True)
-            df = df.iloc[[-1]]
-            df = self._format_df(df, s)
-            df_dict[s] = df
+        combo = self.watch_stock + self.watch_crypto
+        if len(combo) == 1:
+            df = yf.download(combo[0], period='1d', interval=self.interval_fmt, prepost=True)
+            df = self._format_df(df, combo[0])
+            df_dict[combo[0]] = df
+        else:
+            names = ' '.join(self.watch_stock + self.watch_crypto)
+            df = yf.download(names, period='1d', interval=self.interval_fmt, prepost=True)
+            for s in combo:
+                df_tmp = df.iloc[:, df.columns.get_level_values(1)==s]
+                df_tmp.columns = df_tmp.columns.droplevel(1)
+                if s[-3:] == 'USD':
+                    s = '@'+s[:-4]
+                df_tmp = self._format_df(df_tmp, s)
+                df_dict[s] = df_tmp
+                print(df_tmp)
         self.trader_main(df_dict)
 
     # -------------- Streamer methods -------------- #
@@ -89,10 +102,16 @@ class YahooStreamer(API):
         else:
             period='max'
         
+        crypto = False
+        if is_crypto(symbol):
+            symbol = symbol[1:]+"-USD"
+            crypto = True
+        
         df = yf.download(symbol, period=period, interval=get_fmt, prepost=True)
-        debug(df)
+        if crypto:
+            symbol = '@'+symbol[:-4]
         df = self._format_df(df, symbol)
-        df = df.loc[start.replace(tzinfo=pytz.UTC):end.replace(tzinfo=pytz.UTC)]
+        df = df.loc[start:end]
         return df
     
     @API._exception_handler
@@ -208,4 +227,4 @@ class YahooStreamer(API):
     
         df.columns = pd.MultiIndex.from_product([[symbol], df.columns])
 
-        return df
+        return df.dropna()

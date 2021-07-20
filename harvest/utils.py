@@ -47,7 +47,7 @@ def aggregate_df(df, interval: str) -> pd.DataFrame:
     df = df.resample(val).agg(op_dict)
     df.columns = pd.MultiIndex.from_product([[sym], df.columns])
 
-    return df
+    return df.dropna()
 
 def now() -> dt.datetime:
     """
