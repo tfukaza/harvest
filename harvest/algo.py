@@ -330,10 +330,15 @@ class BaseAlgo:
         """
         if symbol == None:
             symbol = self.watch[0]
-        search = self.trader.stock_positions + self.trader.crypto_positions
-        for p in search:
-            if p['symbol'] == symbol:
-                return p['quantity']
+        if len(symbol) <= 6:
+            search = self.trader.stock_positions + self.trader.crypto_positions
+            for p in search:
+                if p['symbol'] == symbol:
+                    return p['quantity']
+        else:
+            for p in self.trader.option_positions:
+                if p['occ_symbol'] == symbol:
+                    return p['quantity']        
         return 0
     
     def get_cost(self, symbol: str=None) -> float:
