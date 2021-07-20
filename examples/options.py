@@ -2,6 +2,8 @@ from harvest.algo import BaseAlgo
 from harvest.trader import Trader
 from harvest.api.robinhood import Robinhood
 
+import datetime as dt
+
 """This algorithm trades options every 5 minutes.
 To keep things simple, the logic is very basic, with emphasis on
 introducing option-related functions.  
@@ -19,11 +21,17 @@ class Option(BaseAlgo):
         price = self.get_price()
 
         if not self.hold:
-            # Get the option chain as a pandas dataframe
-            chain = self.get_chain_data()
+            # Get the expiration dates for this stock's option chain
+            dates = self.get_chain_info('TWTR')['exp_dates']
+            # Sort so the earliest expiration date is first
+            dates.sort()
+            # Filter out expiration dates that within 5 days (since they are VERY risky)
+            dates = filter(lambda x: x > self.timestamp.date() + dt.timedelta(days=5), dates)
+            # Get the option chain 
+            chain = self.get_chain_data('TWTR', dates[0])
             # Strike price should be greater than current price
             chain = chain[chain['strike'] > price]
-            # Get calls
+            # Only get calls
             chain = chain[chain['type'] == 'call']
             # Sort by strike price and expiration date
             chain = chain.sort_values(by=['strike', 'exp_date'])
@@ -32,24 +40,20 @@ class Option(BaseAlgo):
             # Get the OCC symbol of the option. For details on OCC format, visit
             # https://en.wikipedia.org/wiki/Option_symbol
             occ = opt.index[0]
+
             self.occ = occ
 
-            buy_pwr = self.get_account_buying_power()
-            # Get the price of the option
-            opt_price = self.get_option_market_data(occ)['price']
-            buy_qty = int((buy_pwr/2)/(opt_price*100))
-            self.buy_qty = buy_qty
-
-            # Buy the option
-            self.buy_option(occ, buy_qty)
-            print(f"BUY: {occ}, {opt_price}")
+            # Buy as many options as possible
+            self.buy_option(occ)
+            print(f"BUY: {occ}")
 
             self.hold = True
 
         elif self.hold:
             opt_price = self.get_option_market_data(self.occ)['price']
             print(f"SELL: {self.occ}, {opt_price}")
-            self.sell_option(self.occ, self.buy_qty)
+            # Sell all options
+            self.sell_option(self.occ)
             self.hold = False
             
 if __name__ == "__main__":
@@ -57,4 +61,4 @@ if __name__ == "__main__":
     t.set_symbol('TWTR')
     t.set_algo(Option())
     
-    t.start(interval='5MIN')
+    t.start(interval='1DAY')

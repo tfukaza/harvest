@@ -167,9 +167,10 @@ class BaseAlgo:
         return self.trader.fetch_chain_info(symbol)
     
     def get_chain_data(self, symbol: str, date: dt.datetime):
-        """Returns the option chain for the specified symbol. 
+        """Returns the option chain for the specified symbol and expiration date.
         
-        :param str? symbol: symbol of stock
+        :param str symbol: symbol of stock
+        :param dt.datetime date: date of option expiration
         :returns: A dataframe with the follwing columns:
 
             - exp_date(datetime.datetime): The expiration date
