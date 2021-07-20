@@ -67,7 +67,7 @@ pip install -e 'git+https://github.com/tfukaza/harvest.git#egg=harvest[Robinhood
 Now you're all set!
 
 ## Contributing
-Contributions are greatly appreciated. Check out the [CONTRIBUTE](CONTRIBUTE.md) document for details.
+Contributions are greatly appreciated. Check out the [CONTRIBUTING](CONTRIBUTE.md) document for details.
 
 ## Disclaimer
 - Harvest is not officially associated with Robinhood LLC.  
