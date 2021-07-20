@@ -158,6 +158,10 @@ class PaperBroker(API):
         return ret
 
     def _calc_equity(self):
+        """
+        Calculates the total worth of the broker by adding together the 
+        worth of all stocks, cryptos, options and cash in the broker.
+        """
         e = 0
         for asset in self.stocks + self.cryptos + self.options:
             add = asset['avg_price'] * asset['quantity']

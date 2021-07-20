@@ -8,12 +8,12 @@ from typing import Tuple
 from harvest.storage import BaseStorage
 
 """
-This module serves as a storage system for pandas dataframes in with csv files.
+This module serves as a storage system for pandas dataframes in with pickle files.
 """
 
 class PickleStorage(BaseStorage):
     """
-    An extension of the basic storage that saves data in csv files.
+    An extension of the basic storage that saves data in pickle files.
     """
 
     def __init__(self, save_dir: str='data'):
@@ -36,7 +36,7 @@ class PickleStorage(BaseStorage):
 
     def store(self, symbol: str, interval: str, data: pd.DataFrame, remove_duplicate: bool=True, save_pickle: bool=True) -> None:
         """
-        Stores the stock data in the storage dictionary and as a csv file.
+        Stores the stock data in the storage dictionary as a pickle file.
         :symbol: a stock or crypto
         :interval: the interval between each data point, must be atleast
              1 minute

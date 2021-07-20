@@ -109,6 +109,8 @@ class API:
         val, unit = expand_interval(self.fetch_interval)
         
         print("Running...")
+        # kill_switch is true for testing purposes to prevent an infinite 
+        # loop after streamer.main is called.
         if kill_switch:
             self.main()
             return
