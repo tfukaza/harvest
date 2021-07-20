@@ -204,6 +204,34 @@ class BaseAlgo:
             symbol = self.watch[0]
         return self.trader.fetch_option_market_data(symbol)
     
+    def get_option(self, type, symbol=None, limit_exp=None, limit_strike=None):
+        """
+        Automatically buys an option that satisfies the criteria specified.
+
+        :param str symbol:
+
+        """
+        if symbol is None:
+            symbol = self.watch[0]
+        if limit_exp is None:
+            limit_exp = self.get_date() + dt.timedelta(days=5)
+        if limit_strike is None:
+            limit_strike = self.get_price(symbol) 
+
+        exp_dates = self.get_chain_info(symbol)['exp_dates']
+        exp_dates = list(filter(lambda x: x >= limit_exp, exp_dates))
+        exp_dates = sorted(exp_dates)
+        exp_date = exp_dates[0]
+        chain = self.get_chain_data(symbol, exp_date)
+        if type == 'call':
+            chain = chain[chain['strike'] > limit_strike]
+        else:
+            chain = chain[chain['strike'] < limit_strike]
+        chain = chain[chain['type'] == type]
+        chain = chain.sort_values(by=['strike', 'exp_date'])
+        occ = chain.index[0]
+        return occ
+    
     ########## Technical Indicators ###############
 
     def default_param(self, symbol, interval, ref, prices):
