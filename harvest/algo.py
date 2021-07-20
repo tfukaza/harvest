@@ -136,7 +136,7 @@ class BaseAlgo:
     def sell_option(self, symbol: str=None, quantity: int=None, in_force: str='gtc'):
         """Sells the specified option.
         
-        :param str? symbol: Symbol of the asset to sell, in {OCC} format. defaults to sell all positions
+        :param str? symbol: Symbol of the asset to sell, in {OCC} format. defaults to sell all options for the first stock in watchlist
         :param float? quantity:  Quantity of asset to sell. defaults to sells all
         :param str? in_force:  Duration the order is in force. '{gtc}' or '{gtd}'. defaults to 'gtc'
         :returns: A dictionary with the following keys:
@@ -148,10 +148,10 @@ class BaseAlgo:
         :raises Exception: There is an error in the order process.
         """
         if symbol == None:
-            symbol = [s['occ_symbol'] for s in self.get_account_option_positions]
-        else:
-            symbol = [symbol]
-        for s in symbol:
+            symbol = self.watch[0]
+
+        symbols = [s['occ_symbol'] for s in self.get_account_option_positions if s['symbol'] == symbol]
+        for s in symbols:
             if quantity == None:
                 quantity = self.get_quantity(symbol)
             return self.trader.sell_option(symbol, quantity, in_force)
@@ -597,6 +597,37 @@ class BaseAlgo:
         """
         return self.trader.timestamp 
     
+    def has_option_for_symbol(self, symbol: str=None) -> bool:
+        """Returns true if the user has an option for the specified symbol.
+
+        :param str symbol:  Symbol of the stock to check
+        :returns: True if the user has an option for the specified symbol.
+        """
+        if symbol == None:
+            symbol = self.watch[0]
+        pos = [p for p in self.trader.option_positions if p['symbol'] == symbol]
+        return len(pos) > 0
+    
+    def is_day_trade(self, action, symbol=None) -> bool:
+        """
+        Checks if performing a buy or sell will be considered day trading
+        """
+        if symbol == None:
+            symbol = self.watch[0]
+        
+        history = self.trader.logger.get_transactions()
+        if len(history) < 1:
+            return False
+        recent = history.loc[self.get_date():]
+        recent = recent[recent['symbol'] == symbol]
+        if action == 'buy':
+            return False 
+        if action == 'sell':
+            recent = recent.loc[recent['action'] == 'buy']
+            if len(recent.index) > 0:
+                return True
+            return False
+
 
     
     # Used for testing

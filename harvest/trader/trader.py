@@ -20,6 +20,7 @@ from harvest.api.dummy import DummyStreamer
 from harvest.api.paper import PaperBroker
 from harvest.algo import BaseAlgo
 from harvest.storage import BaseStorage
+from harvest.storage import BaseLogger
 
 class Trader:
     """
@@ -71,6 +72,8 @@ class Trader:
             self.storage = BaseStorage() # Storage to hold stock/crypto data
         else:
             self.storage = storage
+        
+        self.logger = BaseLogger()
 
         self.block_lock = threading.Lock() # Lock for streams that recieve data asynchronously
 
