@@ -627,8 +627,6 @@ class BaseAlgo:
             if len(recent.index) > 0:
                 return True
             return False
-
-
     
     # Used for testing
     def add_symbol(self, symbol:str):

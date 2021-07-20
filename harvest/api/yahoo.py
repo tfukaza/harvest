@@ -49,16 +49,19 @@ class YahooStreamer(API):
         df_dict = {}
         combo = self.watch_stock + self.watch_crypto
         if len(combo) == 1:
-            df = yf.download(combo[0], period='1d', interval=self.interval_fmt, prepost=True)
-            df = self._format_df(df, combo[0])
-            df_dict[combo[0]] = df
+            s = combo[0]
+            df = yf.download(s, period='1d', interval=self.interval_fmt, prepost=True)
+            if s[-4:] == '-USD':
+                    s = '@'+s[:-4]
+            df = self._format_df(df, s)
+            df_dict[s] = df
         else:
             names = ' '.join(self.watch_stock + self.watch_crypto)
             df = yf.download(names, period='1d', interval=self.interval_fmt, prepost=True)
             for s in combo:
                 df_tmp = df.iloc[:, df.columns.get_level_values(1)==s]
                 df_tmp.columns = df_tmp.columns.droplevel(1)
-                if s[-3:] == 'USD':
+                if s[-4:] == '-USD':
                     s = '@'+s[:-4]
                 df_tmp = self._format_df(df_tmp, s)
                 df_dict[s] = df_tmp
