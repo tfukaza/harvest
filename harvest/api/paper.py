@@ -206,15 +206,15 @@ class PaperBroker(API):
         
                 self.cash -= price * qty * 100
                 self.buying_power -= price * qty * 100
-                print(f"After BUY: {self.buying_power}")
+                debug(f"After BUY: {self.buying_power}")
             else:
                 if pos == None:
                     raise Exception(f"Cannot sell {sym}, is not owned")
                 pos['quantity'] = pos['quantity'] - qty
-                print(f"current:{self.buying_power}")
+                debug(f"current:{self.buying_power}")
                 self.cash += price*qty*100
                 self.buying_power += price*qty*100
-                print(f"Made {sym} {occ_sym} {qty} {price}: {self.buying_power}")
+                debug(f"Made {sym} {occ_sym} {qty} {price}: {self.buying_power}")
                 if pos['quantity'] < 1e-8:
                     self.options.remove(pos)
                 
