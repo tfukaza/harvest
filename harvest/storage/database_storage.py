@@ -11,14 +11,16 @@ from harvest.storage import BaseStorage
 from harvest.utils import *
 
 """
-This module serves as a storage system for pandas dataframes in with csv files.
+This module serves as a storage system for pandas dataframes in with SQL tables.
 """
 
 Base = declarative_base()
 
 class Asset(Base):
+    """
+    This class defines what is in each row in the Assets table.
+    """
     __tablename__ = 'asset'
-    
     symbol = Column('symbol', String, primary_key=True)
     interval = Column('interval', String, primary_key=True)
     timestamp = Column('timestamp', DateTime, primary_key=True)
@@ -35,7 +37,7 @@ class Asset(Base):
 
 class DBStorage(BaseStorage):
     """
-    An extension of the basic storage that saves data in csv files.
+    An extension of the basic storage that saves data in SQL tables.
     """
 
     def __init__(self, db: str='sqlite:///data.db'):
@@ -49,7 +51,7 @@ class DBStorage(BaseStorage):
 
     def store(self, symbol: str, interval: str, data: pd.DataFrame, remove_duplicate: bool=True) -> None:
         """
-        Stores the stock data in the storage dictionary and as a csv file.
+        Stores the stock data in the storage dictionary in SQL tables.
         :symbol: a stock or crypto
         :interval: the interval between each data point, must be atleast
              1 minute
@@ -58,7 +60,6 @@ class DBStorage(BaseStorage):
         """
 
         if not data.empty:
-
             data.index = normalize_pandas_dt_index(data)
             data.columns = [column[1] for column in data.columns]
             data.rename(columns={'open': 'open_'}, inplace=True)

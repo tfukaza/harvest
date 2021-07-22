@@ -16,7 +16,7 @@ Harvest is currently at **v0.1**. The program is unstable and cointains many bug
 - 💡 [Submit a feature suggestion](https://github.com/tfukaza/harvest/issues/new?assignees=&labels=enhancement%2C+question&template=feature-request.md&title=%5B%F0%9F%92%A1Feature+Request%5D)
 - 📝 [Request documentation](https://github.com/tfukaza/harvest/issues/new?assignees=&labels=documentation&template=documentation.md&title=%5B%F0%9F%93%9DDocumentation%5D)
 
-## Example
+# Example
 Below is a minimal example of a crossover strategy for `TWTR` implemented with Harvest, tested on historical stock prices.
 ```python
 from harvest.algo import *
@@ -50,7 +50,7 @@ Confident in your strategy? Deploy it using a broker of your choice (Currently o
 ```
 With Harvest, the process of testing, simulating, and deploying your strategies is a piece of cake 🍰
 
-## Installation
+# Installation
 There are few prerequisites:
 - git
 - **Python 3.8+**
@@ -66,7 +66,10 @@ pip install -e 'git+https://github.com/tfukaza/harvest.git#egg=harvest[Robinhood
 ```
 Now you're all set!
 
-## Disclaimer
+# Contributing
+Contributions are greatly appreciated. Check out the [CONTRIBUTING](CONTRIBUTING.md) document for details.
+
+# Disclaimer
 - Harvest is not officially associated with Robinhood LLC.  
     - Robinhood was also not designed to be used for algo-trading. Excessive access to their API can result in your account getting locked. 
 - Tutorials and documentation solely exist to provide technical references of the code. They are not recommendations of any specific securities or strategies. 

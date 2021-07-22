@@ -166,10 +166,11 @@ class BaseAlgo:
             symbol = self.watch[0]
         return self.trader.fetch_chain_info(symbol)
     
-    def get_chain_data(self, symbol: str):
-        """Returns the option chain for the specified symbol. 
+    def get_chain_data(self, symbol: str, date: dt.datetime):
+        """Returns the option chain for the specified symbol and expiration date.
         
-        :param str? symbol: symbol of stock
+        :param str symbol: symbol of stock
+        :param dt.datetime date: date of option expiration
         :returns: A dataframe with the follwing columns:
 
             - exp_date(datetime.datetime): The expiration date
@@ -181,7 +182,7 @@ class BaseAlgo:
         """ 
         if symbol == None:
             symbol = self.watch[0]
-        return self.trader.fetch_chain_data(symbol)
+        return self.trader.fetch_chain_data(symbol, date)
     
     def get_option_market_data(self, symbol: str):
         """Retrieves data of specified option. 
@@ -330,10 +331,15 @@ class BaseAlgo:
         """
         if symbol == None:
             symbol = self.watch[0]
-        search = self.trader.stock_positions + self.trader.crypto_positions
-        for p in search:
-            if p['symbol'] == symbol:
-                return p['quantity']
+        if len(symbol) <= 6:
+            search = self.trader.stock_positions + self.trader.crypto_positions
+            for p in search:
+                if p['symbol'] == symbol:
+                    return p['quantity']
+        else:
+            for p in self.trader.option_positions:
+                if p['occ_symbol'] == symbol:
+                    return p['quantity']        
         return 0
     
     def get_cost(self, symbol: str=None) -> float:
@@ -455,6 +461,9 @@ class BaseAlgo:
         if symbol == None:
             symbol = self.watch[0]
         cost = self.get_cost(symbol)
+        # For options, apply the multiplier 
+        if len(symbol) > 6:
+            cost = cost * 100
         price = self.get_price(symbol)
         ret = (price - cost) / cost
         return ret
@@ -494,6 +503,36 @@ class BaseAlgo:
         """
         return self.trader.account['equity']
     
+    def get_account_stock_positions(self) -> List:
+        """Returns the current stock positions.
+
+        :returns: A list of dictionaries with the following keys:
+            - symbol
+            - quantity
+            - avg_price
+        """
+        return self.trader.stock_positions
+    
+    def get_account_crypto_positions(self) -> List:
+        """Returns the current crypto positions.
+
+        :returns: A list of dictionaries with the following keys:
+            - symbol
+            - quantity
+            - avg_price
+        """
+        return self.trader.crypto_positions
+    
+    def get_account_option_positions(self) -> List:
+        """Returns the current option positions.
+
+        :returns: A list of dictionaries with the following keys:
+            - symbol
+            - quantity
+            - avg_price
+        """
+        return self.trader.option_positions
+
     def get_time(self):
         """Returns the current hour and minute.
 
