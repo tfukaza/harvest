@@ -1,7 +1,4 @@
 import unittest
-from harvest.api.robinhood import Robinhood
-
-import os
 
 class TestRHBroker(unittest.TestCase):
     def test_trade(self):
