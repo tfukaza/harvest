@@ -153,14 +153,20 @@ class YahooStreamer(API):
         return df
     
     @API._exception_handler
-    def fetch_option_market_data(self, symbol: str):
-        _, date, _, _ = self.occ_to_data(symbol)
-        chain = self.watch_ticker[symbol].option_chain(date)
-        df = chain.loc[symbol]
+    def fetch_option_market_data(self, occ_symbol: str):
+        occ_symbol = occ_symbol.replace(' ', '')
+        symbol, date, typ, _ = self.occ_to_data(occ_symbol)
+        chain = self.watch_ticker[symbol].option_chain(date_to_str(date))
+        if typ == 'call':
+            chain = chain.calls
+        else:
+            chain = chain.puts
+        df = chain[chain['contractSymbol'] == occ_symbol]
+        print(occ_symbol, df)
         return {
-                'price': df['lastPrice'][0],
-                'ask': df['ask'][0],
-                'bid': df['bid'][0]
+                'price': float(df['lastPrice'].iloc[0]),
+                'ask':   float(df['ask'].iloc[0]),
+                'bid':   float(df['bid'].iloc[0])
             }
 
     # ------------- Broker methods ------------- #

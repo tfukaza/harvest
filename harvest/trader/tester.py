@@ -226,7 +226,7 @@ class BackTester(trader.Trader):
                     self.storage.store(s, agg, df)
         
             for a in self.algo:
-                a.main({})
+                a.main()
  
         # pr.disable()
         # import pstats 

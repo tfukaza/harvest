@@ -104,7 +104,7 @@ class TestAlgo(unittest.TestCase):
         t.algo[0].sell()
         a_new = gen_data('A', 1)
         t.main({'A': a_new})
-        self.assertEqual(0, t.algo[0].get_quantity())
+        self.assertEqual(0, t.algo[0].get_asset_quantity())
     
     # def test_buy_sell_option_auto(self):
     #     t = Trader()

@@ -189,7 +189,7 @@ class PaperBroker(API):
             if ret['side'] == 'buy':
                 # If asset already exists, buy more. If not, add a new entry
                 if pos == None:
-                    sym, date, option_type, price = self.occ_to_data(occ_sym)
+                    sym, date, option_type, strike = self.occ_to_data(occ_sym)
                     self.options.append({
                         'symbol': sym,
                         'occ_symbol': ret['occ_symbol'],
@@ -197,7 +197,7 @@ class PaperBroker(API):
                         'quantity': ret['quantity'],
                         "multiplier": 100,
                         "exp_date": date,
-                        "strike_price": price,
+                        "strike_price": strike,
                         "type": option_type
                     })
                 else:
@@ -206,13 +206,15 @@ class PaperBroker(API):
         
                 self.cash -= price * qty * 100
                 self.buying_power -= price * qty * 100
+                print(f"After BUY: {self.buying_power}")
             else:
                 if pos == None:
                     raise Exception(f"Cannot sell {sym}, is not owned")
-
                 pos['quantity'] = pos['quantity'] - qty
-                self.cash += price*qty*pos['multiplier'] 
-                self.buying_power += price*qty*pos['multiplier'] 
+                print(f"current:{self.buying_power}")
+                self.cash += price*qty*100
+                self.buying_power += price*qty*100
+                print(f"Made {sym} {occ_sym} {qty} {price}: {self.buying_power}")
                 if pos['quantity'] < 1e-8:
                     self.options.remove(pos)
                 

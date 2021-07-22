@@ -293,7 +293,7 @@ class Trader:
         }
 
         for a in self.algo:
-            a.main(meta)
+            a.main()
         self.broker.exit()
         self.streamer.exit()
 
@@ -411,14 +411,18 @@ class Trader:
     def buy(self, symbol: str, quantity: int, in_force: str, extended: bool):
         ret = self.broker.buy(symbol, quantity, in_force, extended)
         if ret == None:
-            raise Exception("BUY failed")
+            warning("BUY failed")
+            return None
         self.order_queue.append(ret)
+        debug(f"BUY: {self.timestamp}, {symbol}, {quantity}")
         debug(f"BUY order queue: {self.order_queue}")
+        asset_type = 'crypto' if is_crypto(symbol) else 'stock'
+        self.logger.add_transaction(self.timestamp, 'buy', asset_type, symbol, quantity)
         return ret
     
-    def await_buy(self, symbol: str, quantity: int, in_force: str, extended: bool):
-        ret = self.broker.await_buy(symbol, quantity, in_force, extended)
-        return ret
+    # def await_buy(self, symbol: str, quantity: int, in_force: str, extended: bool):
+    #     ret = self.broker.await_buy(symbol, quantity, in_force, extended)
+    #     return ret
 
     def sell(self, symbol: str, quantity: int, in_force: str, extended: bool):
         ret = self.broker.sell(symbol, quantity, in_force, extended)
@@ -426,19 +430,24 @@ class Trader:
             warning("SELL failed")
             return None
         self.order_queue.append(ret)
+        debug(f"SELL: {self.timestamp}, {symbol}, {quantity}")
         debug(f"SELL order queue: {self.order_queue}")
+        asset_type = 'crypto' if is_crypto(symbol) else 'stock'
+        self.logger.add_transaction(self.timestamp, 'sell', asset_type, symbol, quantity)
         return ret
     
-    def await_sell(self, symbol: str, quantity: int, in_force: str, extended: bool):
-        ret = self.broker.await_sell(symbol, quantity, in_force, extended)
-        return ret
+    # def await_sell(self, symbol: str, quantity: int, in_force: str, extended: bool):
+    #     ret = self.broker.await_sell(symbol, quantity, in_force, extended)
+    #     return ret
 
     def buy_option(self, symbol: str, quantity: int, in_force: str):
         ret = self.broker.buy_option(symbol, quantity, in_force)
         if ret == None:
             raise Exception("BUY failed")
         self.order_queue.append(ret)
+        debug(f"BUY: {self.timestamp}, {symbol}, {quantity}")
         debug(f"BUY order queue: {self.order_queue}")
+        self.logger.add_transaction(self.timestamp, 'buy', 'option', symbol, quantity)
         return ret
 
     def sell_option(self, symbol: str, quantity: int, in_force: str):
@@ -446,7 +455,9 @@ class Trader:
         if ret == None:
             raise Exception("SELL failed")
         self.order_queue.append(ret)
+        debug(f"SELL: {self.timestamp}, {symbol}, {quantity}")
         debug(f"SELL order queue: {self.order_queue}")
+        self.logger.add_transaction(self.timestamp, 'sell', 'option', symbol, quantity)
         return ret
     
     def set_algo(self, algo):
