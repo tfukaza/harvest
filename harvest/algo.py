@@ -461,12 +461,12 @@ class BaseAlgo:
         if interval == None:
             interval = self.trader.interval
         if len(symbol) <= 6:
-            return self.trader.storage.load(symbol, interval)[symbol][ref]
+            return list(self.trader.storage.load(symbol, interval)[symbol][ref])
         else:
             warning("Price list not available for options")
             return None
     
-    def get_asset_candle(self, symbol: str) -> pd.DataFrame():
+    def get_asset_candle(self, symbol: str, interval=None) -> pd.DataFrame():
         """Returns the most recent candle as a pandas DataFrame
 
         This function is not compatible with options. 
@@ -486,8 +486,10 @@ class BaseAlgo:
         """
         if symbol == None:
             symbol = self.watch[0]
+        if interval == None:
+            interval = self.trader.interval
         if len(symbol) <= 6:
-            return self.trader.storage.load(symbol, self.trader.interval).iloc[[-1]][symbol]
+            return self.trader.storage.load(symbol, interval).iloc[[-1]][symbol]
         else:
             warning("Candles not available for options")
             return None
