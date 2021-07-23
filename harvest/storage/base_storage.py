@@ -93,7 +93,7 @@ class BaseStorage:
         self.storage_lock.release()
 
 
-    def load(self, symbol: str, interval: str='', start: dt.datetime=None, end: dt.datetime=None) -> pd.DataFrame:
+    def load(self, symbol: str, interval: str='', start: dt.datetime=None, end: dt.datetime=None, no_slice=False) -> pd.DataFrame:
         """
         Loads the stock data given the symbol and interval. May return only
         a subset of the data if start and end are given and there is a gap 
@@ -141,6 +141,9 @@ class BaseStorage:
         else:
             data = self.storage[symbol][interval]
         self.storage_lock.release()
+    
+        if no_slice:
+            return data
 
         # If the start and end are not defined, then set them to the 
         # beginning and end of the data.
