@@ -2,7 +2,18 @@
 import re
 from getpass import getpass
 from logging import critical, error, info, warning, debug
+import os
 
+# Source: https://stackoverflow.com/questions/287871/how-to-print-colored-text-to-the-terminal
+HEADER = '\033[95m'
+OKBLUE = '\033[94m'
+OKCYAN = '\033[96m'
+OKGREEN = '\033[92m'
+WARNING = '\033[93m'
+FAIL = '\033[91m'
+ENDC = '\033[0m'
+BOLD = '\033[1m'
+UNDERLINE = '\033[4m'
 
 class Wizard:
     """
@@ -11,15 +22,49 @@ class Wizard:
     implement is the `create_secret` function.
     """
 
-    def create_secret(self, path: str) -> bool:
-        """
-        To be implemented by child classes to generate files with secrets in them. Returns True if the secret was successfully created and False otherwise.
+    def __init__(self):
+        self.update_size()
 
-        :path: The location to save the file with the secret.
-        """
-        raise NotImplementedError('`create_secret` not implemented for this Wizard')
+        self.text_counter = 0
+        self.prompt_counter = 0
 
-    def get_bool(self, prompt='y/n': str, true_pat=r'y|yes': str, false_pat=r'n|no': str, default=None: str, persistent=False) -> bool:
+    # def create_secret(self, path: str) -> bool:
+    #     """
+    #     To be implemented by child classes to generate files with secrets in them. Returns True if the secret was successfully created and False otherwise.
+
+    #     :path: The location to save the file with the secret.
+    #     """
+    #     raise NotImplementedError('`create_secret` not implemented for this Wizard')
+
+    def update_size(self):
+        # https://stackoverflow.com/questions/566746/how-to-get-linux-console-window-width-in-python
+        self.rows, self.columns = os.popen('stty size', 'r').read().split()
+        self.columns = int(self.columns)
+        self.rows = int(self.rows)
+
+    def reset_counter(self) -> None:
+        self.text_counter = 0
+        self.prompt_counter = 0
+
+    def print(self, text:str) -> None:
+        if self.text_counter == 0:
+            self.reset_counter()
+            header = "💬 "
+        else:
+            header = "  "
+        print(f"{header}{text}", end='')
+        self.text_counter += 1
+    
+    def println(self, text:str) -> None:
+        if self.text_counter == 0:
+            self.reset_counter()
+            header = "💬 "
+        else:
+            header = "  "
+        print(f"{header}{text}")
+        self.text_counter += 1
+
+    def get_bool(self, prompt: str='y/n', true_pat:str=r'y|yes', false_path:str=r'n|no', default:str=None, persistent=True) -> bool:
         """
         Prompts the user for a binary decision. Ignores case in regex matching. Return False if the input does not match any pattern and persistent is False.
 
@@ -29,9 +74,13 @@ class Wizard:
         :default: A string that should return True when matched with its associated value's pattern. If None then ignored.
         :persistent: A bool that if True, and if default is None, will continue to prompt the user.
         """
+        self.reset_counter()
 
+        df = ''
         if default is not None:
-            prompt += f' [{default}]'
+            df = f'[{default}]'
+        
+        prompt = f"❓ {HEADER}{prompt} (y/n){df}{ENDC} "
 
         value = input(prompt)
 
@@ -50,7 +99,7 @@ class Wizard:
             else:
                 return False
 
-    def get_string(self, prompt='input': str, pattern='.+': str, persistent=False: bool) -> str:
+    def get_string(self, prompt:str='input', pattern:str='.+', persistent:bool=False) -> str:
         """
         Prompts the user for any string, with an optional pattern, ignoring case. If persistent is True then will continuly prompt the user for input.
 
@@ -58,8 +107,11 @@ class Wizard:
         :pattern: A (regex) pattern that is used to validate the user input. Default to any string with at least 1 input
         :persistent:A bool that if True, will continue to prompt the user.
         """
+        if self.prompt_counter == 0:
+            self.reset_counter()
+            print('❓ ', end='')
 
-        value = input(prompt)
+        value = input(f"{HEADER}{prompt}{ENDC}\n\t➔")
 
         if pattern is None or not persistent:
             return value 
@@ -68,7 +120,7 @@ class Wizard:
         else:
             return self.get_string(prompt, pattern, persistent)
 
-    def get_int(self, prompt='input number', default=None: int, persistent=False: bool) -> int:
+    def get_int(self, prompt='input number', default:int=None, persistent:bool=False) -> int:
         """
         Prompts the user for an integer.
 
@@ -76,8 +128,7 @@ class Wizard:
         :default: If persistent is off, then this retuns if the user fails to specify a number. 
         :persistent: If True then keep prompting the user for a valid input.
         """
-
-        value = get_string(prompt, r'\d+', persistent)
+        value = self.get_string(prompt, r'\d+', persistent)
 
         try:
             return int(value)
@@ -85,17 +136,15 @@ class Wizard:
             warning(f'Invalid input {value}, using {default} instead!\nError: {e}')
             return default
 
-
-    def get_password(self, prompt='enter password') -> str:
+    def get_password(self, prompt='Password: ') -> str:
         """
         Prompts the user for a password.
         """
-
         return getpass(prompt)
 
-    def wait_for_input(self, prompt='press enter to continue') -> None:
+    def wait_for_input(self) -> None:
         """
         Prompts the user for any input and to give the user the ability to do something while the program waits.
         """
-
-        input(prompt)
+        print("Press Enter...".rjust(self.columns))
+        input('')

@@ -15,7 +15,7 @@ class RobinhoodWizard(Wizard):
     def create_secret(self, path: str) -> bool:
             print("""⚠️  Hmm, looks like you haven't set up login credentials for Robinhood yet.""")
 
-            should_setup = self.get_bool("❓ Do you want to set it up now? (y/n)", persistent=True)
+            should_setup = self.get_bool("Do you want to set it up now? (y/n)", persistent=True)
 
             if not should_setup:
                 print("""\n💬 You can't use Robinhood unless we can log you in. You can set up the credentials manually, or use other brokers.""")
