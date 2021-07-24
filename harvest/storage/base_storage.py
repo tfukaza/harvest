@@ -47,7 +47,7 @@ class BaseStorage:
             return None
 
         # Removes the seconds and milliseconds
-        data.index = normalize_pands_dt_index(data)
+        data.index = normalize_pandas_dt_index(data)
 
         if symbol in self.storage:
             # Handles if we already have stock data
@@ -84,7 +84,7 @@ class BaseStorage:
         self.storage[symbol][target] = self._append(self.storage[symbol][target], aggregate_df(data, target), remove_duplicate)
         self.storage_lock.release()
     
-    def reset(self, symbol: str, interval:str):
+    def reset(self, symbol: str, interval: str):
         """
         Resets to an empty dataframe
         """
