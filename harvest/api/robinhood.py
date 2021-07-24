@@ -7,6 +7,8 @@ from typing import Any, Dict, List, Tuple
 import pandas as pd
 import robin_stocks.robinhood as rh
 import pytz 
+import pyotp
+import yaml
 
 # Submodule imports
 from harvest.api._base import API 
@@ -35,8 +37,7 @@ class Robinhood(API):
         debug("Logged into Robinhood...")
     
     def no_secret(self, path):
-        from harvest.wizard.robinhood import RobinhoodWizard 
-        return RobinhoodWizard().create_secret(path)
+        return self.create_secret(path)
 
     def setup(self, watch: List[str], interval, trader=None, trader_main=None):
        
@@ -540,3 +541,85 @@ class Robinhood(API):
         df.columns = pd.MultiIndex.from_product([watch, df.columns])
 
         return df.dropna()
+    
+    def create_secret(self, path):
+        import harvest.wizard as wizard
+        w = wizard.Wizard()
+
+        w.println("Hmm, looks like you haven't set up login credentials for Robinhood yet.")
+        should_setup = w.get_bool("Do you want to set it up now?", default='y')
+
+        if not should_setup:
+            w.println("You can't use Robinhood unless we can log you in.")
+            w.println("You can set up the credentials manually, or use other brokers.")
+            return False
+
+        w.println("Alright! Let's get started")
+
+        have_account = w.get_bool("Do you have a Robinhood account?", default='y')
+        if not have_account:
+            w.println("In that case you'll first need to make an account. I'll wait here, so hit Enter or Return when you've done that.")
+            w.wait_for_input()
+        
+        have_mfa = w.get_bool("Do you have Two Factor Authentication enabled?", default='y')
+
+        if not have_mfa:
+            w.println("Robinhood (and Harvest) requires users to have 2FA enabled, so we'll turn that on next.")
+        else:
+            w.println("We'll need to reconfigure 2FA to use Harvest, so temporarily disable 2FA")
+            w.wait_for_input()
+
+        w.println("Enable 2FA. Robinhood should ask you what authentication method you want to use.")
+        w.wait_for_input()
+        w.println("Select 'Authenticator App'.")
+        w.wait_for_input()
+        w.println("Select 'Can't scan'.")
+        w.wait_for_input()
+
+        mfa = w.get_string("You should see a string of letters and numbers on the screen. Type it in here", pattern=r'[\d\w]+')
+        while True:
+            try:
+                totp = pyotp.TOTP(mfa).now()
+            except:
+                mfa = w.get_string("Woah😮 Something went wrong. Make sure you typed in the code correctly.", pattern=r'[\d\w]+')
+                continue
+            break
+
+        w.print(f"Good! Robinhood should now be asking you for a 6-digit passcode. Type in: {totp}")
+        w.print(f"⚠️  Beware, this passcode expires in a few seconds! If you couldn't type it in time, it should be regenerated.")
+
+        new_passcode = True
+        while new_passcode:
+            new_passcode = w.get_bool("Do you want to generate a new passcode?", default='n')
+            if new_passcode:
+                totp = pyotp.TOTP(mfa).now()
+                w.print(f"New passcode: {totp}")
+            else:
+                break
+
+        w.println("Robinhood will show you a backup code. This is useful when 2FA fails, so make sure to keep it somewhere safe.")
+        w.wait_for_input()
+        w.println("It is recommended you also set up 2FA using an app like Authy or Google Authenticator, so you don't have to run this setup wizard every time you log into Robinhood.")
+        w.wait_for_input()
+        w.println(f"Open an authenticator app of your choice, and use the MFA code you typed in earlier to set up OTP passcodes for Robinhood: {mfa}")
+        w.wait_for_input()
+
+        w.println(f"Almost there! Type in your username and password for Robinhood")
+
+        username = w.get_string("Username: ")
+        password = w.get_password("Password: ")
+
+        w.println(f"All steps are complete now 🎉. Generating secret.yml...")
+
+        d = {
+            'robin_mfa':      f"{mfa}",
+            'robin_username': f"{username}",
+            'robin_password': f"{password}"
+        }
+
+        with open(path, 'w') as file:
+            yml = yaml.dump(d, file)
+        
+        w.println(f"secret.yml has been created! Make sure you keep this file somewhere secure and never share it with other people.")
+        
+        return True 
