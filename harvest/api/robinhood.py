@@ -16,7 +16,7 @@ from harvest.utils import *
 
 class Robinhood(API):
 
-    interval_list = ['1MIN', '5MIN', '15MIN', '30MIN', '1DAY']
+    interval_list = ['1MIN', '5MIN', '15MIN', '30MIN', '1HR', '1DAY']
 
     def __init__(self, path=None):
         super().__init__(path)
@@ -144,6 +144,8 @@ class Robinhood(API):
             get_interval_fmt = '5minute'
         elif interval == '30MIN':
             get_interval_fmt = '5minute'
+        elif interval == '1HR':
+            get_interval_fmt = '5minute'
         elif interval == '1DAY': 
             get_interval_fmt = 'day'
            
@@ -157,7 +159,7 @@ class Robinhood(API):
             return df
         if delta < 1 or interval == '15SEC' or interval == '1MIN':
             span = 'hour'
-        elif delta >=1 and delta < 24 or interval == '5MIN' or interval == '15MIN' or interval == '30MIN':
+        elif delta >=1 and delta < 24 or interval in ['5MIN', '15MIN', '30MIN', '1HR']:
             span = 'day'
         elif delta >=24 and delta < 24 * 28:
             span = 'month'
