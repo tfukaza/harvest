@@ -60,6 +60,56 @@ class TestAlgo(unittest.TestCase):
 
         self.assertEqual(True, True)
     
+    def test_get_asset_quantity(self):
+        t = Trader(DummyStreamer())
+        t.set_symbol('A')
+        t.set_algo(BaseAlgo())
+        t.start("1MIN", kill_switch=True)
+
+        # This should buy 5 of A
+        t.algo[0].buy('A', 5)
+        a_new = gen_data('A', 1)
+        t.main({'A': a_new})
+
+        q = t.algo[0].get_asset_quantity('A')
+
+        self.assertEqual(q, 5)
+
+    def test_get_asset_cost(self):
+        t = Trader(DummyStreamer())
+        t.set_symbol('A')
+        t.set_algo(BaseAlgo())
+        t.start("1MIN", kill_switch=True)
+
+        a_new = gen_data('A', 1)
+        t.main({'A': a_new})
+        # This should buy 1 of A
+        t.algo[0].buy('A', 1)
+
+        a_new = gen_data('A', 1)
+        t.main({'A': a_new})
+        cost = a_new['A']['close'][-1] 
+
+        get_cost = t.algo[0].get_asset_cost('A')
+
+        self.assertEqual(get_cost, cost)
+    
+    def test_get_asset_price(self):
+        t = Trader(DummyStreamer())
+        t.set_symbol('A')
+        t.set_algo(BaseAlgo())
+        t.start("1MIN", kill_switch=True)
+
+        # This should buy 5 of A
+        t.algo[0].buy('A', 5)
+        a_new = gen_data('A', 1)
+        t.main({'A': a_new})
+        price = a_new['A']['close'][-1] 
+
+        get_price = t.algo[0].get_asset_price('A')
+
+        self.assertEqual(get_price, price)
+
     def test_buy_sell(self):
         t = Trader(DummyStreamer())
         t.set_symbol('A')
@@ -104,7 +154,7 @@ class TestAlgo(unittest.TestCase):
         t.algo[0].sell()
         a_new = gen_data('A', 1)
         t.main({'A': a_new})
-        self.assertEqual(0, t.algo[0].get_quantity())
+        self.assertEqual(0, t.algo[0].get_asset_quantity())
     
     # def test_buy_sell_option_auto(self):
     #     t = Trader()

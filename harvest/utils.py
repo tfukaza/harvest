@@ -67,6 +67,12 @@ def date_to_str(day) -> str:
 def str_to_date(day) -> str:
 	return dt.datetime.strptime(day, '%Y-%m-%d')
 
+def mark_up(x):
+    return round(x * 1.05, 2)
+
+def mark_down(x):
+    return round(x * 0.95, 2)
+
 ############ Functions used for testing #################
 
 def gen_data(symbol:str, points: int=50) -> pd.DataFrame:

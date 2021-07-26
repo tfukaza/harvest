@@ -49,16 +49,19 @@ class YahooStreamer(API):
         df_dict = {}
         combo = self.watch_stock + self.watch_crypto
         if len(combo) == 1:
-            df = yf.download(combo[0], period='1d', interval=self.interval_fmt, prepost=True)
-            df = self._format_df(df, combo[0])
-            df_dict[combo[0]] = df
+            s = combo[0]
+            df = yf.download(s, period='1d', interval=self.interval_fmt, prepost=True)
+            if s[-4:] == '-USD':
+                    s = '@'+s[:-4]
+            df = self._format_df(df, s)
+            df_dict[s] = df
         else:
             names = ' '.join(self.watch_stock + self.watch_crypto)
             df = yf.download(names, period='1d', interval=self.interval_fmt, prepost=True)
             for s in combo:
                 df_tmp = df.iloc[:, df.columns.get_level_values(1)==s]
                 df_tmp.columns = df_tmp.columns.droplevel(1)
-                if s[-3:] == 'USD':
+                if s[-4:] == '-USD':
                     s = '@'+s[:-4]
                 df_tmp = self._format_df(df_tmp, s)
                 df_dict[s] = df_tmp
@@ -150,14 +153,20 @@ class YahooStreamer(API):
         return df
     
     @API._exception_handler
-    def fetch_option_market_data(self, symbol: str):
-        _, date, _, _ = self.occ_to_data(symbol)
-        chain = self.watch_ticker[symbol].option_chain(date)
-        df = chain.loc[symbol]
+    def fetch_option_market_data(self, occ_symbol: str):
+        occ_symbol = occ_symbol.replace(' ', '')
+        symbol, date, typ, _ = self.occ_to_data(occ_symbol)
+        chain = self.watch_ticker[symbol].option_chain(date_to_str(date))
+        if typ == 'call':
+            chain = chain.calls
+        else:
+            chain = chain.puts
+        df = chain[chain['contractSymbol'] == occ_symbol]
+        print(occ_symbol, df)
         return {
-                'price': df['lastPrice'][0],
-                'ask': df['ask'][0],
-                'bid': df['bid'][0]
+                'price': float(df['lastPrice'].iloc[0]),
+                'ask':   float(df['ask'].iloc[0]),
+                'bid':   float(df['bid'].iloc[0])
             }
 
     # ------------- Broker methods ------------- #
