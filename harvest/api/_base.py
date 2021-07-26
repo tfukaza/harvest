@@ -481,7 +481,7 @@ class API:
             buy_power = self.trader.account['buying_power']
             price = self.trader.storage.load(symbol, self.interval)[symbol]['close'][-1]
 
-        limit_price = round(price * 1.05, 2)
+        limit_price = mark_up(price)
         total_price = limit_price * quantity
         
         if total_price >= buy_power:
@@ -541,7 +541,7 @@ class API:
         else:
             price = self.trader.storage.load(symbol, self.interval)[symbol]['close'][-1]
 
-        limit_price = round(price * 0.95, 2)
+        limit_price = mark_down(price)
        
         return self.order_limit('sell', symbol, quantity, limit_price, in_force, extended)
 
@@ -588,7 +588,7 @@ class API:
             buy_power = self.trader.account['buying_power']
             price = self.trader.streamer.fetch_option_market_data(symbol)['price']
 
-        limit_price = round(price * 1.05, 2)
+        limit_price = mark_up(price)
         total_price = limit_price * quantity
         
         if total_price >= buy_power:
@@ -618,7 +618,7 @@ Reduce purchase quantity or increase buying power.""")
         else:
             price = self.trader.streamer.fetch_option_market_data(symbol)['price']
             
-        limit_price = round(price * 0.95, 2)
+        limit_price = mark_down(price)
        
         sym, date, option_type, strike = self.occ_to_data(symbol)
         return self.order_option_limit('sell', sym, quantity, limit_price, option_type, date, strike, in_force=in_force)

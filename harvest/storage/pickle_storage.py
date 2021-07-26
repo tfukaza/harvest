@@ -30,8 +30,11 @@ class PickleStorage(BaseStorage):
         files = [f for f in listdir(self.save_dir) if isfile(join(self.save_dir, f))]
 
         for file in files:
-            file_search = re.search('^([\w]+)--?([\w]+).pickle$', file)
-            symbol, interval = file_search.group(1), file_search.group(2)
+            i = file.index('-')
+            #file_search = re.search('^(@?[\w]+)--?=([\w]+).pickle$', file)
+            if i == -1:
+                continue
+            symbol, interval = file[0:i], file[i+1:-7]
             super().store(symbol, interval, pd.read_pickle(join(self.save_dir, file)))
 
     def store(self, symbol: str, interval: str, data: pd.DataFrame, remove_duplicate: bool=True, save_pickle: bool=True) -> None:

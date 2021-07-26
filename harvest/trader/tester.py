@@ -3,6 +3,7 @@ import datetime as dt
 from logging import critical, error, info, warning, debug
 from typing import Any, Dict, List, Tuple
 import os.path
+from pathlib import Path
 
 # External libraries
 import pandas as pd
@@ -15,6 +16,7 @@ from harvest.storage import PickleStorage
 import harvest.trader.trader as trader
 from harvest.api.yahoo import YahooStreamer
 from harvest.api.paper import PaperBroker
+from harvest.storage import BaseLogger
 from harvest.utils import *
 
 class BackTester(trader.Trader):
@@ -43,6 +45,9 @@ class BackTester(trader.Trader):
         self.crypto_positions = []  # Local cache of current crypto positions
 
         self.order_queue = []       # Queue of unfilled orders 
+
+        self.logger = BaseLogger()
+
 
     def read_pickle_data(self):
         """Function to read backtesting data from a local file. 
@@ -118,12 +123,18 @@ class BackTester(trader.Trader):
             "1DAY": 1440
         }
 
+        # TODO: Skip the following step if aggregated data already exists
+
         # Generate the "simulated aggregation" data
         for sym in self.watch:
             df = self.storage.load(sym, self.interval)
             rows = len(df.index)
             print(f"Formatting {sym} data...")
             for agg in self.aggregations:
+                path = f"{path}/{sym}--{agg}.pickle"
+                file = Path(path)
+                if file.is_file():
+                    continue
                 print(f"Formatting {agg} ...")
                 points = int(conv[agg]/conv[interval])
                 for i in tqdm(range(rows)):
@@ -145,7 +156,7 @@ class BackTester(trader.Trader):
             i = i if i == self.interval else '-'+i
             self.df[i] = {}
             for s in self.watch:
-                df = self.storage.load(s, i)
+                df = self.storage.load(s, i, no_slice=True)
                 self.df[i][s] = df.copy() 
         
         # Trim data so start and end dates match between assets and intervals
@@ -226,7 +237,7 @@ class BackTester(trader.Trader):
                     self.storage.store(s, agg, df)
         
             for a in self.algo:
-                a.main({})
+                a.main()
  
         # pr.disable()
         # import pstats 
