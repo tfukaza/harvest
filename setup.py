@@ -32,7 +32,8 @@ setup(
         'pyyaml',
         'tqdm',
         'pytz',
-        "yfinance"
+        "yfinance",
+        "SQLAlchemy"
     ],
     extras_require={
         "AlpacaMarket": [

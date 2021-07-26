@@ -57,5 +57,11 @@ class TestYahooStreamer(unittest.TestCase):
         self.assertGreater(len(data), 0)
         self.assertListEqual(list(data.columns), ["exp_date", "strike", "type"])
 
+        sym = data.index[0]
+        df = yh.fetch_option_market_data(sym)
+
+        self.assertTrue(True)
+
+
 if __name__ == '__main__':
     unittest.main()
