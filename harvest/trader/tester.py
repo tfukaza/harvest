@@ -107,6 +107,7 @@ class BackTester(trader.Trader):
         self._setup_account()
         self.df = {}
 
+        self.storage.limit_size = False
         if source == "PICKLE":
             self.read_pickle_data()
         elif source == "CSV":
@@ -217,6 +218,8 @@ class BackTester(trader.Trader):
         for i in [self.interval] + self.aggregations:
             for s in self.watch:
                 self.storage.reset(s, i)
+        
+        self.storage.limit_size = True
         
         rows = len(self.df[interval][self.watch[0]].index)
         for i in range(rows):
