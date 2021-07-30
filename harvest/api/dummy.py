@@ -79,8 +79,10 @@ class DummyStreamer(API):
         else: 
             self.now = current_datetime
 
-    def _tick(self) -> None:
+    def tick(self) -> None:
         self.now += interval_to_timedelta(self.interval)
+        if not self.trader_main == None:
+            self.main()
 
     # -------------- Streamer methods -------------- #
 
@@ -204,11 +206,12 @@ class DummyStreamer(API):
     
     def fetch_option_market_data(self, symbol: str):
         # This is a placeholder so Trader doesn't crash
-        price = random.uniform(2, 1000)
+        price = float(hash((symbol, self.now))) / (2**64)
+        price = (price+1) * 1.5
         return {
             'price': price,
-            'ask': price, 
-            'bid': price,
+            'ask': price*1.05, 
+            'bid': price*0.95,
         }
 
     # ------------- Broker methods ------------- #

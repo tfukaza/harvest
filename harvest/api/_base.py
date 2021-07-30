@@ -644,6 +644,7 @@ Reduce purchase quantity or increase buying power.""")
             sym = sym + symbol[0]
             symbol = symbol[1:]
         symbol = symbol.replace(' ', '')
+        print(symbol)
         date =  dt.datetime.strptime(symbol[0:6], '%y%m%d')
         option_type = 'call' if symbol[6] == 'C' else 'put'
         price = float(symbol[7:])/1000

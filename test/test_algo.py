@@ -8,6 +8,9 @@ from harvest.algo import BaseAlgo
 
 from harvest.utils import gen_data
 
+import logging
+logging.basicConfig(level=logging.DEBUG)
+
 prices = [10, 12, 11, 9, 8, 10, 11, 12, 13, 15, 14, 16, 13, 14]
 
 class TestAlgo(unittest.TestCase):
@@ -173,28 +176,25 @@ class TestAlgo(unittest.TestCase):
         t.main({'A': a_new})
         self.assertEqual(0, t.algo[0].get_asset_quantity())
     
-    # def test_buy_sell_option_auto(self):
-    #     t = Trader()
-    #     t.set_symbol('A')
-    #     t.set_algo(BaseAlgo())
-    #     t.start("1MIN", kill_switch=True)
+    def test_buy_sell_option_auto(self):
+        streamer = DummyStreamer()
+        t = Trader(streamer)
+        t.set_symbol('X')
+        t.set_algo(BaseAlgo())
+        t.start("1MIN", kill_switch=True)
 
-    #     t.algo[0].buy_option('AAA   01019901000000')
-    #     a_new = gen_data('A', 1)
-    #     t.main({'A': a_new})
+        t.algo[0].buy_option('X     110101C01000000')
+        streamer.tick()
 
-    #     p = t.option_positions[0]
-    #     self.assertEqual(p['symbol'], 'AAA   01019901000000')
-    #     #self.assertEqual(p['quantity'], 2)
+        p = t.option_positions[0]
+        self.assertEqual(p['occ_symbol'], 'X     110101C01000000')
 
-    #     # This should sell 1 of A
-    #     t.algo[0].sell_option('AAA   01019901000000')
-    #     a_new = gen_data('A', 1)
-    #     t.main({'A': a_new})
+        t.algo[0].sell_option()
+        streamer.tick()
 
-    #     # p = t.stock_positions[0]
-    #     self.assertEqual(0, t.algo[0].get_quantity('AAA   01019901000000'))
-    #     #self.assertEqual(p['quantity'], 1)
+        # p = t.stock_positions[0]
+        self.assertEqual(0, t.algo[0].get_asset_quantity('X     110101C01000000'))
+        #self.assertEqual(p['quantity'], 1)
 
 
 if __name__ == '__main__':
