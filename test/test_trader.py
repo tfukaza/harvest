@@ -61,6 +61,7 @@ class TestTrader(unittest.TestCase):
     def test_is_freq(self):
         """If invalid aggregation is set, it should raise an error"""
         t = Trader(DummyStreamer())
+        t.fetch_interval = '1MIN'
 
         # If interval is '1MIN', it should always return True
         t.interval = '1MIN'

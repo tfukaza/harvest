@@ -23,6 +23,7 @@ class DummyStreamer(API):
 
     def __init__(self, path: str=None, now: dt.datetime=default_now, realistic_times: bool=False):
         self.trader = None
+        self.trader_main = None
         self.realistic_times = realistic_times
 
         # Set the current time
@@ -95,9 +96,9 @@ class DummyStreamer(API):
 
         if start is None:  
             if interval in ['1MIN', '5MIN', '15MIN', '30MIN']:
-                start = self.now - dt.timedelta(days=7)
+                start = self.now - dt.timedelta(days=2)
             elif interval == '1HR':
-                start = self.now - dt.timedelta(days=31)
+                start = self.now - dt.timedelta(days=14)
             else:
                 start = self.now - dt.timedelta(days=365)
 
