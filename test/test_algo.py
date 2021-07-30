@@ -11,7 +11,11 @@ from harvest.utils import gen_data
 prices = [10, 12, 11, 9, 8, 10, 11, 12, 13, 15, 14, 16, 13, 14]
 
 class TestAlgo(unittest.TestCase):
+
     def test_rsi(self):
+        """
+        Test that RSI values are calculated correctly.
+        """
         algo = BaseAlgo()
         algo.add_symbol('DUMMY')
         rsi = algo.rsi(prices=prices)[-1]
@@ -19,6 +23,9 @@ class TestAlgo(unittest.TestCase):
         self.assertAlmostEqual(rsi, 59.476113, places=5)
 
     def test_sma(self):
+        """
+        Test that SMA values are calculated correctly.
+        """
         algo = BaseAlgo()
         algo.add_symbol('DUMMY')
         sma = algo.sma(prices=prices)[-1]
@@ -26,6 +33,9 @@ class TestAlgo(unittest.TestCase):
         self.assertAlmostEqual(sma, sum(prices) / len(prices), places=5)
 
     def test_ema(self):
+        """
+        Test that EMA values are calculated correctly.
+        """
         algo = BaseAlgo()
         algo.add_symbol('DUMMY')
         ema = algo.ema(prices=prices)[-1]
@@ -37,6 +47,9 @@ class TestAlgo(unittest.TestCase):
         self.assertAlmostEqual(ema, expected_ema, places=5)
 
     def test_bbands(self):
+        """
+        Test that bbands returns the correct values based on provided price list.
+        """
         algo = BaseAlgo()
         algo.add_symbol('DUMMY')
         upper, middle, lower = algo.bbands(prices=prices)
@@ -51,7 +64,11 @@ class TestAlgo(unittest.TestCase):
         self.assertAlmostEqual(lower[-1], expected_middle - std, places=5)
     
     def test_bbands_trader(self):
-        t = Trader(DummyStreamer())
+        """
+        Test that bband values are calculated correctly based on data in Trader's Storage class.
+        """
+        streamer = DummyStreamer()
+        t = Trader(streamer)
         t.set_symbol('DUMMY')
         t.set_algo(BaseAlgo())
         t.start("1MIN", kill_switch=True)

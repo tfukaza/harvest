@@ -19,7 +19,7 @@ class DummyStreamer(API):
     """
 
     interval_list = ['1MIN', '5MIN', '15MIN', '30MIN', '1HR', '1DAY']
-    default_now = dt.datetime(year=2021, month=7, day=19, hour=13, minute=30)
+    default_now = dt.datetime(year=2000, month=1, day=1, hour=0, minute=0)
 
     def __init__(self, path: str=None, now: dt.datetime=default_now):
         self.trader = None
