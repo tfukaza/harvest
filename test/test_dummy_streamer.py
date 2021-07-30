@@ -3,6 +3,7 @@ import pathlib
 import unittest
 import datetime as dt
 
+import pytz
 from pandas.testing import assert_frame_equal
 
 from harvest.api.dummy import DummyStreamer 
@@ -14,12 +15,12 @@ class TestDummyStreamer(unittest.TestCase):
         # Get per-minute data
         df_1 = streamer.fetch_price_history('A', '1MIN')['A']
         # Check that the last date is 1/1/2020-00:00:00
-        self.assertEqual(df_1.index[-1], dt.datetime(2000, 1, 1, 0, 0))
+        self.assertEqual(df_1.index[-1], pytz.utc.localize(dt.datetime(2000, 1, 1, 0, 0)))
         # Advance the time by 1 minute
-        streamer.tick()
+        streamer._tick()
         df_2 = streamer.fetch_price_history('A', '1MIN')['A']
         # Check that the last date is 1/1/2020-00:01:00
-        self.assertEqual(df_2.index[-1], dt.datetime(2000, 1, 1, 0, 1))
+        self.assertEqual(df_2.index[-1], pytz.utc.localize(dt.datetime(2000, 1, 1, 0, 1)))
 
         # Check that the two dataframes are the same
         assert_frame_equal(df_1.iloc[1:], df_2.iloc[:-1])

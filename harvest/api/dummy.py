@@ -21,8 +21,9 @@ class DummyStreamer(API):
     interval_list = ['1MIN', '5MIN', '15MIN', '30MIN', '1HR', '1DAY']
     default_now = dt.datetime(year=2000, month=1, day=1, hour=0, minute=0)
 
-    def __init__(self, path: str=None, now: dt.datetime=default_now):
+    def __init__(self, path: str=None, now: dt.datetime=default_now, realistic_times: bool=False):
         self.trader = None
+        self.realistic_times = realistic_times
 
         # Set the current time
         self._set_now(now)
@@ -180,12 +181,14 @@ class DummyStreamer(API):
         }
 
         results = pd.DataFrame(data=d).set_index('timestamp')
-        open_time = dt.time(hour=13, minute=30)
-        close_time = dt.time(hour=20)
 
-        # Removes datapoints when the stock marked is closed. Does not handle holidays.
-        results = results.loc[(open_time < results.index.time) & (results.index.time < close_time)]
-        results = results[(results.index.dayofweek != 5) & (results.index.dayofweek != 6)]
+        if self.realistic_times:
+            open_time = dt.time(hour=13, minute=30)
+            close_time = dt.time(hour=20)
+
+            # Removes datapoints when the stock marked is closed. Does not handle holidays.
+            results = results.loc[(open_time < results.index.time) & (results.index.time < close_time)]
+            results = results[(results.index.dayofweek != 5) & (results.index.dayofweek != 6)]
         
         results.columns = pd.MultiIndex.from_product([[symbol], results.columns])
         results = aggregate_df(results, interval)
