@@ -22,7 +22,7 @@ class BaseStorage:
     A basic storage that is thread safe and stores data in memory.
     """
 
-    def __init__(self):
+    def __init__(self, N: int=200, limit_size: bool=True):
         """
         Initialize a lock used to make this class thread safe since it is 
         expected that multiple users will be reading and writing to this 
@@ -30,8 +30,8 @@ class BaseStorage:
         """
         self.storage_lock = Lock()
         self.storage = {}
-        self.N = 0
-        self.limit_size = True
+        self.N = N
+        self.limit_size = limit_size
 
     def store(self, symbol: str, interval: str, data: pd.DataFrame, remove_duplicate=True) -> None:
         """
