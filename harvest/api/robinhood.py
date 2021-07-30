@@ -143,9 +143,9 @@ class Robinhood(API):
         elif interval == '15MIN':
             get_interval_fmt = '5minute'
         elif interval == '30MIN':
-            get_interval_fmt = '5minute'
+            get_interval_fmt = '10minute'
         elif interval == '1HR':
-            get_interval_fmt = '5minute'
+            get_interval_fmt = 'hour'
         elif interval == '1DAY': 
             get_interval_fmt = 'day'
            

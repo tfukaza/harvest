@@ -19,10 +19,12 @@ class DummyStreamer(API):
     """
 
     interval_list = ['1MIN', '5MIN', '15MIN', '30MIN', '1HR', '1DAY']
-    default_now = dt.datetime(year=2021, month=7, day=19, hour=13, minute=30)
+    default_now = dt.datetime(year=2000, month=1, day=1, hour=0, minute=0)
 
-    def __init__(self, path: str=None, now: dt.datetime=default_now):
+    def __init__(self, path: str=None, now: dt.datetime=default_now, realistic_times: bool=False):
         self.trader = None
+        self.trader_main = None
+        self.realistic_times = realistic_times
 
         # Set the current time
         self._set_now(now)
@@ -78,8 +80,10 @@ class DummyStreamer(API):
         else: 
             self.now = current_datetime
 
-    def _tick(self) -> None:
+    def tick(self) -> None:
         self.now += interval_to_timedelta(self.interval)
+        if not self.trader_main == None:
+            self.main()
 
     # -------------- Streamer methods -------------- #
 
@@ -92,9 +96,9 @@ class DummyStreamer(API):
 
         if start is None:  
             if interval in ['1MIN', '5MIN', '15MIN', '30MIN']:
-                start = self.now - dt.timedelta(days=7)
+                start = self.now - dt.timedelta(days=2)
             elif interval == '1HR':
-                start = self.now - dt.timedelta(days=31)
+                start = self.now - dt.timedelta(days=14)
             else:
                 start = self.now - dt.timedelta(days=365)
 
@@ -180,12 +184,14 @@ class DummyStreamer(API):
         }
 
         results = pd.DataFrame(data=d).set_index('timestamp')
-        open_time = dt.time(hour=13, minute=30)
-        close_time = dt.time(hour=20)
 
-        # Removes datapoints when the stock marked is closed. Does not handle holidays.
-        results = results.loc[(open_time < results.index.time) & (results.index.time < close_time)]
-        results = results[(results.index.dayofweek != 5) & (results.index.dayofweek != 6)]
+        if self.realistic_times:
+            open_time = dt.time(hour=13, minute=30)
+            close_time = dt.time(hour=20)
+
+            # Removes datapoints when the stock marked is closed. Does not handle holidays.
+            results = results.loc[(open_time < results.index.time) & (results.index.time < close_time)]
+            results = results[(results.index.dayofweek != 5) & (results.index.dayofweek != 6)]
         
         results.columns = pd.MultiIndex.from_product([[symbol], results.columns])
         results = aggregate_df(results, interval)
@@ -201,11 +207,12 @@ class DummyStreamer(API):
     
     def fetch_option_market_data(self, symbol: str):
         # This is a placeholder so Trader doesn't crash
-        price = random.uniform(2, 1000)
+        price = float(hash((symbol, self.now))) / (2**64)
+        price = (price+1) * 1.5
         return {
             'price': price,
-            'ask': price, 
-            'bid': price,
+            'ask': price*1.05, 
+            'bid': price*0.95,
         }
 
     # ------------- Broker methods ------------- #

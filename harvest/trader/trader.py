@@ -38,6 +38,8 @@ class Trader:
         """
         signal(SIGINT, self.exit)
 
+        self.N = 200
+
         if sys.version_info[0] < 3 or sys.version_info[1] < 8:
             raise Exception("Harvest requires Python 3.8 or above.")
 
@@ -72,6 +74,8 @@ class Trader:
             self.storage = BaseStorage() # Storage to hold stock/crypto data
         else:
             self.storage = storage
+        
+        self.storage.N = self.N
         
         self.logger = BaseLogger()
 
@@ -142,7 +146,11 @@ class Trader:
         """
         for s in self.watch:
             for i in [self.fetch_interval] + self.aggregations:
-                self.storage.store(s, i, self.streamer.fetch_price_history(s, i))
+                df = self.streamer.fetch_price_history(s, i)
+                df = df.iloc[-self.N:]
+                if df_len := len(df) < self.N:
+                    warning(f"Symbol {s}, interval {i} initialized with only {df_len} data points")
+                self.storage.store(s, i, df)
 
     def _setup_account(self):
         """Initializes local cache of account info. 
