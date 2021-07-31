@@ -124,10 +124,10 @@ class PaperBroker(API):
             pos = next((r for r in lst if r['symbol'] == sym), None)
             if ret['side'] == 'buy':
                 # Check to see if user has enough funds to buy the stock
-                if self.buying_power < price * qty:
-                    warning(f"""Not enough buying power.\n Total price ({price} * {qty}) exceeds buying power {self.buy_power}.\n Reduce purchase quantity or increase buying power.""")
+                if self.buying_power < price * qty * (1 + self.commission_fee):
+                    warning(f"""Not enough buying power.\n Total price ({price} * {qty} * {(1 + self.commission_fee)}) exceeds buying power {self.buy_power}.\n Reduce purchase quantity or increase buying power.""")
                 # Check to see the price does not exceed the limit price
-                elif ret['limit_price'] < price:
+                elif ret['limit_price'] < price * (1 + self.commission_fee):
                     limit_price = ret['limit_price']
                     info(f'Limit price for {sym} is less than current price ({limit_price} < {price}).')
                 else:
@@ -142,8 +142,8 @@ class PaperBroker(API):
                         pos['avg_price'] = (pos['avg_price']*pos['quantity'] + price*qty)/(qty+pos['quantity'])
                         pos['quantity'] = pos['quantity'] + qty 
             
-                    self.cash -= price * qty 
-                    self.buying_power -= price * qty 
+                    self.cash -= price * qty * (1 + self.commission_fee)
+                    self.buying_power -= price * qty * (1 + self.commission_fee)
                     ret_1 = ret.copy()
                     self.orders.remove(ret)
                     ret = ret_1
@@ -155,8 +155,8 @@ class PaperBroker(API):
                 pos['quantity'] = pos['quantity'] - qty
                 if pos['quantity'] < 1e-8:
                     lst.remove(pos)
-                self.cash += price * qty 
-                self.buying_power += price * qty 
+                self.cash += price * qty * (1 - self.commission_fee)
+                self.buying_power += price * qty * (1 - self.commission_fee)
                 ret_1 = ret.copy()
                 self.orders.remove(ret)
                 ret = ret_1
@@ -201,9 +201,9 @@ class PaperBroker(API):
             pos = next((r for r in self.options if r['occ_symbol'] == occ_sym), None)
             if ret['side'] == 'buy':
                 # Check to see if user has enough funds to buy the stock
-                if self.buying_power < price * qty:
-                    warning(f"""Not enough buying power.\n Total price ({price} * {qty}) exceeds buying power {self.buy_power}.\n Reduce purchase quantity or increase buying power.""")
-                elif ret['limit_price'] < price:
+                if self.buying_power < price * qty * (1 + self.commission_fee):
+                    warning(f"""Not enough buying power.\n Total price ({price} * {qty} * {(1 + self.commission_fee)}) exceeds buying power {self.buy_power}.\n Reduce purchase quantity or increase buying power.""")
+                elif ret['limit_price'] < price * (1 + self.commission_fee):
                     limit_price = ret['limit_price']
                     info(f'Limit price for {sym} is less than current price ({limit_price} < {price}).')
                 else:
@@ -224,8 +224,8 @@ class PaperBroker(API):
                         pos['avg_price'] = (pos['avg_price']*pos['quantity'] + price*qty)/(qty+pos['quantity'])
                         pos['quantity'] = pos['quantity'] + qty 
         
-                    self.cash -= price * qty * 100
-                    self.buying_power -= price * qty * 100
+                    self.cash -= price * qty * 100 * (1 + self.commission_fee)
+                    self.buying_power -= price * qty * 100 * (1 + self.commission_fee)
                     ret['status'] = 'filled'
                     debug(f"After BUY: {self.buying_power}")
                     ret_1 = ret.copy()
@@ -236,8 +236,8 @@ class PaperBroker(API):
                     raise Exception(f"Cannot sell {sym}, is not owned")
                 pos['quantity'] = pos['quantity'] - qty
                 debug(f"current:{self.buying_power}")
-                self.cash += price*qty*100
-                self.buying_power += price*qty*100
+                self.cash += price * qty * 100 * (1 - self.commission_fee)
+                self.buying_power += price * qty * 100 * (1 + self.commission_fee)
                 debug(f"Made {sym} {occ_sym} {qty} {price}: {self.buying_power}")
                 if pos['quantity'] < 1e-8:
                     self.options.remove(pos)
