@@ -19,7 +19,7 @@ class PaperBroker(API):
 
     interval_list = ['1MIN', '5MIN', '15MIN', '30MIN', '1DAY']
 
-    def __init__(self, account_path: str=None):
+    def __init__(self, account_path: str=None, commission_fee: float=0.01):
         
         self.stocks = []
         self.options = []
@@ -30,6 +30,7 @@ class PaperBroker(API):
         self.cash = 1000000.0
         self.buying_power = 1000000.0
         self.multiplier = 1
+        self.commission_fee = commission_fee
         self.id = 0
 
         if account_path:
@@ -113,8 +114,8 @@ class PaperBroker(API):
 
         qty = ret['quantity']
        
-        # If order has been filled, simulate asset buy/sell
-        if ret['status'] == 'filled':
+        # If order is open, simulate asset buy/sell if possible
+        if ret['status'] == 'open':
             if is_crypto(ret['symbol']): 
                 lst = self.cryptos
             else:
@@ -122,19 +123,31 @@ class PaperBroker(API):
 
             pos = next((r for r in lst if r['symbol'] == sym), None)
             if ret['side'] == 'buy':
-                # If asset already exists, buy more. If not, add a new entry
-                if pos == None:
-                    lst.append({
-                        'symbol': sym,
-                        'avg_price': price,
-                        'quantity': qty
-                    })
+                # Check to see if user has enough funds to buy the stock
+                if self.buying_power < price * qty:
+                    warning(f"""Not enough buying power.\n Total price ({price} * {qty}) exceeds buying power {self.buy_power}.\n Reduce purchase quantity or increase buying power.""")
+                # Check to see the price does not exceed the limit price
+                elif ret['limit_price'] < price:
+                    limit_price = ret['limit_price']
+                    info(f'Limit price for {sym} is less than current price ({limit_price} < {price}).')
                 else:
-                    pos['avg_price'] = (pos['avg_price']*pos['quantity'] + price*qty)/(qty+pos['quantity'])
-                    pos['quantity'] = pos['quantity'] + qty 
-        
-                self.cash -= price * qty 
-                self.buying_power -= price * qty 
+                    # If asset already exists, buy more. If not, add a new entry
+                    if pos == None:
+                        lst.append({
+                            'symbol': sym,
+                            'avg_price': price,
+                            'quantity': qty
+                        })
+                    else:
+                        pos['avg_price'] = (pos['avg_price']*pos['quantity'] + price*qty)/(qty+pos['quantity'])
+                        pos['quantity'] = pos['quantity'] + qty 
+            
+                    self.cash -= price * qty 
+                    self.buying_power -= price * qty 
+                    ret_1 = ret.copy()
+                    self.orders.remove(ret)
+                    ret = ret_1
+                    ret['status'] = 'filled'
             else:
                 if pos == None:
                     raise Exception(f"Cannot sell {sym}, is not owned")
@@ -144,12 +157,12 @@ class PaperBroker(API):
                     lst.remove(pos)
                 self.cash += price * qty 
                 self.buying_power += price * qty 
+                ret_1 = ret.copy()
+                self.orders.remove(ret)
+                ret = ret_1
+                ret['status'] = 'filled'
             
-            self.equity = self._calc_equity()
-            
-            ret_1 = ret.copy()
-            self.orders.remove(ret)
-            ret = ret_1
+            self.equity = self._calc_equity() 
 
         debug(f"Returning status: {ret}")
         debug(f"Positions:\n{self.stocks}\n=========\n{self.cryptos}")
@@ -183,30 +196,41 @@ class PaperBroker(API):
             
         qty = ret['quantity']
        
-        # If order has been filled, simulate asset buy/sell
-        if ret['status'] == 'filled':
+        # If order has been opened, simulate asset buy/sell
+        if ret['status'] == 'open':
             pos = next((r for r in self.options if r['occ_symbol'] == occ_sym), None)
             if ret['side'] == 'buy':
-                # If asset already exists, buy more. If not, add a new entry
-                if pos == None:
-                    sym, date, option_type, strike = self.occ_to_data(occ_sym)
-                    self.options.append({
-                        'symbol': sym,
-                        'occ_symbol': ret['occ_symbol'],
-                        'avg_price': price,
-                        'quantity': ret['quantity'],
-                        "multiplier": 100,
-                        "exp_date": date,
-                        "strike_price": strike,
-                        "type": option_type
-                    })
+                # Check to see if user has enough funds to buy the stock
+                if self.buying_power < price * qty:
+                    warning(f"""Not enough buying power.\n Total price ({price} * {qty}) exceeds buying power {self.buy_power}.\n Reduce purchase quantity or increase buying power.""")
+                elif ret['limit_price'] < price:
+                    limit_price = ret['limit_price']
+                    info(f'Limit price for {sym} is less than current price ({limit_price} < {price}).')
                 else:
-                    pos['avg_price'] = (pos['avg_price']*pos['quantity'] + price*qty)/(qty+pos['quantity'])
-                    pos['quantity'] = pos['quantity'] + qty 
+                    # If asset already exists, buy more. If not, add a new entry
+                    if pos == None:
+                        sym, date, option_type, strike = self.occ_to_data(occ_sym)
+                        self.options.append({
+                            'symbol': sym,
+                            'occ_symbol': ret['occ_symbol'],
+                            'avg_price': price,
+                            'quantity': ret['quantity'],
+                            "multiplier": 100,
+                            "exp_date": date,
+                            "strike_price": strike,
+                            "type": option_type
+                        })
+                    else:
+                        pos['avg_price'] = (pos['avg_price']*pos['quantity'] + price*qty)/(qty+pos['quantity'])
+                        pos['quantity'] = pos['quantity'] + qty 
         
-                self.cash -= price * qty * 100
-                self.buying_power -= price * qty * 100
-                debug(f"After BUY: {self.buying_power}")
+                    self.cash -= price * qty * 100
+                    self.buying_power -= price * qty * 100
+                    ret['status'] = 'filled'
+                    debug(f"After BUY: {self.buying_power}")
+                    ret_1 = ret.copy()
+                    self.orders.remove(ret)
+                    ret = ret_1
             else:
                 if pos == None:
                     raise Exception(f"Cannot sell {sym}, is not owned")
@@ -217,13 +241,13 @@ class PaperBroker(API):
                 debug(f"Made {sym} {occ_sym} {qty} {price}: {self.buying_power}")
                 if pos['quantity'] < 1e-8:
                     self.options.remove(pos)
+                ret['status'] = 'filled'
+                ret_1 = ret.copy()
+                self.orders.remove(ret)
+                ret = ret_1
                 
             
             self.equity = self._calc_equity()
-            
-            ret_1 = ret.copy()
-            self.orders.remove(ret)
-            ret = ret_1
 
         debug(f"Returning status: {ret}")
         debug(f"Positions:\n{self.stocks}\n=========\n{self.cryptos}")
@@ -247,16 +271,17 @@ class PaperBroker(API):
         in_force: str='gtc', 
         extended: bool=False, 
         ):
-        # In this broker, all orders are filled immediately. 
+
         if not is_crypto(symbol):
             data = {
                 'type': 'STOCK',
                 'symbol': symbol,
                 'quantity': quantity,
                 'filled_qty': quantity,
+                'limit_price': limit_price,
                 'id': self.id,
                 'time_in_force': in_force,
-                'status': 'filled',
+                'status': 'open',
                 'side': side
             }
         else:
@@ -265,9 +290,10 @@ class PaperBroker(API):
                 'symbol': symbol,
                 'quantity': quantity,
                 'filled_qty': quantity,
+                'limit_price': limit_price,
                 'id': self.id,
                 'time_in_force': in_force,
-                'status': 'filled',
+                'status': 'open',
                 'side': side
             }
 
@@ -290,9 +316,9 @@ class PaperBroker(API):
             'filled_qty': 0,
             'id': self.id,
             'time_in_force': in_force,
-            'status': 'filled',
+            'status': 'open',
             'side': side,
-
+            'limit_price': limit_price,
             'occ_symbol': self.data_to_occ(symbol, exp_date, type, strike)
         }
       

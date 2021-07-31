@@ -74,12 +74,12 @@ class DummyStreamer(API):
         return results
 
     def _set_now(self, current_datetime: dt.datetime) -> None:
-        if current_datetime.tzinfo is None or current_datetime.tzinfo.utcoffset(current_datetime) is None:
+        if not has_timezone(current_datetime):
             self.now = pytz.utc.localize(current_datetime)
         else: 
             self.now = current_datetime
 
-    def _tick(self) -> None:
+    def tick(self) -> None:
         self.now += interval_to_timedelta(self.interval)
 
     # -------------- Streamer methods -------------- #

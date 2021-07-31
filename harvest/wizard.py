@@ -28,14 +28,6 @@ class Wizard:
         self.text_counter = 0
         self.prompt_counter = 0
 
-    # def create_secret(self, path: str) -> bool:
-    #     """
-    #     To be implemented by child classes to generate files with secrets in them. Returns True if the secret was successfully created and False otherwise.
-
-    #     :path: The location to save the file with the secret.
-    #     """
-    #     raise NotImplementedError('`create_secret` not implemented for this Wizard')
-
     def update_size(self):
         # https://stackoverflow.com/questions/566746/how-to-get-linux-console-window-width-in-python
         self.rows, self.columns = os.popen('stty size', 'r').read().split()
@@ -64,7 +56,7 @@ class Wizard:
         print(f"{header}{text}")
         self.text_counter += 1
 
-    def get_bool(self, prompt: str='y/n', true_pat:str=r'y|yes', false_path:str=r'n|no', default:str=None, persistent=True) -> bool:
+    def get_bool(self, prompt: str='y/n', true_pat:str=r'y|yes', false_pat:str=r'n|no', default:str=None, persistent=True) -> bool:
         """
         Prompts the user for a binary decision. Ignores case in regex matching. Return False if the input does not match any pattern and persistent is False.
 
@@ -87,7 +79,7 @@ class Wizard:
         if re.fullmatch(true_pat, value, flags=re.IGNORECASE):
             return True 
 
-        elif re.fullmatch(true_pat, value, flags=re.IGNORECASE):
+        elif re.fullmatch(false_pat, value, flags=re.IGNORECASE):
             return False
 
         if default is not None:
@@ -95,7 +87,7 @@ class Wizard:
 
         else:
             if persistent:
-                return self.get_bool(prompt, true_pat, false_path, default, persistent) 
+                return self.get_bool(prompt, true_pat, false_pat, default, persistent) 
             else:
                 return False
 
