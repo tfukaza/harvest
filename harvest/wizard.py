@@ -30,7 +30,9 @@ class Wizard:
 
     def update_size(self):
         # https://stackoverflow.com/questions/566746/how-to-get-linux-console-window-width-in-python
-        self.rows, self.columns = os.popen('stty size', 'r').read().split()
+        dimensions = os.popen('stty size', 'r').read().split()
+        # If dimensions not given, i.e. not run in a terminal such as on github actions
+        self.rows, self.columns = dimensions if len(dimensions) == 2 else (0, 0)
         self.columns = int(self.columns)
         self.rows = int(self.rows)
 
