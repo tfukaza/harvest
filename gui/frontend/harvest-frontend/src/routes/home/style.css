@@ -1,0 +1,10 @@
+.container {
+	min-height: 100%;
+	width: 100%;
+	padding: 50px;
+}
+
+.description {
+	margin: 0 auto;
+	width: 800px;
+}

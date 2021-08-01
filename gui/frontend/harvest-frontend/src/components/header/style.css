@@ -1,0 +1,36 @@
+.header {
+	left: 0;
+	top: 0;
+	width: 100%;
+	height: 90px;
+	padding: 0;
+	box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+	z-index: 50;
+}
+
+.header nav a {
+	color:  #000;
+	display: inline-block;
+	font-size: 24px;
+	font-weight:  bold;
+	height: 132px;
+	line-height: 90px;
+	padding: 0 50px;
+	min-width: 88px;
+	text-align: center;
+	text-decoration: none;
+	will-change: color;
+}
+
+.header nav a:hover,
+.header nav a:active {
+	color: rgba(128,220, 56, 0.8);
+}
+
+.header nav a.active {
+	color: rgba(128,220, 56, 1.0);
+}
+
+.header nav a.home {
+	font-size: 36px;
+}
