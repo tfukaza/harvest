@@ -31,6 +31,12 @@ jobs:
         python -m pip install --upgrade pip
         python setup.py install
 
+    - name: Store polygon secret in file
+      run: 'echo "$POLYGON_API_KEY" > poly_secret.yaml'
+      shell: bash
+      env:
+        POLYGON_API_KEY: ${{secrets.POLYGON_API_KEY}}
+
     - name: Run tests
       run: |
         pip install sqlalchemy
