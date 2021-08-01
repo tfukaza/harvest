@@ -4,11 +4,11 @@ import time
 from logging import debug, warning
 from typing import Any, Callable, Dict, List 
 from pathlib import Path
-import yaml
 import traceback
 
 # External libraries
 import pandas as pd
+import yaml
 
 # Submodule imports
 from harvest.utils import *

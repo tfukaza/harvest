@@ -27,13 +27,13 @@ setup(
         'test': CoverageTestCMD,
     },
     install_requires=[
+        'numpy',
         'pandas',
         'finta',
         'pyyaml',
         'tqdm',
         'pytz',
         "yfinance",
-        "SQLAlchemy"
     ],
     extras_require={
         "AlpacaMarket": [
@@ -42,6 +42,9 @@ setup(
         "Robinhood": [
             'pyotp',
             'robin_stocks'
+        ],
+        "DB": [
+            "SQLAlchemy"
         ]
     }
 )
