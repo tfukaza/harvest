@@ -110,7 +110,7 @@ class BaseAlgo:
     #     if symbol == None:
     #         symbol = self.watch[0]
     #     if quantity == None:
-    #         quantity = self.get_max_quantity(symbol)
+    #         quantity = self.get_asset_max_quantity(symbol)
     #     return self.trader.await_buy(symbol, quantity, in_force, extended)
     
     # def await_sell(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
@@ -131,7 +131,7 @@ class BaseAlgo:
     #     if symbol == None:
     #         symbol = self.watch[0]
     #     if quantity == None:
-    #         quantity = self.get_quantity(symbol)
+    #         quantity = self.get_asset_quantity(symbol)
     #     return self.trader.await_sell(symbol, quantity, in_force, extended)
 
     def buy_option(self, symbol: str, quantity: int=None, in_force: str='gtc'):

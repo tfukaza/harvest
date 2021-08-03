@@ -16,7 +16,7 @@ class Crypto(BaseAlgo):
         self.ret = 0
         self.cutoff = 0.0
     
-    def main(self, _):        
+    def main(self, meta):
         # Get the current time as a datetime object
         self.timestamp = self.get_datetime()
         print(f"Time: {self.timestamp}")
@@ -25,9 +25,9 @@ class Crypto(BaseAlgo):
         # When a symbol is not specified, it defaults to the first symbol on 
         # our watchlist (DOGE)
         # If an interval is not specified, it defaults to the interval of the algorithm (30MIN)
-        prices = self.get_price_list()
+        prices = self.get_asset_price_list()
         # Get the price history as a pandas Dataframe
-        candles = self.get_candle_list()
+        candles = self.get_asset_candle_list()
 
         # Get the Bollinger Band based on Dogecoin prices, at 30MIN intervals
         top_s, avg_s, btm_s = self.bbands(period=8, dev=0.8)
@@ -62,7 +62,7 @@ class Crypto(BaseAlgo):
             if self.buy_eval(trends, prices, candles):
                 print(f"BUY: {self.timestamp}, {prices[-1]}")
                 # Get how much Dogecoin we can buy
-                buy_qty = self.get_max_quantity(round=False)
+                buy_qty = self.get_asset_max_quantity()
                 self.buy_qty = buy_qty
                 # Buy the coins
                 self.buy(quantity=buy_qty)
@@ -74,7 +74,7 @@ class Crypto(BaseAlgo):
 
         elif self.hold:
             # Get how much returns you have made in Dogecoin so far
-            ret = self.get_returns()
+            ret = self.get_asset_returns()
             if self.sell_eval(ret):
                 print(f"SELL: {self.timestamp}, {prices[-1]}")
                 # Sell Dogecoin

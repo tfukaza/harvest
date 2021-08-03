@@ -18,7 +18,7 @@ class Option(BaseAlgo):
     
     def main(self, meta):
 
-        price = self.get_price()
+        price = self.get_asset_price()
 
         if not self.hold:
             # Get the expiration dates for this stock's option chain
@@ -28,7 +28,7 @@ class Option(BaseAlgo):
             # Filter out expiration dates that within 5 days (since they are VERY risky)
             dates = filter(lambda x: x > self.timestamp.date() + dt.timedelta(days=5), dates)
             # Get the option chain 
-            chain = self.get_chain_data('TWTR', dates[0])
+            chain = self.get_option_chain('TWTR', dates[0])
             # Strike price should be greater than current price
             chain = chain[chain['strike'] > price]
             # Only get calls

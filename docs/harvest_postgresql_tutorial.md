@@ -44,7 +44,7 @@ postgre_storage = DBStorage('postgresql+pg8000://username:password@localhost/pos
 
 class Watch(BaseAlgo):
     def main(self, meta):
-        print( self.get_price() )
+        print( self.get_asset_price() )
 
 if __name__ == "__main__":
     t = Trader(storage=postgre_storage)
