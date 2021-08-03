@@ -64,7 +64,7 @@ class Wizard:
         print(f"{header}{text}")
         self.text_counter += 1
 
-    def get_bool(self, prompt: str='y/n', true_pat:str=r'y|yes', false_path:str=r'n|no', default:str=None, persistent=True) -> bool:
+    def get_bool(self, prompt: str='y/n', true_pat:str=r'y|yes', false_pat:str=r'n|no', default:str=None, persistent=True) -> bool:
         """
         Prompts the user for a binary decision. Ignores case in regex matching. Return False if the input does not match any pattern and persistent is False.
 
@@ -87,7 +87,7 @@ class Wizard:
         if re.fullmatch(true_pat, value, flags=re.IGNORECASE):
             return True 
 
-        elif re.fullmatch(true_pat, value, flags=re.IGNORECASE):
+        elif re.fullmatch(false_pat, value, flags=re.IGNORECASE):
             return False
 
         if default is not None:
@@ -95,7 +95,7 @@ class Wizard:
 
         else:
             if persistent:
-                return self.get_bool(prompt, true_pat, false_path, default, persistent) 
+                return self.get_bool(prompt, true_pat, false_pat, default, persistent) 
             else:
                 return False
 
