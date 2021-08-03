@@ -73,15 +73,6 @@ class DummyStreamer(API):
                 results[symbol] = self.fetch_price_history(symbol, self.interval, last, today).iloc[[-1]]
         return results
 
-    def _set_now(self, current_datetime: dt.datetime) -> None:
-        if not has_timezone(current_datetime):
-            self.now = pytz.utc.localize(current_datetime)
-        else: 
-            self.now = current_datetime
-
-    def tick(self) -> None:
-        self.now += interval_to_timedelta(self.interval)
-
     # -------------- Streamer methods -------------- #
 
     def fetch_price_history(self,
@@ -240,3 +231,13 @@ class DummyStreamer(API):
     def fetch_order_queue(self) -> List[Dict[str, Any]]:
         raise Exception("Not implemented")
 
+    # ------------- Helper methods ------------- #
+
+    def _set_now(self, current_datetime: dt.datetime) -> None:
+        if not has_timezone(current_datetime):
+            self.now = pytz.utc.localize(current_datetime)
+        else: 
+            self.now = current_datetime
+
+    def tick(self) -> None:
+        self.now += interval_to_timedelta(self.interval)

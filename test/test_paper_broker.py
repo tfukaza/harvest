@@ -130,6 +130,19 @@ class TestPaperBroker(unittest.TestCase):
         self.assertEqual(status['symbol'], 'A')
         self.assertEqual(status['quantity'], 5)
 
+    def test_commission(self):
+        commission_fee = {
+            'buy': 5.76,
+            'sell': '2%'
+        }
+
+        dummy = PaperBroker(commission_fee=commission_fee)
+        total_cost = dummy.apply_commission(50, dummy.commission_fee, 'buy')
+        self.assertEqual(total_cost, 55.76)
+        total_cost = dummy.apply_commission(50, dummy.commission_fee, 'sell')
+        self.assertEqual(total_cost, 49)
+
+
 
 if __name__ == '__main__':
     unittest.main()

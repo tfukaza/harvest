@@ -1,4 +1,5 @@
 # Builtins
+import re
 import datetime as dt
 from typing import Any, Dict, List, Tuple
 from logging import critical, error, info, warning, debug
@@ -19,7 +20,16 @@ class PaperBroker(API):
 
     interval_list = ['1MIN', '5MIN', '15MIN', '30MIN', '1DAY']
 
-    def __init__(self, account_path: str=None, commission_fee: float=0.01):
+    def __init__(self, account_path: str=None, commission_fee='1%'):
+        """
+        :commission_fee: When this is a number it is assumed to be a flat price
+            on all buys and sells of assets. When this is a string formatted as
+            'XX%' then it is assumed that commission fees are that percent of the
+            original cost of the buy or sell. When commission fee is a dictionary
+            with the keys 'buy' and 'sell' you can specify different commission 
+            fees when buying and selling assets. The values must be numbers or 
+            strings formatted as 'XX%'.
+        """
         
         self.stocks = []
         self.options = []
@@ -113,7 +123,7 @@ class PaperBroker(API):
             price = self.trader.storage.load(sym, self.interval)[sym]['close'][-1]
 
         qty = ret['quantity']
-       
+        original_price = price * qty
         # If order is open, simulate asset buy/sell if possible
         if ret['status'] == 'open':
             if is_crypto(ret['symbol']): 
@@ -124,10 +134,11 @@ class PaperBroker(API):
             pos = next((r for r in lst if r['symbol'] == sym), None)
             if ret['side'] == 'buy':
                 # Check to see if user has enough funds to buy the stock
-                if self.buying_power < price * qty * (1 + self.commission_fee):
-                    warning(f"""Not enough buying power.\n Total price ({price} * {qty} * {(1 + self.commission_fee)}) exceeds buying power {self.buy_power}.\n Reduce purchase quantity or increase buying power.""")
+                actual_price = self.apply_commission(original_price, self.commission_fee, 'sell')
+                if self.buying_power < actual_price:
+                    warning(f"""Not enough buying power.\n Total price ({actual_worth}) exceeds buying power {self.buy_power}.\n Reduce purchase quantity or increase buying power.""")
                 # Check to see the price does not exceed the limit price
-                elif ret['limit_price'] < price * (1 + self.commission_fee):
+                elif ret['limit_price'] < price:
                     limit_price = ret['limit_price']
                     info(f'Limit price for {sym} is less than current price ({limit_price} < {price}).')
                 else:
@@ -142,8 +153,8 @@ class PaperBroker(API):
                         pos['avg_price'] = (pos['avg_price']*pos['quantity'] + price*qty)/(qty+pos['quantity'])
                         pos['quantity'] = pos['quantity'] + qty 
             
-                    self.cash -= price * qty * (1 + self.commission_fee)
-                    self.buying_power -= price * qty * (1 + self.commission_fee)
+                    self.cash -= actual_price
+                    self.buying_power -= actual_price
                     ret_1 = ret.copy()
                     self.orders.remove(ret)
                     ret = ret_1
@@ -155,8 +166,9 @@ class PaperBroker(API):
                 pos['quantity'] = pos['quantity'] - qty
                 if pos['quantity'] < 1e-8:
                     lst.remove(pos)
-                self.cash += price * qty * (1 - self.commission_fee)
-                self.buying_power += price * qty * (1 - self.commission_fee)
+                actual_worth = self.apply_commission(original_price, self.commission_fee, 'sell')
+                self.cash += actual_worth
+                self.buying_power += actual_worth
                 ret_1 = ret.copy()
                 self.orders.remove(ret)
                 ret = ret_1
@@ -170,20 +182,6 @@ class PaperBroker(API):
 
         return ret
 
-    def _calc_equity(self):
-        """
-        Calculates the total worth of the broker by adding together the 
-        worth of all stocks, cryptos, options and cash in the broker.
-        """
-        e = 0
-        for asset in self.stocks + self.cryptos + self.options:
-            add = asset['avg_price'] * asset['quantity']
-            if 'multiplier' in asset:
-                add = add * asset['multiplier']
-            e += add
-        e += self.cash
-        return e
-
     def fetch_option_order_status(self, id: int) -> Dict[str, Any]:
         ret = next(r for r in self.orders if r['id'] == id)
         sym = ret['symbol']
@@ -195,15 +193,16 @@ class PaperBroker(API):
             price = self.trader.streamer.fetch_option_market_data(occ_sym)['price']
             
         qty = ret['quantity']
-       
+        original_price = price * qty
         # If order has been opened, simulate asset buy/sell
         if ret['status'] == 'open':
             pos = next((r for r in self.options if r['occ_symbol'] == occ_sym), None)
             if ret['side'] == 'buy':
                 # Check to see if user has enough funds to buy the stock
-                if self.buying_power < price * qty * (1 + self.commission_fee):
-                    warning(f"""Not enough buying power.\n Total price ({price} * {qty} * {(1 + self.commission_fee)}) exceeds buying power {self.buy_power}.\n Reduce purchase quantity or increase buying power.""")
-                elif ret['limit_price'] < price * (1 + self.commission_fee):
+                actual_price = self.apply_commission(original_price, self.commission_fee, 'buy')
+                if self.buying_power < actual_price:
+                    warning(f"""Not enough buying power.\n Total price ({actual_price}) exceeds buying power {self.buy_power}.\n Reduce purchase quantity or increase buying power.""")
+                elif ret['limit_price'] < price:
                     limit_price = ret['limit_price']
                     info(f'Limit price for {sym} is less than current price ({limit_price} < {price}).')
                 else:
@@ -223,9 +222,9 @@ class PaperBroker(API):
                     else:
                         pos['avg_price'] = (pos['avg_price']*pos['quantity'] + price*qty)/(qty+pos['quantity'])
                         pos['quantity'] = pos['quantity'] + qty 
-        
-                    self.cash -= price * qty * 100 * (1 + self.commission_fee)
-                    self.buying_power -= price * qty * 100 * (1 + self.commission_fee)
+
+                    self.cash -= actual_price
+                    self.buying_power -= actual_price
                     ret['status'] = 'filled'
                     debug(f"After BUY: {self.buying_power}")
                     ret_1 = ret.copy()
@@ -236,8 +235,9 @@ class PaperBroker(API):
                     raise Exception(f"Cannot sell {sym}, is not owned")
                 pos['quantity'] = pos['quantity'] - qty
                 debug(f"current:{self.buying_power}")
-                self.cash += price * qty * 100 * (1 - self.commission_fee)
-                self.buying_power += price * qty * 100 * (1 + self.commission_fee)
+                actual_price = self.apply_commission(original_worth, self.commission_fee, 'sell')
+                self.cash += actual_price
+                self.buying_power += actual_price
                 debug(f"Made {sym} {occ_sym} {qty} {price}: {self.buying_power}")
                 if pos['quantity'] < 1e-8:
                     self.options.remove(pos)
@@ -331,4 +331,36 @@ class PaperBroker(API):
         }
         return ret
 
+    # ------------- Helper methods ------------- #
 
+    def _calc_equity(self):
+        """
+        Calculates the total worth of the broker by adding together the 
+        worth of all stocks, cryptos, options and cash in the broker.
+        """
+        e = 0
+        for asset in self.stocks + self.cryptos + self.options:
+            add = asset['avg_price'] * asset['quantity']
+            if 'multiplier' in asset:
+                add = add * asset['multiplier']
+            e += add
+        e += self.cash
+        return e
+
+    def apply_commission(self, inital_price: float, commission_fee, side: str) -> float:
+        if side == 'buy':
+            f = lambda a, b: a + b
+        elif side == 'sell':
+            f = lambda a, b: a - b
+
+        if type(commission_fee) in (int, float):
+            return f(inital_price, commission_fee)
+        elif type(commission_fee) is str:
+            pattern = r'([0-9]+\.?[0-9]*)\%'
+            match = re.fullmatch(pattern, commission_fee)
+            if match is not None:
+                commission_fee = inital_price * 0.01 * float(match.group(1))
+                return f(inital_price, commission_fee)
+            raise Exception(f'`commission_fee` {commission_fee} not valid, must match this regex expression: {pattern}')
+        elif type(commission_fee) is dict:
+            return self.apply_commission(inital_price, commission_fee[side], side)
