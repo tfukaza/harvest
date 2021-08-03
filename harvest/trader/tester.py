@@ -28,6 +28,8 @@ class BackTester(trader.Trader):
     def __init__(self, streamer=None, config={}):      
         """Initializes the TestTrader. 
         """
+        self.N = 200
+        
         if streamer == None:
             self.streamer = YahooStreamer()
         else:
@@ -37,6 +39,7 @@ class BackTester(trader.Trader):
         self.watch = []             # List of stocks to watch
 
         self.storage = PickleStorage()  # local cache of historic price
+        self.storage.N = self.N
 
         self.account = {}           # Local cash of account info 
 
@@ -47,6 +50,8 @@ class BackTester(trader.Trader):
         self.order_queue = []       # Queue of unfilled orders 
 
         self.logger = BaseLogger()
+
+        
 
 
     def read_pickle_data(self):
@@ -107,6 +112,7 @@ class BackTester(trader.Trader):
         self._setup_account()
         self.df = {}
 
+        self.storage.limit_size = False
         if source == "PICKLE":
             self.read_pickle_data()
         elif source == "CSV":
@@ -217,6 +223,8 @@ class BackTester(trader.Trader):
         for i in [self.interval] + self.aggregations:
             for s in self.watch:
                 self.storage.reset(s, i)
+        
+        self.storage.limit_size = True
         
         rows = len(self.df[interval][self.watch[0]].index)
         for i in range(rows):

@@ -22,7 +22,7 @@ class BaseStorage:
     A basic storage that is thread safe and stores data in memory.
     """
 
-    def __init__(self):
+    def __init__(self, N: int=200, limit_size: bool=True):
         """
         Initialize a lock used to make this class thread safe since it is 
         expected that multiple users will be reading and writing to this 
@@ -30,6 +30,8 @@ class BaseStorage:
         """
         self.storage_lock = Lock()
         self.storage = {}
+        self.N = N
+        self.limit_size = limit_size
 
     def store(self, symbol: str, interval: str, data: pd.DataFrame, remove_duplicate=True) -> None:
         """
@@ -49,30 +51,32 @@ class BaseStorage:
         # Removes the seconds and milliseconds
         data.index = normalize_pandas_dt_index(data)
 
+        self.storage_lock.acquire()
+
         if symbol in self.storage:
             # Handles if we already have stock data
             intervals = self.storage[symbol]
             if interval in intervals:
                 try:
-                    self.storage_lock.acquire()
                     # Handles if we have stock data for the given interval
                     intervals[interval] = self._append(intervals[interval], data, remove_duplicate=remove_duplicate)
-                    self.storage_lock.release()
                 except:
-                    self.storage_lock.release()
                     raise Exception('Append Failure, case not found!')
             else:
                 # Add the data as a new interval
                 intervals[interval] = data
         else:
-            self.storage_lock.acquire()
-
             # Just add the data into storage
             self.storage[symbol] = {
                 interval: data
             }
 
-            self.storage_lock.release()
+        cur_len = len(self.storage[symbol][interval])
+        if self.limit_size and cur_len > self.N:
+            # If we have more than N data points, remove the oldest data
+            self.storage[symbol][interval] = self.storage[symbol][interval].iloc[-self.N:]
+
+        self.storage_lock.release()
 
     def aggregate(self, symbol: str, base: str, target: str, remove_duplicate: bool=True):
         """
@@ -82,6 +86,9 @@ class BaseStorage:
         self.storage_lock.acquire()
         data = self.storage[symbol][base]
         self.storage[symbol][target] = self._append(self.storage[symbol][target], aggregate_df(data, target), remove_duplicate)
+        cur_len = len(self.storage[symbol][target])
+        if self.limit_size and cur_len > self.N:
+            self.storage[symbol][target] = self.storage[symbol][target].iloc[-self.N:]
         self.storage_lock.release()
     
     def reset(self, symbol: str, interval: str):

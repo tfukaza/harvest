@@ -9,8 +9,8 @@ from pandas.testing import assert_frame_equal
 from harvest.api.dummy import DummyStreamer 
 
 class TestDummyStreamer(unittest.TestCase):
-    def test_fetch_prices(self):
 
+    def test_fetch_prices(self):
         streamer = DummyStreamer()
         # Get per-minute data
         df_1 = streamer.fetch_price_history('A', '1MIN')['A']

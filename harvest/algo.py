@@ -295,6 +295,10 @@ class BaseAlgo:
         """
         symbol, interval, ref, prices = self._default_param(symbol, interval, ref, prices)
 
+        if len(prices) < period:
+            warning("Not enough data to calculate RSI, returning None")
+            return None
+
         ohlc = pd.DataFrame({
             'close': np.array(prices),
             'open': np.zeros(len(prices)),
@@ -316,6 +320,10 @@ class BaseAlgo:
         :returns: A list in numpy format, containing SMA values
         """
         symbol, interval, ref, prices = self._default_param(symbol, interval, ref, prices)
+
+        if len(prices) < period:
+            warning("Not enough data to calculate SMA, returning None")
+            return None
 
         ohlc = pd.DataFrame({
             'close': np.array(prices),
@@ -339,6 +347,10 @@ class BaseAlgo:
         """
         symbol, interval, ref, prices = self._default_param(symbol, interval, ref, prices)
 
+        if len(prices) < period:
+            warning("Not enough data to calculate EMA, returning None")
+            return None
+
         ohlc = pd.DataFrame({
             'close': np.array(prices),
             'open': np.zeros(len(prices)),
@@ -361,6 +373,10 @@ class BaseAlgo:
         :returns: A tuple of numpy lists, each a list of BBand top, average, and bottom values
         """
         symbol, interval, ref, prices = self._default_param(symbol, interval, ref, prices)
+
+        if len(prices) < period:
+            warning("Not enough data to calculate BBands, returning None")
+            return None, None, None
 
         ohlc = pd.DataFrame({
             'close': np.array(prices),
