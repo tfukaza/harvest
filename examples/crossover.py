@@ -3,7 +3,7 @@ from harvest.trader import Trader
 
 class Crossover(BaseAlgo):
     
-    def main(self, meta):
+    def main(self):
         # Get a list of sma values
         sma_short = self.sma(period=20)
         sma_long = self.sma(period=50)

@@ -16,7 +16,7 @@ class Option(BaseAlgo):
         self.occ = ''
         self.buy_qty = 0
     
-    def main(self, meta):
+    def main(self):
 
         price = self.get_asset_price()
 

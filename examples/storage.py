@@ -9,7 +9,7 @@ from harvest.storage import PickleStorage
 
 
 class Watch(BaseAlgo):
-    def main(self, meta):
+    def main(self):
         print( self.get_asset_price() )
 
 if __name__ == "__main__":
