@@ -106,7 +106,7 @@ t = Trader( Robinhood() )`}>
                     def setup(self):
                         pass
 
-                    def main(self, meta):
+                    def main(self):
                         pass`}></CodeBlock>
 
                 <p>every Algo must define two functions
@@ -120,7 +120,7 @@ t = Trader( Robinhood() )`}>
     def setup(self):
         self.hold = False
 
-    def main(self, meta):
+    def main(self):
         if self.hold:
             self.sell('TWTR', 1)
             self.hold = False
@@ -140,7 +140,7 @@ class Twitter(BaseAlgo):
     def setup(self):
         self.hold = False
 
-    def main(self, meta):
+    def main(self):
         if self.hold:
             self.sell('TWTR', 1)    
             self.hold = False
