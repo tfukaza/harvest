@@ -4,7 +4,7 @@ from harvest.trader import BackTester
 class BackTest(BaseAlgo):
     
     def main(self):
-        prices = self.get_asset_prices()
+        prices = self.get_asset_price_list()
         sma_short = self.sma(period=20)
         sma_long = self.sma(period=50)
         
