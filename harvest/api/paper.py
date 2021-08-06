@@ -235,7 +235,7 @@ class PaperBroker(API):
                     raise Exception(f"Cannot sell {sym}, is not owned")
                 pos['quantity'] = pos['quantity'] - qty
                 debug(f"current:{self.buying_power}")
-                actual_price = self.apply_commission(original_worth, self.commission_fee, 'sell')
+                actual_price = self.apply_commission(original_price, self.commission_fee, 'sell')
                 self.cash += actual_price
                 self.buying_power += actual_price
                 debug(f"Made {sym} {occ_sym} {qty} {price}: {self.buying_power}")
