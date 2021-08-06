@@ -615,6 +615,21 @@ class BaseAlgo:
             - avg_price
         """
         return self.trader.option_positions
+    
+    def get_watchlist(self) -> List:
+        """Returns the current watchlist.
+        """
+        return self.watch
+
+    def get_stock_watchlist(self) -> List:
+        """Returns the current watchlist.
+        """
+        return [s for s in self.watch if not is_crypto(s)]
+    
+    def get_crypto_watchlist(self) -> List:
+        """Returns the current watchlist.
+        """
+        return [s for s in self.watch if is_crypto(s)]
 
     def get_time(self):
         """Returns the current hour and minute.

@@ -137,11 +137,11 @@ class BackTester(trader.Trader):
             rows = len(df.index)
             print(f"Formatting {sym} data...")
             for agg in self.aggregations:
-                path = f"{path}/{sym}--{agg}.pickle"
-                file = Path(path)
+                tmp_path = f"{path}/{sym}--{agg}.pickle"
+                file = Path(tmp_path)
                 if file.is_file():
                     continue
-                print(f"Formatting {agg} ...")
+                print(f"Formatting {agg}...")
                 points = int(conv[agg]/conv[interval])
                 for i in tqdm(range(rows)):
                     df_tmp = df.iloc[0:i+1]                    
