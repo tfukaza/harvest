@@ -20,7 +20,7 @@ class PaperBroker(API):
 
     interval_list = ['1MIN', '5MIN', '15MIN', '30MIN', '1DAY']
 
-    def __init__(self, account_path: str=None, commission_fee='1%'):
+    def __init__(self, account_path: str=None, commission_fee=0):
         """
         :commission_fee: When this is a number it is assumed to be a flat price
             on all buys and sells of assets. When this is a string formatted as
