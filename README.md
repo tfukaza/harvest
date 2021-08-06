@@ -24,7 +24,7 @@ from harvest.trader import *
 from harvest.api import *
 
 class Watch(algo.BaseAlgo):
-    def main(self, _):
+    def main(self):
         sma_long = self.sma(period=50)
         sma_short = self.sma(period=20)
         if self.crossover(sma_long, sma_short):

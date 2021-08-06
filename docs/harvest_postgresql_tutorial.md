@@ -43,8 +43,8 @@ from harvest.trader import Trader
 postgre_storage = DBStorage('postgresql+pg8000://username:password@localhost/postgres')
 
 class Watch(BaseAlgo):
-    def main(self, meta):
-        print( self.get_price() )
+    def main(self):
+        print( self.get_asset_price() )
 
 if __name__ == "__main__":
     t = Trader(storage=postgre_storage)
