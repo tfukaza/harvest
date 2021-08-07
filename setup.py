@@ -42,6 +42,9 @@ setup(
         "Robinhood": [
             'pyotp',
             'robin_stocks'
+        ],
+        "Alpaca": [
+            'alpaca-trade-api'
         ]
     }
 )

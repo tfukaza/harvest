@@ -1,19 +1,18 @@
 # Builtins
-import json
 import yaml
 import datetime as dt
-import urllib.request
 from logging import critical, error, info, warning, debug
 from typing import Any, Dict, List, Tuple
 
 # External libraries
 import pandas as pd
+from alpaca_trade_api.rest import REST, TimeFrame
 
 # Submodule imports
 from harvest.api._base import API
 from harvest.utils import *
 
-class PolygonStreamer(API):
+class Alpaca(API):
 
     def __init__(self, path: str=None, is_basic_account: bool=False):
         super().__init__(path)
@@ -41,12 +40,9 @@ class PolygonStreamer(API):
     def main(self):
         df_dict = {}
         combo = self.watch_stock + self.watch_crypto
-        if self.basic and len(combo) > 5:
-            error("Basic accounts only allow for 5 API calls per minute, trying to get data for more than 5 assets! Aborting.")
-            return
 
         for s in combo:
-            df = self.get_data_from_polygon(s, 1, 'day', now() - dt.timedelta(days=1), now())
+            df = self.get_data_from_alpaca(s, 1, 'day', now() - dt.timedelta(days=1), now())
             df_dict[s] = df
             print(df)            
         self.trader_main(df_dict)
@@ -64,7 +60,7 @@ class PolygonStreamer(API):
         debug(f"Fetching {symbol} {interval} price history")
 
         if start is None:  
-            start = now() - dt.timedelta(days=365 * 2)
+            start = now() - dt.timedelta(days=365 * 5)
         if end is None:
             end = now()
 
@@ -72,7 +68,7 @@ class PolygonStreamer(API):
             return pd.DataFrame()
         
         val, unit = expand_interval(interval)
-        df = self.get_data_from_polygon(symbol, val, unit, start, end)
+        df = self.get_data_from_alpaca(symbol, val, unit, start, end)
 
         return df
     
@@ -132,7 +128,7 @@ class PolygonStreamer(API):
     
     @API._exception_handler
     def fetch_stock_positions(self):
-        raise Exception("Not implemented")
+        return api.list_positions()
 
     @API._exception_handler
     def fetch_option_positions(self):
@@ -140,7 +136,11 @@ class PolygonStreamer(API):
     
     @API._exception_handler
     def fetch_crypto_positions(self, key=None):
-        raise Exception("Not implemented")
+        if self.basic:
+            error("Basic accounts can't access crypto. Returning None")
+            return None
+
+        return api.list_positions()
     
     @API._exception_handler
     def update_option_positions(self, positions: List[Any]):
@@ -148,11 +148,11 @@ class PolygonStreamer(API):
 
     @API._exception_handler
     def fetch_account(self):
-        raise Exception("Not implemented")
+        return api.get_account().__dict__['_raw']
 
     @API._exception_handler
-    def fetch_stock_order_status(self, id):
-        raise Exception("Not implemented")
+    def fetch_stock_order_status(self, order_id: str):
+        return api.get_order(order_id).__dict__['_raw']
     
     @API._exception_handler
     def fetch_option_order_status(self, id):
@@ -160,7 +160,11 @@ class PolygonStreamer(API):
     
     @API._exception_handler
     def fetch_crypto_order_status(self, id):
-        raise Exception("Not implemented")
+        if self.basic:
+            error("Basic accounts can't access crypto. Returning None")
+            return None
+            
+        return api.get_order(order_id).__dict__['_raw']
     
     @API._exception_handler
     def fetch_order_queue(self):
@@ -180,48 +184,37 @@ class PolygonStreamer(API):
     
     # ------------- Helper methods ------------- #
 
-    def get_data_from_polygon(self, symbol: str, multipler: int, timespan: str, start: dt.datetime, end: dt.datetime) -> pd.DataFrame:
-        if self.basic and start < now() - dt.timedelta(days=365 * 2):
-            warning("Start time is over two years old! Only data from the past two years will be returned for basic accounts.")
+    def get_data_from_alpaca(self, symbol: str, multipler: int, timespan: str, start: dt.datetime, end: dt.datetime) -> pd.DataFrame:
+        if self.basic and is_crypto(symbol):
+            error("Basic accounts can't access crypto. Returning empty dataframe") 
+            return pd.DataFrame()
+
+        if self.basic and start < now() - dt.timedelta(days=365 * 5):
+            warning("Start time is over five years old! Only data from the past five years will be returned for basic accounts.")
 
         if timespan == 'MIN':
-            timespan = 'minute'
+            timespan = '1Min'
         elif timespan == 'HR':
-            timespan = 'hour'
+            timespan = '1Hour'
         elif timespan == 'DAY':
-            timespan = 'day'
+            timespan = '1Day'
 
         start_str = start.strftime('%Y-%m-%d')
         end_str = end.strftime('%Y-%m-%d')
 
-        crypto = False
-        if is_crypto(symbol):
-            symbol = "X:" + symbol[1:] + "-USD"
-            crypto = True
-
-        request_form = "https://api.polygon.io/v2/aggs/ticker/{symbol}/range/{multiplier}/{timespan}/{start}/{end}?adjusted=true&sort=asc&apiKey={api_key}"
-        request = request_form.format(symbol=symbol, multiplier=multipler, timespan=timespan, start=start_str, end=end_str, api_key=self.config['api_key'])
-        response = json.load(urllib.request.urlopen(request))
-
-        if response['status'] != 'ERROR':
-            df = pd.DataFrame(response['results'])
-        else:
-            error(f"Request error! Returning empty dataframe. \n {response}")
-            return pd.DataFrame()
-
-        if crypto:
-            symbol = '@' + symbol[2:-4]
+        temp_symbol = symbol[1:] if is_crypto(symbol) else symbol
+        bars = api.get_bars(temp_symbol, TimeFrame(timespan), start_str, end_str, adjustment='raw')
+        df = pd.DataFrame((bar.__dict__['_raw'] for bar in bars))
         df = self._format_df(df, symbol)
+        df = aggregate_df(df, f"{multipler}{timespan}")
         df = df.loc[start:end]
         return df
 
     def _format_df(self, df: pd.DataFrame, symbol: str):
-        df = df.rename(columns={"t": "timestamp", "o": "open", "c": "close", "h" : "high", "l" : "low", "v" : "volume"})
-        df = df[["timestamp", "open", "high", "low", "close", "volume"]].astype(float)
-        df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
-        # Timestamps are in US/Eastern and then converted UTC
-        df.index = pd.DatetimeIndex(df['timestamp'], tz=pytz.timezone('US/Eastern')).tz_convert(tz=pytz.utc)
-        df.drop(columns=['timestamp'], inplace=True)
+        df = df[['t', 'o', 'h', 'l', 'c', 'v']]
+        df.rename(columns={'t': 'timestamp', 'o': 'open', 'h': 'high', 'l': 'low', 'c': 'close', 'v': 'volume'}, inplace=True)
+        df.set_index('timestamp', inplace=True)
+        df.index = pd.DatetimeIndex(df.index)
         
         df.columns = pd.MultiIndex.from_product([[symbol], df.columns])
 
@@ -232,27 +225,36 @@ class PolygonStreamer(API):
 
         w = wizard.Wizard()
 
-        w.println("Hmm, looks like you haven't set up an api key for Polygon.")
+        w.println("Hmm, looks like you haven't set up an api key for Alpaca.")
         should_setup = w.get_bool("Do you want to set it up now?", default='y')
 
         if not should_setup:
-            w.println("You can't use Polygon without an API key.")
+            w.println("You can't use Alpaca without an API key.")
             w.println("You can set up the credentials manually, or use other streamers.")
             return False
 
         w.println("Alright! Let's get started")
 
-        have_account = w.get_bool("Do you have a Polygon account?", default='y')
+        have_account = w.get_bool("Do you have an Alpaca account?", default='y')
         if not have_account:
-            w.println("In that case you'll first need to make an account. I'll wait here, so hit Enter or Return when you've done that.")
+            w.println("In that case you'll first need to make an account. This takes a few steps.")
+            w.println("First visit: https://alpaca.markets/ and sign up. Hit Enter or Return for the next step.")
+            w.wait_for_input()
+            w.println("Follow the setups to make an individual or buisness account.")
+            w.wait_for_input()
+            w.println("In the sidebar of the Alpaca Dashboard, note if you want to use a live account (real money) or a paper account (simulated).")
+            w.wait_for_input()
+            w.println("On the right-hand side, in the Your API Keys box, click View and then Generate API Key. Copy these somewhere safe.")
             w.wait_for_input()
 
-        api_key = w.get_string("Enter your API key")
+        api_key_id = w.get_string("Enter your API key ID")
+        secret_key = w.get_password("End your API secret key")
         
         w.println(f"All steps are complete now 🎉. Generating {path}...")
 
         d = {
-            'api_key':      f"{api_key}",
+            'api_key_id':      f"{api_key}",
+            'secret_key':      f"{secret_key}"
         }
 
         with open(path, 'w') as file:
