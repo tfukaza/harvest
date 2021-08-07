@@ -140,7 +140,7 @@ class DummyStreamer(API):
             self.randomness[symbol + '_rng'] = rng
 
         # The inital price is arbitarly calculated from the first change in price
-        start_price = 100 * (self.randomness[symbol][0] + 0.51)     
+        start_price = 1000 * (self.randomness[symbol][0] + 0.51)     
 
         times = []
         current_time = start
