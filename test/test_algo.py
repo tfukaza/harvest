@@ -1,9 +1,10 @@
 # Builtins
+import unittest
+import unittest.mock
+
 from harvest import algo
 from harvest.trader import Trader
 from harvest.api.dummy import DummyStreamer
-import unittest
-
 from harvest.algo import BaseAlgo 
 
 from harvest.utils import gen_data

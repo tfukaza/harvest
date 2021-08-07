@@ -74,17 +74,6 @@ class DummyStreamer(API):
                 results[symbol] = self.fetch_price_history(symbol, self.interval, last, today).iloc[[-1]]
         return results
 
-    def _set_now(self, current_datetime: dt.datetime) -> None:
-        if current_datetime.tzinfo is None or current_datetime.tzinfo.utcoffset(current_datetime) is None:
-            self.now = pytz.utc.localize(current_datetime)
-        else: 
-            self.now = current_datetime
-
-    def tick(self) -> None:
-        self.now += interval_to_timedelta(self.interval)
-        if not self.trader_main == None:
-            self.main()
-
     # -------------- Streamer methods -------------- #
 
     def fetch_price_history(self,
@@ -151,7 +140,7 @@ class DummyStreamer(API):
             self.randomness[symbol + '_rng'] = rng
 
         # The inital price is arbitarly calculated from the first change in price
-        start_price = 100 * (self.randomness[symbol][0] + 0.51)     
+        start_price = 1000 * (self.randomness[symbol][0] + 0.51)     
 
         times = []
         current_time = start
@@ -244,3 +233,15 @@ class DummyStreamer(API):
     def fetch_order_queue(self) -> List[Dict[str, Any]]:
         raise Exception("Not implemented")
 
+    # ------------- Helper methods ------------- #
+
+    def _set_now(self, current_datetime: dt.datetime) -> None:
+        if current_datetime.tzinfo is None or current_datetime.tzinfo.utcoffset(current_datetime) is None:
+            self.now = pytz.utc.localize(current_datetime)
+        else: 
+            self.now = current_datetime
+
+    def tick(self) -> None:
+        self.now += interval_to_timedelta(self.interval)
+        if not self.trader_main == None:
+            self.main()

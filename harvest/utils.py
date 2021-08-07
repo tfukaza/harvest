@@ -73,6 +73,9 @@ def mark_up(x):
 def mark_down(x):
     return round(x * 0.95, 2)
 
+def has_timezone(date: dt.datetime) -> bool:
+    return date.tzinfo is not None and date.tzinfo.utcoffset(date) is not None
+
 ############ Functions used for testing #################
 
 def gen_data(symbol:str, points: int=50) -> pd.DataFrame:

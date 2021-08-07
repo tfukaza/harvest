@@ -37,7 +37,7 @@ class TestPaperBroker(unittest.TestCase):
         dummy = PaperBroker() 
         dummy.streamer = DummyStreamer()
         dummy.setup(['A'], '1MIN')
-        order = dummy.order_limit('buy', 'A', 5, 25)
+        order = dummy.order_limit('buy', 'A', 5, 50000)
         self.assertEqual(order['type'], 'STOCK')
         self.assertEqual(order['id'], 0)
         self.assertEqual(order['symbol'], 'A')
@@ -83,7 +83,7 @@ class TestPaperBroker(unittest.TestCase):
         dummy = PaperBroker(str(directory) + '/../dummy_account.yaml') 
         dummy.streamer = DummyStreamer()
         dummy.setup(['A'], '1MIN')
-        order = dummy.order_limit('sell', 'A', 2, 3)
+        order = dummy.order_limit('sell', 'A', 2, 50000)
         self.assertEqual(order['type'], 'STOCK')
         self.assertEqual(order['id'], 0)
         self.assertEqual(order['symbol'], 'A')
@@ -121,7 +121,7 @@ class TestPaperBroker(unittest.TestCase):
         dummy.streamer = DummyStreamer()
         dummy.setup(['A'], '1MIN')
         exp_date = dt.datetime.now() + dt.timedelta(hours=5)
-        order = dummy.order_option_limit('buy', 'A', 5, 25.75, 'OPTION', exp_date, 31.25)
+        order = dummy.order_option_limit('buy', 'A', 5, 50000, 'OPTION', exp_date, 50001)
         self.assertEqual(order['type'], 'OPTION')
         self.assertEqual(order['id'], 0)
         self.assertEqual(order['symbol'], 'A')
@@ -129,6 +129,19 @@ class TestPaperBroker(unittest.TestCase):
         status = dummy.fetch_option_order_status(order['id'])
         self.assertEqual(status['symbol'], 'A')
         self.assertEqual(status['quantity'], 5)
+
+    def test_commission(self):
+        commission_fee = {
+            'buy': 5.76,
+            'sell': '2%'
+        }
+
+        dummy = PaperBroker(commission_fee=commission_fee)
+        total_cost = dummy.apply_commission(50, dummy.commission_fee, 'buy')
+        self.assertEqual(total_cost, 55.76)
+        total_cost = dummy.apply_commission(50, dummy.commission_fee, 'sell')
+        self.assertEqual(total_cost, 49)
+
 
 
 if __name__ == '__main__':
