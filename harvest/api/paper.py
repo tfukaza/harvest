@@ -136,7 +136,7 @@ class PaperBroker(API):
                 # Check to see if user has enough funds to buy the stock
                 actual_price = self.apply_commission(original_price, self.commission_fee, 'sell')
                 if self.buying_power < actual_price:
-                    warning(f"""Not enough buying power.\n Total price ({actual_worth}) exceeds buying power {self.buy_power}.\n Reduce purchase quantity or increase buying power.""")
+                    warning(f"""Not enough buying power.\n Total price ({actual_price}) exceeds buying power {self.buy_power}.\n Reduce purchase quantity or increase buying power.""")
                 # Check to see the price does not exceed the limit price
                 elif ret['limit_price'] < price:
                     limit_price = ret['limit_price']
