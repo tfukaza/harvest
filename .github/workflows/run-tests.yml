@@ -40,7 +40,6 @@ jobs:
 
     - name: Run tests
       run: |
-        pip install sqlalchemy
         pip install coverage
         coverage run --source harvest -m unittest discover -s test
 
