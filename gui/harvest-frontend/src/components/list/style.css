@@ -1,0 +1,24 @@
+.list {
+    border: 1px solid #c4c4c4;
+    border-radius: 10px;
+    height: 100%;
+    list-style-type: none;
+    min-width: 200px;
+    overflow-y: auto;
+    padding: 0px;
+    width: 100%;
+}
+
+
+.list li:hover,
+.list li:active {
+    background: #e2e2e2;
+}
+
+.list li:not(last) {
+    border-bottom: 1px solid #c4c4c4;
+}
+
+.list li {
+    padding: 10px;
+}

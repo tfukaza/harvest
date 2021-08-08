@@ -4,6 +4,22 @@
 	padding: 50px;
 }
 
+.full_display_height {
+	height: 100vh;
+}
+
+.half_display_height {
+	height:  50vh;
+}
+
 .horizantal_container {
 	display: flex;
+}
+
+.fourth_width {
+	width:  25%;
+}
+
+.three_fourths_width {
+	width: 75%;
 }
