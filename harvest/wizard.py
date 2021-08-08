@@ -28,17 +28,11 @@ class Wizard:
         self.text_counter = 0
         self.prompt_counter = 0
 
-    # def create_secret(self, path: str) -> bool:
-    #     """
-    #     To be implemented by child classes to generate files with secrets in them. Returns True if the secret was successfully created and False otherwise.
-
-    #     :path: The location to save the file with the secret.
-    #     """
-    #     raise NotImplementedError('`create_secret` not implemented for this Wizard')
-
     def update_size(self):
         # https://stackoverflow.com/questions/566746/how-to-get-linux-console-window-width-in-python
-        self.rows, self.columns = os.popen('stty size', 'r').read().split()
+        dimensions = os.popen('stty size', 'r').read().split()
+        # If dimensions not given, i.e. not run in a terminal such as on github actions
+        self.rows, self.columns = dimensions if len(dimensions) == 2 else (0, 0)
         self.columns = int(self.columns)
         self.rows = int(self.rows)
 
