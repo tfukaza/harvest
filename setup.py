@@ -11,7 +11,7 @@ class CoverageTestCMD(Command):
         pass
 
     def run(self):
-        subprocess.run(['coverage', 'run', '--source', 'harvest', '-m', 'unittest', 'discover', '-s', 'test'])
+        subprocess.run(['coverage', 'run', '--source', 'harvest', '-m', 'unittest', 'discover', '-s', 'tests'])
         subprocess.run(['coverage', 'report'])
         subprocess.run(['coverage', 'html'])
         
