@@ -15,7 +15,6 @@ class CoverageTestCMD(Command):
         subprocess.run(['coverage', 'report'])
         subprocess.run(['coverage', 'html'])
         
-
 setup(
     cmdclass={
         'test': CoverageTestCMD,
