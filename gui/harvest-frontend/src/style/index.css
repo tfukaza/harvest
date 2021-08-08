@@ -1,3 +1,12 @@
+:root {
+	--mdc-theme-primary: #7fdc38;
+	--mdc-theme-secondary: #ff0000;
+	--mdc-theme-surface:  #00ff00;
+	--mdc-theme-on-primary: #fff;
+	--mdc-theme-on-secondary:  #fff;
+	--mdc-theme-on-surface:  #fff;
+}
+
 html, body {
 	height: 100%;
 	width: 100%;

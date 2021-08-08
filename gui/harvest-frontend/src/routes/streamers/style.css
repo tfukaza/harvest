@@ -4,6 +4,10 @@
 	padding: 50px;
 }
 
+.flex_center {
+	align-self: center;
+}
+
 .full_display_height {
 	height: 100vh;
 }
@@ -14,10 +18,11 @@
 
 .horizantal_container {
 	display: flex;
+	justify-content: space-between;
 }
 
 .fourth_width {
-	width:  25%;
+	width: 25%;
 }
 
 .three_fourths_width {

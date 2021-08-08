@@ -40,7 +40,7 @@ class Streamers extends Component {
 		<div class={style.fourth_width}>
 			<div class={style.horizantal_container}>
 				<h1>Streamers</h1>
-				<Button ripple raised primary>
+				<Button ripple raised primary class={style.flex_center}>
           add streamer
         </Button>
 			</div>
