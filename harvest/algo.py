@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 
 from harvest.utils import *
+from harvest.plugin._base import Plugin
 
 """
 Methods that perform an action should follow this naming convention:
@@ -40,6 +41,13 @@ class BaseAlgo:
 
     def main(self):
         pass
+
+    def add_plugin(self, plugin: Plugin):
+        value = getattr(self, plugin.name, None)
+        if value is None:
+            setattr(self, plugin.name, plugin)
+        else:
+            error(f"Plugin name is already in use! {plugin.name} points to {value}.")
     
     ############ Functions interfacing with broker through the trader #################
 
