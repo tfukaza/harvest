@@ -62,7 +62,7 @@ pip install harvest-algo
 
 Next, install the dependencies necessary for the brokerage of your choice:
 ```bash
-pip install harvest[BROKER]
+pip install harvest-algo[BROKER]
 ```
 Replace `BROKER` with a brokerage/data source of your choice:
 - Robinhood
