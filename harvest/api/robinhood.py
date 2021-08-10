@@ -190,7 +190,7 @@ class Robinhood(API):
         ret = rh.get_chains(symbol)
         return {
             "id": "n/a", 
-            "exp_dates": [str_to_day(s) for s in ret["expiration_dates"]],
+            "exp_dates": [str_to_date(s) for s in ret["expiration_dates"]],
             "multiplier": ret["trade_value_multiplier"], 
         }    
 
