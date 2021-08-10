@@ -4,8 +4,8 @@
 name: Deploy package to PyPI
 
 on:
-  push:
-    branches: [ main ]
+  release:
+    types: [ published ]
 
 jobs:
   build:
