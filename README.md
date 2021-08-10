@@ -11,7 +11,7 @@ Harvest is a Python based framework providing a simple and intuitive framework f
 ---
 
 **⚠️WARNING⚠️**
-Harvest is currently at **v0.1**. The program is unstable and cointains many bugs. Use with caution, and contributions are greatly appreciated. 
+Harvest is currently at **v0.1.1**. The program is unstable and cointains many bugs. Use with caution, and contributions are greatly appreciated. 
 - 🪲 [File a bug report](https://github.com/tfukaza/harvest/issues/new?assignees=&labels=bug&template=bug_report.md&title=%5B%F0%9F%AA%B0BUG%5D)
 - 💡 [Submit a feature suggestion](https://github.com/tfukaza/harvest/issues/new?assignees=&labels=enhancement%2C+question&template=feature-request.md&title=%5B%F0%9F%92%A1Feature+Request%5D)
 - 📝 [Request documentation](https://github.com/tfukaza/harvest/issues/new?assignees=&labels=documentation&template=documentation.md&title=%5B%F0%9F%93%9DDocumentation%5D)
@@ -52,18 +52,23 @@ With Harvest, the process of testing, simulating, and deploying your strategies 
 
 # Installation
 There are few prerequisites:
-- git
 - **Python 3.8+**
 - pip
 
-Harvest is still early in development, so you'll have to install it directly from this repo. 
+Once you have them, install via pip:
 ```bash
-pip install -e 'git+https://github.com/tfukaza/harvest.git#egg=harvest'
+pip install harvest-algo
 ```
-Next, install the dependencies necessary for the brokerage of your choice. Currently, Harvest only supports Robinhood. 
+
+Next, install the dependencies necessary for the brokerage of your choice:
 ```bash
-pip install -e 'git+https://github.com/tfukaza/harvest.git#egg=harvest[Robinhood]'
+pip install harvest-algo[BROKER]
 ```
+Replace `BROKER` with a brokerage/data source of your choice:
+- Robinhood
+- Alpaca (Coming soon)
+- Polygon (Coming soon)
+
 Now you're all set!
 
 # Contributing
