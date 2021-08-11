@@ -33,7 +33,7 @@ export default function Module() {
                 <h2>Installing</h2>
                 <p>First things first, let&#39;s install the library. </p>
                 
-                <CodeBlock lang="bash" value="pip install harvest-algo">
+                <CodeBlock lang="bash" value="pip install harvest-python">
                 </CodeBlock>
                 
                 <p>Next, we install additional libraries depending on which
@@ -41,7 +41,7 @@ export default function Module() {
                     using the following command:
                 </p>
 
-                <CodeBlock lang="bash" value="pip install harvest-algo[BROKER]'">
+                <CodeBlock lang="bash" value="pip install harvest-python[BROKER]'">
                 </CodeBlock>
 
                 <p>
