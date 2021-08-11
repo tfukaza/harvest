@@ -128,7 +128,7 @@ class Alpaca(API):
     
     @API._exception_handler
     def fetch_stock_positions(self):
-        return api.list_positions()
+        return [pos.__dict__['_raw'] for pos in api.list_positions() if pos.asset_class != 'crypto']
 
     @API._exception_handler
     def fetch_option_positions(self):
@@ -140,11 +140,11 @@ class Alpaca(API):
             error("Basic accounts can't access crypto. Returning None")
             return None
 
-        return api.list_positions()
+        return [pos.__dict__['_raw'] for pos in api.list_positions() if pos.asset_class == 'crypto']
     
     @API._exception_handler
     def update_option_positions(self, positions: List[Any]):
-        raise Exception("Not implemented")
+        raise Exception("Alpaca does not support options.")
 
     @API._exception_handler
     def fetch_account(self):
@@ -156,7 +156,7 @@ class Alpaca(API):
     
     @API._exception_handler
     def fetch_option_order_status(self, id):
-        raise Exception("Not implemented")
+        raise Exception("Alpaca does not support options.")
     
     @API._exception_handler
     def fetch_crypto_order_status(self, id):
@@ -168,7 +168,7 @@ class Alpaca(API):
     
     @API._exception_handler
     def fetch_order_queue(self):
-        raise Exception("Not implemented")
+        return [pos.__dict__['_raw'] for pos in api.list_positions()]
 
     def order_limit(self, 
         side: str, 
@@ -177,10 +177,17 @@ class Alpaca(API):
         limit_price: float, 
         in_force: str='gtc', 
         extended: bool=False):
-            raise Exception("Not implemented")
+            if self.basic and is_crypto(symbol):
+                error("Basic accounts can't buy/sell crypto. Returning None")
+                return None
+
+            if is_crypto(symbol):
+                symbol = symbol[1:]
+
+            return api.submit_order(symbol, quantity, side=side, type="limit", limit_price=limit_price, time_in_force=in_force, extended_hours=extended)
     
     def order_option_limit(self, side: str, symbol: str, quantity: int, limit_price: float, option_type, exp_date: dt.datetime, strike, in_force: str='gtc'):
-        raise Exception("Not implemented")
+        raise Exception("Alpaca does not support options.")
     
     # ------------- Helper methods ------------- #
 
