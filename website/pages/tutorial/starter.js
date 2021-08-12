@@ -73,7 +73,7 @@ export default function Module() {
                     lang="python"
                     value={`from harvest.algo import BaseAlgo
 from harvest.trader import Trader
-from harvest.broker.robinhood import Robinhood`}>
+from harvest.api.robinhood import Robinhood`}>
                 </CodeBlock>
 
                 <p>Then we create a Trader, which will 
@@ -103,11 +103,11 @@ t = Trader( Robinhood() )`}>
                 <CodeBlock
                     lang="python"
                     value={`class Twitter(BaseAlgo):
-                    def setup(self):
-                        pass
+def setup(self):
+    pass
 
-                    def main(self):
-                        pass`}></CodeBlock>
+def main(self):
+    pass`}></CodeBlock>
 
                 <p>every Algo must define two functions
 
@@ -117,16 +117,16 @@ t = Trader( Robinhood() )`}>
                 <CodeBlock
                     lang="python"
                     value={`class Twitter(BaseAlgo):
-    def setup(self):
-        self.hold = False
+def setup(self):
+    self.hold = False
 
-    def main(self):
-        if self.hold:
-            self.sell('TWTR', 1)
-            self.hold = False
-        else:
-            self.buy('TWTR', 1)
-            self.hold = True`}></CodeBlock>
+def main(self):
+    if self.hold:
+        self.sell('TWTR', 1)
+        self.hold = False
+    else:
+        self.buy('TWTR', 1)
+        self.hold = True`}></CodeBlock>
                 
                 <p>Finally, we tell the trader to use this algorithm, and run it. Below is the final code after putting everything together.</p>
                 
@@ -134,7 +134,7 @@ t = Trader( Robinhood() )`}>
                     lang="python"
                     value={`from harvest.algo import BaseAlgo
 from harvest.trader import Trader
-from harvest.broker.robinhood import Robinhood
+from harvest.api.robinhood import Robinhood
 
 class Twitter(BaseAlgo):
     def setup(self):
