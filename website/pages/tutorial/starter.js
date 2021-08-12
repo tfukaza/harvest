@@ -82,7 +82,7 @@ from harvest.api.robinhood import Robinhood`}>
                 <CodeBlock
                     lang="python"
                     value={`if __name__ == "__main__":
-t = Trader( Robinhood() )`}>
+    t = Trader( Robinhood() )`}>
                 </CodeBlock>
                 <p>
                 Few things happen here, and don&#39;t worry, this is as complex as Harvest will get (for now).
