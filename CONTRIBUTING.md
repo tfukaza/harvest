@@ -25,9 +25,9 @@ The following are the core values of this project you should keep in mind, espec
 ## Unit Testing
 After any modifications to the code, conduct unit tests by running:
 ```bash
-python -m unittest discover -s test
+python -m unittest discover -s tests
 ```
-from the project's root directory. This will run the tests defined in the `test` directory.
+from the project's root directory. This will run the tests defined in the `tests` directory.
 
 ## Real-Time Testing
 Unit testing does not cover all possible situations Harvest might encounter. Whenever possible, run the program as if you are a user on your own machine to test the code in real-life environments. This is especially true for codes for specific brokerages, which automated unit tests cannot cover.   
