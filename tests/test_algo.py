@@ -10,7 +10,7 @@ from harvest.algo import BaseAlgo
 from harvest.utils import gen_data
 
 import logging
-logging.basicConfig(level=logging.DEBUG)
+#logging.basicConfig(level=logging.DEBUG)
 
 prices = [10, 12, 11, 9, 8, 10, 11, 12, 13, 15, 14, 16, 13, 14]
 
@@ -97,20 +97,16 @@ class TestAlgo(unittest.TestCase):
         self.assertEqual(q, 5)
 
     def test_get_asset_cost(self):
-        t = Trader(DummyStreamer())
+        s = DummyStreamer()
+        t = Trader(s)
         t.set_symbol('A')
         t.set_algo(BaseAlgo())
         t.start("1MIN", kill_switch=True)
 
-        a_new = gen_data('A', 1)
-        t.main({'A': a_new})
-        # This should buy 1 of A
         t.algo[0].buy('A', 1)
+        s.tick()
 
-        a_new = gen_data('A', 1)
-        t.main({'A': a_new})
-        cost = a_new['A']['close'][-1] 
-
+        cost = s.fetch_price_history('A', '5MIN').iloc[-1]['A']['close']
         get_cost = t.algo[0].get_asset_cost('A')
 
         self.assertEqual(get_cost, cost)

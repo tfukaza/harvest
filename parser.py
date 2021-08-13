@@ -11,12 +11,10 @@ a_func = [
     a.buy_option,
     a.sell,
     a.sell_option,
-    a.await_buy,
-    a.await_sell,
     
     a.get_option_market_data,
-    a.get_chain_data,
-    a.get_chain_info,
+    a.get_option_chain,
+    a.get_option_chain_info,
 
     a.ema,
     a.rsi,
@@ -25,15 +23,15 @@ a_func = [
 
     a.get_account_buying_power,
     a.get_account_equity,
-    a.get_candle,
-    a.get_candle_list,
-    a.get_cost,
+    a.get_asset_candle,
+    a.get_asset_candle_list,
+    a.get_asset_cost,
     a.get_date,
     a.get_datetime,
-    a.get_price,
-    a.get_price_list,
-    a.get_quantity,
-    a.get_returns,
+    a.get_asset_price,
+    a.get_asset_price_list,
+    a.get_asset_quantity,
+    a.get_asset_returns,
     a.get_time,
 ]
 
