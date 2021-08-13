@@ -14,9 +14,12 @@ from harvest.utils import *
 
 class Alpaca(API):
 
-    def __init__(self, path: str=None, is_basic_account: bool=False):
+    def __init__(self, path: str=None, is_basic_account: bool=False, paper_trader: bool=False):
         super().__init__(path)
         self.basic = is_basic_account
+
+        endpoint = 'https://paper-api.alpaca.markets' if paper_trader else 'https://api.alpaca.markets'
+        self.api = REST(self.config.api_key, self.config.secret_key, endpoint)
 
     def no_secret(self, path: str) -> bool:
         return self.create_secret(path)
@@ -128,7 +131,7 @@ class Alpaca(API):
     
     @API._exception_handler
     def fetch_stock_positions(self):
-        return [pos.__dict__['_raw'] for pos in api.list_positions() if pos.asset_class != 'crypto']
+        return [pos.__dict__['_raw'] for pos in self.api.list_positions() if pos.asset_class != 'crypto']
 
     @API._exception_handler
     def fetch_option_positions(self):
@@ -140,7 +143,7 @@ class Alpaca(API):
             error("Basic accounts can't access crypto. Returning None")
             return None
 
-        return [pos.__dict__['_raw'] for pos in api.list_positions() if pos.asset_class == 'crypto']
+        return [pos.__dict__['_raw'] for pos in self.api.list_positions() if pos.asset_class == 'crypto']
     
     @API._exception_handler
     def update_option_positions(self, positions: List[Any]):
@@ -148,11 +151,11 @@ class Alpaca(API):
 
     @API._exception_handler
     def fetch_account(self):
-        return api.get_account().__dict__['_raw']
+        return self.api.get_account().__dict__['_raw']
 
     @API._exception_handler
     def fetch_stock_order_status(self, order_id: str):
-        return api.get_order(order_id).__dict__['_raw']
+        return self.api.get_order(order_id).__dict__['_raw']
     
     @API._exception_handler
     def fetch_option_order_status(self, id):
@@ -164,7 +167,7 @@ class Alpaca(API):
             error("Basic accounts can't access crypto. Returning None")
             return None
             
-        return api.get_order(order_id).__dict__['_raw']
+        return self.api.get_order(order_id).__dict__['_raw']
     
     @API._exception_handler
     def fetch_order_queue(self):
@@ -184,7 +187,7 @@ class Alpaca(API):
             if is_crypto(symbol):
                 symbol = symbol[1:]
 
-            return api.submit_order(symbol, quantity, side=side, type="limit", limit_price=limit_price, time_in_force=in_force, extended_hours=extended)
+            return self.api.submit_order(symbol, quantity, side=side, type="limit", limit_price=limit_price, time_in_force=in_force, extended_hours=extended)
     
     def order_option_limit(self, side: str, symbol: str, quantity: int, limit_price: float, option_type, exp_date: dt.datetime, strike, in_force: str='gtc'):
         raise Exception("Alpaca does not support options.")
@@ -210,7 +213,7 @@ class Alpaca(API):
         end_str = end.strftime('%Y-%m-%d')
 
         temp_symbol = symbol[1:] if is_crypto(symbol) else symbol
-        bars = api.get_bars(temp_symbol, TimeFrame(timespan), start_str, end_str, adjustment='raw')
+        bars = self.api.get_bars(temp_symbol, TimeFrame(timespan), start_str, end_str, adjustment='raw')
         df = pd.DataFrame((bar.__dict__['_raw'] for bar in bars))
         df = self._format_df(df, symbol)
         df = aggregate_df(df, f"{multipler}{timespan}")
@@ -260,7 +263,7 @@ class Alpaca(API):
         w.println(f"All steps are complete now 🎉. Generating {path}...")
 
         d = {
-            'api_key_id':      f"{api_key}",
+            'api_key':         f"{api_key_id}",
             'secret_key':      f"{secret_key}"
         }
 
