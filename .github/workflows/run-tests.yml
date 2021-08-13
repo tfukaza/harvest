@@ -30,7 +30,6 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         python setup.py install
-        pip install alpaca-trade-api
 
     - name: Store polygon secret in file
       run: 'echo "api_key: $POLYGON_API_KEY" > poly_secret.yaml'
