@@ -1,6 +1,6 @@
 # Builtins
 import unittest
-import unittest.mock
+from unittest.mock import patch
 
 from harvest import algo
 from harvest.trader import Trader
@@ -173,7 +173,10 @@ class TestAlgo(unittest.TestCase):
         t.main({'A': a_new})
         self.assertEqual(0, t.algo[0].get_asset_quantity())
     
-    def test_buy_sell_option_auto(self):
+    @patch('harvest.api._base.mark_up')
+    def test_buy_sell_option_auto(self, mock_mark_up):
+        mock_mark_up.return_value = 10
+
         streamer = DummyStreamer()
         t = Trader(streamer)
         t.set_symbol('X')
