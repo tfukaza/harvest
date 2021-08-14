@@ -2,6 +2,7 @@
 import datetime as dt
 from typing import Any, Dict, List, Tuple
 from logging import critical, error, info, warning, debug
+import hashlib
 
 # External libraries
 import pytz
@@ -196,8 +197,14 @@ class DummyStreamer(API):
     
     def fetch_option_market_data(self, symbol: str):
         # This is a placeholder so Trader doesn't crash
-        price = float(hash((symbol, self.now))) / (2**64)
+        message = hashlib.sha256()
+        message.update(symbol.encode('utf-8'))
+        message.update(str(self.now).encode('utf-8'))
+        hsh = message.digest()
+        price = int.from_bytes(hsh[:4], 'big') / (2 ** 32)
         price = (price+1) * 1.5
+        print(price)
+      
         return {
             'price': price,
             'ask': price*1.05, 

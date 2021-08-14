@@ -179,10 +179,11 @@ class TestAlgo(unittest.TestCase):
         t.set_symbol('X')
         t.set_algo(BaseAlgo())
         t.start("1MIN", kill_switch=True)
-
+        streamer.tick()
+        
         t.algo[0].buy_option('X     110101C01000000')
         streamer.tick()
-
+     
         p = t.option_positions[0]
         self.assertEqual(p['occ_symbol'], 'X     110101C01000000')
 
