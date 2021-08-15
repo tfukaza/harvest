@@ -475,7 +475,8 @@ class API:
             return None
         if self.trader is None:
             buy_power = self.fetch_account()['buying_power']
-            price = self.trader.streamer.fetch_price_history( symbol, self.interval, now() - dt.timedelta(days=7), now())[symbol]['close'][-1]
+            # If there is no trader, streamer must be manually set
+            price = self.streamer.fetch_price_history( symbol, self.interval, now() - dt.timedelta(days=7), now())[symbol]['close'][-1]
         else:
             buy_power = self.trader.account['buying_power']
             price = self.trader.storage.load(symbol, self.interval)[symbol]['close'][-1]
@@ -506,7 +507,7 @@ class API:
             return None
        
         if self.trader is None:
-            price = self.trader.streamer.fetch_price_history(symbol, self.interval, now() - dt.timedelta(days=7), now())[symbol]['close'][-1]
+            price = self.streamer.fetch_price_history(symbol, self.interval, now() - dt.timedelta(days=7), now())[symbol]['close'][-1]
         else:
             price = self.trader.storage.load(symbol, self.interval)[symbol]['close'][-1]
 
@@ -529,7 +530,7 @@ class API:
             return None
         if self.trader is None:
             buy_power = self.fetch_account()['buying_power']
-            price = self.trader.streamer.fetch_option_market_data(symbol)['price']
+            price = self.streamer.fetch_option_market_data(symbol)['price']
         else:
             buy_power = self.trader.account['buying_power']
             price = self.trader.streamer.fetch_option_market_data(symbol)['price']
@@ -560,7 +561,7 @@ Reduce purchase quantity or increase buying power.""")
             warning(f"Quantity cannot be less than or equal to 0: was given {quantity}")
             return None
         if self.trader is None:
-            price = self.trader.streamer.fetch_option_market_data(symbol)['price']
+            price = self.streamer.fetch_option_market_data(symbol)['price']
         else:
             price = self.trader.streamer.fetch_option_market_data(symbol)['price']
             
