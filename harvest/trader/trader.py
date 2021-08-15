@@ -198,7 +198,7 @@ class Trader:
         for a in self.algo:
             a.trader = self
             a.watch = self.watch
-            #a.fetch_interval = self.fetch_interval
+            a.fetch_interval = self.fetch_interval
             a.setup()
 
         self.blocker = {}
