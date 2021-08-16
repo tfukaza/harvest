@@ -144,9 +144,6 @@ class Trader:
         for s in self.watch:
             for i in [self.fetch_interval] + self.aggregations:
                 df = self.streamer.fetch_price_history(s, i)
-                df = df.iloc[-self.N:]
-                if df_len := len(df) < self.N:
-                    warning(f"Symbol {s}, interval {i} initialized with only {df_len} data points")
                 self.storage.store(s, i, df)
 
     def _setup_account(self):

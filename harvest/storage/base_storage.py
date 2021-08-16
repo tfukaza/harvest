@@ -2,7 +2,7 @@ import pandas as pd
 import datetime as dt
 from threading import Lock
 from typing import Tuple
-from logging import debug
+from logging import debug, warning
 import re
 
 from harvest.utils import *
@@ -54,23 +54,28 @@ class BaseStorage:
         self.storage_lock.acquire()
 
         if symbol in self.storage:
-            # Handles if we already have stock data
+            # Handles if we already have data
             intervals = self.storage[symbol]
             if interval in intervals:
                 try:
                     # Handles if we have stock data for the given interval
                     intervals[interval] = self._append(intervals[interval], data, remove_duplicate=remove_duplicate)
+                    intervals[interval] = intervals[interval][-self.N:]
                 except:
                     raise Exception('Append Failure, case not found!')
             else:
                 # Add the data as a new interval
                 intervals[interval] = data
         else:
+            if self.limit_size:
+                data = data[-self.N:]
+            if df_len := len(data) < self.N:
+                warning(f"Symbol {symbol}, interval {interval} initialized with only {df_len} data points")
             # Just add the data into storage
             self.storage[symbol] = {
                 interval: data
             }
-
+            
         cur_len = len(self.storage[symbol][interval])
         if self.limit_size and cur_len > self.N:
             # If we have more than N data points, remove the oldest data
