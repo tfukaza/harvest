@@ -194,7 +194,7 @@ class BaseAlgo:
                 quantity = self.get_asset_quantity(s)
             return self.trader.sell_option(s, quantity, in_force)
     
-    def get_option_auto(self, type, symbol=None, limit_exp=None, limit_strike=None):
+    def filter_option_chain(self, symbol=None, type=None, lower_exp=None, upper_exp=None, lower_strike=None, upper_strike=None):
         """
         Automatically buys an option that satisfies the criteria specified.
 
@@ -207,24 +207,27 @@ class BaseAlgo:
         """
         if symbol is None:
             symbol = self.watch[0]
-        if limit_exp is None:
-            limit_exp = self.get_date() + dt.timedelta(days=5)
-        if limit_strike is None:
-            limit_strike = self.get_asset_price(symbol) 
 
         exp_dates = self.get_option_chain_info(symbol)['exp_dates']
-        exp_dates = list(filter(lambda x: x >= limit_exp, exp_dates))
+        if not lower_exp is None:
+            exp_dates = list(filter(lambda x: x >= lower_exp, exp_dates))
+        if not upper_exp is None:
+            exp_dates = list(filter(lambda x: x <= upper_exp, exp_dates))
         exp_dates = sorted(exp_dates)
+
         exp_date = exp_dates[0]
         chain = self.get_option_chain(symbol, exp_date)
-        if type == 'call':
-            chain = chain[chain['strike'] > limit_strike]
-        else:
-            chain = chain[chain['strike'] < limit_strike]
-        chain = chain[chain['type'] == type]
+        if not lower_strike is None:
+            chain = chain[chain['strike'] >= lower_strike]
+        if not upper_strike is None:
+            chain = chain[chain['strike'] <= upper_strike]
+        
+        if not type is None:
+            chain = chain[chain['type'] == type]
+        
         chain = chain.sort_values(by=['strike', 'exp_date'])
-        occ = chain.index[0]
-        return occ
+    
+        return chain
     
     # ------------------ Functions to trade options ----------------------
 
