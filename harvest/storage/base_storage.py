@@ -22,7 +22,7 @@ class BaseStorage:
     A basic storage that is thread safe and stores data in memory.
     """
 
-    def __init__(self, N: int=200, limit_size: bool=True):
+    def __init__(self, queue_size: int=200, limit_size: bool=True):
         """
         Initialize a lock used to make this class thread safe since it is 
         expected that multiple users will be reading and writing to this 
@@ -30,7 +30,7 @@ class BaseStorage:
         """
         self.storage_lock = Lock()
         self.storage = {}
-        self.N = N
+        self.queue_size = queue_size
         self.limit_size = limit_size
 
     def store(self, symbol: str, interval: str, data: pd.DataFrame, remove_duplicate=True) -> None:
@@ -72,9 +72,9 @@ class BaseStorage:
             }
 
         cur_len = len(self.storage[symbol][interval])
-        if self.limit_size and cur_len > self.N:
+        if self.limit_size and cur_len > self.queue_size:
             # If we have more than N data points, remove the oldest data
-            self.storage[symbol][interval] = self.storage[symbol][interval].iloc[-self.N:]
+            self.storage[symbol][interval] = self.storage[symbol][interval].iloc[-self.queue_size:]
 
         self.storage_lock.release()
 
@@ -87,8 +87,8 @@ class BaseStorage:
         data = self.storage[symbol][base]
         self.storage[symbol][target] = self._append(self.storage[symbol][target], aggregate_df(data, target), remove_duplicate)
         cur_len = len(self.storage[symbol][target])
-        if self.limit_size and cur_len > self.N:
-            self.storage[symbol][target] = self.storage[symbol][target].iloc[-self.N:]
+        if self.limit_size and cur_len > self.queue_size:
+            self.storage[symbol][target] = self.storage[symbol][target].iloc[-self.queue_size:]
         self.storage_lock.release()
     
     def reset(self, symbol: str, interval: str):
