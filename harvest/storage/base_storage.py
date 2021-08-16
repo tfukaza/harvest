@@ -69,8 +69,8 @@ class BaseStorage:
         else:
             if self.limit_size:
                 data = data[-self.N:]
-            if df_len := len(data) < self.N:
-                warning(f"Symbol {symbol}, interval {interval} initialized with only {df_len} data points")
+            if len(data) < self.N:
+                warning(f"Symbol {symbol}, interval {interval} initialized with only {len(data)} data points")
             # Just add the data into storage
             self.storage[symbol] = {
                 interval: data
