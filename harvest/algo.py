@@ -198,11 +198,12 @@ class BaseAlgo:
         """
         Automatically buys an option that satisfies the criteria specified.
 
-        :param str type: 'call' or 'put'
         :param str? symbol: Symbol of stock. defaults to first symbol in watchlist
-        :param datetime limit_exp: Minimum expiration date of the option. defaults to 5 days from current day
-        :param float limit_strike: For calls, sets the minimum strike price of the option - for puts, the maximum. 
-            defaults to current stock price
+        :param str? type: 'call' or 'put'
+        :param datetime lower_exp: Minimum expiration date of the option. 
+        :param datetime upper_exp: Maximum expiration date of the option. 
+        :param float lower_strike: The minimum strike price of the option
+        :param float upper_strike: The maximum strike price of the option
 
         """
         if symbol is None:
