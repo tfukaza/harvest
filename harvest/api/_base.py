@@ -104,8 +104,7 @@ class API:
         :kill_switch: A flag to indicate whether the algorithm should stop 
             after a single iteration. Usually used for testing.
         """
-        self.cur_hr = -1
-        self.cur_min = -1
+        cur_min = -1
         val, unit = expand_interval(self.fetch_interval)
         
         print("Running...")
@@ -120,19 +119,19 @@ class API:
             while 1:
                 cur = now()
                 minutes = cur.minute
-                if minutes % val == 0 and minutes != self.cur_min:
+                if minutes % val == 0 and minutes != cur_min:
                     self.main()
                     time.sleep(sleep)
-                self.cur_min = minutes
+                cur_min = minutes
         elif unit == 'HR':
             sleep = val * 3600 - 60
             while 1:
                 cur = now()
                 minutes = cur.minute
-                if minutes == 0 and minutes != self.cur_min:
+                if minutes == 0 and minutes != cur_min:
                     self.main()
                     time.sleep(sleep)
-                self.cur_min = minutes
+                cur_min = minutes
         else:
             while 1:
                 cur = now()
@@ -141,7 +140,7 @@ class API:
                 if hours == 19 and minutes == 50:
                     self.main()
                     time.sleep(80000)
-                self.cur_min = minutes
+                cur_min = minutes
             
 
     def main(self) -> Dict[str, pd.DataFrame]:
@@ -476,6 +475,7 @@ class API:
             return None
         if self.trader is None:
             buy_power = self.fetch_account()['buying_power']
+            # If there is no trader, streamer must be manually set
             price = self.streamer.fetch_price_history( symbol, self.interval, now() - dt.timedelta(days=7), now())[symbol]['close'][-1]
         else:
             buy_power = self.trader.account['buying_power']
@@ -490,36 +490,6 @@ class API:
 
         return self.order_limit('buy', symbol, quantity, limit_price, in_force, extended)
     
-    def await_buy(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
-        """
-        Buys the specified asset, and hangs the code until the order is filled. 
-
-        :symbol:    Symbol of the asset to buy
-        :quantity:  Quantity of asset to buy
-        :in_force:  Duration the order is in force
-        :extended:  Whether to trade in extended hours or not. 
-
-        :returns: The result of order_limit(). Returns None if there is an issue with the parameters.
-        """
-        ret = self.buy(symbol, quantity, in_force, extended)
-
-        if self.trader is None:
-            if is_crypto(symbol):
-                check = self.fetch_crypto_order_status
-            else:
-                check = self.fetch_stock_order_status
-        else:
-            if is_crypto(symbol):
-                check = self.trader.broker.fetch_crypto_order_status
-            else:
-                check = self.trader.broker.fetch_stock_order_status
-
-        while True:
-            time.sleep(0.5)
-            stat = check(ret["id"])
-            if stat['status'] == 'filled':
-                return stat
-
     def sell(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
         """Sells the specified asset.
 
@@ -544,29 +514,6 @@ class API:
         limit_price = mark_down(price)
        
         return self.order_limit('sell', symbol, quantity, limit_price, in_force, extended)
-
-    def await_sell(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
-        """
-        Sells the specified asset, and hangs the code until the order is filled. 
-
-        :symbol:    Symbol of the asset to buy
-        :quantity:  Quantity of asset to buy
-        :in_force:  Duration the order is in force
-        :extended:  Whether to trade in extended hours or not. 
-
-        :returns: The result of order_limit(). Returns None if there is an issue with the parameters.
-        """
-        ret = self.sell(symbol, quantity, in_force, extended)
-        
-        time.sleep(2)
-        while True:
-            if self.trader is None:
-                stat = self.fetch_stock_order_status(ret["id"])
-            else:
-                stat = self.trader.broker.fetch_stock_order_status(ret["id"])
-            if stat['status'] == 'filled':
-                return stat
-            time.sleep(1)
        
     def buy_option(self, symbol: str, quantity: int=0, in_force: str='gtc'):
         """
