@@ -72,7 +72,7 @@ class BaseStorage:
             }
 
         cur_len = len(self.storage[symbol][interval])
-        if self.limit_size and cur_len > self.queue_size:
+        if self.limit_size and cur_len > int(self.queue_size):
             # If we have more than N data points, remove the oldest data
             self.storage[symbol][interval] = self.storage[symbol][interval].iloc[-self.queue_size:]
 
