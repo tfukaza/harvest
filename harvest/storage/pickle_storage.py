@@ -16,7 +16,7 @@ class PickleStorage(BaseStorage):
     An extension of the basic storage that saves data in pickle files.
     """
 
-    def __init__(self, queue_size=200, limit_size=True, save_dir: str='data'):
+    def __init__(self, save_dir: str='data', queue_size:int=200, limit_size:bool=True):
         super().__init__(queue_size, limit_size)
         """
         Adds a directory to save data to. Loads any data that is currently in the
