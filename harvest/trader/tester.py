@@ -239,7 +239,7 @@ class BackTester(trader.Trader):
                 # Add data to aggregation queue
                 for agg in self.aggregations:
                     # Update the last datapoint
-                    df = self.df[self.interval+'-'+agg][s].iloc[[i]]
+                    df = self.df[self.interval+'+'+agg][s].iloc[[i]]
                     self.storage.store(s, agg, df)
         
             for a in self.algo:
