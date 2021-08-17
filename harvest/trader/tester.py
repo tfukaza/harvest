@@ -224,7 +224,12 @@ class BackTester(trader.Trader):
         
         self.storage.limit_size = True
         
-        rows = len(self.df[interval][self.watch[0]].index)
+        rows = []
+        for w in self.watch:
+            rows.append(len(self.df[interval][w].index))
+        rows = min(rows)
+
+        print(f"Rows: {rows}")
         for i in range(rows):
             df_dict = {}
             for s in self.watch:

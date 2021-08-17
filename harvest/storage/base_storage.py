@@ -61,7 +61,8 @@ class BaseStorage:
                 try:
                     # Handles if we have stock data for the given interval
                     intervals[interval] = self._append(intervals[interval], data, remove_duplicate=remove_duplicate)
-                    intervals[interval] = intervals[interval][-self.queue_size:]
+                    if self.limit_size:
+                        intervals[interval] = intervals[interval][-self.queue_size:]
                 except:
                     raise Exception('Append Failure, case not found!')
             else:
