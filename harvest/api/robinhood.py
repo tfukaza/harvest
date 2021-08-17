@@ -16,8 +16,6 @@ from harvest.utils import *
 
 class Robinhood(API):
 
-    interval_list = ['1MIN', '5MIN', '15MIN', '30MIN', '1HR', '1DAY']
-
     def __init__(self, path=None):
         super().__init__(path)
         self.login()
@@ -42,32 +40,32 @@ class Robinhood(API):
     def setup(self, watch: List[str], interval, trader=None, trader_main=None):
        
         if interval == '1MIN':
-            self.interval_fmt = '15second'
+            self.__interval_fmt = '15second'
             fetch_interval = '1MIN'
         else:
-            self.interval_fmt = '5minute'
+            self.__interval_fmt = '5minute'
             fetch_interval = '5MIN'
         
         super().setup(watch, interval, fetch_interval, trader, trader_main)
 
-        self.watch_stock = []
-        self.watch_crypto = []
-        self.watch_crypto_fmt = []
+        self.__watch_stock = []
+        self.__watch_crypto = []
+        self.__watch_crypto_fmt = []
         if interval not in self.interval_list:
             raise Exception(f'Invalid interval {interval}')
         for s in watch:
             if is_crypto(s):
-                self.watch_crypto_fmt.append(s[1:])
-                self.watch_crypto.append(s)
+                self.__watch_crypto_fmt.append(s[1:])
+                self.__watch_crypto.append(s)
             else:
-                self.watch_stock.append(s)
-        if len(self.watch_stock) > 0 and interval == '1MIN':
+                self.__watch_stock.append(s)
+        if len(self.__watch_stock) > 0 and interval == '1MIN':
             raise Exception(f'Interval {interval} is only supported for crypto')
         
-        self.option_cache = {}
+        self.__option_cache = {}
 
     def exit(self):
-        self.option_cache = {}
+        self.__option_cache = {}
 
     def main(self):
         df_dict = {}
@@ -79,7 +77,7 @@ class Robinhood(API):
     @API._exception_handler
     def fetch_latest_stock_price(self):
         df={}
-        for s in self.watch_stock:
+        for s in self.__watch_stock:
             ret = rh.get_stock_historicals(
                 s,
                 interval=self.interval_fmt, 
@@ -96,7 +94,7 @@ class Robinhood(API):
     @API._exception_handler
     def fetch_latest_crypto_price(self):
         df={}
-        for s in self.watch_crypto_fmt:
+        for s in self.__watch_crypto_fmt:
             ret = rh.get_crypto_historicals(
                 s, 
                 interval=self.interval_fmt, 
@@ -197,8 +195,8 @@ class Robinhood(API):
     @API._exception_handler
     def fetch_chain_data(self, symbol: str, date: dt.datetime):
 
-        if bool(self.option_cache) and symbol in self.option_cache and date in self.option_cache[symbol]:
-            return self.option_cache[symbol][date]
+        if bool(self.__option_cache) and symbol in self.__option_cache and date in self.__option_cache[symbol]:
+            return self.__option_cache[symbol][date]
         
         ret = rh.find_tradable_options(symbol, date_to_str(date))
         exp_date = []
@@ -221,9 +219,9 @@ class Robinhood(API):
         df = pd.DataFrame({'occ_symbol':occ,'exp_date':exp_date,'strike':strike,'type':type,'id':id})
         df = df.set_index('occ_symbol')
 
-        if not symbol in self.option_cache:
-            self.option_cache[symbol] = {}
-        self.option_cache[symbol][date] = df
+        if not symbol in self.__option_cache:
+            self.__option_cache[symbol] = {}
+        self.__option_cache[symbol][date] = df
 
         return df
     
