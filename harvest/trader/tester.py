@@ -135,17 +135,17 @@ class BackTester(trader.Trader):
             rows = len(df.index)
             print(f"Formatting {sym} data...")
             for agg in self.aggregations:
-                tmp_path = f"{path}/{sym}--{agg}.pickle"
+                tmp_path = f"{path}/{sym}-{interval}+{agg}.pickle"
                 file = Path(tmp_path)
                 if file.is_file():
                     continue
-                print(f"Formatting {agg}...")
+                print(f"Formatting aggregation from {interval} to {agg}...")
                 points = int(conv[agg]/conv[interval])
                 for i in tqdm(range(rows)):
                     df_tmp = df.iloc[0:i+1]                    
                     df_tmp = df_tmp.iloc[-points:] 
                     agg_df = aggregate_df(df_tmp, agg)
-                    self.storage.store(sym, '-'+agg, agg_df.iloc[[-1]], remove_duplicate=False)
+                    self.storage.store(sym, interval+'+'+agg, agg_df.iloc[[-1]], remove_duplicate=False)
         print("Formatting complete")
 
         # # Save the current state of the queue
@@ -157,7 +157,7 @@ class BackTester(trader.Trader):
 
         # Move all data to a cached dataframe
         for i in [self.interval] + self.aggregations:
-            i = i if i == self.interval else '-'+i
+            i = i if i == self.interval else self.interval+'+'+i
             self.df[i] = {}
             for s in self.watch:
                 df = self.storage.load(s, i, no_slice=True)
@@ -239,7 +239,7 @@ class BackTester(trader.Trader):
                 # Add data to aggregation queue
                 for agg in self.aggregations:
                     # Update the last datapoint
-                    df = self.df['-'+agg][s].iloc[[i]]
+                    df = self.df[self.interval+'+'+agg][s].iloc[[i]]
                     self.storage.store(s, agg, df)
         
             for a in self.algo:

@@ -31,7 +31,7 @@ class TestTester(unittest.TestCase):
         t.start('1MIN', ['1DAY'], kill_switch=True)
         
         minutes = list(t.storage.load('A', '1MIN')['A']['close'])[-200:]
-        days_agg = list(t.storage.load('A', '-1DAY')['A']['close'])[-200:]
+        days_agg = list(t.storage.load('A', '1MIN+1DAY')['A']['close'])[-200:]
 
         self.assertListEqual(minutes, days_agg)
 
