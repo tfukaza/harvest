@@ -51,7 +51,7 @@ class Robinhood(API):
         self.__watch_stock = []
         self.__watch_crypto = []
         self.__watch_crypto_fmt = []
-        if interval not in self.interval_list:
+        if not trader is None and interval not in self.trader.interval_list:
             raise Exception(f'Invalid interval {interval}')
         for s in watch:
             if is_crypto(s):
