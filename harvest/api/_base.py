@@ -24,6 +24,8 @@ class API:
     :fetch_interval: A string indicating the interval the broker fetches the latest asset data.  
         This should be initialized in setup_run (see below).
     """
+
+    interval_list = ['1MIN', '5MIN', '15MIN', '30MIN', '1HR', '1DAY']
     
     def __init__(self, path: str=None):
         """

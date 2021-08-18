@@ -80,7 +80,7 @@ class Robinhood(API):
         for s in self.__watch_stock:
             ret = rh.get_stock_historicals(
                 s,
-                interval=self.interval_fmt, 
+                interval=self.__interval_fmt, 
                 span='day', 
                 )
             if 'error' in ret or ret == None or (type(ret) == list and len(ret) == 0):
@@ -97,7 +97,7 @@ class Robinhood(API):
         for s in self.__watch_crypto_fmt:
             ret = rh.get_crypto_historicals(
                 s, 
-                interval=self.interval_fmt, 
+                interval=self.__interval_fmt, 
                 span='hour',
                 )
             df_tmp = pd.DataFrame.from_dict(ret)
@@ -442,6 +442,8 @@ class Robinhood(API):
         limit_price: float, 
         in_force: str='gtc', 
         extended: bool=False):
+
+        ret = None
         try:
             if symbol[0] == '@':
                 symbol = symbol[1:]
@@ -485,9 +487,10 @@ class Robinhood(API):
                 "symbol":symbol,
                 }
         except:
-            raise Exception("Error while placing order")
+            raise Exception(f"Error while placing order. \nReturned \n{ret}")
     
     def order_option_limit(self, side: str, symbol: str, quantity: int, limit_price: float, option_type, exp_date: dt.datetime, strike, in_force: str='gtc'):
+        ret = None
         try:
             if side == 'buy':
                 ret = rh.order_buy_option_limit(
@@ -521,7 +524,7 @@ class Robinhood(API):
                 "symbol":symbol,
                 }
         except:
-            raise Exception("Runtime error while placing order")
+            raise Exception(f"Error while placing order. \nReturned \n{ret}")
     
     def _format_df(self, df: pd.DataFrame, watch: List[str], interval: str, latest: bool=False):
         # Robinhood returns offset-aware timestamps based on timezone GMT-0, or UTC
