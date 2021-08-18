@@ -442,6 +442,7 @@ class Robinhood(API):
         limit_price: float, 
         in_force: str='gtc', 
         extended: bool=False):
+        ret = None
         try:
             if symbol[0] == '@':
                 symbol = symbol[1:]
@@ -451,7 +452,6 @@ class Robinhood(API):
                         quantity = quantity,
                         timeInForce=in_force,
                         limitPrice=limit_price,
-                    
                     )
                 else:
                     ret = rh.order_sell_crypto_limit(
@@ -476,7 +476,6 @@ class Robinhood(API):
                         quantity = quantity,
                         timeInForce=in_force,
                         limitPrice=limit_price,
-                    
                     )
                 typ = 'STOCK'
             return {
@@ -485,7 +484,7 @@ class Robinhood(API):
                 "symbol":symbol,
                 }
         except:
-            raise Exception("Error while placing order")
+            raise Exception(f"Error while placing order. \nReturned \n{ret}")
     
     def order_option_limit(self, side: str, symbol: str, quantity: int, limit_price: float, option_type, exp_date: dt.datetime, strike, in_force: str='gtc'):
         try:
