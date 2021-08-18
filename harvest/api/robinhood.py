@@ -80,7 +80,7 @@ class Robinhood(API):
         for s in self.__watch_stock:
             ret = rh.get_stock_historicals(
                 s,
-                interval=self.interval_fmt, 
+                interval=self.__interval_fmt, 
                 span='day', 
                 )
             if 'error' in ret or ret == None or (type(ret) == list and len(ret) == 0):
@@ -97,7 +97,7 @@ class Robinhood(API):
         for s in self.__watch_crypto_fmt:
             ret = rh.get_crypto_historicals(
                 s, 
-                interval=self.interval_fmt, 
+                interval=self.__interval_fmt, 
                 span='hour',
                 )
             df_tmp = pd.DataFrame.from_dict(ret)
