@@ -18,12 +18,8 @@ class Option(BaseAlgo):
     
     def main(self):
 
-<<<<<<< HEAD
-        price = self.get_price()
-=======
         price = self.get_asset_price()
 
->>>>>>> main
         if not self.hold:
             # Get the expiration dates for this stock's option chain
             dates = self.get_chain_info('TWTR')['exp_dates']
