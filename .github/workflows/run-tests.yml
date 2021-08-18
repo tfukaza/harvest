@@ -31,10 +31,20 @@ jobs:
         python -m pip install --upgrade pip
         python setup.py install
 
+    - name: Store polygon secret in file
+      run: 'echo "api_key: $POLYGON_API_KEY" > poly_secret.yaml'
+
+      shell: bash
+      env:
+        POLYGON_API_KEY: ${{secrets.POLYGON_API_KEY}}
+    
+    - name: Set ENV
+      run: 'export GITHUB_ACTION=TRUE'
+
     - name: Run tests
       run: |
         pip install coverage
-        coverage run --source harvest -m unittest discover -s test
+        coverage run --source harvest -m unittest discover -s tests
 
     - name: Upload to CodeCov
       uses: codecov/codecov-action@v1

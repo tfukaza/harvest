@@ -2,21 +2,19 @@
 import datetime as dt
 from logging import critical, error, info, warning, debug
 from typing import Any, Dict, List, Tuple
-from getpass import getpass
 
 # External libraries
 import pandas as pd
-import pyotp
 import robin_stocks.robinhood as rh
 import pytz 
+import pyotp
+import yaml
 
 # Submodule imports
-from harvest.api._base import API
+from harvest.api._base import API 
 from harvest.utils import *
 
 class Robinhood(API):
-
-    interval_list = ['1MIN', '5MIN', '15MIN', '30MIN', '1DAY']
 
     def __init__(self, path=None):
         super().__init__(path)
@@ -37,111 +35,37 @@ class Robinhood(API):
         debug("Logged into Robinhood...")
     
     def no_secret(self, path):
-
-        print("""⚠️  Hmm, looks like you haven't set up login credentials for Robinhood yet.""")
-
-        select = ''
-        while select != 'n' and select != 'y':
-            select = input("❓ Do you want to set it up now? (y/n)")
-            if select == 'n':
-                print("""\n💬 You can't use Robinhood unless we can log you in. You can set up the credentials manually, or use other brokers.""")
-                return False
-            elif select != 'y':
-                print("""🤔 Type in 'y' for 'yes', or 'n' for 'no' """)
-
-        print("""\n💬 Alright! Let's get started""")
-
-        select = input("❓ Do you have a Robinhood account? (y/n)[y]")
-        if select == 'n':
-            input("""\n💬 In that case you'll first need to make an account. I'll wait here, so hit Enter or Return when you've done that.""")
-        elif select != 'y' and select != None:
-            print("\n💬 I'll assume that means yes...")
-        
-        select = input("❓ Do you have Two Factor Authentication enabled? (y/n)[y]")
-        if select == 'n':
-            print("""\n💬 Robinhood (and Harvest) requires users to have 2FA enabled, so we'll turn that on next.""")
-        elif select != 'y' or select != None:
-            input("""\n💬 We'll need to reconfigure 2FA to use Harvest, so temporarily disable 2FA. Hit Enter when you're ready.""")
-        
-        input("""💬 Now enable 2FA. Robinhood should ask you what authentication method you want to use.""")
-        input("💬 Select 'Authenticator App'. (hit Enter)")
-        input("💬 Select 'Can't scan'. (hit Enter)")
-        
-        mfa = input("""❓ You should see a string of letters and numbers on the screen. Type it in here and press Enter:\n""")
-
-        while True:
-            try:
-                totp = pyotp.TOTP(mfa).now()
-            except:
-                print("\n😮 Woah! Something went wrong. Make sure you typed in the code correctly.")
-                mfa = input("""❓ Try typing in the code again:\n""")
-                continue
-            break
-
-        print(f"""💬 Good! Robinhood should now be asking you for a 6-digit passcode. Type in: {totp} ---""")
-        print(f"""⚠️  Beware, this passcode expires in a few seconds! If you couldn't type it in time, it should be regenerated.""")
-        
-        select = ''
-        while select != 'n':
-            select = input("""❓ Do you want to generate a new passcode? (y/n)[n]""")
-            if select == 'y':
-                totp  = pyotp.TOTP(mfa).now()
-                print(f"\n💬 New passcode: {totp} ---")
-            else:
-                select = 'n'
-
-        input(f"""\n💬 Robinhood will show you a backup code. This is useful when 2FA fails, so make sure to keep it somewhere safe. (Enter)""")
-        input(f"""💬 It is recommended you also set up 2FA using an app like Authy or Google Authenticator, so you don't have to run this setup wizard every time you log into Robinhood. (Enter)""")
-        print(f"""💬 Open an authenticator app of your choice, and use the MFA code you typed in earlier to set up OTP passcodes for Robinhood:\n---------------\n{mfa}\n---------------""")
-        input("Press Enter when you're ready.")
-
-        print(f"""💬 Almost there! Type in your username and password for Robinhood""")
-        username = input("\n❓ Username: ")
-        password = getpass("❓ Password: ")
-
-        print(f"""\n💬 All steps are complete now 🎉. Generating secret.yml...""")
-
-        d = {
-            'robin_mfa':      f"{mfa}",
-            'robin_username': f"{username}",
-            'robin_password': f"{password}"
-        }
-        with open(path, 'w') as file:
-            yml = yaml.dump(d, file)
-        
-        print(f"""💬 secret.yml has been created! Make sure you keep this file somewhere secure and never share it with other people.""")
-        
-        return True 
+        return self.create_secret(path)
 
     def setup(self, watch: List[str], interval, trader=None, trader_main=None):
        
         if interval == '1MIN':
-            self.interval_fmt = '15second'
+            self.__interval_fmt = '15second'
             fetch_interval = '1MIN'
         else:
-            self.interval_fmt = '5minute'
+            self.__interval_fmt = '5minute'
             fetch_interval = '5MIN'
         
         super().setup(watch, interval, fetch_interval, trader, trader_main)
 
-        self.watch_stock = []
-        self.watch_crypto = []
-        self.watch_crypto_fmt = []
+        self.__watch_stock = []
+        self.__watch_crypto = []
+        self.__watch_crypto_fmt = []
         if interval not in self.interval_list:
             raise Exception(f'Invalid interval {interval}')
         for s in watch:
             if is_crypto(s):
-                self.watch_crypto_fmt.append(s[1:])
-                self.watch_crypto.append(s)
+                self.__watch_crypto_fmt.append(s[1:])
+                self.__watch_crypto.append(s)
             else:
-                self.watch_stock.append(s)
-        if len(self.watch_stock) > 0 and interval == '1MIN':
+                self.__watch_stock.append(s)
+        if len(self.__watch_stock) > 0 and interval == '1MIN':
             raise Exception(f'Interval {interval} is only supported for crypto')
         
-        self.option_cache = {}
+        self.__option_cache = {}
 
     def exit(self):
-        self.option_cache = {}
+        self.__option_cache = {}
 
     def main(self):
         df_dict = {}
@@ -153,7 +77,7 @@ class Robinhood(API):
     @API._exception_handler
     def fetch_latest_stock_price(self):
         df={}
-        for s in self.watch_stock:
+        for s in self.__watch_stock:
             ret = rh.get_stock_historicals(
                 s,
                 interval=self.interval_fmt, 
@@ -170,7 +94,7 @@ class Robinhood(API):
     @API._exception_handler
     def fetch_latest_crypto_price(self):
         df={}
-        for s in self.watch_crypto_fmt:
+        for s in self.__watch_crypto_fmt:
             ret = rh.get_crypto_historicals(
                 s, 
                 interval=self.interval_fmt, 
@@ -217,7 +141,9 @@ class Robinhood(API):
         elif interval == '15MIN':
             get_interval_fmt = '5minute'
         elif interval == '30MIN':
-            get_interval_fmt = '5minute'
+            get_interval_fmt = '10minute'
+        elif interval == '1HR':
+            get_interval_fmt = 'hour'
         elif interval == '1DAY': 
             get_interval_fmt = 'day'
            
@@ -231,7 +157,7 @@ class Robinhood(API):
             return df
         if delta < 1 or interval == '15SEC' or interval == '1MIN':
             span = 'hour'
-        elif delta >=1 and delta < 24 or interval == '5MIN' or interval == '15MIN' or interval == '30MIN':
+        elif delta >=1 and delta < 24 or interval in ['5MIN', '15MIN', '30MIN', '1HR']:
             span = 'day'
         elif delta >=24 and delta < 24 * 28:
             span = 'month'
@@ -262,15 +188,15 @@ class Robinhood(API):
         ret = rh.get_chains(symbol)
         return {
             "id": "n/a", 
-            "exp_dates": [str_to_day(s) for s in ret["expiration_dates"]],
+            "exp_dates": [str_to_date(s) for s in ret["expiration_dates"]],
             "multiplier": ret["trade_value_multiplier"], 
         }    
 
     @API._exception_handler
     def fetch_chain_data(self, symbol: str, date: dt.datetime):
 
-        if bool(self.option_cache) and symbol in self.option_cache and date in self.option_cache[symbol]:
-            return self.option_cache[symbol][date]
+        if bool(self.__option_cache) and symbol in self.__option_cache and date in self.__option_cache[symbol]:
+            return self.__option_cache[symbol][date]
         
         ret = rh.find_tradable_options(symbol, date_to_str(date))
         exp_date = []
@@ -293,9 +219,9 @@ class Robinhood(API):
         df = pd.DataFrame({'occ_symbol':occ,'exp_date':exp_date,'strike':strike,'type':type,'id':id})
         df = df.set_index('occ_symbol')
 
-        if not symbol in self.option_cache:
-            self.option_cache[symbol] = {}
-        self.option_cache[symbol][date] = df
+        if not symbol in self.__option_cache:
+            self.__option_cache[symbol] = {}
+        self.__option_cache[symbol][date] = df
 
         return df
     
@@ -516,6 +442,8 @@ class Robinhood(API):
         limit_price: float, 
         in_force: str='gtc', 
         extended: bool=False):
+
+        ret = None
         try:
             if symbol[0] == '@':
                 symbol = symbol[1:]
@@ -559,9 +487,10 @@ class Robinhood(API):
                 "symbol":symbol,
                 }
         except:
-            raise Exception("Error while placing order")
+            raise Exception(f"Error while placing order. \nReturned \n{ret}")
     
     def order_option_limit(self, side: str, symbol: str, quantity: int, limit_price: float, option_type, exp_date: dt.datetime, strike, in_force: str='gtc'):
+        ret = None
         try:
             if side == 'buy':
                 ret = rh.order_buy_option_limit(
@@ -595,7 +524,7 @@ class Robinhood(API):
                 "symbol":symbol,
                 }
         except:
-            raise Exception("Runtime error while placing order")
+            raise Exception(f"Error while placing order. \nReturned \n{ret}")
     
     def _format_df(self, df: pd.DataFrame, watch: List[str], interval: str, latest: bool=False):
         # Robinhood returns offset-aware timestamps based on timezone GMT-0, or UTC
@@ -615,3 +544,85 @@ class Robinhood(API):
         df.columns = pd.MultiIndex.from_product([watch, df.columns])
 
         return df.dropna()
+    
+    def create_secret(self, path):
+        import harvest.wizard as wizard
+        w = wizard.Wizard()
+
+        w.println("Hmm, looks like you haven't set up login credentials for Robinhood yet.")
+        should_setup = w.get_bool("Do you want to set it up now?", default='y')
+
+        if not should_setup:
+            w.println("You can't use Robinhood unless we can log you in.")
+            w.println("You can set up the credentials manually, or use other brokers.")
+            return False
+
+        w.println("Alright! Let's get started")
+
+        have_account = w.get_bool("Do you have a Robinhood account?", default='y')
+        if not have_account:
+            w.println("In that case you'll first need to make an account. I'll wait here, so hit Enter or Return when you've done that.")
+            w.wait_for_input()
+        
+        have_mfa = w.get_bool("Do you have Two Factor Authentication enabled?", default='y')
+
+        if not have_mfa:
+            w.println("Robinhood (and Harvest) requires users to have 2FA enabled, so we'll turn that on next.")
+        else:
+            w.println("We'll need to reconfigure 2FA to use Harvest, so temporarily disable 2FA")
+            w.wait_for_input()
+
+        w.println("Enable 2FA. Robinhood should ask you what authentication method you want to use.")
+        w.wait_for_input()
+        w.println("Select 'Authenticator App'.")
+        w.wait_for_input()
+        w.println("Select 'Can't scan'.")
+        w.wait_for_input()
+
+        mfa = w.get_string("You should see a string of letters and numbers on the screen. Type it in here", pattern=r'[\d\w]+')
+        while True:
+            try:
+                totp = pyotp.TOTP(mfa).now()
+            except:
+                mfa = w.get_string("Woah😮 Something went wrong. Make sure you typed in the code correctly.", pattern=r'[\d\w]+')
+                continue
+            break
+
+        w.print(f"Good! Robinhood should now be asking you for a 6-digit passcode. Type in: {totp}")
+        w.print(f"⚠️  Beware, this passcode expires in a few seconds! If you couldn't type it in time, it should be regenerated.")
+
+        new_passcode = True
+        while new_passcode:
+            new_passcode = w.get_bool("Do you want to generate a new passcode?", default='n')
+            if new_passcode:
+                totp = pyotp.TOTP(mfa).now()
+                w.print(f"New passcode: {totp}")
+            else:
+                break
+
+        w.println("Robinhood will show you a backup code. This is useful when 2FA fails, so make sure to keep it somewhere safe.")
+        w.wait_for_input()
+        w.println("It is recommended you also set up 2FA using an app like Authy or Google Authenticator, so you don't have to run this setup wizard every time you log into Robinhood.")
+        w.wait_for_input()
+        w.println(f"Open an authenticator app of your choice, and use the MFA code you typed in earlier to set up OTP passcodes for Robinhood: {mfa}")
+        w.wait_for_input()
+
+        w.println(f"Almost there! Type in your username and password for Robinhood")
+
+        username = w.get_string("Username: ")
+        password = w.get_password("Password: ")
+
+        w.println(f"All steps are complete now 🎉. Generating secret.yml...")
+
+        d = {
+            'robin_mfa':      f"{mfa}",
+            'robin_username': f"{username}",
+            'robin_password': f"{password}"
+        }
+
+        with open(path, 'w') as file:
+            yml = yaml.dump(d, file)
+        
+        w.println(f"secret.yml has been created! Make sure you keep this file somewhere secure and never share it with other people.")
+        
+        return True 

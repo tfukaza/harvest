@@ -1,17 +1,25 @@
 # Builtins
+import unittest
+import unittest.mock
+
 from harvest import algo
 from harvest.trader import Trader
 from harvest.api.dummy import DummyStreamer
-import unittest
-
 from harvest.algo import BaseAlgo 
 
 from harvest.utils import gen_data
 
+import logging
+#logging.basicConfig(level=logging.DEBUG)
+
 prices = [10, 12, 11, 9, 8, 10, 11, 12, 13, 15, 14, 16, 13, 14]
 
 class TestAlgo(unittest.TestCase):
+
     def test_rsi(self):
+        """
+        Test that RSI values are calculated correctly.
+        """
         algo = BaseAlgo()
         algo.add_symbol('DUMMY')
         rsi = algo.rsi(prices=prices)[-1]
@@ -19,6 +27,9 @@ class TestAlgo(unittest.TestCase):
         self.assertAlmostEqual(rsi, 59.476113, places=5)
 
     def test_sma(self):
+        """
+        Test that SMA values are calculated correctly.
+        """
         algo = BaseAlgo()
         algo.add_symbol('DUMMY')
         sma = algo.sma(prices=prices)[-1]
@@ -26,6 +37,9 @@ class TestAlgo(unittest.TestCase):
         self.assertAlmostEqual(sma, sum(prices) / len(prices), places=5)
 
     def test_ema(self):
+        """
+        Test that EMA values are calculated correctly.
+        """
         algo = BaseAlgo()
         algo.add_symbol('DUMMY')
         ema = algo.ema(prices=prices)[-1]
@@ -37,6 +51,9 @@ class TestAlgo(unittest.TestCase):
         self.assertAlmostEqual(ema, expected_ema, places=5)
 
     def test_bbands(self):
+        """
+        Test that bbands returns the correct values based on provided price list.
+        """
         algo = BaseAlgo()
         algo.add_symbol('DUMMY')
         upper, middle, lower = algo.bbands(prices=prices)
@@ -51,7 +68,11 @@ class TestAlgo(unittest.TestCase):
         self.assertAlmostEqual(lower[-1], expected_middle - std, places=5)
     
     def test_bbands_trader(self):
-        t = Trader(DummyStreamer())
+        """
+        Test that bband values are calculated correctly based on data in Trader's Storage class.
+        """
+        streamer = DummyStreamer()
+        t = Trader(streamer)
         t.set_symbol('DUMMY')
         t.set_algo(BaseAlgo())
         t.start("1MIN", kill_switch=True)
@@ -60,6 +81,52 @@ class TestAlgo(unittest.TestCase):
 
         self.assertEqual(True, True)
     
+    def test_get_asset_quantity(self):
+        t = Trader(DummyStreamer())
+        t.set_symbol('A')
+        t.set_algo(BaseAlgo())
+        t.start("1MIN", kill_switch=True)
+
+        # This should buy 5 of A
+        t.algo[0].buy('A', 5)
+        a_new = gen_data('A', 1)
+        t.main({'A': a_new})
+
+        q = t.algo[0].get_asset_quantity('A')
+
+        self.assertEqual(q, 5)
+
+    def test_get_asset_cost(self):
+        s = DummyStreamer()
+        t = Trader(s)
+        t.set_symbol('A')
+        t.set_algo(BaseAlgo())
+        t.start("1MIN", kill_switch=True)
+
+        t.algo[0].buy('A', 1)
+        s.tick()
+
+        cost = s.fetch_price_history('A', '5MIN').iloc[-1]['A']['close']
+        get_cost = t.algo[0].get_asset_cost('A')
+
+        self.assertEqual(get_cost, cost)
+    
+    def test_get_asset_price(self):
+        t = Trader(DummyStreamer())
+        t.set_symbol('A')
+        t.set_algo(BaseAlgo())
+        t.start("1MIN", kill_switch=True)
+
+        # This should buy 5 of A
+        t.algo[0].buy('A', 5)
+        a_new = gen_data('A', 1)
+        t.main({'A': a_new})
+        price = a_new['A']['close'][-1] 
+
+        get_price = t.algo[0].get_asset_price('A')
+
+        self.assertEqual(get_price, price)
+
     def test_buy_sell(self):
         t = Trader(DummyStreamer())
         t.set_symbol('A')
@@ -104,30 +171,28 @@ class TestAlgo(unittest.TestCase):
         t.algo[0].sell()
         a_new = gen_data('A', 1)
         t.main({'A': a_new})
-        self.assertEqual(0, t.algo[0].get_quantity())
+        self.assertEqual(0, t.algo[0].get_asset_quantity())
     
-    # def test_buy_sell_option_auto(self):
-    #     t = Trader()
-    #     t.set_symbol('A')
-    #     t.set_algo(BaseAlgo())
-    #     t.start("1MIN", kill_switch=True)
+    def test_buy_sell_option_auto(self):
+        streamer = DummyStreamer()
+        t = Trader(streamer)
+        t.set_symbol('X')
+        t.set_algo(BaseAlgo())
+        t.start("1MIN", kill_switch=True)
+        streamer.tick()
+        
+        t.algo[0].buy_option('X     110101C01000000')
+        streamer.tick()
+     
+        p = t.option_positions[0]
+        self.assertEqual(p['occ_symbol'], 'X     110101C01000000')
 
-    #     t.algo[0].buy_option('AAA   01019901000000')
-    #     a_new = gen_data('A', 1)
-    #     t.main({'A': a_new})
+        t.algo[0].sell_option()
+        streamer.tick()
 
-    #     p = t.option_positions[0]
-    #     self.assertEqual(p['symbol'], 'AAA   01019901000000')
-    #     #self.assertEqual(p['quantity'], 2)
-
-    #     # This should sell 1 of A
-    #     t.algo[0].sell_option('AAA   01019901000000')
-    #     a_new = gen_data('A', 1)
-    #     t.main({'A': a_new})
-
-    #     # p = t.stock_positions[0]
-    #     self.assertEqual(0, t.algo[0].get_quantity('AAA   01019901000000'))
-    #     #self.assertEqual(p['quantity'], 1)
+        # p = t.stock_positions[0]
+        self.assertEqual(0, t.algo[0].get_asset_quantity('X     110101C01000000'))
+        #self.assertEqual(p['quantity'], 1)
 
 
 if __name__ == '__main__':

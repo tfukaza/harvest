@@ -1,8 +1,9 @@
+from numpy import ERR_CALL
 import pandas as pd
 import datetime as dt
 from threading import Lock
 from typing import Tuple
-from logging import debug
+from logging import debug, warning
 import re
 
 from harvest.utils import *
@@ -22,7 +23,7 @@ class BaseStorage:
     A basic storage that is thread safe and stores data in memory.
     """
 
-    def __init__(self):
+    def __init__(self, queue_size: int=200, limit_size: bool=True):
         """
         Initialize a lock used to make this class thread safe since it is 
         expected that multiple users will be reading and writing to this 
@@ -30,6 +31,8 @@ class BaseStorage:
         """
         self.storage_lock = Lock()
         self.storage = {}
+        self.queue_size = int(queue_size)
+        self.limit_size = limit_size
 
     def store(self, symbol: str, interval: str, data: pd.DataFrame, remove_duplicate=True) -> None:
         """
@@ -47,32 +50,39 @@ class BaseStorage:
             return None
 
         # Removes the seconds and milliseconds
-        data.index = normalize_pands_dt_index(data)
+        data.index = normalize_pandas_dt_index(data)
+
+        self.storage_lock.acquire()
 
         if symbol in self.storage:
-            # Handles if we already have stock data
+            # Handles if we already have data
             intervals = self.storage[symbol]
             if interval in intervals:
                 try:
-                    self.storage_lock.acquire()
                     # Handles if we have stock data for the given interval
                     intervals[interval] = self._append(intervals[interval], data, remove_duplicate=remove_duplicate)
-                    self.storage_lock.release()
+                    intervals[interval] = intervals[interval][-self.queue_size:]
                 except:
-                    self.storage_lock.release()
                     raise Exception('Append Failure, case not found!')
             else:
                 # Add the data as a new interval
                 intervals[interval] = data
         else:
-            self.storage_lock.acquire()
-
+            if self.limit_size:
+                data = data[-self.queue_size:]
+            if len(data) < self.queue_size:
+                warning(f"Symbol {symbol}, interval {interval} initialized with only {len(data)} data points")
             # Just add the data into storage
             self.storage[symbol] = {
                 interval: data
             }
+            
+        cur_len = len(self.storage[symbol][interval])
+        if self.limit_size and cur_len > self.queue_size:
+            # If we have more than N data points, remove the oldest data
+            self.storage[symbol][interval] = self.storage[symbol][interval].iloc[-self.queue_size:]
 
-            self.storage_lock.release()
+        self.storage_lock.release()
 
     def aggregate(self, symbol: str, base: str, target: str, remove_duplicate: bool=True):
         """
@@ -82,9 +92,12 @@ class BaseStorage:
         self.storage_lock.acquire()
         data = self.storage[symbol][base]
         self.storage[symbol][target] = self._append(self.storage[symbol][target], aggregate_df(data, target), remove_duplicate)
+        cur_len = len(self.storage[symbol][target])
+        if self.limit_size and cur_len > self.queue_size:
+            self.storage[symbol][target] = self.storage[symbol][target].iloc[-self.queue_size:]
         self.storage_lock.release()
     
-    def reset(self, symbol: str, interval:str):
+    def reset(self, symbol: str, interval: str):
         """
         Resets to an empty dataframe
         """
@@ -93,7 +106,7 @@ class BaseStorage:
         self.storage_lock.release()
 
 
-    def load(self, symbol: str, interval: str='', start: dt.datetime=None, end: dt.datetime=None) -> pd.DataFrame:
+    def load(self, symbol: str, interval: str='', start: dt.datetime=None, end: dt.datetime=None, no_slice=False) -> pd.DataFrame:
         """
         Loads the stock data given the symbol and interval. May return only
         a subset of the data if start and end are given and there is a gap 
@@ -141,6 +154,9 @@ class BaseStorage:
         else:
             data = self.storage[symbol][interval]
         self.storage_lock.release()
+    
+        if no_slice:
+            return data
 
         # If the start and end are not defined, then set them to the 
         # beginning and end of the data.

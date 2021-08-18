@@ -1,43 +1,36 @@
 # Builtins
+import json
+import yaml
 import datetime as dt
+import urllib.request
 from logging import critical, error, info, warning, debug
 from typing import Any, Dict, List, Tuple
 
 # External libraries
 import pandas as pd
-import yfinance as yf
 
 # Submodule imports
 from harvest.api._base import API
 from harvest.utils import *
 
-class YahooStreamer(API):
+class PolygonStreamer(API):
 
-    interval_list = ['1MIN', '5MIN', '15MIN', '30MIN', '1HR']
+    def __init__(self, path: str=None, is_basic_account: bool=False):
+        super().__init__(path)
+        self.basic = is_basic_account
 
-    def __init__(self, path=None):
-        pass
+    def no_secret(self, path: str) -> bool:
+        return self.create_secret(path)
 
-    def setup(self, watch: List[str], interval, trader=None, trader_main=None):
+    def setup(self, watch: List[str], interval: str, trader=None, trader_main=None):
         self.watch_stock = []
         self.watch_crypto = []
-        self.watch_ticker = {}
 
-        if interval not in self.interval_list:
-            raise Exception(f'Invalid interval {interval}')
         for s in watch:
             if is_crypto(s):
-                self.watch_crypto.append(s[1:]+"-USD")
-                self.watch_ticker[s] = yf.Ticker(s[1:]+"-USD")
+                self.watch_crypto.append(s)
             else:
                 self.watch_stock.append(s)
-                self.watch_ticker[s] = yf.Ticker(s)
-        
-        val, unit = expand_interval(interval)
-        if unit == 'MIN':
-            self.interval_fmt = f'{val}m'
-        elif unit == 'HR':
-            self.interval_fmt = f'{val}h'
 
         self.option_cache = {}
         super().setup(watch, interval, interval, trader, trader_main)
@@ -48,23 +41,14 @@ class YahooStreamer(API):
     def main(self):
         df_dict = {}
         combo = self.watch_stock + self.watch_crypto
-        if len(combo) == 1:
-            s = combo[0]
-            df = yf.download(s, period='1d', interval=self.interval_fmt, prepost=True)
-            if s[-4:] == '-USD':
-                    s = '@'+s[:-4]
-            df = self._format_df(df, s)
+        if self.basic and len(combo) > 5:
+            error("Basic accounts only allow for 5 API calls per minute, trying to get data for more than 5 assets! Aborting.")
+            return
+
+        for s in combo:
+            df = self.get_data_from_polygon(s, 1, 'day', now() - dt.timedelta(days=1), now())
             df_dict[s] = df
-        else:
-            names = ' '.join(self.watch_stock + self.watch_crypto)
-            df = yf.download(names, period='1d', interval=self.interval_fmt, prepost=True)
-            for s in combo:
-                df_tmp = df.iloc[:, df.columns.get_level_values(1)==s]
-                df_tmp.columns = df_tmp.columns.droplevel(1)
-                if s[-4:] == '-USD':
-                    s = '@'+s[:-4]
-                df_tmp = self._format_df(df_tmp, s)
-                df_dict[s] = df_tmp
+            print(df)            
         self.trader_main(df_dict)
 
     # -------------- Streamer methods -------------- #
@@ -80,40 +64,16 @@ class YahooStreamer(API):
         debug(f"Fetching {symbol} {interval} price history")
 
         if start is None:  
-            start = epoch_zero()
+            start = now() - dt.timedelta(days=365 * 2)
         if end is None:
             end = now()
 
-        df = pd.DataFrame()
-
         if start >= end:
-            return df
+            return pd.DataFrame()
         
         val, unit = expand_interval(interval)
-        if unit == 'MIN':
-            get_fmt = f'{val}m'
-        elif unit == 'HR':
-            get_fmt = f'{val}h'      
-        else:
-            get_fmt = '1d'      
-        
-        if interval == '1MIN':
-            period = '5d'
-        elif interval in ['5MIN', '15MIN', '30MIN', '1HR']:
-            period = '1mo'
-        else:
-            period='max'
-        
-        crypto = False
-        if is_crypto(symbol):
-            symbol = symbol[1:]+"-USD"
-            crypto = True
-        
-        df = yf.download(symbol, period=period, interval=get_fmt, prepost=True)
-        if crypto:
-            symbol = '@'+symbol[:-4]
-        df = self._format_df(df, symbol)
-        df = df.loc[start:end]
+        df = self.get_data_from_polygon(symbol, val, unit, start, end)
+
         return df
     
     @API._exception_handler
@@ -221,20 +181,83 @@ class YahooStreamer(API):
     # ------------- Helper methods ------------- #
 
     def _format_df(self, df: pd.DataFrame, symbol: str):
-        df = df.copy()
-        df.reset_index(inplace=True)
-        ts_name = df.columns[0]
-        df['timestamp'] = df[ts_name]
-        df = df.set_index(['timestamp'])
-        d = df.index[0]
-        if d.tzinfo is None or d.tzinfo.utcoffset(d) is None:
-            df = df.tz_localize('UTC')
-        else:
-            df = df.tz_convert(tz='UTC')
-        df = df.drop([ts_name], axis=1)
-        df = df.rename(columns={"Open": "open", "Close": "close", "High" : "high", "Low" : "low", "Volume" : "volume"})
-        df = df[["open", "high", "low", "close", "volume"]].astype(float)
-    
+        df = df.rename(columns={"t": "timestamp", "o": "open", "c": "close", "h" : "high", "l" : "low", "v" : "volume"})
+        df = df[["timestamp", "open", "high", "low", "close", "volume"]].astype(float)
+        df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+        # Timestamps are in US/Eastern and then converted UTC
+        df.index = pd.DatetimeIndex(df['timestamp'], tz=pytz.timezone('US/Eastern')).tz_convert(tz=pytz.utc)
+        df.drop(columns=['timestamp'], inplace=True)
+        
         df.columns = pd.MultiIndex.from_product([[symbol], df.columns])
 
         return df.dropna()
+
+    def create_secret(self, path: str) -> bool:
+        import harvest.wizard as wizard
+
+        w = wizard.Wizard()
+
+        w.println("Hmm, looks like you haven't set up an api key for Polygon.")
+        should_setup = w.get_bool("Do you want to set it up now?", default='y')
+
+        if not should_setup:
+            w.println("You can't use Polygon without an API key.")
+            w.println("You can set up the credentials manually, or use other streamers.")
+            return False
+
+        w.println("Alright! Let's get started")
+
+        have_account = w.get_bool("Do you have a Polygon account?", default='y')
+        if not have_account:
+            w.println("In that case you'll first need to make an account. I'll wait here, so hit Enter or Return when you've done that.")
+            w.wait_for_input()
+
+        api_key = w.get_string("Enter your API key")
+        
+        w.println(f"All steps are complete now 🎉. Generating {path}...")
+
+        d = {
+            'api_key':      f"{api_key}",
+        }
+
+        with open(path, 'w') as file:
+            yml = yaml.dump(d, file)
+        
+        w.println(f"{path} has been created! Make sure you keep this file somewhere secure and never share it with other people.")
+        
+        return True 
+
+    def get_data_from_polygon(self, symbol: str, multipler: int, timespan: str, start: dt.datetime, end: dt.datetime) -> pd.DataFrame:
+        if self.basic and start < now() - dt.timedelta(days=365 * 2):
+            warning("Start time is over two years old! Only data from the past two years will be returned for basic accounts.")
+
+        if timespan == 'MIN':
+            timespan = 'minute'
+        elif timespan == 'HR':
+            timespan = 'hour'
+        elif timespan == 'DAY':
+            timespan = 'day'
+
+        start_str = start.strftime('%Y-%m-%d')
+        end_str = end.strftime('%Y-%m-%d')
+
+        crypto = False
+        if is_crypto(symbol):
+            symbol = "X:" + symbol[1:] + "-USD"
+            crypto = True
+
+        request_form = "https://api.polygon.io/v2/aggs/ticker/{symbol}/range/{multiplier}/{timespan}/{start}/{end}?adjusted=true&sort=asc&apiKey={api_key}"
+        request = request_form.format(symbol=symbol, multiplier=multipler, timespan=timespan, start=start_str, end=end_str, api_key=self.config['api_key'])
+        response = json.load(urllib.request.urlopen(request))
+
+        if response['status'] != 'ERROR':
+            df = pd.DataFrame(response['results'])
+        else:
+            error(f"Request error! Returning empty dataframe. \n {response}")
+            return pd.DataFrame()
+
+        if crypto:
+            symbol = '@' + symbol[2:-4]
+        df = self._format_df(df, symbol)
+        df = df.loc[start:end]
+        return df

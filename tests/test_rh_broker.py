@@ -1,5 +1,4 @@
 import unittest
-from harvest import trader, api, algo 
 
 class TestRHBroker(unittest.TestCase):
     def test_trade(self):

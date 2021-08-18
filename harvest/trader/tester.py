@@ -3,6 +3,7 @@ import datetime as dt
 from logging import critical, error, info, warning, debug
 from typing import Any, Dict, List, Tuple
 import os.path
+from pathlib import Path
 
 # External libraries
 import pandas as pd
@@ -15,6 +16,7 @@ from harvest.storage import PickleStorage
 import harvest.trader.trader as trader
 from harvest.api.yahoo import YahooStreamer
 from harvest.api.paper import PaperBroker
+from harvest.storage import BaseLogger
 from harvest.utils import *
 
 class BackTester(trader.Trader):
@@ -26,6 +28,7 @@ class BackTester(trader.Trader):
     def __init__(self, streamer=None, config={}):      
         """Initializes the TestTrader. 
         """
+        
         if streamer == None:
             self.streamer = YahooStreamer()
         else:
@@ -34,7 +37,7 @@ class BackTester(trader.Trader):
 
         self.watch = []             # List of stocks to watch
 
-        self.storage = PickleStorage()  # local cache of historic price
+        self.storage = PickleStorage(limit_size=False)  # local cache of historic price
 
         self.account = {}           # Local cash of account info 
 
@@ -43,6 +46,11 @@ class BackTester(trader.Trader):
         self.crypto_positions = []  # Local cache of current crypto positions
 
         self.order_queue = []       # Queue of unfilled orders 
+
+        self.logger = BaseLogger()
+
+        
+
 
     def read_pickle_data(self):
         """Function to read backtesting data from a local file. 
@@ -102,6 +110,7 @@ class BackTester(trader.Trader):
         self._setup_account()
         self.df = {}
 
+        self.storage.limit_size = False
         if source == "PICKLE":
             self.read_pickle_data()
         elif source == "CSV":
@@ -118,19 +127,25 @@ class BackTester(trader.Trader):
             "1DAY": 1440
         }
 
+        # TODO: Skip the following step if aggregated data already exists
+
         # Generate the "simulated aggregation" data
         for sym in self.watch:
             df = self.storage.load(sym, self.interval)
             rows = len(df.index)
             print(f"Formatting {sym} data...")
             for agg in self.aggregations:
-                print(f"Formatting {agg} ...")
+                tmp_path = f"{path}/{sym}-{interval}+{agg}.pickle"
+                file = Path(tmp_path)
+                if file.is_file():
+                    continue
+                print(f"Formatting aggregation from {interval} to {agg}...")
                 points = int(conv[agg]/conv[interval])
                 for i in tqdm(range(rows)):
                     df_tmp = df.iloc[0:i+1]                    
                     df_tmp = df_tmp.iloc[-points:] 
                     agg_df = aggregate_df(df_tmp, agg)
-                    self.storage.store(sym, '-'+agg, agg_df.iloc[[-1]], remove_duplicate=False)
+                    self.storage.store(sym, interval+'+'+agg, agg_df.iloc[[-1]], remove_duplicate=False)
         print("Formatting complete")
 
         # # Save the current state of the queue
@@ -142,10 +157,10 @@ class BackTester(trader.Trader):
 
         # Move all data to a cached dataframe
         for i in [self.interval] + self.aggregations:
-            i = i if i == self.interval else '-'+i
+            i = i if i == self.interval else self.interval+'+'+i
             self.df[i] = {}
             for s in self.watch:
-                df = self.storage.load(s, i)
+                df = self.storage.load(s, i, no_slice=True)
                 self.df[i][s] = df.copy() 
         
         # Trim data so start and end dates match between assets and intervals
@@ -207,6 +222,8 @@ class BackTester(trader.Trader):
             for s in self.watch:
                 self.storage.reset(s, i)
         
+        self.storage.limit_size = True
+        
         rows = len(self.df[interval][self.watch[0]].index)
         for i in range(rows):
             df_dict = {}
@@ -222,11 +239,11 @@ class BackTester(trader.Trader):
                 # Add data to aggregation queue
                 for agg in self.aggregations:
                     # Update the last datapoint
-                    df = self.df['-'+agg][s].iloc[[i]]
+                    df = self.df[self.interval+'+'+agg][s].iloc[[i]]
                     self.storage.store(s, agg, df)
         
             for a in self.algo:
-                a.main({})
+                a.main()
  
         # pr.disable()
         # import pstats 
