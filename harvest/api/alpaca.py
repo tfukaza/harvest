@@ -1,12 +1,15 @@
 # Builtins
 import yaml
+import asyncio
+import threading
 import datetime as dt
 from logging import critical, error, info, warning, debug
 from typing import Any, Dict, List, Tuple
 
 # External libraries
 import pandas as pd
-from alpaca_trade_api.rest import REST, TimeFrame
+from alpaca_trade_api.rest import REST, TimeFrame, URL
+from alpaca_trade_api import Stream
 
 # Submodule imports
 from harvest.api._base import API
@@ -19,20 +22,58 @@ class Alpaca(API):
         self.basic = is_basic_account
 
         endpoint = 'https://paper-api.alpaca.markets' if paper_trader else 'https://api.alpaca.markets'
-        self.api = REST(self.config.api_key, self.config.secret_key, endpoint)
+        self.api = REST(self.config['api_key'], self.config['secret_key'], endpoint)
+
+        data_feed = 'iex' if self.basic else 'sip'
+        self.stream = Stream(self.config['api_key'], self.config['secret_key'], URL(endpoint), data_feed=data_feed)
+        self.data_lock = threading.Lock()
+        self.data = {
+            'stocks': {},
+            'cryptos': {}
+        }
+
+    async def update_data(self, bar):
+        # Update data with the latest bars
+        self.data_lock.acquire()
+        bar = bar.__dict__['_raw']
+        symbol = bar['symbol']
+        df = pd.DataFrame([{
+            't': bar['timestamp'], 
+            'o': bar['open'], 
+            'h': bar['high'],
+            'l': bar['low'],
+            'c': bar['close'], 
+            'v': bar['volume']
+            }])
+        if symbol in self.watch_stock:
+            self.data['stocks'][symbol] = self._format_df(df, symbol)
+        elif f'@{symbol}' in self.watch_crypto:
+            self.data['cryptos'][f'@{symbol}'] = self._format_df(df, f'@{symbol}')
+        self.data_lock.release()
+
 
     def no_secret(self, path: str) -> bool:
         return self.create_secret(path)
 
+    def capture_data(self):
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        self.stream.run()
+
     def setup(self, watch: List[str], interval: str, trader=None, trader_main=None):
         self.watch_stock = []
         self.watch_crypto = []
+        cryptos = []
 
         for s in watch:
             if is_crypto(s):
                 self.watch_crypto.append(s)
+                cryptos.append(s[1:])
             else:
                 self.watch_stock.append(s)
+
+        self.stream.on_bar(*(self.watch_stock + cryptos))(self.update_data)
+        threading.Thread(target=self.capture_data, daemon=True).start()
 
         self.option_cache = {}
         super().setup(watch, interval, interval, trader, trader_main)
@@ -42,13 +83,24 @@ class Alpaca(API):
 
     def main(self):
         df_dict = {}
-        combo = self.watch_stock + self.watch_crypto
+        df_dict.update(self.fetch_latest_stock_price())
+        df_dict.update(self.fetch_latest_crypto_price())
+      
+        self.trader_main(df_dict)    
 
-        for s in combo:
-            df = self.get_data_from_alpaca(s, 1, 'day', now() - dt.timedelta(days=1), now())
-            df_dict[s] = df
-            print(df)            
-        self.trader_main(df_dict)
+    @API._exception_handler
+    def fetch_latest_stock_price(self):
+        self.data_lock.acquire()
+        df = self.data['stocks']
+        self.data_lock.release()        
+        return df        
+
+    @API._exception_handler
+    def fetch_latest_crypto_price(self):
+        self.data_lock.acquire()
+        df = self.data['cryptos']
+        self.data_lock.release()        
+        return df            
 
     # -------------- Streamer methods -------------- #
     
@@ -258,7 +310,7 @@ class Alpaca(API):
             w.wait_for_input()
 
         api_key_id = w.get_string("Enter your API key ID")
-        secret_key = w.get_password("End your API secret key")
+        secret_key = w.get_password("Enter your API secret key")
         
         w.println(f"All steps are complete now 🎉. Generating {path}...")
 
