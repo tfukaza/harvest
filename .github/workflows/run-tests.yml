@@ -44,7 +44,7 @@ jobs:
     - name: Run tests
       run: |
         pip install coverage
-        coverage run --source harvest -m unittest discover -s tests
+        coverage run --source harvest --omit harvest/api/robinhood.py,harvest/api/alpaca.py -m unittest discover -s tests
 
     - name: Upload to CodeCov
       uses: codecov/codecov-action@v1

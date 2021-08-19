@@ -180,6 +180,41 @@ class PolygonStreamer(API):
     
     # ------------- Helper methods ------------- #
 
+    def get_data_from_polygon(self, symbol: str, multipler: int, timespan: str, start: dt.datetime, end: dt.datetime) -> pd.DataFrame:
+        if self.basic and start < now() - dt.timedelta(days=365 * 2):
+            warning("Start time is over two years old! Only data from the past two years will be returned for basic accounts.")
+
+        if timespan == 'MIN':
+            timespan = 'minute'
+        elif timespan == 'HR':
+            timespan = 'hour'
+        elif timespan == 'DAY':
+            timespan = 'day'
+
+        start_str = start.strftime('%Y-%m-%d')
+        end_str = end.strftime('%Y-%m-%d')
+
+        crypto = False
+        if is_crypto(symbol):
+            symbol = "X:" + symbol[1:] + "-USD"
+            crypto = True
+
+        request_form = "https://api.polygon.io/v2/aggs/ticker/{symbol}/range/{multiplier}/{timespan}/{start}/{end}?adjusted=true&sort=asc&apiKey={api_key}"
+        request = request_form.format(symbol=symbol, multiplier=multipler, timespan=timespan, start=start_str, end=end_str, api_key=self.config['api_key'])
+        response = json.load(urllib.request.urlopen(request))
+
+        if response['status'] != 'ERROR':
+            df = pd.DataFrame(response['results'])
+        else:
+            error(f"Request error! Returning empty dataframe. \n {response}")
+            return pd.DataFrame()
+
+        if crypto:
+            symbol = '@' + symbol[2:-4]
+        df = self._format_df(df, symbol)
+        df = df.loc[start:end]
+        return df
+
     def _format_df(self, df: pd.DataFrame, symbol: str):
         df = df.rename(columns={"t": "timestamp", "o": "open", "c": "close", "h" : "high", "l" : "low", "v" : "volume"})
         df = df[["timestamp", "open", "high", "low", "close", "volume"]].astype(float)
@@ -226,38 +261,3 @@ class PolygonStreamer(API):
         w.println(f"{path} has been created! Make sure you keep this file somewhere secure and never share it with other people.")
         
         return True 
-
-    def get_data_from_polygon(self, symbol: str, multipler: int, timespan: str, start: dt.datetime, end: dt.datetime) -> pd.DataFrame:
-        if self.basic and start < now() - dt.timedelta(days=365 * 2):
-            warning("Start time is over two years old! Only data from the past two years will be returned for basic accounts.")
-
-        if timespan == 'MIN':
-            timespan = 'minute'
-        elif timespan == 'HR':
-            timespan = 'hour'
-        elif timespan == 'DAY':
-            timespan = 'day'
-
-        start_str = start.strftime('%Y-%m-%d')
-        end_str = end.strftime('%Y-%m-%d')
-
-        crypto = False
-        if is_crypto(symbol):
-            symbol = "X:" + symbol[1:] + "-USD"
-            crypto = True
-
-        request_form = "https://api.polygon.io/v2/aggs/ticker/{symbol}/range/{multiplier}/{timespan}/{start}/{end}?adjusted=true&sort=asc&apiKey={api_key}"
-        request = request_form.format(symbol=symbol, multiplier=multipler, timespan=timespan, start=start_str, end=end_str, api_key=self.config['api_key'])
-        response = json.load(urllib.request.urlopen(request))
-
-        if response['status'] != 'ERROR':
-            df = pd.DataFrame(response['results'])
-        else:
-            error(f"Request error! Returning empty dataframe. \n {response}")
-            return pd.DataFrame()
-
-        if crypto:
-            symbol = '@' + symbol[2:-4]
-        df = self._format_df(df, symbol)
-        df = df.loc[start:end]
-        return df
