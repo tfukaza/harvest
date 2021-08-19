@@ -292,8 +292,15 @@ class Trader:
             'new_day': new_day
         }
 
+        new_algo = []
         for a in self.algo:
-            a.main()
+            try:
+                a.main()
+                new_algo.append(a)
+            except:
+                warning(f"Algorithm {a} failed, removing from algorithm list")
+        self.algo = new_algo
+
         self.broker.exit()
         self.streamer.exit()
 
@@ -419,10 +426,6 @@ class Trader:
         asset_type = 'crypto' if is_crypto(symbol) else 'stock'
         self.logger.add_transaction(self.timestamp, 'buy', asset_type, symbol, quantity)
         return ret
-    
-    # def await_buy(self, symbol: str, quantity: int, in_force: str, extended: bool):
-    #     ret = self.broker.await_buy(symbol, quantity, in_force, extended)
-    #     return ret
 
     def sell(self, symbol: str, quantity: int, in_force: str, extended: bool):
         ret = self.broker.sell(symbol, quantity, in_force, extended)
@@ -435,10 +438,7 @@ class Trader:
         asset_type = 'crypto' if is_crypto(symbol) else 'stock'
         self.logger.add_transaction(self.timestamp, 'sell', asset_type, symbol, quantity)
         return ret
-    
-    # def await_sell(self, symbol: str, quantity: int, in_force: str, extended: bool):
-    #     ret = self.broker.await_sell(symbol, quantity, in_force, extended)
-    #     return ret
+
 
     def buy_option(self, symbol: str, quantity: int, in_force: str):
         ret = self.broker.buy_option(symbol, quantity, in_force)
