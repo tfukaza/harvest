@@ -74,6 +74,7 @@ class BaseAlgo:
         if quantity == None:
             quantity = self.get_asset_max_quantity(symbol)
         
+        debug(f"Algo BUY: {symbol}, {quantity}")
         return self.trader.buy(symbol, quantity, in_force, extended)
     
     def sell(self, symbol: str=None, quantity: int=None, in_force: str='gtc', extended: bool=False):
@@ -98,6 +99,8 @@ class BaseAlgo:
             symbol = self.watch[0]
         if quantity == None:
             quantity = self.get_asset_quantity(symbol)
+        
+        debug(f"Algo SELL: {symbol}, {quantity}")
         return self.trader.sell(symbol, quantity, in_force, extended)
 
     # def await_buy(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
