@@ -292,8 +292,15 @@ class Trader:
             'new_day': new_day
         }
 
+        new_algo = []
         for a in self.algo:
-            a.main()
+            try:
+                a.main()
+                new_algo.append(a)
+            except:
+                warning(f"Algorithm {a} failed, removing from algorithm list")
+        self.algo = new_algo
+
         self.broker.exit()
         self.streamer.exit()
 
