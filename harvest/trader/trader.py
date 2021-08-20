@@ -42,6 +42,8 @@ class Trader:
                 filename="./harvest.log",
                 level=logging.debug)
             self.debugger = logging.getLogger()
+        else:
+            self.debugger = logging.getLogger()
 
         # Harvest only supports Python 3.8 or newer.
         if sys.version_info[0] < 3 or sys.version_info[1] < 8:
