@@ -481,6 +481,9 @@ class Robinhood(API):
                     
                     )
                 typ = 'STOCK'
+            if not 'id' in ret:
+                warning("Error in Robinhood order operation, returned\n{ret}")
+                return None
             return {
                 "type":typ,
                 "id":ret['id'],
