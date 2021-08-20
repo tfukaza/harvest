@@ -490,7 +490,8 @@ class Robinhood(API):
                 "symbol":symbol,
                 }
         except:
-            raise Exception(f"Error while placing order. \nReturned \n{ret}")
+            warning(f"Error while placing order. \nReturned \n{ret}")
+            return None
     
     def order_option_limit(self, side: str, symbol: str, quantity: int, limit_price: float, option_type, exp_date: dt.datetime, strike, in_force: str='gtc'):
         ret = None
