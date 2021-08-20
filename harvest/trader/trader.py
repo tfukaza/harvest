@@ -6,6 +6,8 @@ import sys
 from sys import exit
 from signal import signal, SIGINT
 import time
+import os
+import logging
 
 # External libraries
 
@@ -30,10 +32,16 @@ class Trader:
 
     interval_list = ['1MIN', '5MIN', '15MIN', '30MIN', '1HR', '1DAY']
 
-    def __init__(self, streamer=None, broker=None, storage=None):      
+    def __init__(self, streamer=None, broker=None, storage=None, debug=False):      
         """Initializes the Trader. 
         """
         signal(SIGINT, self.exit)
+
+        if debug:
+            logger = logging.getLogger()
+            logging.basicConfig(
+                filename="./harvest.log",
+                level=logging.DEBUG)
 
         # Harvest only supports Python 3.8 or newer.
         if sys.version_info[0] < 3 or sys.version_info[1] < 8:
@@ -102,7 +110,7 @@ class Trader:
         self._setup_account()
 
         # If sync is on, call the broker to load pending orders and all positions currently held.
-        print(f"Sync: {sync}")
+        debug(f"Sync: {sync}")
         if sync:
             self._setup_stats()
             for s in self.stock_positions:
@@ -119,22 +127,22 @@ class Trader:
 
         # Remove duplicates in watchlist
         self.watch = list(set(self.watch))
-        print(f"Watchlist: {self.watch}")
+        debug(f"Watchlist: {self.watch}")
 
         self.fetch_interval = self.streamer.fetch_interval
-        print(f"Interval: {interval}\nFetch interval: {self.fetch_interval}")
+        debug(f"Interval: {interval}\nFetch interval: {self.fetch_interval}")
 
         if interval != self.fetch_interval:
             self.aggregations.insert(0, interval)
-        print(f"Aggregations: {self.aggregations}")
+        debug(f"Aggregations: {self.aggregations}")
 
         if len(self.algo) == 0:
-            print(f"No algorithm specified. Using BaseAlgo")
+            warning(f"No algorithm specified. Using BaseAlgo")
             self.algo = [BaseAlgo()]
         
         self.storage_init()
 
-        print("Setup complete")
+        debug("Setup complete")
 
         self.load_watch = True
     
@@ -156,12 +164,12 @@ class Trader:
     def _setup_stats(self):
         """Initializes local cache of stocks, options, and crypto positions.
         """
-        print("Fetching orders")
+        debug("Fetching orders")
         # Get any pending orders 
         ret = self.broker.fetch_order_queue()
         self.order_queue = ret
 
-        print("Fetching positions")
+        debug("Fetching positions")
         # Get positions
         pos = self.broker.fetch_stock_positions()
         self.stock_positions = pos
@@ -170,7 +178,7 @@ class Trader:
         pos = self.broker.fetch_crypto_positions()
         self.crypto_positions = pos
 
-        print("Fetching option data")
+        debug("Fetching option data")
         # Update option stats
         self.broker.update_option_positions(self.option_positions)
 
@@ -297,8 +305,8 @@ class Trader:
             try:
                 a.main()
                 new_algo.append(a)
-            except:
-                warning(f"Algorithm {a} failed, removing from algorithm list")
+            except Exception as e:
+                warning(f"Algorithm {a} failed, removing from algorithm list.\nException: {e}")
         self.algo = new_algo
 
         self.broker.exit()
