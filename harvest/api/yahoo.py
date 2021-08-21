@@ -65,7 +65,6 @@ class YahooStreamer(API):
                     s = '@'+s[:-4]
                 df_tmp = self._format_df(df_tmp, s)
                 df_dict[s] = df_tmp
-                print(df_tmp)
         self.trader_main(df_dict)
 
     # -------------- Streamer methods -------------- #
@@ -222,6 +221,7 @@ class YahooStreamer(API):
     # ------------- Helper methods ------------- #
 
     def _format_df(self, df: pd.DataFrame, symbol: str):
+        df = df.copy()
         df.reset_index(inplace=True)
         ts_name = df.columns[0]
         df['timestamp'] = df[ts_name]

@@ -1,16 +1,13 @@
 # Builtins
-import asyncio
 import re
 import threading
 from logging import warning, debug
 import sys
-from signal import signal, SIGINT, SIGABRT
 from sys import exit
+from signal import signal, SIGINT
 import time
-import datetime as dt
 
 # External libraries
-import pandas as pd
 
 # Submodule imports
 from harvest.utils import *
@@ -38,8 +35,7 @@ class Trader:
         """
         signal(SIGINT, self.exit)
 
-        self.N = 200
-
+        # Harvest only supports Python 3.8 or newer.
         if sys.version_info[0] < 3 or sys.version_info[1] < 8:
             raise Exception("Harvest requires Python 3.8 or above.")
 
@@ -57,34 +53,36 @@ class Trader:
         else:
             self.broker = broker
 
-        # Initialize date 
         self.timestamp_prev = now()
         self.timestamp = self.timestamp_prev
 
-        self.watch = []             # List of stocks to watch
-        self.account = {}           # Local cash of account info 
+        self.watch = []             # Watchlist of securities.
+        self.account = {}           # Local cache of account data.
 
-        self.stock_positions = []   # Local cache of current stock positions
-        self.option_positions = []  # Local cache of current options positions
-        self.crypto_positions = []  # Local cache of current crypto positions
+        self.stock_positions = []   # Local cache of current stock positions.
+        self.option_positions = []  # Local cache of current options positions.
+        self.crypto_positions = []  # Local cache of current crypto positions.
 
-        self.order_queue = []       # Queue of unfilled orders
+        self.order_queue = []       # Queue of unfilled orders.
 
         if storage is None:
-            self.storage = BaseStorage() # Storage to hold stock/crypto data
+            self.storage = BaseStorage() 
         else:
-            self.storage = storage
-        
-        self.storage.N = self.N
-        
+            self.storage = storage                
         self.logger = BaseLogger()
 
-        self.block_lock = threading.Lock() # Lock for streams that recieve data asynchronously
+        self.block_lock = threading.Lock() # Lock for streams that receive data asynchronously.
 
         self.algo = []
         self.is_save = False
 
-    def setup(self, interval, aggregations, sync=True):
+    def _setup(self, interval, aggregations, sync=True):
+        """
+        Initializes data and parameters necessary to run the program.
+        :param str interval: Interval to run the algorithm.
+        :param str List(str) aggregations: List of intervals to aggregate the data.
+        :param bool sync: If True, fetches any open positions and orders from the specified broker. 
+        """
         self.sync = sync
         self.interval = interval
         self.aggregations = aggregations
@@ -100,11 +98,10 @@ class Trader:
                 raise Exception(f"""Interval '{interval}' is greater than aggregation interval '{agg}'\n
                                     All intervals in aggregations must be greater than specified interval '{interval}'""")
 
-        # Instantiate the account
+        # Initialize the account
         self._setup_account()
 
-        # If sync is on, call the broker to load pending orders and 
-        # all positions currently held.
+        # If sync is on, call the broker to load pending orders and all positions currently held.
         print(f"Sync: {sync}")
         if sync:
             self._setup_stats()
@@ -118,9 +115,9 @@ class Trader:
                 self.watch.append(s['symbol'])     
 
         if len(self.watch) == 0:
-            raise Exception(f"No stock or crypto was specified.")
+            raise Exception(f"No securities were added to watchlist")
 
-        # Remove duplicates
+        # Remove duplicates in watchlist
         self.watch = list(set(self.watch))
         print(f"Watchlist: {self.watch}")
 
@@ -147,9 +144,6 @@ class Trader:
         for s in self.watch:
             for i in [self.fetch_interval] + self.aggregations:
                 df = self.streamer.fetch_price_history(s, i)
-                df = df.iloc[-self.N:]
-                if df_len := len(df) < self.N:
-                    warning(f"Symbol {s}, interval {i} initialized with only {df_len} data points")
                 self.storage.store(s, i, df)
 
     def _setup_account(self):
@@ -195,7 +189,7 @@ class Trader:
 
         self.broker.setup(self.watch, interval, self, self.main)
         self.streamer.setup(self.watch, interval, self, self.main)
-        self.setup(interval, aggregations, sync)
+        self._setup(interval, aggregations, sync)
 
         print(f"Initializing algorithms...")
         for a in self.algo:
@@ -211,8 +205,6 @@ class Trader:
         self.needed = self.watch.copy()
 
         self.is_save = True
-        
-        self.loop = asyncio.get_event_loop()
 
         self.streamer.start(kill_switch)
 
@@ -300,8 +292,15 @@ class Trader:
             'new_day': new_day
         }
 
+        new_algo = []
         for a in self.algo:
-            a.main()
+            try:
+                a.main()
+                new_algo.append(a)
+            except:
+                warning(f"Algorithm {a} failed, removing from algorithm list")
+        self.algo = new_algo
+
         self.broker.exit()
         self.streamer.exit()
 
@@ -427,10 +426,6 @@ class Trader:
         asset_type = 'crypto' if is_crypto(symbol) else 'stock'
         self.logger.add_transaction(self.timestamp, 'buy', asset_type, symbol, quantity)
         return ret
-    
-    # def await_buy(self, symbol: str, quantity: int, in_force: str, extended: bool):
-    #     ret = self.broker.await_buy(symbol, quantity, in_force, extended)
-    #     return ret
 
     def sell(self, symbol: str, quantity: int, in_force: str, extended: bool):
         ret = self.broker.sell(symbol, quantity, in_force, extended)
@@ -443,10 +438,7 @@ class Trader:
         asset_type = 'crypto' if is_crypto(symbol) else 'stock'
         self.logger.add_transaction(self.timestamp, 'sell', asset_type, symbol, quantity)
         return ret
-    
-    # def await_sell(self, symbol: str, quantity: int, in_force: str, extended: bool):
-    #     ret = self.broker.await_sell(symbol, quantity, in_force, extended)
-    #     return ret
+
 
     def buy_option(self, symbol: str, quantity: int, in_force: str):
         ret = self.broker.buy_option(symbol, quantity, in_force)

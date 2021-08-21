@@ -1,6 +1,6 @@
 # Builtins
 import unittest
-import unittest.mock
+from unittest.mock import patch
 
 from harvest import algo
 from harvest.trader import Trader
@@ -10,7 +10,7 @@ from harvest.algo import BaseAlgo
 from harvest.utils import gen_data
 
 import logging
-logging.basicConfig(level=logging.DEBUG)
+#logging.basicConfig(level=logging.DEBUG)
 
 prices = [10, 12, 11, 9, 8, 10, 11, 12, 13, 15, 14, 16, 13, 14]
 
@@ -97,20 +97,16 @@ class TestAlgo(unittest.TestCase):
         self.assertEqual(q, 5)
 
     def test_get_asset_cost(self):
-        t = Trader(DummyStreamer())
+        s = DummyStreamer()
+        t = Trader(s)
         t.set_symbol('A')
         t.set_algo(BaseAlgo())
         t.start("1MIN", kill_switch=True)
 
-        a_new = gen_data('A', 1)
-        t.main({'A': a_new})
-        # This should buy 1 of A
         t.algo[0].buy('A', 1)
+        s.tick()
 
-        a_new = gen_data('A', 1)
-        t.main({'A': a_new})
-        cost = a_new['A']['close'][-1] 
-
+        cost = s.fetch_price_history('A', '5MIN').iloc[-1]['A']['close']
         get_cost = t.algo[0].get_asset_cost('A')
 
         self.assertEqual(get_cost, cost)
@@ -177,16 +173,20 @@ class TestAlgo(unittest.TestCase):
         t.main({'A': a_new})
         self.assertEqual(0, t.algo[0].get_asset_quantity())
     
-    def test_buy_sell_option_auto(self):
+    @patch('harvest.api._base.mark_up')
+    def test_buy_sell_option_auto(self, mock_mark_up):
+        mock_mark_up.return_value = 10
+
         streamer = DummyStreamer()
         t = Trader(streamer)
         t.set_symbol('X')
         t.set_algo(BaseAlgo())
         t.start("1MIN", kill_switch=True)
-
+        streamer.tick()
+        
         t.algo[0].buy_option('X     110101C01000000')
         streamer.tick()
-
+     
         p = t.option_positions[0]
         self.assertEqual(p['occ_symbol'], 'X     110101C01000000')
 
