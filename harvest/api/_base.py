@@ -1,11 +1,13 @@
 # Builtins
 import datetime as dt
+import logging
 import time
-from logging import debug, warning
-from typing import Any, Callable, Dict, List 
+import logging 
 from pathlib import Path
 import yaml
 import traceback
+
+from typing import List, Dict
 
 # External libraries
 import pandas as pd
@@ -53,6 +55,8 @@ class API:
                 return 
         with open(path, 'r') as stream:
             self.config = yaml.safe_load(stream)
+        
+        self.debugger = logging.getLogger('harvest')
     
     def no_secret(self, path: str): 
         """
@@ -471,7 +475,7 @@ class API:
         :returns: The result of order_limit(). Returns None if there is an issue with the parameters.
         """
         if quantity <= 0.0:
-            warning(f"Quantity cannot be less than or equal to 0: was given {quantity}")
+            self.debugger.warning(f"Quantity cannot be less than or equal to 0: was given {quantity}")
             return None
         if self.trader is None:
             buy_power = self.fetch_account()['buying_power']
@@ -485,7 +489,7 @@ class API:
         total_price = limit_price * quantity
         
         if total_price >= buy_power:
-            warning(f"""Not enough buying power.\n Total price ({price} * {quantity} * 1.05 = {limit_price*quantity}) exceeds buying power {buy_power}.\n Reduce purchase quantity or increase buying power.""")
+            self.debugger.warning(f"""Not enough buying power.\n Total price ({price} * {quantity} * 1.05 = {limit_price*quantity}) exceeds buying power {buy_power}.\n Reduce purchase quantity or increase buying power.""")
             return None
 
         return self.order_limit('buy', symbol, quantity, limit_price, in_force, extended)
@@ -503,7 +507,7 @@ class API:
         if symbol == None:
             symbol = self.watch[0]
         if quantity <= 0.0:
-            warning(f"Quantity cannot be less than or equal to 0: was given {quantity}")
+            self.debugger.warning(f"Quantity cannot be less than or equal to 0: was given {quantity}")
             return None
        
         if self.trader is None:
@@ -526,7 +530,7 @@ class API:
         :returns: The result of order_option_limit(). Returns None if there is an issue with the parameters.
         """
         if quantity <= 0.0:
-            warning(f"Quantity cannot be less than or equal to 0: was given {quantity}")
+            self.debugger.warning(f"Quantity cannot be less than or equal to 0: was given {quantity}")
             return None
         if self.trader is None:
             buy_power = self.fetch_account()['buying_power']
@@ -539,7 +543,7 @@ class API:
         total_price = limit_price * quantity
         
         if total_price >= buy_power:
-            warning(f"""
+            self.debugger.warning(f"""
 Not enough buying power 🏦.\n
 Total price ({price} * {quantity} * 1.05 = {limit_price*quantity}) exceeds buying power {buy_power}.\n
 Reduce purchase quantity or increase buying power.""")
@@ -558,7 +562,7 @@ Reduce purchase quantity or increase buying power.""")
         :returns: The result of order_option_limit(). Returns None if there is an issue with the parameters.
         """
         if quantity <= 0.0:
-            warning(f"Quantity cannot be less than or equal to 0: was given {quantity}")
+            self.debugger.warning(f"Quantity cannot be less than or equal to 0: was given {quantity}")
             return None
         if self.trader is None:
             price = self.streamer.fetch_option_market_data(symbol)['price']
