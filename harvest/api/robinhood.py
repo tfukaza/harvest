@@ -80,7 +80,7 @@ class Robinhood(API):
         for s in self.__watch_stock:
             ret = rh.get_stock_historicals(
                 s,
-                interval=self.interval_fmt, 
+                interval=self.__interval_fmt, 
                 span='day', 
                 )
             if 'error' in ret or ret == None or (type(ret) == list and len(ret) == 0):
@@ -97,7 +97,7 @@ class Robinhood(API):
         for s in self.__watch_crypto_fmt:
             ret = rh.get_crypto_historicals(
                 s, 
-                interval=self.interval_fmt, 
+                interval=self.__interval_fmt, 
                 span='hour',
                 )
             df_tmp = pd.DataFrame.from_dict(ret)
@@ -442,6 +442,10 @@ class Robinhood(API):
         limit_price: float, 
         in_force: str='gtc', 
         extended: bool=False):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 2ddefa484921d80579dd31436dc70112b7e8353f
         ret = None
         try:
             if symbol[0] == '@':
@@ -478,16 +482,24 @@ class Robinhood(API):
                         limitPrice=limit_price,
                     )
                 typ = 'STOCK'
+            if not 'id' in ret:
+                warning("Error in Robinhood order operation, returned\n{ret}")
+                return None
             return {
                 "type":typ,
                 "id":ret['id'],
                 "symbol":symbol,
                 }
         except:
+<<<<<<< HEAD
             self.debugger.error("Error while placing order.\nReturned: {ret}", exc_info=True)
+=======
+            warning(f"Error while placing order. \nReturned \n{ret}")
+>>>>>>> 2ddefa484921d80579dd31436dc70112b7e8353f
             return None
     
     def order_option_limit(self, side: str, symbol: str, quantity: int, limit_price: float, option_type, exp_date: dt.datetime, strike, in_force: str='gtc'):
+        ret = None
         try:
             if side == 'buy':
                 ret = rh.order_buy_option_limit(
@@ -521,8 +533,12 @@ class Robinhood(API):
                 "symbol":symbol,
                 }
         except:
+<<<<<<< HEAD
             self.debugger.error("Error while placing order.\nReturned: {ret}", exc_info=True)
             return None
+=======
+            raise Exception(f"Error while placing order. \nReturned \n{ret}")
+>>>>>>> 2ddefa484921d80579dd31436dc70112b7e8353f
     
     def _format_df(self, df: pd.DataFrame, watch: List[str], interval: str, latest: bool=False):
         # Robinhood returns offset-aware timestamps based on timezone GMT-0, or UTC
