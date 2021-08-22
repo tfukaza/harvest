@@ -442,10 +442,6 @@ class Robinhood(API):
         limit_price: float, 
         in_force: str='gtc', 
         extended: bool=False):
-<<<<<<< HEAD
-=======
-
->>>>>>> 2ddefa484921d80579dd31436dc70112b7e8353f
         ret = None
         try:
             if symbol[0] == '@':
@@ -491,11 +487,7 @@ class Robinhood(API):
                 "symbol":symbol,
                 }
         except:
-<<<<<<< HEAD
             self.debugger.error("Error while placing order.\nReturned: {ret}", exc_info=True)
-=======
-            warning(f"Error while placing order. \nReturned \n{ret}")
->>>>>>> 2ddefa484921d80579dd31436dc70112b7e8353f
             return None
     
     def order_option_limit(self, side: str, symbol: str, quantity: int, limit_price: float, option_type, exp_date: dt.datetime, strike, in_force: str='gtc'):
@@ -533,12 +525,8 @@ class Robinhood(API):
                 "symbol":symbol,
                 }
         except:
-<<<<<<< HEAD
             self.debugger.error("Error while placing order.\nReturned: {ret}", exc_info=True)
             return None
-=======
-            raise Exception(f"Error while placing order. \nReturned \n{ret}")
->>>>>>> 2ddefa484921d80579dd31436dc70112b7e8353f
     
     def _format_df(self, df: pd.DataFrame, watch: List[str], interval: str, latest: bool=False):
         # Robinhood returns offset-aware timestamps based on timezone GMT-0, or UTC
