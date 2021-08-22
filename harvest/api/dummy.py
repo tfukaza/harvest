@@ -46,7 +46,7 @@ class DummyStreamer(API):
     
     def fetch_latest_stock_price(self) -> Dict[str, pd.DataFrame]:
         """
-        Gets fake stock data in the last three day interval and  returns the last 
+        Gets fake stock data in the last three day interval and returns the last 
         value. The reason the last three days are needed is because no data is returned
         when the stock market is closed, e.g. weekends.
         """
