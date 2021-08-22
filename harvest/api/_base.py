@@ -191,12 +191,13 @@ class API:
                 try:
                     return func(*args, **kwargs) 
                 except Exception as e:
-                    debug(f"Error: {e}")
+                    self = args[0]
+                    self.debugger.debug(f"Error: {e}")
                     traceback.print_exc()
-                    # debug("Logging out and back in...")
-                    # args[0].refresh_cred()
+                    self.debugger.debug("Logging out and back in...")
+                    args[0].refresh_cred()
                     tries = tries - 1 
-                    debug("Retrying...")
+                    self.debugger.debug("Retrying...")
                     continue
             raise Exception(f"{func} failed")
         return wrapper
