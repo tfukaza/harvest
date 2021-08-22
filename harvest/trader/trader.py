@@ -35,12 +35,6 @@ class Trader:
         """
         signal(SIGINT, self.exit)
 
-        if debug:
-            logging.basicConfig(
-                filename="harvest.log",
-                filemode="a")
-            logging.getLogger().setLevel(logging.DEBUG) 
-
         # Harvest only supports Python 3.8 or newer.
         if sys.version_info[0] < 3 or sys.version_info[1] < 8:
             raise Exception("Harvest requires Python 3.8 or above.")
