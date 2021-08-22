@@ -7,7 +7,7 @@ from pathlib import Path
 import yaml
 import traceback
 
-from typing import List, Dict
+from typing import List, Dict, Any
 
 # External libraries
 import pandas as pd
