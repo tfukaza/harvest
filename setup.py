@@ -18,5 +18,6 @@ class CoverageTestCMD(Command):
 setup(
     cmdclass={
         'test': CoverageTestCMD,
-    }
+    },
+    include_package_data=True
 )

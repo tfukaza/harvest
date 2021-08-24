@@ -1,9 +1,7 @@
 # ignore ide files
-
 .vscode
 
 # ignore compiled python files
-
 **/__pycache__/
 *.py[cod]
 *.ipynb
@@ -12,22 +10,18 @@
 *.ipynb_checkpoints
 
 # ignore generated files
-
-build/
 dist/
 
 # ignore stock storage files
-
 data/
 
 # ignore coverage files
-
 .coverage
 /htmlcov
 
 # misc.
-
 *.yaml
 !dummy_account.yaml
+package-lock.json
 
 .DS_Store

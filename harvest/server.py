@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, render_template
 import threading 
 import logging
 
@@ -10,7 +10,8 @@ class Server:
     def __init__(self, trader):
         self.app = Flask(__name__)
 
-        self.app.add_url_rule('/crypto_positions', view_func=self.crypto_positions)
+        self.app.add_url_rule('/', view_func=self.interface)
+        self.app.add_url_rule('/api/crypto_positions', view_func=self.crypto_positions)
         
         self.trader = trader
 
@@ -18,9 +19,12 @@ class Server:
     
     def start(self):
         self.debugger.info("Starting web server")
-        print("Starting server")
-        server = threading.Thread(target=self.app.run(port=11111), daemon=True)
+        server = threading.Thread(target=self.app.run, kwargs={'port':11111}, daemon=True)
         server.start()
+        print("Started server")
+
+    def interface(self):
+        return render_template('index.html')
      
     def crypto_positions(self):
         return str(self.trader.crypto_positions)
