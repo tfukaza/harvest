@@ -1,10 +1,23 @@
 <script>
+import { dataset_dev } from "svelte/internal";
+
 	export let name;
+	const positions = (async () => {
+		const response = await fetch('127.0.0.1:11111/crypto_positions')
+    	return await response.json()
+	})()
 </script>
 
 <main>
-	<h1>Hello {name}!</h1>
-	<p>Visit the <a href="https://svelte.dev/tutorial">Svelte tutorial</a> to learn how to build Svelte apps.</p>
+	<h1>Hello {name}!!!</h1>
+	{#await positions}
+		<p>Loading...</p>
+	{:then data}
+		<p>data.message</p>
+	{:catch error}
+		<p>Error</p>
+	{/await}
+	<p></p>
 </main>
 
 <style>
