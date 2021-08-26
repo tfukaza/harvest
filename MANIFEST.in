@@ -1,1 +1,2 @@
-include harvest/templates/*
+include harvest/gui/*
+include harvest/gui/build/*
