@@ -1,8 +1,9 @@
 # Builtins
+from re import S
 import unittest
 from unittest.mock import patch
 
-from harvest import algo
+#from harvest import algo
 from harvest.trader import Trader
 from harvest.api.dummy import DummyStreamer
 from harvest.algo import BaseAlgo 
@@ -10,7 +11,6 @@ from harvest.algo import BaseAlgo
 from harvest.utils import gen_data
 
 import logging
-#logging.basicConfig(level=logging.DEBUG)
 
 prices = [10, 12, 11, 9, 8, 10, 11, 12, 13, 15, 14, 16, 13, 14]
 
@@ -82,15 +82,15 @@ class TestAlgo(unittest.TestCase):
         self.assertEqual(True, True)
     
     def test_get_asset_quantity(self):
-        t = Trader(DummyStreamer())
+        s = DummyStreamer()
+        t = Trader(s)
         t.set_symbol('A')
         t.set_algo(BaseAlgo())
         t.start("1MIN", kill_switch=True)
 
         # This should buy 5 of A
         t.algo[0].buy('A', 5)
-        a_new = gen_data('A', 1)
-        t.main({'A': a_new})
+        s.tick()
 
         q = t.algo[0].get_asset_quantity('A')
 
@@ -112,31 +112,31 @@ class TestAlgo(unittest.TestCase):
         self.assertEqual(get_cost, cost)
     
     def test_get_asset_price(self):
-        t = Trader(DummyStreamer())
+        s = DummyStreamer()
+        t = Trader(s)
         t.set_symbol('A')
         t.set_algo(BaseAlgo())
         t.start("1MIN", kill_switch=True)
 
         # This should buy 5 of A
         t.algo[0].buy('A', 5)
-        a_new = gen_data('A', 1)
-        t.main({'A': a_new})
-        price = a_new['A']['close'][-1] 
+        s.tick()
+        price = s.fetch_latest_stock_price()['A']['A']['close'][0]
 
         get_price = t.algo[0].get_asset_price('A')
 
         self.assertEqual(get_price, price)
 
     def test_buy_sell(self):
-        t = Trader(DummyStreamer())
+        s = DummyStreamer()
+        t = Trader(s)
         t.set_symbol('A')
         t.set_algo(BaseAlgo())
         t.start("1MIN", kill_switch=True)
 
         # This should buy 2 of A
         t.algo[0].buy('A', 2)
-        a_new = gen_data('A', 1)
-        t.main({'A': a_new})
+        s.tick()
 
         p = t.stock_positions[0]
         self.assertEqual(p['symbol'], 'A')
@@ -144,15 +144,15 @@ class TestAlgo(unittest.TestCase):
 
         # This should sell 1 of A
         t.algo[0].sell('A', 1)
-        a_new = gen_data('A', 1)
-        t.main({'A': a_new})
+        s.tick()
 
         p = t.stock_positions[0]
         self.assertEqual(p['symbol'], 'A')
         self.assertEqual(p['quantity'], 1)
     
     def test_buy_sell_auto(self):
-        t = Trader(DummyStreamer())
+        s = DummyStreamer()
+        t = Trader(s)
         t.set_symbol('A')
         t.set_algo(BaseAlgo())
         t.start("1MIN", kill_switch=True)
@@ -160,8 +160,7 @@ class TestAlgo(unittest.TestCase):
         price = round(t.storage.load('A', '1MIN')['A']['close'][-1] * 1.05, 2)
         qty = int(1000000/price)
         t.algo[0].buy()
-        a_new = gen_data('A', 1)
-        t.main({'A': a_new})
+        s.tick()
 
         p = t.stock_positions[0]
         self.assertEqual(p['symbol'], 'A')
@@ -169,8 +168,7 @@ class TestAlgo(unittest.TestCase):
 
         # This should sell all of A
         t.algo[0].sell()
-        a_new = gen_data('A', 1)
-        t.main({'A': a_new})
+        s.tick()
         self.assertEqual(0, t.algo[0].get_asset_quantity())
     
     @patch('harvest.api._base.mark_up')
