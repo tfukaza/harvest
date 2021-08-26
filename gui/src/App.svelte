@@ -1,10 +1,10 @@
 <script>
-import { dataset_dev } from "svelte/internal";
 
 	export let name;
 	const positions = (async () => {
-		const response = await fetch('127.0.0.1:11111/crypto_positions')
-    	return await response.json()
+		const response = await fetch('http://localhost:11111/api/crypto_positions');
+    	const ret = await response.json();
+		return ret;
 	})()
 </script>
 
@@ -13,9 +13,13 @@ import { dataset_dev } from "svelte/internal";
 	{#await positions}
 		<p>Loading...</p>
 	{:then data}
-		<p>data.message</p>
+		<ul>
+		{#each data as position}
+			<li>{position.symbol}</li>
+		{/each}
+		</ul>
 	{:catch error}
-		<p>Error</p>
+		<p>Error: {error}</p>
 	{/await}
 	<p></p>
 </main>

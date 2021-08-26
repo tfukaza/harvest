@@ -33,7 +33,7 @@ export default {
 		sourcemap: true,
 		format: 'iife',
 		name: 'app',
-		file: '../harvest/templates/build/bundle.js'
+		file: '../harvest/gui/build/bundle.js'
 	},
 	plugins: [
 		svelte({
@@ -59,11 +59,11 @@ export default {
 
 		// In dev mode, call `npm run start` once
 		// the bundle has been generated
-		!production && serve('../harvest/templates'),
+		!production && serve('../harvest/gui'),
 
 		// Watch the `public` directory and refresh the
 		// browser on changes when not in production
-		!production && livereload('../harvest/templates'),
+		!production && livereload('../harvest/gui'),
 
 		// If we're building for production (npm run build
 		// instead of npm run dev), minify
