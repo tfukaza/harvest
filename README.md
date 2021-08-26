@@ -72,7 +72,7 @@ Replace `BROKER` with a brokerage/data source of your choice:
 Now you're all set!
 
 # Contributing
-Contributions are greatly appreciated. Check out the [CONTRIBUTING](CONTRIBUTING.md) document for details.
+Contributions are greatly appreciated. Check out the [CONTRIBUTING](CONTRIBUTING.md) document for details, and [ABOUT](ABOUT.md) for the long-term goals of this project. 
 
 # Disclaimer
 - Harvest is not officially associated with Robinhood LLC.  

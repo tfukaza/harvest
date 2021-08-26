@@ -90,7 +90,8 @@ class TestTrader(unittest.TestCase):
         self.assertFalse(t.is_freq(dt.datetime(2000,1,1,1,59,0)))
     
     def test_timeout(self):
-        t = Trader(DummyStreamer())
+        s = DummyStreamer()
+        t = Trader(s)
         t.set_symbol(['A', 'B'])
         t.start('1MIN', kill_switch=True)
 
@@ -101,8 +102,8 @@ class TestTrader(unittest.TestCase):
         data = gen_data('A', 1)
         data.index=[a_cur.index[-1]+dt.timedelta(minutes=1)]
         data = {'A': data}
-       
         t.main(data)
+        
         # Wait for the timeout
         time.sleep(2)
 
@@ -121,7 +122,8 @@ class TestTrader(unittest.TestCase):
         # Save the last datapoint of B
         a_cur = t.storage.load('A', '1MIN')
         b_cur = t.storage.load('B', '1MIN')
-        # Only send data for A
+
+        # Send data for A and B
         data_a = gen_data('A', 1)
         data_a.index=[a_cur.index[-1]+dt.timedelta(minutes=1)]
         data_a = {'A': data_a}
@@ -129,6 +131,7 @@ class TestTrader(unittest.TestCase):
         data_b.index=[b_cur.index[-1]+dt.timedelta(minutes=1)]
         data_b = {'B': data_b}
         t.main(data_a)
+        
         # Wait 
         time.sleep(0.1)
         t.main(data_b)
