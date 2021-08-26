@@ -18,6 +18,7 @@ from harvest.api.paper import PaperBroker
 from harvest.algo import BaseAlgo
 from harvest.storage import BaseStorage
 from harvest.storage import BaseLogger
+from harvest.server import Server
 
 class Trader:
     """
@@ -74,6 +75,9 @@ class Trader:
 
         self.algo = []
         self.is_save = False
+
+
+        self.server = Server(self)
 
         self.debugger = logging.getLogger("harvest")
 
@@ -191,7 +195,7 @@ class Trader:
         self.broker.update_option_positions(self.option_positions)
         self.debugger.debug("Updated option positions:\n{self.option_positions}")
 
-    def start(self, interval='5MIN', aggregations=[], sync = True, kill_switch: bool=False): 
+    def start(self, interval='5MIN', aggregations=[], sync = True, kill_switch: bool=False, server=False): 
         """Entry point to start the system. 
         
         :param str? interval: The interval to run the algorithm. defaults to '5MIN'
@@ -222,6 +226,9 @@ class Trader:
         self.needed = self.watch.copy()
 
         self.is_save = True
+        
+        if server:
+            self.server.start()
 
         self.streamer.start(kill_switch)
 
