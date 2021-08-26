@@ -1,7 +1,7 @@
 # Builtins
 from datetime import timedelta, timezone
 import datetime as dt
-from logging import critical, error, info, warning, debug
+import logging
 from typing import Any, List, Tuple
 import math
 
@@ -35,6 +35,7 @@ class BaseAlgo:
     def __init__(self):
         self.watch = []
         self.trader = None 
+        self.debugger = logging.getLogger('harvest')
 
     def setup(self):
         pass
@@ -47,7 +48,7 @@ class BaseAlgo:
         if value is None:
             setattr(self, plugin.name, plugin)
         else:
-            error(f"Plugin name is already in use! {plugin.name} points to {value}.")
+            self.debugger.error(f"Plugin name is already in use! {plugin.name} points to {value}.")
     
     ############ Functions interfacing with broker through the trader #################
 
@@ -74,7 +75,7 @@ class BaseAlgo:
         if quantity == None:
             quantity = self.get_asset_max_quantity(symbol)
         
-        debug(f"Algo BUY: {symbol}, {quantity}")
+        self.debugger.debug(f"Algo BUY: {symbol}, {quantity}")
         return self.trader.buy(symbol, quantity, in_force, extended)
     
     def sell(self, symbol: str=None, quantity: int=None, in_force: str='gtc', extended: bool=False):
@@ -100,7 +101,7 @@ class BaseAlgo:
         if quantity == None:
             quantity = self.get_asset_quantity(symbol)
         
-        debug(f"Algo SELL: {symbol}, {quantity}")
+        self.debugger.debug(f"Algo SELL: {symbol}, {quantity}")
         return self.trader.sell(symbol, quantity, in_force, extended)
 
     # def await_buy(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
