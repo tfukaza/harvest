@@ -2,6 +2,7 @@
 import datetime as dt
 from logging import critical, error, info, warning, debug
 from typing import Any, Dict, List, Tuple
+import logging
 
 # External libraries
 import pandas as pd
@@ -16,7 +17,7 @@ class YahooStreamer(API):
     interval_list = ['1MIN', '5MIN', '15MIN', '30MIN', '1HR']
 
     def __init__(self, path=None):
-        pass
+        self.debugger = logging.getLogger('harvest')
 
     def setup(self, watch: List[str], interval, trader=None, trader_main=None):
         self.watch_stock = []
