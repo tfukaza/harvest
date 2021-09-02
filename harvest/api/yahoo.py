@@ -51,6 +51,7 @@ class YahooStreamer(API):
         if len(combo) == 1:
             s = combo[0]
             df = yf.download(s, period='5d', interval=self.interval_fmt, prepost=True)
+            self.debugger.log(f"From yfinance got: {df}")
             if len(df.index) == 0:
                 return
             if s[-4:] == '-USD':
@@ -60,6 +61,7 @@ class YahooStreamer(API):
         else:
             names = ' '.join(self.watch_stock + self.watch_crypto)
             df = yf.download(names, period='5d', interval=self.interval_fmt, prepost=True)
+            self.debugger.log(f"From yfinance got: {df}")
             if len(df.index) == 0:
                 return
             for s in combo:
