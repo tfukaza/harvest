@@ -1,41 +1,52 @@
-# Motivation
-If you look around, you'll notice that there are already countless algo-trading frameworks out there. So why do we need another one? That's because many of the existing frameworks have one or more of the following issues:
-- Requires users to pay for certain features.
-- The code is closed source, and cannot be modified by the community.
-- The interface is complex, and the learning curve is steep.
-- Only supports specific brokerages.
-- Only works for specific type of assets, like cryptocurrencies. 
+# Contributing
+Thank you for helping out coding Harvest :). Your help is greatly appreciated. 
 
-The goal of Harvest is therefore:
-- Be free and open source.
-- Allow users and dev to mod the framework as they need. 
-- Keep the functionality minimal yet flexible and robust. 
-- Support many popular brokerages.
-- Support stocks, crypto, and options.
+## Workflow
+The coding process is relatively straight-forward:
+1. Choose a task to work on from [open issues](https://github.com/tfukaza/harvest/issues). Alternatively, you can create your own task by [filing a bug report](https://github.com/tfukaza/harvest/issues/new?assignees=&labels=bug&template=bug_report.md&title=%5B%F0%9F%AA%B0BUG%5D) or [submitting a feature suggestion](https://github.com/tfukaza/harvest/issues/new?assignees=&labels=enhancement%2C+question&template=feature-request.md&title=%5B%F0%9F%92%A1Feature+Request%5D).
+2. When working on an issue, notify others you are doing so, so other people are aware of who is working on what.
+3. Clone the repo, and write your code in your own branch.
+4. Make a PR to merge your code to main branch. Currently this project requires the approval of at least one contributor to merge the code. 
 
-# Principles
-The following are the core values of this project you should keep in mind, especially if you are coding a new feature or approving a big PR. 
+# Developer Guide
+Read through the following guides to understand how to properly set up your development environment. 
 
-- 😀 Beginner friendly: Keep the interface simple and minimal, focusing on the essentials. Complicated options and configurations should be hidden away. 
-- 🛠️ Modifiable: The code should be easy for developers to add new features and make modifications. 
-- 📜 Principle over performance: Sometimes you may have to choose between the performance of the code and following the principles. In such case, always choose the latter. 
+## Harvest
+Harvest requires a Python version of 3.8 or greater, and has a lot of dependencies, so it is highly recommended you use tools like Anaconda or VirtualEnv.
 
+### Installing a Local Build
+Run the following in the root of the project directory to install local changes you made. 
+```bash
+pip install .
+```
 
-# Testing
-## Unit Testing
+### Unit Testing
 After any modifications to the code, conduct unit tests by running:
 ```bash
 python -m unittest discover -s tests
 ```
 from the project's root directory. This will run the tests defined in the `tests` directory.
 
-## Real-Time Testing
+### Real-Time Testing
 Unit testing does not cover all possible situations Harvest might encounter. Whenever possible, run the program as if you are a user on your own machine to test the code in real-life environments. This is especially true for codes for specific brokerages, which automated unit tests cannot cover.   
 
 **Make sure you don't accidentally `git push` secret keys of the brokerage you are using🤐**
 
-## Website Testing
-If you are working on the website, navigate to `/website`, and run 
+## GUI
+The web interface of Harvest is made with the Svelte framework. 
+
+### Running a Dev Server
+Move to the `/gui` directory (not `/harvest/gui`) and run:
+```bash
+npm run dev
+```
+This will start the dev server. Any edits you make in `/gui/src` will automatically be built and saved to `/harvest/gui`. 
+
+## Website 
+The Harvest website is built using Next.js (switching to 11ty soon).
+
+### Running a Dev Server
+Navigate to `/website`, and run 
 ```bash
 npm run dev
 ``` 
