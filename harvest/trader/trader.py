@@ -76,17 +76,18 @@ class Trader:
         self.algo = []
         self.is_save = False
 
-
         self.server = Server(self)
 
         self.debugger = logging.getLogger("harvest")
-
+        self.debugger.setLevel("DEBUG")
         if debug:
             f_handler = logging.FileHandler("trader.log")
             f_handler.setLevel(logging.DEBUG)
             f_format = logging.Formatter('%(asctime)s : %(name)s : %(levelname)s : %(message)s')
             f_handler.setFormatter(f_format)
             self.debugger.addHandler(f_handler)
+        
+        self.debugger.debug("Test")
         
         c_handler = logging.StreamHandler()
         if debug:
@@ -96,6 +97,8 @@ class Trader:
         c_format = logging.Formatter('%(asctime)s : %(name)s : %(levelname)s : %(message)s')
         c_handler.setFormatter(c_format)
         self.debugger.addHandler(c_handler)
+
+        self.debugger.warning("Test")
 
     def _setup(self, interval, aggregations, sync=True):
         """
@@ -180,7 +183,7 @@ class Trader:
         # Get any pending orders 
         ret = self.broker.fetch_order_queue()
         self.order_queue = ret
-        self.debugger.debug("Fetched orders:\n{self.order_queue}")
+        self.debugger.debug(f"Fetched orders:\n{self.order_queue}")
 
         # Get positions
         pos = self.broker.fetch_stock_positions()
@@ -189,11 +192,11 @@ class Trader:
         self.option_positions = pos
         pos = self.broker.fetch_crypto_positions()
         self.crypto_positions = pos
-        self.debugger.debug("Fetched positions:\n{self.stock_positions}\n{self.option_positions}\n{self.crypto_positions}")
+        self.debugger.debug(f"Fetched positions:\n{self.stock_positions}\n{self.option_positions}\n{self.crypto_positions}")
 
         # Update option stats
         self.broker.update_option_positions(self.option_positions)
-        self.debugger.debug("Updated option positions:\n{self.option_positions}")
+        self.debugger.debug(f"Updated option positions:\n{self.option_positions}")
 
     def start(self, interval='5MIN', aggregations=[], sync = True, kill_switch: bool=False, server=False): 
         """Entry point to start the system. 

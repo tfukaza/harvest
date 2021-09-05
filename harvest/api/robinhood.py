@@ -1,6 +1,5 @@
 # Builtins
 import datetime as dt
-from logging import critical, error, info, warning, debug
 from typing import Any, Dict, List, Tuple
 
 # External libraries
@@ -21,7 +20,7 @@ class Robinhood(API):
         self.login()
 
     def login(self):
-        debug("Logging into Robinhood...")
+        self.debugger.debug("Logging into Robinhood...")
         totp = pyotp.TOTP(self.config['robin_mfa']).now()
         rh.login(   self.config['robin_username'],
                     self.config['robin_password'], 
@@ -29,10 +28,10 @@ class Robinhood(API):
                     mfa_code=totp)   
     
     def refresh_cred(self):
-        debug("Logging out of Robinhood...")
+        self.debugger.debug("Logging out of Robinhood...")
         rh.authentication.logout()
         self.login()
-        debug("Logged into Robinhood...")
+        self.debugger.debug("Logged into Robinhood...")
     
     def no_secret(self, path):
         return self.create_secret(path)
