@@ -1,6 +1,5 @@
 # Builtins
 import datetime as dt
-from logging import critical, error, info, warning, debug
 from typing import Any, Dict, List, Tuple
 import logging
 
@@ -86,7 +85,7 @@ class YahooStreamer(API):
         end: dt.datetime = None, 
        ):
 
-        debug(f"Fetching {symbol} {interval} price history")
+        self.debugger.debug(f"Fetching {symbol} {interval} price history")
 
         if start is None:  
             start = epoch_zero()
