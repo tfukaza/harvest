@@ -1,7 +1,7 @@
 # Builtins
 import datetime as dt
-from logging import critical, error, info, warning, debug
 from typing import Any, Dict, List, Tuple
+import logging
 
 # External libraries
 import pandas as pd
@@ -16,7 +16,7 @@ class YahooStreamer(API):
     interval_list = ['1MIN', '5MIN', '15MIN', '30MIN', '1HR']
 
     def __init__(self, path=None):
-        pass
+        self.debugger = logging.getLogger('harvest')
 
     def setup(self, watch: List[str], interval, trader=None, trader_main=None):
         self.watch_stock = []
@@ -50,16 +50,24 @@ class YahooStreamer(API):
         combo = self.watch_stock + self.watch_crypto
         if len(combo) == 1:
             s = combo[0]
-            df = yf.download(s, period='1d', interval=self.interval_fmt, prepost=True)
+            df = yf.download(s, period='5d', interval=self.interval_fmt, prepost=True)
+            self.debugger.debug(f"From yfinance got: {df}")
+            if len(df.index) == 0:
+                return
             if s[-4:] == '-USD':
                     s = '@'+s[:-4]
             df = self._format_df(df, s)
             df_dict[s] = df
         else:
             names = ' '.join(self.watch_stock + self.watch_crypto)
-            df = yf.download(names, period='1d', interval=self.interval_fmt, prepost=True)
+            df = yf.download(names, period='5d', interval=self.interval_fmt, prepost=True)
+            self.debugger.debug(f"From yfinance got: {df}")
+            if len(df.index) == 0:
+                return
             for s in combo:
                 df_tmp = df.iloc[:, df.columns.get_level_values(1)==s]
+                if len(df_tmp.index) == 0:
+                    continue
                 df_tmp.columns = df_tmp.columns.droplevel(1)
                 if s[-4:] == '-USD':
                     s = '@'+s[:-4]
@@ -77,7 +85,7 @@ class YahooStreamer(API):
         end: dt.datetime = None, 
        ):
 
-        debug(f"Fetching {symbol} {interval} price history")
+        self.debugger.debug(f"Fetching {symbol} {interval} price history")
 
         if start is None:  
             start = epoch_zero()

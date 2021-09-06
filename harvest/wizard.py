@@ -1,7 +1,6 @@
 # Builtins
 import re
 from getpass import getpass
-from logging import critical, error, info, warning, debug
 import os
 
 # Source: https://stackoverflow.com/questions/287871/how-to-print-colored-text-to-the-terminal
@@ -129,7 +128,7 @@ class Wizard:
         try:
             return int(value)
         except ValueError as e:
-            warning(f'Invalid input {value}, using {default} instead!\nError: {e}')
+            print(f'Invalid input {value}, using {default} instead!\nError: {e}')
             return default
 
     def get_password(self, prompt='Password: ') -> str:

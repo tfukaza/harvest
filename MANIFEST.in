@@ -1,0 +1,2 @@
+include harvest/gui/*
+include harvest/gui/build/*

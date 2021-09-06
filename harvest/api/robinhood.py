@@ -1,6 +1,5 @@
 # Builtins
 import datetime as dt
-from logging import critical, error, info, warning, debug
 from typing import Any, Dict, List, Tuple
 
 # External libraries
@@ -21,7 +20,7 @@ class Robinhood(API):
         self.login()
 
     def login(self):
-        debug("Logging into Robinhood...")
+        self.debugger.debug("Logging into Robinhood...")
         totp = pyotp.TOTP(self.config['robin_mfa']).now()
         rh.login(   self.config['robin_username'],
                     self.config['robin_password'], 
@@ -29,10 +28,10 @@ class Robinhood(API):
                     mfa_code=totp)   
     
     def refresh_cred(self):
-        debug("Logging out of Robinhood...")
+        self.debugger.debug("Logging out of Robinhood...")
         rh.authentication.logout()
         self.login()
-        debug("Logged into Robinhood...")
+        self.debugger.debug("Logged into Robinhood...")
     
     def no_secret(self, path):
         return self.create_secret(path)
@@ -442,7 +441,6 @@ class Robinhood(API):
         limit_price: float, 
         in_force: str='gtc', 
         extended: bool=False):
-
         ret = None
         try:
             if symbol[0] == '@':
@@ -453,7 +451,6 @@ class Robinhood(API):
                         quantity = quantity,
                         timeInForce=in_force,
                         limitPrice=limit_price,
-                    
                     )
                 else:
                     ret = rh.order_sell_crypto_limit(
@@ -478,7 +475,6 @@ class Robinhood(API):
                         quantity = quantity,
                         timeInForce=in_force,
                         limitPrice=limit_price,
-                    
                     )
                 typ = 'STOCK'
             return {
@@ -487,7 +483,8 @@ class Robinhood(API):
                 "symbol":symbol,
                 }
         except:
-            raise Exception(f"Error while placing order. \nReturned \n{ret}")
+            self.debugger.error("Error while placing order.\nReturned: {ret}", exc_info=True)
+            raise Exception("Error while placing order.")
     
     def order_option_limit(self, side: str, symbol: str, quantity: int, limit_price: float, option_type, exp_date: dt.datetime, strike, in_force: str='gtc'):
         ret = None
@@ -516,15 +513,14 @@ class Robinhood(API):
                     optionType=option_type,
                     timeInForce=in_force,
                 )
-            if 'detail' in ret:
-                Exception(f"Robinhood returned the following error:\n{ret['detail']}")
             return {
                 "type":'OPTION',
                 "id":ret['id'],
                 "symbol":symbol,
                 }
         except:
-            raise Exception(f"Error while placing order. \nReturned \n{ret}")
+            self.debugger.error("Error while placing order.\nReturned: {ret}", exc_info=True)
+            raise Exception("Error while placing order")
     
     def _format_df(self, df: pd.DataFrame, watch: List[str], interval: str, latest: bool=False):
         # Robinhood returns offset-aware timestamps based on timezone GMT-0, or UTC
