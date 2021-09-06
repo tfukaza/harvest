@@ -13,7 +13,7 @@ from harvest.api._base import API
 from harvest.utils import *
 
 class PaperBroker(API):
-    """DummyBroker, as its name implies, is a dummy broker class that can 
+    """DummyBroker, as its name implies, is a dummy broker class that can
     be useful for testing algorithms. When used as a streamer, it will return
     randomly generated prices. When used as a broker, it paper trades.
     """
@@ -26,11 +26,11 @@ class PaperBroker(API):
             on all buys and sells of assets. When this is a string formatted as
             'XX%' then it is assumed that commission fees are that percent of the
             original cost of the buy or sell. When commission fee is a dictionary
-            with the keys 'buy' and 'sell' you can specify different commission 
-            fees when buying and selling assets. The values must be numbers or 
+            with the keys 'buy' and 'sell' you can specify different commission
+            fees when buying and selling assets. The values must be numbers or
             strings formatted as 'XX%'.
         """
-        
+
         self.stocks = []
         self.options = []
         self.cryptos = []
@@ -45,7 +45,7 @@ class PaperBroker(API):
 
         if account_path:
             with open(account_path, 'r') as f:
-                account = yaml.safe_load(f) 
+                account = yaml.safe_load(f)
                 self.equity = account['equity']
                 self.cash = account['cash']
                 self.buying_power = account['buying_power']
@@ -66,20 +66,20 @@ class PaperBroker(API):
     def fetch_price_history(self,
         symbol: str,
         interval: str,
-        start: dt.datetime=None, 
+        start: dt.datetime=None,
         end: dt.datetime=None
         ) -> pd.DataFrame:
         raise Exception("Not implemented")
-    
+
     def fetch_chain_info(self, symbol: str):
         raise Exception("Not implemented")
-    
+
     def fetch_chain_data(self, symbol: str):
         raise Exception("Not implemented")
-    
+
     def fetch_option_market_data(self, symbol: str):
         raise Exception("Not implemented")
-    
+
     # ------------- Broker methods ------------- #
 
     def fetch_stock_positions(self) -> List[Dict[str, Any]]:
@@ -90,7 +90,7 @@ class PaperBroker(API):
 
     def fetch_crypto_positions(self) -> List[Dict[str, Any]]:
         return self.cryptos
-    
+
     def update_option_positions(self, positions) -> List[Dict[str, Any]]:
         for r in self.options:
             occ_sym = r['occ_symbol']
@@ -112,7 +112,7 @@ class PaperBroker(API):
             'buying_power': self.buying_power,
             'multiplier': self.multiplier
         }
-    
+
     def fetch_stock_order_status(self, id: int) -> Dict[str, Any]:
         ret = next(r for r in self.orders if r['id'] == id)
         sym = ret['symbol']
@@ -126,7 +126,7 @@ class PaperBroker(API):
         original_price = price * qty
         # If order is open, simulate asset buy/sell if possible
         if ret['status'] == 'open':
-            if is_crypto(ret['symbol']): 
+            if is_crypto(ret['symbol']):
                 lst = self.cryptos
             else:
                 lst = self.stocks
@@ -151,8 +151,8 @@ class PaperBroker(API):
                         })
                     else:
                         pos['avg_price'] = (pos['avg_price']*pos['quantity'] + price*qty)/(qty+pos['quantity'])
-                        pos['quantity'] = pos['quantity'] + qty 
-            
+                        pos['quantity'] = pos['quantity'] + qty
+
                     self.cash -= actual_price
                     self.buying_power -= actual_price
                     ret_1 = ret.copy()
@@ -173,8 +173,8 @@ class PaperBroker(API):
                 self.orders.remove(ret)
                 ret = ret_1
                 ret['status'] = 'filled'
-            
-            self.equity = self._calc_equity() 
+
+            self.equity = self._calc_equity()
 
         debug(f"Returning status: {ret}")
         debug(f"Positions:\n{self.stocks}\n=========\n{self.cryptos}")
@@ -191,7 +191,7 @@ class PaperBroker(API):
             price = self.streamer.fetch_option_market_data(occ_sym)['price']
         else:
             price = self.trader.streamer.fetch_option_market_data(occ_sym)['price']
-            
+
         qty = ret['quantity']
         original_price = price * qty
         # If order has been opened, simulate asset buy/sell
@@ -221,7 +221,7 @@ class PaperBroker(API):
                         })
                     else:
                         pos['avg_price'] = (pos['avg_price']*pos['quantity'] + price*qty)/(qty+pos['quantity'])
-                        pos['quantity'] = pos['quantity'] + qty 
+                        pos['quantity'] = pos['quantity'] + qty
 
                     self.cash -= actual_price
                     self.buying_power -= actual_price
@@ -245,8 +245,8 @@ class PaperBroker(API):
                 ret_1 = ret.copy()
                 self.orders.remove(ret)
                 ret = ret_1
-                
-            
+
+
             self.equity = self._calc_equity()
 
         debug(f"Returning status: {ret}")
@@ -254,22 +254,22 @@ class PaperBroker(API):
         debug(f"Equity:{self._calc_equity()}")
 
         return ret
-    
+
     def fetch_crypto_order_status(self, id: int) -> Dict[str, Any]:
         return self.fetch_stock_order_status(id)
-    
+
     def fetch_order_queue(self) -> List[Dict[str, Any]]:
         return self.orders
-    
+
     # --------------- Methods for Trading --------------- #
 
-    def order_limit(self, 
-        side: str, 
+    def order_limit(self,
+        side: str,
         symbol: str,
-        quantity: float, 
-        limit_price: float, 
-        in_force: str='gtc', 
-        extended: bool=False, 
+        quantity: float,
+        limit_price: float,
+        in_force: str='gtc',
+        extended: bool=False,
         ):
 
         if not is_crypto(symbol):
@@ -305,10 +305,10 @@ class PaperBroker(API):
             'symbol': data['symbol']
         }
         return ret
-    
-    def order_option_limit(self, side: str, symbol: str, quantity: float, limit_price: float, type: str, 
+
+    def order_option_limit(self, side: str, symbol: str, quantity: float, limit_price: float, type: str,
         exp_date: dt.datetime, strike: float, in_force: str='gtc'):
-       
+
         data = {
             'type': 'OPTION',
             'symbol': symbol,
@@ -321,7 +321,7 @@ class PaperBroker(API):
             'limit_price': limit_price,
             'occ_symbol': self.data_to_occ(symbol, exp_date, type, strike)
         }
-      
+
         self.orders.append(data)
         self.id += 1
         ret = {
@@ -335,7 +335,7 @@ class PaperBroker(API):
 
     def _calc_equity(self):
         """
-        Calculates the total worth of the broker by adding together the 
+        Calculates the total worth of the broker by adding together the
         worth of all stocks, cryptos, options and cash in the broker.
         """
         e = 0
