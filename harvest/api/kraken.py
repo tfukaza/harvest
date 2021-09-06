@@ -179,12 +179,18 @@ class Kraken(API):
         raise Exception("Kraken dies not support options.")
 
     @API._exception_handler
-    def fetch_crypto_order_status(self, id):
-        return self.api.get_order(order_id).__dict__['_raw']
+    def fetch_crypto_order_status(self, id: str):
+        closed_orders = self.get_result(self.api.query_private('ClosedOrders'))
+        orders = closed_orders['closed'] + self.fetch_order_queue()
+        if id in orders.keys():
+            return orders.get(id)
+        raise Exception(f"{id} not found in your orders.")
+
 
     @API._exception_handler
     def fetch_order_queue(self):
-        return [pos.__dict__['_raw'] for pos in api.list_positions()]
+        open_orders = self.get_result(self.api.query_private('OpenOrders'))
+        return open_orders['open']
 
     def order_limit(self,
         side: str,
@@ -199,7 +205,8 @@ class Kraken(API):
                 error("Kraken does not support stocks.")
                 return
 
-            return self.api.query_private('AddOrder', {'ordertype': 'limit', 'type': side, 'volume': quantity, 'pair': symbol})
+            order = self.get_result(self.api.query_private('AddOrder', {'ordertype': 'limit', 'type': side, 'volume': quantity, 'pair': symbol}))
+            return order
 
     def order_option_limit(self, side: str, symbol: str, quantity: int, limit_price: float, option_type, exp_date: dt.datetime, strike, in_force: str='gtc'):
         raise Exception("Kraken does not support options.")
@@ -218,11 +225,8 @@ class Kraken(API):
             temp_symbol = self.ticker_to_kraken(symbol)
         else:
             raise Exception("Kraken does not support stocks.")
-        bars = self.api.query_public('OHLC', {'pair': temp_symbol, 'interval': multiplier, 'since': end.timestamp})
-        if len(bars['error']) > 0:
-            raise Exception(bars['error'][0])
-        bars = bars['result'][temp_symbol]
-        df = pd.DataFrame(bars, columns=['timestamp', 'open', 'high', 'low', 'close', 'vwap', 'volume', 'count'])
+        bars = self.get_results(self.api.query_public('OHLC', {'pair': temp_symbol, 'interval': multiplier, 'since': end.timestamp}))
+        df = pd.DataFrame(bars[temp_symbol], columns=['timestamp', 'open', 'high', 'low', 'close', 'vwap', 'volume', 'count'])
         df = self._format_df(df, symbol)
         df = df.loc[start:end]
         return df
@@ -283,10 +287,18 @@ class Kraken(API):
         if ticker[1:] in self.crypto_ticker_to_kraken_names:
             # Currently Harvest supports trades for USD and not other currencies.
             kraken_ticker = self.crypto_ticker_to_kraken_names.get(ticker[1:]) + 'USD'
-            if kraken_ticker in self.api.query_public('AssetPairs')['result'].keys():
+            asset_pairs = self.get_result(self.api.query_public('AssetPairs')).keys():
+            if kraken_ticker in asset_pairs:
                 return kraken_ticker
             else:
                 raise Exception(f"{kraken_ticker} is not a valid asset pair.")
         else:
             raise Exception(f"Kraken does not support ticker {ticker}.")
 
+    def get_result(self, response: Dict[str, Any]):
+        """Given a kraken response from an endpoint, either raise an error if an
+        error exists or return the data in the results key.
+        """
+        if len(response['error']) > 0:
+            raise Exception('\n'.join(response['error']))
+        return response['result']
