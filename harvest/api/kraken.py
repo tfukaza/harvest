@@ -287,7 +287,7 @@ class Kraken(API):
         if ticker[1:] in self.crypto_ticker_to_kraken_names:
             # Currently Harvest supports trades for USD and not other currencies.
             kraken_ticker = self.crypto_ticker_to_kraken_names.get(ticker[1:]) + 'USD'
-            asset_pairs = self.get_result(self.api.query_public('AssetPairs')).keys()
+            asset_pairs = self.get_result(self.api.query_public('AssetPairs')).keys():
             if kraken_ticker in asset_pairs:
                 return kraken_ticker
             else:
