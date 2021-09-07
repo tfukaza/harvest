@@ -2,7 +2,6 @@ import pandas as pd
 import datetime as dt
 from threading import Lock
 from typing import Tuple
-from logging import debug
 
 from harvest.utils import *
 
