@@ -10,6 +10,8 @@ Harvest is a Python based framework providing a simple and intuitive framework f
 
 ---
 
+Comments? Questions? Join our [discussion](https://github.com/tfukaza/harvest/discussions)
+
 **⚠️WARNING⚠️**
 Harvest is currently at **v0.1.1**. The program is unstable and cointains many bugs. Use with caution, and contributions are greatly appreciated. 
 - 🪲 [File a bug report](https://github.com/tfukaza/harvest/issues/new?assignees=&labels=bug&template=bug_report.md&title=%5B%F0%9F%AA%B0BUG%5D)
