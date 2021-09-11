@@ -33,9 +33,17 @@ class BaseAlgo:
     """
 
     def __init__(self):
-        self.watch = []
         self.trader = None 
         self.debugger = logging.getLogger('harvest')
+
+        self.interval = None 
+        self.aggregations = None
+        self.watch = None
+
+    def config(self):
+        self.interval = None 
+        self.aggregations = None
+        self.watchlist = None
 
     def setup(self):
         pass

@@ -94,7 +94,6 @@ class API:
         """
         self.watch = watch 
         self.interval = interval 
-        self.fetch_interval = fetch_interval
         self.trader = trader
         self.trader_main = trader_main
 
