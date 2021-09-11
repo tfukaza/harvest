@@ -22,7 +22,7 @@ class Alpaca(API):
         self.basic = is_basic_account
 
         endpoint = 'https://paper-api.alpaca.markets' if paper_trader else 'https://api.alpaca.markets'
-        self.api = REST(self.config['api_key'], self.config['secret_key'], endpoint)
+        self.api = REST(self.config['api_key'], self.config['secret_key'], URL(endpoint))
 
         data_feed = 'iex' if self.basic else 'sip'
         self.stream = Stream(self.config['api_key'], self.config['secret_key'], URL(endpoint), data_feed=data_feed)
@@ -38,11 +38,11 @@ class Alpaca(API):
         bar = bar.__dict__['_raw']
         symbol = bar['symbol']
         df = pd.DataFrame([{
-            't': bar['timestamp'], 
-            'o': bar['open'], 
+            't': bar['timestamp'],
+            'o': bar['open'],
             'h': bar['high'],
             'l': bar['low'],
-            'c': bar['close'], 
+            'c': bar['close'],
             'v': bar['volume']
             }])
         if symbol in self.watch_stock:
@@ -56,11 +56,11 @@ class Alpaca(API):
         return self.create_secret(path)
 
     def capture_data(self):
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+        asyncio.set_event_loop(asyncio.new_event_loop())
         self.stream.run()
 
     def setup(self, watch: List[str], interval: str, trader=None, trader_main=None):
+        print('hit')
         self.watch_stock = []
         self.watch_crypto = []
         cryptos = []
@@ -85,64 +85,64 @@ class Alpaca(API):
         df_dict = {}
         df_dict.update(self.fetch_latest_stock_price())
         df_dict.update(self.fetch_latest_crypto_price())
-      
-        self.trader_main(df_dict)    
+
+        self.trader_main(df_dict)
 
     @API._exception_handler
     def fetch_latest_stock_price(self):
         self.data_lock.acquire()
         df = self.data['stocks']
-        self.data_lock.release()        
-        return df        
+        self.data_lock.release()
+        return df
 
     @API._exception_handler
     def fetch_latest_crypto_price(self):
         self.data_lock.acquire()
         df = self.data['cryptos']
-        self.data_lock.release()        
-        return df            
+        self.data_lock.release()
+        return df
 
     # -------------- Streamer methods -------------- #
-    
+
     @API._exception_handler
-    def fetch_price_history( self,  
+    def fetch_price_history( self,
         symbol: str,
         interval: str,
-        start: dt.datetime = None, 
-        end: dt.datetime = None, 
+        start: dt.datetime = None,
+        end: dt.datetime = None,
        ):
 
         debug(f"Fetching {symbol} {interval} price history")
-
-        if start is None:  
-            start = now() - dt.timedelta(days=365 * 5)
+        current_time = now()
+        if start is None:
+            start = current_time - dt.timedelta(days=365 * 5)
         if end is None:
-            end = now()
+            end = current_time
 
         if start >= end:
             return pd.DataFrame()
-        
+
         val, unit = expand_interval(interval)
         df = self.get_data_from_alpaca(symbol, val, unit, start, end)
 
         return df
-    
+
     @API._exception_handler
     def fetch_chain_info(self, symbol: str):
         return {
-            "id": "n/a", 
+            "id": "n/a",
             "exp_dates": [ str_to_date(s) for s in self.watch_ticker[symbol].options],
             "multiplier": 100
-        }    
+        }
 
     @API._exception_handler
     def fetch_chain_data(self, symbol: str, date: dt.datetime):
 
         if bool(self.option_cache) and symbol in self.option_cache and date in self.option_cache[symbol]:
             return self.option_cache[symbol][date]
-        
+
         df = pd.DataFrame(columns=["contractSymbol", "exp_date", "strike", "type"])
-        
+
         chain = self.watch_ticker[symbol].option_chain(date_to_str(date))
         puts = chain.puts
         puts['type'] = 'put'
@@ -161,7 +161,7 @@ class Alpaca(API):
         self.option_cache[symbol][date] = df
 
         return df
-    
+
     @API._exception_handler
     def fetch_option_market_data(self, occ_symbol: str):
         occ_symbol = occ_symbol.replace(' ', '')
@@ -180,7 +180,7 @@ class Alpaca(API):
             }
 
     # ------------- Broker methods ------------- #
-    
+
     @API._exception_handler
     def fetch_stock_positions(self):
         return [pos.__dict__['_raw'] for pos in self.api.list_positions() if pos.asset_class != 'crypto']
@@ -188,7 +188,7 @@ class Alpaca(API):
     @API._exception_handler
     def fetch_option_positions(self):
         raise Exception("Not implemented")
-    
+
     @API._exception_handler
     def fetch_crypto_positions(self, key=None):
         if self.basic:
@@ -196,7 +196,7 @@ class Alpaca(API):
             return None
 
         return [pos.__dict__['_raw'] for pos in self.api.list_positions() if pos.asset_class == 'crypto']
-    
+
     @API._exception_handler
     def update_option_positions(self, positions: List[Any]):
         raise Exception("Alpaca does not support options.")
@@ -208,29 +208,29 @@ class Alpaca(API):
     @API._exception_handler
     def fetch_stock_order_status(self, order_id: str):
         return self.api.get_order(order_id).__dict__['_raw']
-    
+
     @API._exception_handler
     def fetch_option_order_status(self, id):
         raise Exception("Alpaca does not support options.")
-    
+
     @API._exception_handler
     def fetch_crypto_order_status(self, id):
         if self.basic:
             error("Basic accounts can't access crypto. Returning None")
             return None
-            
+
         return self.api.get_order(order_id).__dict__['_raw']
-    
+
     @API._exception_handler
     def fetch_order_queue(self):
-        return [pos.__dict__['_raw'] for pos in api.list_positions()]
+        return [pos.__dict__['_raw'] for pos in self.api.list_positions()]
 
-    def order_limit(self, 
-        side: str, 
+    def order_limit(self,
+        side: str,
         symbol: str,
-        quantity: float, 
-        limit_price: float, 
-        in_force: str='gtc', 
+        quantity: float,
+        limit_price: float,
+        in_force: str='gtc',
         extended: bool=False):
             if self.basic and is_crypto(symbol):
                 error("Basic accounts can't buy/sell crypto. Returning None")
@@ -240,19 +240,23 @@ class Alpaca(API):
                 symbol = symbol[1:]
 
             return self.api.submit_order(symbol, quantity, side=side, type="limit", limit_price=limit_price, time_in_force=in_force, extended_hours=extended)
-    
+
     def order_option_limit(self, side: str, symbol: str, quantity: int, limit_price: float, option_type, exp_date: dt.datetime, strike, in_force: str='gtc'):
         raise Exception("Alpaca does not support options.")
-    
+
     # ------------- Helper methods ------------- #
 
     def get_data_from_alpaca(self, symbol: str, multipler: int, timespan: str, start: dt.datetime, end: dt.datetime) -> pd.DataFrame:
         if self.basic and is_crypto(symbol):
-            error("Basic accounts can't access crypto. Returning empty dataframe") 
+            error("Basic accounts can't access crypto. Returning empty dataframe")
             return pd.DataFrame()
 
         if self.basic and start < now() - dt.timedelta(days=365 * 5):
             warning("Start time is over five years old! Only data from the past five years will be returned for basic accounts.")
+
+        if self.basic and end >= now() - dt.timedelta(minutes=15):
+            warning("Basic accounts cannot fetch stock data from the past 15 minutes using the REST endpoint! The data in the last 15 minutes will not be returned.")
+            end = now() - dt.timedelta(minutes=15)
 
         if timespan == 'MIN':
             timespan = '1Min'
@@ -261,15 +265,16 @@ class Alpaca(API):
         elif timespan == 'DAY':
             timespan = '1Day'
 
-        start_str = start.strftime('%Y-%m-%d')
-        end_str = end.strftime('%Y-%m-%d')
 
+        start += dt.timedelta(days=365 * 4)
+        start_str = start.isoformat()
+        end_str = end.isoformat()
+        print(symbol, multipler, timespan, start, end)
         temp_symbol = symbol[1:] if is_crypto(symbol) else symbol
         bars = self.api.get_bars(temp_symbol, TimeFrame(timespan), start_str, end_str, adjustment='raw')
         df = pd.DataFrame((bar.__dict__['_raw'] for bar in bars))
         df = self._format_df(df, symbol)
         df = aggregate_df(df, f"{multipler}{timespan}")
-        df = df.loc[start:end]
         return df
 
     def _format_df(self, df: pd.DataFrame, symbol: str):
@@ -277,7 +282,7 @@ class Alpaca(API):
         df.rename(columns={'t': 'timestamp', 'o': 'open', 'h': 'high', 'l': 'low', 'c': 'close', 'v': 'volume'}, inplace=True)
         df.set_index('timestamp', inplace=True)
         df.index = pd.DatetimeIndex(df.index)
-        
+
         df.columns = pd.MultiIndex.from_product([[symbol], df.columns])
 
         return df.dropna()
@@ -311,7 +316,7 @@ class Alpaca(API):
 
         api_key_id = w.get_string("Enter your API key ID")
         secret_key = w.get_password("Enter your API secret key")
-        
+
         w.println(f"All steps are complete now 🎉. Generating {path}...")
 
         d = {
@@ -321,7 +326,7 @@ class Alpaca(API):
 
         with open(path, 'w') as file:
             yml = yaml.dump(d, file)
-        
+
         w.println(f"{path} has been created! Make sure you keep this file somewhere secure and never share it with other people.")
-        
-        return True 
+
+        return True

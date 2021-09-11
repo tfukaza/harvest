@@ -23,7 +23,7 @@ from harvest.server import Server
 class Trader:
     """
     :watch: Watchlist containing all stock and cryptos to monitor.
-        The user may or may not own them. Note it does NOT contain options. 
+        The user may or may not own them. Note it does NOT contain options.
     :broker: Both the broker and streamer store a Broker object.
         Broker places orders and retrieves latest account info like equity.
     :streamer: Streamer retrieves the latest stock price and calls handler().
@@ -31,8 +31,8 @@ class Trader:
 
     interval_list = ['1MIN', '5MIN', '15MIN', '30MIN', '1HR', '1DAY']
 
-    def __init__(self, streamer=None, broker=None, storage=None, debug=False):      
-        """Initializes the Trader. 
+    def __init__(self, streamer=None, broker=None, storage=None, debug=False):
+        """Initializes the Trader.
         """
         signal(SIGINT, self.exit)
 
@@ -44,7 +44,7 @@ class Trader:
             self.streamer = YahooStreamer()
         else:
             self.streamer = streamer
-  
+
         if broker == None:
             if isinstance(self.streamer, YahooStreamer) or isinstance(self.streamer, DummyStreamer):
                 self.broker = PaperBroker()
@@ -66,9 +66,9 @@ class Trader:
         self.order_queue = []       # Queue of unfilled orders.
 
         if storage is None:
-            self.storage = BaseStorage() 
+            self.storage = BaseStorage()
         else:
-            self.storage = storage                
+            self.storage = storage
         self.logger = BaseLogger()
 
         self.block_lock = threading.Lock() # Lock for streams that receive data asynchronously.
@@ -86,9 +86,9 @@ class Trader:
             f_format = logging.Formatter('%(asctime)s : %(name)s : %(levelname)s : %(message)s')
             f_handler.setFormatter(f_format)
             self.debugger.addHandler(f_handler)
-        
+
         self.debugger.debug("Test")
-        
+
         c_handler = logging.StreamHandler()
         if debug:
             c_handler.setLevel(logging.DEBUG)
@@ -105,14 +105,14 @@ class Trader:
         Initializes data and parameters necessary to run the program.
         :param str interval: Interval to run the algorithm.
         :param str List(str) aggregations: List of intervals to aggregate the data.
-        :param bool sync: If True, fetches any open positions and orders from the specified broker. 
+        :param bool sync: If True, fetches any open positions and orders from the specified broker.
         """
         self.sync = sync
         self.interval = interval
         self.aggregations = aggregations
 
         if not self.streamer.has_interval(interval):
-            raise Exception(f"""Interval '{interval}' is not supported by the selected streamer.\n 
+            raise Exception(f"""Interval '{interval}' is not supported by the selected streamer.\n
                                 The streamer only supports {self.streamer.interval_list}""")
 
         # Ensure that all aggregate intervals are greater than 'interval'
@@ -135,7 +135,7 @@ class Trader:
             for s in self.crypto_positions:
                 self.watch.append(s['symbol'])
             for s in self.order_queue:
-                self.watch.append(s['symbol'])     
+                self.watch.append(s['symbol'])
 
         if len(self.watch) == 0:
             raise Exception(f"No securities were added to watchlist")
@@ -154,33 +154,34 @@ class Trader:
         if len(self.algo) == 0:
             self.debugger.debug(f"No algorithm specified. Using BaseAlgo")
             self.algo = [BaseAlgo()]
-        
+
         self.storage_init()
 
         self.debugger.debug("Setup complete")
 
         self.load_watch = True
-    
+
     def storage_init(self):
         """Initializes the storage.
         """
         for s in self.watch:
             for i in [self.fetch_interval] + self.aggregations:
+                print(s, i)
                 df = self.streamer.fetch_price_history(s, i)
                 self.storage.store(s, i, df)
 
     def _setup_account(self):
-        """Initializes local cache of account info. 
+        """Initializes local cache of account info.
         For testing, it should manually be specified
         """
         ret = self.broker.fetch_account()
         self.account = ret
-    
+
     def _setup_stats(self):
         """Initializes local cache of stocks, options, and crypto positions.
         """
-        
-        # Get any pending orders 
+
+        # Get any pending orders
         ret = self.broker.fetch_order_queue()
         self.order_queue = ret
         self.debugger.debug(f"Fetched orders:\n{self.order_queue}")
@@ -188,31 +189,36 @@ class Trader:
         # Get positions
         pos = self.broker.fetch_stock_positions()
         self.stock_positions = pos
-        pos = self.broker.fetch_option_positions()
+        # pos = self.broker.fetch_option_positions()
         self.option_positions = pos
-        pos = self.broker.fetch_crypto_positions()
-        self.crypto_positions = pos
-        self.debugger.debug(f"Fetched positions:\n{self.stock_positions}\n{self.option_positions}\n{self.crypto_positions}")
+        # pos = self.broker.fetch_crypto_positions()
+        # self.crypto_positions = pos
+        # self.debugger.debug(f"Fetched positions:\n{self.stock_positions}\n{self.option_positions}\n{self.crypto_positions}")
 
         # Update option stats
-        self.broker.update_option_positions(self.option_positions)
-        self.debugger.debug(f"Updated option positions:\n{self.option_positions}")
+        # self.broker.update_option_positions(self.option_positions)
+        # self.debugger.debug(f"Updated option positions:\n{self.option_positions}")
 
-    def start(self, interval='5MIN', aggregations=[], sync = True, kill_switch: bool=False, server=False): 
-        """Entry point to start the system. 
-        
+    def start(self, interval='5MIN', aggregations=[], sync = True, kill_switch: bool=False, server=False):
+        """Entry point to start the system.
+
         :param str? interval: The interval to run the algorithm. defaults to '5MIN'
         :param list[str]? aggregations: A list of intervals. The Trader will aggregate data to the intervals specified in this list.
-            For example, if this is set to ['5MIN', '30MIN'], and interval is '1MIN', the algorithm will have access to 
+            For example, if this is set to ['5MIN', '30MIN'], and interval is '1MIN', the algorithm will have access to
             5MIN, 30MIN aggregated data in addition to 1MIN data. defaults to None
-        :param bool? sync: If true, the system will sync with the broker and fetch current positions and pending orders. defaults to true. 
+        :param bool? sync: If true, the system will sync with the broker and fetch current positions and pending orders. defaults to true.
         :kill_switch: If true, kills the infinite loop in streamer. Primarily used for testing. defaults to False.
 
         """
         self.debugger.debug(f"Starting Harvest...")
 
+
         self.broker.setup(self.watch, interval, self, self.main)
-        self.streamer.setup(self.watch, interval, self, self.main)
+
+        if self.broker != self.streamer:
+            # If the broker and streamer are different then call the streamer's setup
+            # otherwise we will call setup twice which can break some brokers!
+            self.streamer.setup(self.watch, interval, self, self.main)
         self._setup(interval, aggregations, sync)
 
         self.debugger.debug(f"Initializing algorithms...")
@@ -229,7 +235,7 @@ class Trader:
         self.needed = self.watch.copy()
 
         self.is_save = True
-        
+
         if server:
             self.server.start()
 
@@ -255,10 +261,10 @@ class Trader:
         self.debugger.debug(f"Got data for: {symbols}")
         self.needed = list(set(self.needed) - set(symbols))
         self.debugger.debug(f"Still need data for: {self.needed}")
- 
+
         self.block_queue.update(df_dict)
         self.debugger.debug(self.block_queue)
-        
+
         # If all data has been received, pass on the data
         if len(self.needed) == 0:
             self.debugger.debug("All data received")
@@ -267,19 +273,22 @@ class Trader:
             self.block_queue = {}
             self.needed = self.watch.copy()
             self.all_recv = True
-            return 
-        
-        # If there are data that has not been received, 
-        # start a timer 
+            return
+
+        # If there are data that has not been received,
+        # start a timer
         if first:
             timer = threading.Thread(target=self.timeout, daemon=True)
             timer.start()
             self.all_recv = False
-        
-        
+
+
     def flush(self):
         # For missing data, repeat the existing one
-        got  = list(set(self.watch) - set(self.needed))[0]
+        got = list(set(self.watch) - set(self.needed))
+        if len(got) == 0:
+            return
+        got = got[0]
         timestamp = self.block_queue[got].index[-1]
         for n in self.needed:
             data = self.storage.load(n, self.fetch_interval).iloc[[-1]].copy()
@@ -293,15 +302,15 @@ class Trader:
     def main_helper(self, df_dict):
 
         new_day = self.timestamp.date() > self.timestamp_prev.date()
-        
+
         # Periodically refresh access tokens
         if self.timestamp.hour % 12 == 0 and self.timestamp.minute == 0:
             self.streamer.refresh_cred()
-        
+
         # Save the data locally
         for s in self.watch:
             self.storage.store(s, self.fetch_interval, df_dict[s])
-        
+
         # Aggregate the data to other intervals
         for s in self.watch:
             for i in self.aggregations:
@@ -311,7 +320,7 @@ class Trader:
         # Otherwise, calculate current positions locally
         update = self._update_order_queue()
         self._update_stats(df_dict, new=update, option_update=True)
-        
+
         if not self.is_freq(self.timestamp):
             return
 
@@ -338,30 +347,30 @@ class Trader:
         """
         time = time.astimezone(pytz.timezone('UTC'))
         if self.fetch_interval == self.interval:
-            return True 
+            return True
 
         if self.interval == '1MIN':
-            return True 
-        
+            return True
+
         minutes = time.minute
         hours = time.hour
         if self.interval == '1HR':
             if minutes == 0:
-                return True 
+                return True
             else:
                 return False
-        
+
         if self.interval == '1DAY':
             # TODO: Use API to get real-time market hours
             if minutes == 50 and hours == 19:
-                return True 
+                return True
             else:
                 return False
 
         val = int(re.sub("[^0-9]", "", self.interval))
         if minutes % val == 0:
-            return True 
-        else: 
+            return True
+        else:
             return False
 
     def _update_order_queue(self):
@@ -386,19 +395,19 @@ class Trader:
         order_filled = False
         for order in self.order_queue:
             if order['status'] == 'filled':
-                order_filled = True  
+                order_filled = True
             else:
                 new_order.append(order)
         self.order_queue = new_order
 
         # if an order was processed, update the positions and account info
         return order_filled
-           
+
     def _update_stats(self, df_dict, new=False, option_update=False):
         """Update local cache of stocks, options, and crypto positions
         """
         # Update entries in local cache
-        # API should also be called if load_watch is false, as there is a high chance 
+        # API should also be called if load_watch is false, as there is a high chance
         # that data in local cache are not representative of the entire portfolio,
         # meaning total equity cannot be calculated locally
         if new or not self.load_watch:
@@ -413,32 +422,32 @@ class Trader:
 
         if option_update:
             self.broker.update_option_positions(self.option_positions)
-        
+
         self.debugger.debug(f"Stock positions: {self.stock_positions}")
         self.debugger.debug(f"Option positions: {self.option_positions}")
         self.debugger.debug(f"Crypto positions: {self.crypto_positions}")
 
         if new or not self.load_watch:
-            return 
+            return
         else:
             net_value = 0
             for p in self.stock_positions + self.crypto_positions:
                 key = p['symbol']
                 price = df_dict[key][key]['close'][0]
-                p['current_price'] = price 
+                p['current_price'] = price
                 value = price * p['quantity']
                 p['market_value'] = value
                 net_value = net_value + value
-            
+
             equity = net_value + self.account['cash']
             self.account['equity'] = equity
 
     def fetch_chain_info(self, *args, **kwargs):
         return self.streamer.fetch_chain_info(*args, **kwargs)
-    
+
     def fetch_chain_data(self, *args, **kwargs):
         return self.streamer.fetch_chain_data(*args, **kwargs)
-    
+
     def fetch_option_market_data(self, *args, **kwargs):
         return self.streamer.fetch_option_market_data(*args, **kwargs)
 
@@ -486,37 +495,37 @@ class Trader:
         self.debugger.debug(f"SELL order queue: {self.order_queue}")
         self.logger.add_transaction(self.timestamp, 'sell', 'option', symbol, quantity)
         return ret
-    
+
     def set_algo(self, algo):
         """Specifies the algorithm to use.
 
-        :param Algo algo: The algorithm to use. You can either pass in a single Algo class, or a 
-            list of Algo classes. 
+        :param Algo algo: The algorithm to use. You can either pass in a single Algo class, or a
+            list of Algo classes.
         """
         if isinstance(algo, list):
             self.algo = algo
         else:
             self.algo = [algo]
-    
+
     def set_symbol(self, symbol):
         """Specifies the symbol(s) to watch.
-        
-        Cryptocurrencies should be prepended with an `@` to differentiate them from stocks. 
-        For example, '@ETH' will refer to Etherium, while 'ETH' will refer to Ethan Allen Interiors. 
+
+        Cryptocurrencies should be prepended with an `@` to differentiate them from stocks.
+        For example, '@ETH' will refer to Etherium, while 'ETH' will refer to Ethan Allen Interiors.
         If this method was previously called, the symbols specified earlier will be replaced with the
         new symbols.
-        
-        :symbol str symbol: Ticker Symbol(s) of stock or cryptocurrency to watch. 
-            It can either be a string, or a list of strings. 
+
+        :symbol str symbol: Ticker Symbol(s) of stock or cryptocurrency to watch.
+            It can either be a string, or a list of strings.
         """
         if isinstance(symbol, list):
             self.watch = symbol
         else:
             self.watch = [symbol]
-    
+
     def exit(self, signum, frame):
         # TODO: Gracefully exit
         self.debugger.debug("\nStopping Harvest...")
         exit(0)
-    
-    
+
+
