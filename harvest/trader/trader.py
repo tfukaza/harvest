@@ -15,21 +15,18 @@ from harvest.storage import BaseStorage
 from harvest.api.yahoo import YahooStreamer
 from harvest.api.dummy import DummyStreamer
 from harvest.api.paper import PaperBroker
-from harvest.algo import BaseAlgo
 from harvest.storage import BaseStorage
 from harvest.storage import BaseLogger
 from harvest.server import Server
 
 class Trader:
     """
-    :watch: Watchlist containing all stock and cryptos to monitor.
-        The user may or may not own them. Note it does NOT contain options. 
     :broker: Both the broker and streamer store a Broker object.
         Broker places orders and retrieves latest account info like equity.
     :streamer: Streamer retrieves the latest stock price and calls handler().
     """
 
-    interval_list = ['1MIN', '5MIN', '15MIN', '30MIN', '1HR', '1DAY']
+    interval_list = [Interval.SEC_15, Interval.MIN_1, Interval.MIN_5, Interval.MIN_15, Interval.MIN_30, Interval.HR_1, Interval.DAY_1]
 
     def __init__(self, streamer=None, broker=None, storage=None, debug=False):
         """Initializes the Trader. 
@@ -57,7 +54,7 @@ class Trader:
         self.timestamp = self.timestamp_prev
 
         self.watchlist = []         # List of securities specified in this class.
-        self.watchlist_all = []     # List of securities specified in this class, 
+        self.watchlist_global = []  # List of securities specified in this class, 
                                     # fetched from brokers, and retrieved from Algo class.
 
         self.account = {}           # Local cache of account data.
@@ -72,8 +69,6 @@ class Trader:
         self.storage = BaseStorage() if storage is None else storage
 
         self.logger = BaseLogger()
-
-        self.block_lock = threading.Lock() # Lock for streams that receive data asynchronously.
 
         self.algo = []  # List of algorithms to run.
 
@@ -101,7 +96,7 @@ class Trader:
     def storage_init(self):
         """Initializes the storage.
         """
-        for s in self.watchlist_all:
+        for s in self.watchlist_global:
             for i in [self.fetch_interval] + self.aggregations:
                 df = self.streamer.fetch_price_history(s, i)
                 self.storage.store(s, i, df)
@@ -148,75 +143,76 @@ class Trader:
         """
         self.debugger.debug(f"Setting up Harvest...")
 
-        if len(self.algo) == 0:
-            raise Exception(f"No algorithm specified.")
-
-        self.aggregations = aggregations
-        self.interval = interval
-        self.watchlist_all = self.watchlist.copy()
-
-        min_interval = '1DAY'
-        for a in self.algo:
-            a.config()
-
-            if a.interval is None:
-                a.interval = interval 
-            if self.interval_list.index(a.interval) < self.interval_list.index(min_interval):
-                self.aggregations.append(min_interval)
-                min_interval = a.interval
-            
-            if a.aggregations is None:
-                a.aggregations = []
-                for agg in aggregations:
-                    if self.interval_list.index(a.interval) < self.interval_list.index(agg):
-                        a.aggregations.append(agg)
-            else:
-                self.aggregations.append(a.aggregations)
-
-            if a.watchlist is None:
-                a.watchlist = self.watchlist
-            else:
-                self.watchlist_all.append(a.watchlist)
-        
-        self.interval = min_interval
-
-        # Initialize the account
-        self._setup_account()
-
         # If sync is on, call the broker to load pending orders and all positions currently held.
         if sync:
             self._setup_stats()
             for s in self.stock_positions:
-                self.watchlist_all.append(s['symbol'])
+                self.watchlist_global.append(s['symbol'])
             for s in self.option_positions:
-                self.watchlist_all.append(s['symbol'])
+                self.watchlist_global.append(s['symbol'])
             for s in self.crypto_positions:
-                self.watchlist_all.append(s['symbol'])
+                self.watchlist_global.append(s['symbol'])
             for s in self.order_queue:
-                self.watchlist_all.append(s['symbol'])     
-
-        if len(self.watchlist_all) == 0:
-            raise Exception(f"No securities were added to watchlist")
-
-        # Remove duplicates in watchlist
-        self.watchlist_all = list(set(self.watchlist_all))
-        self.debugger.debug(f"Watchlist: {self.watchlist_all}")
-
-        if not self.streamer.has_interval(self.interval):
-            raise Exception(f"""Interval '{self.interval}' is not supported by the selected streamer.\n 
-                                The streamer only supports {self.streamer.interval_list}""")
-
-        self.broker.setup(self.watchlist_all, self.interval, self, self.main)
-        self.streamer.setup(self.watchlist_all, self.interval, self, self.main)
-
-        self.fetch_interval = self.streamer.fetch_interval
-        self.debugger.debug(f"Interval: {interval}\nFetch interval: {self.fetch_interval}")
-
-        if self.interval != self.fetch_interval:
-            self.aggregations.append(self.interval)
-        self.aggregations = list(set(self.aggregations))
-        self.debugger.debug(f"Aggregations: {self.aggregations}")
+                self.watchlist_global.append(s['symbol'])     
         
+        if len(self.watchlist_global) == 0:
+            raise Exception(f"No securities were added to watchlist")
+        
+        # Remove duplicates in watchlist
+        self.watchlist_global = list(set(self.watchlist_global))
+        self.debugger.debug(f"Watchlist: {self.watchlist_global}")
+
+        # Set the global watchlist, interval, and aggregations
+        interval = interval_string_to_enum(interval)
+        aggregations = [ interval_string_to_enum(a) for a in aggregations ]
+        self.interval = {}
+        for sym in self.watchlist_global:
+            self.interval[sym] = {}
+            self.interval[sym]["interval"] = interval 
+            self.interval[sym]["aggregations"] = aggregations
+
+        if len(self.algo) == 0:
+            raise Exception(f"No algorithm specified.")
+
+        # Update the global config based on config specified in Algo class
+        for a in self.algo:
+            a.config()
+
+            if a.watchlist is None:
+                a.watchlist = self.watchlist_global
+            if a.interval is None:
+                a.interval = interval
+            if a.aggregations is None:
+                a.aggregations = aggregations
+
+            for sym in a.watchlist:
+                # If the symbol is already specified in the global watchlist, see if we need to 
+                # update to a more granular interval 
+                if sym in self.interval:
+                    cur_interval = self.interval[sym]["interval"]
+                    if a.interval < cur_interval:
+                        self.interval[sym]["aggregations"].append(cur_interval)
+                        self.interval[sym]["interval"] = a.interval
+                # If symbol is not in global watchlist, simply add it
+                else:
+                    self.interval[sym] = {}
+                    self.interval[sym]["interval"] = a.interval 
+                    self.interval[sym]["aggregations"] = a.aggregations
+
+                # If the algo specifies an aggregation that is currently not set, add it to the 
+                # global aggregation list
+                for agg in a.aggregations:
+                    if agg not in self.interval[sym]["aggregations"]:
+                        self.interval[sym]["aggregations"].append(agg)
+
+        # Initialize the account
+        self._setup_account()
+
+        self.broker.setup(self.interval, self, self.main)
+        self.streamer.setup(self.interval, self, self.main)
+
+        self.debugger.debug(f"Interval: {interval}")
+
         self.storage_init()
 
         for a in self.algo:
@@ -224,88 +220,25 @@ class Trader:
 
         self.debugger.debug("Setup complete")
 
-        self.blocker = {}
-        for w in self.watchlist_all:
-            self.blocker[w] = False
-        self.block_queue = {}
-        self.needed = self.watch.copy()
-
         if server:
             self.server.start()
 
         self.streamer.start(kill_switch)
-
-    def timeout(self):
-        self.debugger.debug("Begin timeout timer")
-        time.sleep(1)
-        if not self.all_recv:
-            self.debugger.debug("Force flush")
-            self.flush()
-
+        
     def main(self, df_dict):
-
-        self.debugger.debug(f"Received: \n{df_dict}")
-
-        if len(self.needed) == len(self.watch):
-            self.timestamp_prev = self.timestamp
-            self.timestamp = now()
-            first = True
-
-        symbols = [k for k, v in df_dict.items()]
-        self.debugger.debug(f"Got data for: {symbols}")
-        self.needed = list(set(self.needed) - set(symbols))
-        self.debugger.debug(f"Still need data for: {self.needed}")
- 
-        self.block_queue.update(df_dict)
-        self.debugger.debug(self.block_queue)
-        
-        # If all data has been received, pass on the data
-        if len(self.needed) == 0:
-            self.debugger.debug("All data received")
-            self.needed = self.watch.copy()
-            self.main_helper(self.block_queue)
-            self.block_queue = {}
-            self.needed = self.watch.copy()
-            self.all_recv = True
-            return 
-        
-        # If there are data that has not been received, 
-        # start a timer 
-        if first:
-            timer = threading.Thread(target=self.timeout, daemon=True)
-            timer.start()
-            self.all_recv = False
-        
-        
-    def flush(self):
-        # For missing data, repeat the existing one
-        got  = list(set(self.watch) - set(self.needed))[0]
-        timestamp = self.block_queue[got].index[-1]
-        for n in self.needed:
-            data = self.storage.load(n, self.fetch_interval).iloc[[-1]].copy()
-            data.index = [timestamp]
-            self.block_queue[n] = data
-        self.needed = self.watch.copy()
-        self.main_helper(self.block_queue)
-        self.block_queue = {}
-        return
-
-    def main_helper(self, df_dict):
-
-        new_day = self.timestamp.date() > self.timestamp_prev.date()
         
         # Periodically refresh access tokens
         if self.timestamp.hour % 12 == 0 and self.timestamp.minute == 0:
             self.streamer.refresh_cred()
         
         # Save the data locally
-        for s in self.watch:
-            self.storage.store(s, self.fetch_interval, df_dict[s])
+        for sym in df_dict:
+            self.storage.store(sym, self.interval[sym]["interval"], df_dict[sym])
         
         # Aggregate the data to other intervals
-        for s in self.watch:
-            for i in self.aggregations:
-                self.storage.aggregate(s, self.fetch_interval, i)
+        for sym in df_dict:
+            for agg in self.interval[sym]["aggregations"]:
+                self.storage.aggregate(sym, self.interval[sym]["interval"], agg)
 
         # If an order was processed, fetch the latest position info.
         # Otherwise, calculate current positions locally
@@ -326,26 +259,6 @@ class Trader:
 
         self.broker.exit()
         self.streamer.exit()
-
-    def is_freq(self, time, interval):
-        """Helper function to determine if algorithm should be invoked for the
-        current timestamp. For example, if interval is 30MIN,
-        algorithm should be called when minutes are 0 and 30.
-        """
-        time = time.astimezone(pytz.timezone('UTC'))
-       
-        if interval == '1MIN':
-            return True 
-
-        minutes = time.minute
-        hours = time.hour
-        if interval == '1DAY':
-            # TODO: Use API to get real-time market hours
-            return minutes == 50 and hours == 19
-        elif interval == '1HR':
-            return minutes == 0
-        val = int(re.sub("[^0-9]", "", self.interval))
-        return minutes % val == 0
 
     def _update_order_queue(self):
         """Check to see if outstanding orders have been accepted or rejected
@@ -385,36 +298,38 @@ class Trader:
         # that data in local cache are not representative of the entire portfolio,
         # meaning total equity cannot be calculated locally
         if new:
-            pos = self.broker.fetch_stock_positions()
-            self.stock_positions = [p for p in pos if p['symbol'] in self.watch]
-            pos = self.broker.fetch_option_positions()
-            self.option_positions = [p for p in pos if p['symbol'] in self.watch]
-            pos = self.broker.fetch_crypto_positions()
-            self.crypto_positions = [p for p in pos if p['symbol'] in self.watch]
-            ret = self.broker.fetch_account()
-            self.account = ret
-
+            self._update_positions()
         if option_update:
             self.broker.update_option_positions(self.option_positions)
-        
+
         self.debugger.debug(f"Stock positions: {self.stock_positions}")
         self.debugger.debug(f"Option positions: {self.option_positions}")
         self.debugger.debug(f"Crypto positions: {self.crypto_positions}")
 
         if new:
             return 
-     
+
         net_value = 0
         for p in self.stock_positions + self.crypto_positions:
             key = p['symbol']
             price = df_dict[key][key]['close'][0]
-            p['current_price'] = price 
+            p['current_price'] = price
             value = price * p['quantity']
             p['market_value'] = value
-            net_value = net_value + value
-        
+            net_value += value
+
         equity = net_value + self.account['cash']
         self.account['equity'] = equity
+
+    def _update_positions(self):
+        pos = self.broker.fetch_stock_positions()
+        self.stock_positions = [p for p in pos if p['symbol'] in self.watch]
+        pos = self.broker.fetch_option_positions()
+        self.option_positions = [p for p in pos if p['symbol'] in self.watch]
+        pos = self.broker.fetch_crypto_positions()
+        self.crypto_positions = [p for p in pos if p['symbol'] in self.watch]
+        ret = self.broker.fetch_account()
+        self.account = ret
 
     def fetch_chain_info(self, *args, **kwargs):
         return self.streamer.fetch_chain_info(*args, **kwargs)
@@ -493,9 +408,9 @@ class Trader:
             It can either be a string, or a list of strings. 
         """
         if isinstance(symbol, list):
-            self.watchlist = symbol
+            self.watchlist_global = symbol
         else:
-            self.watchlist = [symbol]
+            self.watchlist_global = [symbol]
     
     def exit(self, signum, frame):
         # TODO: Gracefully exit

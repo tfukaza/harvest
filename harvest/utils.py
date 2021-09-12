@@ -1,17 +1,65 @@
 import re
 import random
 import datetime as dt
+from enum import IntEnum, auto()
 
 import pytz
 import pandas as pd
 
-def expand_interval(interval: str):
-    time_search = re.search('([0-9]+)(MIN|HR|DAY)', interval)
-    value = int(time_search.group(1))
-    unit = time_search.group(2)
-    return value, unit
+class Interval(IntEnum):
+    SEC_15 = auto()
+    MIN_1 = auto()
+    MIN_5 = auto()
+    MIN_15 = auto()
+    MIN_30 = auto()
+    HR_1 = auto()
+    DAY_1 = auto()
 
-def interval_to_timedelta(interval: str) -> dt.timedelta:
+def interval_string_to_enum(str_interval):
+    if str_interval == '15SEC':
+        return Interval.SEC_15
+    elif str_interval == '1MIN':
+        return Interval.MIN_1
+    elif str_interval == '5MIN':
+        return Interval.MIN_5
+    elif str_interval == '15MIN':
+        return Interval.MIN_15
+    elif str_interval == '30MIN':
+        return Interval.MIN_30
+    elif str_interval == '1HR':
+        return Interval.HR_1
+    elif str_interval == '1DAY':
+        return Interval.DAY_1
+    else:
+        raise ValueError(f'Invalid interval string {str_interval}')
+
+def is_freq(time, interval):
+    """Helper function to determine if algorithm should be invoked for the
+    current timestamp. For example, if interval is 30MIN,
+    algorithm should be called when minutes are 0 and 30.
+    """
+    time = time.astimezone(pytz.timezone('UTC'))
+    
+    if interval == Interval.MIN_1:
+        return True 
+
+    minutes = time.minute
+    hours = time.hour
+    if interval == Interval.DAY_1:
+        # TODO: Use API to get real-time market hours
+        return minutes == 50 and hours == 19
+    elif interval == Interval.HR_1:
+        return minutes == 0
+    val, _ = expand_interval(interval)
+
+    return minutes % val == 0
+
+def expand_interval(interval: Interval):
+    string = interval.name
+    unit, value = string.split('_')
+    return int(value), unit
+
+def interval_to_timedelta(interval:Interval) -> dt.timedelta:
     expanded_units = {
         'DAY': 'days',
         'HR': 'hours',

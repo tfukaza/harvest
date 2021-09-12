@@ -10,10 +10,12 @@ import pyotp
 import yaml
 
 # Submodule imports
-from harvest.api._base import API 
+from harvest.api._base import API
 from harvest.utils import *
 
 class Robinhood(API):
+
+    interval_list = [Interval.SEC_15, Interval.MIN_5, Interval.HR_1, Interval.DAY_1]
 
     def __init__(self, path=None):
         super().__init__(path)
@@ -36,74 +38,63 @@ class Robinhood(API):
     def no_secret(self, path):
         return self.create_secret(path)
 
-    def setup(self, watch: List[str], interval, trader=None, trader_main=None):
-       
-        if interval == '1MIN':
-            self.__interval_fmt = '15second'
-            fetch_interval = '1MIN'
-        else:
-            self.__interval_fmt = '5minute'
-            fetch_interval = '5MIN'
-        
-        super().setup(watch, interval, fetch_interval, trader, trader_main)
+    @API._run_once
+    def setup(self, interval, trader=None, trader_main=None):
 
-        self.__watch_stock = []
-        self.__watch_crypto = []
-        self.__watch_crypto_fmt = []
-        if interval not in self.interval_list:
-            raise Exception(f'Invalid interval {interval}')
-        for s in watch:
-            if is_crypto(s):
-                self.__watch_crypto_fmt.append(s[1:])
-                self.__watch_crypto.append(s)
-            else:
-                self.__watch_stock.append(s)
-        if len(self.__watch_stock) > 0 and interval == '1MIN':
-            raise Exception(f'Interval {interval} is only supported for crypto')
+        super().setup(interval, trader, trader_main)
+       
+        # Robinhood only supports 15SEC, 1MIN interval for crypto
+        for sym in interval:
+            if not is_crypto(sym) and interval[sym]["interval"] < Interval.MIN_5:
+                raise Exception(f'Interval {interval[sym]["interval"]} is only supported for crypto')
         
+        # self.__watch_stock = []
+        # self.__watch_crypto = []
+        # self.__watch_crypto_fmt = []
+      
+        # for s in interval:
+        #     if is_crypto(s):
+        #         self.__watch_crypto_fmt.append(s[1:])
+        #         self.__watch_crypto.append(s)
+        #     else:
+        #         self.__watch_stock.append(s)
+         
         self.__option_cache = {}
 
     def exit(self):
         self.__option_cache = {}
-
-    def main(self):
-        df_dict = {}
-        df_dict.update(self.fetch_latest_stock_price())
-        df_dict.update(self.fetch_latest_crypto_price())
-      
-        self.trader_main(df_dict)
     
-    @API._exception_handler
-    def fetch_latest_stock_price(self):
-        df={}
-        for s in self.__watch_stock:
-            ret = rh.get_stock_historicals(
-                s,
-                interval=self.__interval_fmt, 
-                span='day', 
-                )
-            if 'error' in ret or ret == None or (type(ret) == list and len(ret) == 0):
-                continue
-            df_tmp = pd.DataFrame.from_dict(ret)
-            df_tmp = self._format_df(df_tmp, [s], self.interval).iloc[[-1]]
-            df[s] = df_tmp
+    # @API._exception_handler
+    # def fetch_latest_stock_price(self):
+    #     df={}
+    #     for s in self.__watch_stock:
+    #         ret = rh.get_stock_historicals(
+    #             s,
+    #             interval=self.__interval_fmt, 
+    #             span='day', 
+    #             )
+    #         if 'error' in ret or ret == None or (type(ret) == list and len(ret) == 0):
+    #             continue
+    #         df_tmp = pd.DataFrame.from_dict(ret)
+    #         df_tmp = self._format_df(df_tmp, [s], self.interval).iloc[[-1]]
+    #         df[s] = df_tmp
         
-        return df        
+    #     return df        
 
-    @API._exception_handler
-    def fetch_latest_crypto_price(self):
-        df={}
-        for s in self.__watch_crypto_fmt:
-            ret = rh.get_crypto_historicals(
-                s, 
-                interval=self.__interval_fmt, 
-                span='hour',
-                )
-            df_tmp = pd.DataFrame.from_dict(ret)
-            df_tmp = self._format_df(df_tmp, ['@'+s], self.interval).iloc[[-1]]
-            df['@'+s] = df_tmp
+    # @API._exception_handler
+    # def fetch_latest_crypto_price(self):
+    #     df={}
+    #     for s in self.__watch_crypto_fmt:
+    #         ret = rh.get_crypto_historicals(
+    #             s, 
+    #             interval=self.__interval_fmt, 
+    #             span='hour',
+    #             )
+    #         df_tmp = pd.DataFrame.from_dict(ret)
+    #         df_tmp = self._format_df(df_tmp, ['@'+s], self.interval).iloc[[-1]]
+    #         df['@'+s] = df_tmp
         
-        return df       
+    #     return df       
 
     # -------------- Streamer methods -------------- #
     

@@ -6,6 +6,7 @@ import logging
 from pathlib import Path
 import yaml
 import traceback
+import threading
 
 from typing import List, Dict, Any
 
@@ -73,29 +74,33 @@ class API:
         """
         pass
 
-    def setup(self, watch: List[str], interval: str, fetch_interval:str, trader=None, trader_main=None) -> None:
+    def setup(self, interval: str, trader=None, trader_main=None) -> None:
         """
         This function is called right before the algorithm begins.
 
-        On top of performing any configurations and input checks,
-        this method must initialize the following attributes:
-        
-        :watch: A list containing strings of stock/crypto (but not option) symbols this class should 
-            keep track of. Cryptos are prepended with a '@' to distinguish them from stocks.
-        :interval: A string specifying the interval to run the algorithm.
-        :fetch_interval: A string specifying the interval to collect data. 
-            For example, say a broker only provides 1MIN data. If the user wants to 
-            run the algorithm at 5MIN, fetch_interval should be set to '1MIN'.
-            The Trader class will then automatically resample the 1MIN data to 
-            5MIN data.
-        :trader: A reference to the Trader class. 
-        :trader_main: A reference to a method in the Trader class that invokes 
-            the algorithm
         """
-        self.watch = watch 
-        self.interval = interval 
         self.trader = trader
         self.trader_main = trader_main
+
+        min_interval = None
+        for sym in interval:
+            inter = interval[sym]["interval"]
+            # If the specified interval is not supported on this API, raise Exception
+            if inter < self.interval_list[0]:
+                raise Exception(f"Specified interval {inter} is not supported.")
+            # If the exact inteval is not supported but it can be recreated by aggregating 
+            # candles from a more granular interval
+            if inter not in self.interval_list:
+                granular_int = [i for i in self.crypto_interval_list if i < inter]
+                new_inter = granular_int[-1]
+                interval[sym]["aggregations"].append(inter)
+                interval[sym]["interval"] = new_inter
+
+            if min_interval is None or interval[sym]["interval"] < min_interval:
+                min_interval = interval[sym]["interval"]
+
+        self.interval = interval        
+        self.poll_interval = min_interval
 
     def start(self, kill_switch: bool=False):
         """
@@ -110,15 +115,9 @@ class API:
             after a single iteration. Usually used for testing.
         """
         cur_min = -1
-        val, unit = expand_interval(self.fetch_interval)
+        val, unit = expand_interval(self.poll_interval)
         
         print("Running...")
-        # kill_switch is true for testing purposes to prevent an infinite 
-        # loop after streamer.main is called.
-        if kill_switch:
-            self.main()
-            return
-        
         if unit == 'MIN':
             sleep = val * 60 - 10
             while 1:
@@ -150,11 +149,6 @@ class API:
 
     def main(self) -> Dict[str, pd.DataFrame]:
         """
-        This function should be called at the specified interval, and return data.
-        For brokers that use streaming, this often means specifying this function as a callback.
-        For brokers that use polling, this often means calling whatever endpoint is needed to 
-        obtain stock/crypto data, at the specified interval.
-
         This method should create a dictionary where each key is the symbol for an asset, 
         and the value is the corresponding data in the following pandas dataframe format:
                       Symbol                              
@@ -166,7 +160,24 @@ class API:
         
         The dictionary should be passed to the trader by calling `self.trader_main(dict)` 
         """
-        raise NotImplementedError("This endpoint is not supported in this broker")
+    
+        # Iterate through securities in the watchlist. For those that have
+        # intervals that needs to be called now, fetch the latest data
+
+        df_dict = {}
+        for sym in self.interval:
+            inter  = self.interval[sym]["interval"]
+            if is_freq(now(), inter):
+                n = now()
+                latest = self.fetch_price_history(
+                    sym,
+                    inter,
+                    n - interval_to_timedelta(inter),
+                    n
+                )
+                df_dict[sym] = latest.iloc[-1]
+      
+        self.trader_main(df_dict)
 
     def exit(self):
         """
@@ -199,6 +210,17 @@ class API:
                     self.debugger.debug("Retrying...")
                     continue
             raise Exception(f"{func} failed")
+        return wrapper
+    
+    def _run_once( func ):
+        """
+        """
+        def wrapper(*args, **kwargs):
+            self = args[0]
+            if self.run_count == 0:
+                self.run_count+=1
+                return func 
+            return None 
         return wrapper
 
     # -------------- Streamer methods -------------- #
@@ -601,4 +623,91 @@ Reduce purchase quantity or increase buying power.""")
         option_type = 'call' if symbol[6] == 'C' else 'put'
         price = float(symbol[7:])/1000
         return sym, date, option_type, price
-    
+
+
+class StreamAPI(API):
+    """
+    """
+    def __init__(self, path: str=None):
+        super().__init__(path)
+
+        self.block_lock = threading.Lock() # Lock for streams that receive data asynchronously.
+        self.block_queue = {}
+        self.first = True
+
+    def setup(self, interval: str, trader=None, trader_main=None) -> None:
+        super().setup(interval, trader, trader_main)
+
+        self.blocker = {}
+        # for w in self.interval:
+        #     self.blocker[w] = False
+        # self.block_queue = {}
+        # self.needed = self.watchlist_global.copy()
+
+    def start(self, kill_switch: bool=False):
+        """
+        """
+        pass
+
+    def main(self, df_dict) -> Dict[str, pd.DataFrame]:
+        """
+        """
+        self.block_lock.acquire()
+        # First, identify which symbols need to have data fetched
+        # for this timestamp
+        if self.first:
+            self.needed = [sym for sym in self.interval if is_freq(now(), self.interval[sym]["interval"])]
+        got = [k for k in df_dict]
+
+        self.debugger.debug(f"Needs: {self.needed}")
+        self.debugger.debug(f"Got data for: {got}")
+        missing = list(set(self.needed) - set(got))
+        self.debugger.debug(f"Still need data for: {missing}")
+ 
+        self.block_queue.update(df_dict)
+        #self.debugger.debug(self.block_queue)
+        
+        # If all data has been received, pass on the data
+        if len(missing) == 0:
+            self.debugger.debug("All data received")
+            self.trader_main(self.block_queue)
+            self.block_queue = {}
+            self.all_recv = True
+            self.first = True
+            self.block_lock.release()
+            return 
+        
+        # If there are data that has not been received, start a timer
+        if self.first:
+            timer = threading.Thread(target=self.timeout, daemon=True)
+            timer.start()
+            self.all_recv = False
+            self.first = False
+        
+        self.needed = missing
+        self.block_lock.release()
+
+    def timeout(self):
+        self.debugger.debug("Begin timeout timer")
+        time.sleep(1)
+        if not self.all_recv:
+            self.debugger.debug("Force flush")
+            self.flush()
+ 
+    def flush(self):
+        # For missing data, repeat the existing one
+        self.block_lock.acquire()
+        got = list(set(self.watch) - set(self.needed))[0]
+        timestamp = self.block_queue[got].index[-1]
+        for n in self.needed:
+            data = self.trader.storage.load(n, self.fetch_interval).iloc[[-1]].copy()
+            data.index = [timestamp]
+            self.block_queue[n] = data
+        self.block_lock.release()
+        self.main_helper(self.block_queue)
+        self.block_queue = {}
+
+
+        
+
+   
