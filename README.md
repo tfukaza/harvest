@@ -7,7 +7,7 @@ Harvest is a Python based framework providing a simple and intuitive framework f
 [![codecov](https://codecov.io/gh/tfukaza/harvest/branch/main/graph/badge.svg?token=NQMXTBK2UO)](https://codecov.io/gh/tfukaza/harvest)
 ![run tests](https://github.com/tfukaza/harvest/actions/workflows/run-tests.yml/badge.svg)
 ![website](https://github.com/tfukaza/harvest/actions/workflows/build-website.yml/badge.svg)
-
+[![Code style: Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 ---
 
 **⚠️WARNING⚠️**
