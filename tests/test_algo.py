@@ -16,6 +16,69 @@ prices = [10, 12, 11, 9, 8, 10, 11, 12, 13, 15, 14, 16, 13, 14]
 
 class TestAlgo(unittest.TestCase):
 
+    # Watchlist set in the Algo class locally should take precendance over watchlist in Trader class
+    def test_config_watchlist_1(self):
+        class Algo1(BaseAlgo):
+            def config(self):
+                self.watchlist = ['A', 'B', 'C']
+        
+        class Algo2(BaseAlgo):
+            def config(self):
+                self.watchlist = ['D', 'E', 'F']
+        
+        algo1 = Algo1()
+        algo2 = Algo2()
+
+        s = DummyStreamer()
+        t = Trader(s)
+        t.set_algo([algo1, algo2])
+        t.set_symbol(["1", "2", "3"])
+
+        t.start()
+        s.tick()
+
+        # Getting watchlist should return the watchlist of the Algo class
+        list1 = algo1.get_stock_watchlist()
+        self.assertListEqual(list1, ['A', 'B', 'C'])
+        list2 = algo2.get_stock_watchlist()
+        self.assertListEqual(list2, ['D', 'E', 'F'])
+
+        # Running methods like get_stock_price_list without a symbol parameter 
+        # should return the symbol specified in the Algo class
+        prices1 = algo1.get_stock_price_list()
+        symbol1 = prices1.columns.values[0][0]
+        self.assertEqual(symbol1, 'A')
+
+        prices2 = algo2.get_stock_price_list()
+        symbol2 = prices2.columns.values[0][0]
+        self.assertEqual(symbol2, 'D')
+    
+    # Trader class should be able to run algorithms at the individually specified intervals
+    def test_config_interval(self):
+
+        class Algo1(BaseAlgo):
+            def config(self):
+                self.interval = '5MIN'
+                self.aggregations = ['15MIN', '1HR']
+        
+        class Algo2(BaseAlgo):
+            def config(self):
+                self.interval = '30MIN'
+                self.aggregations = ['1DAY']
+        
+        algo1 = Algo1()
+        algo2 = Algo2()
+
+        s = DummyStreamer()
+        t = Trader(s)
+        t.set_algo([algo1, algo2])
+
+        t.start()
+        s.tick()
+
+        self.assertEqual(t.interval, '5MIN')
+        self.assertEqual(t.aggregations, ['15MIN', '30MIN', '1HR', '1DAY'])
+
     def test_rsi(self):
         """
         Test that RSI values are calculated correctly.
