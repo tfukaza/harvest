@@ -53,7 +53,6 @@ class Trader:
         self.timestamp_prev = now()
         self.timestamp = self.timestamp_prev
 
-        self.watchlist = []         # List of securities specified in this class.
         self.watchlist_global = []  # List of securities specified in this class, 
                                     # fetched from brokers, and retrieved from Algo class.
 
@@ -130,38 +129,7 @@ class Trader:
         self.broker.update_option_positions(self.option_positions)
         self.debugger.debug(f"Updated option positions:\n{self.option_positions}")
 
-    def start(self, interval='5MIN', aggregations=[], sync=True, kill_switch: bool=False, server=False):
-        """Entry point to start the system. 
-        
-        :param str? interval: The interval to run the algorithm. defaults to '5MIN'
-        :param list[str]? aggregations: A list of intervals. The Trader will aggregate data to the intervals specified in this list.
-            For example, if this is set to ['5MIN', '30MIN'], and interval is '1MIN', the algorithm will have access to 
-            5MIN, 30MIN aggregated data in addition to 1MIN data. defaults to None
-        :param bool? sync: If true, the system will sync with the broker and fetch current positions and pending orders. defaults to true. 
-        :kill_switch: If true, kills the infinite loop in streamer. Primarily used for testing. defaults to False.
-
-        """
-        self.debugger.debug(f"Setting up Harvest...")
-
-        # If sync is on, call the broker to load pending orders and all positions currently held.
-        if sync:
-            self._setup_stats()
-            for s in self.stock_positions:
-                self.watchlist_global.append(s['symbol'])
-            for s in self.option_positions:
-                self.watchlist_global.append(s['symbol'])
-            for s in self.crypto_positions:
-                self.watchlist_global.append(s['symbol'])
-            for s in self.order_queue:
-                self.watchlist_global.append(s['symbol'])     
-        
-        if len(self.watchlist_global) == 0:
-            raise Exception(f"No securities were added to watchlist")
-        
-        # Remove duplicates in watchlist
-        self.watchlist_global = list(set(self.watchlist_global))
-        self.debugger.debug(f"Watchlist: {self.watchlist_global}")
-
+    def _setup_params(self, interval, aggregations):
         # Set the global watchlist, interval, and aggregations
         interval = interval_string_to_enum(interval)
         aggregations = [ interval_string_to_enum(a) for a in aggregations ]
@@ -204,6 +172,40 @@ class Trader:
                 for agg in a.aggregations:
                     if agg not in self.interval[sym]["aggregations"]:
                         self.interval[sym]["aggregations"].append(agg)
+
+    def start(self, interval='5MIN', aggregations=[], sync=True, kill_switch: bool=False, server=False):
+        """Entry point to start the system. 
+        
+        :param str? interval: The interval to run the algorithm. defaults to '5MIN'
+        :param list[str]? aggregations: A list of intervals. The Trader will aggregate data to the intervals specified in this list.
+            For example, if this is set to ['5MIN', '30MIN'], and interval is '1MIN', the algorithm will have access to 
+            5MIN, 30MIN aggregated data in addition to 1MIN data. defaults to None
+        :param bool? sync: If true, the system will sync with the broker and fetch current positions and pending orders. defaults to true. 
+        :kill_switch: If true, kills the infinite loop in streamer. Primarily used for testing. defaults to False.
+
+        """
+        self.debugger.debug(f"Setting up Harvest...")
+
+        # If sync is on, call the broker to load pending orders and all positions currently held.
+        if sync:
+            self._setup_stats()
+            for s in self.stock_positions:
+                self.watchlist_global.append(s['symbol'])
+            for s in self.option_positions:
+                self.watchlist_global.append(s['symbol'])
+            for s in self.crypto_positions:
+                self.watchlist_global.append(s['symbol'])
+            for s in self.order_queue:
+                self.watchlist_global.append(s['symbol'])     
+        
+        if len(self.watchlist_global) == 0:
+            raise Exception(f"No securities were added to watchlist")
+        
+        # Remove duplicates in watchlist
+        self.watchlist_global = list(set(self.watchlist_global))
+        self.debugger.debug(f"Watchlist: {self.watchlist_global}")
+
+        self._setup_params(interval, aggregations)
 
         # Initialize the account
         self._setup_account()

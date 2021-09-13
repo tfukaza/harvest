@@ -68,8 +68,8 @@ class Robinhood(API):
         df_dict = {}
         for sym in self.interval:
             inter  = self.interval[sym]["interval"]
-            if is_freq(now(), inter):
-                n = now()
+            if is_freq(self.timestamp, inter):
+                n = self.timestamp
                 latest = self.fetch_price_history(
                     sym,
                     inter,
