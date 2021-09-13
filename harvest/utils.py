@@ -1,7 +1,7 @@
 import re
 import random
 import datetime as dt
-from enum import IntEnum, auto()
+from enum import IntEnum, auto
 
 import pytz
 import pandas as pd

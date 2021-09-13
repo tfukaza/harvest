@@ -61,6 +61,25 @@ class Robinhood(API):
          
         self.__option_cache = {}
 
+    def main(self):
+          # Iterate through securities in the watchlist. For those that have
+        # intervals that needs to be called now, fetch the latest data
+
+        df_dict = {}
+        for sym in self.interval:
+            inter  = self.interval[sym]["interval"]
+            if is_freq(now(), inter):
+                n = now()
+                latest = self.fetch_price_history(
+                    sym,
+                    inter,
+                    n - interval_to_timedelta(inter),
+                    n
+                )
+                df_dict[sym] = latest.iloc[-1]
+      
+        self.trader_main(df_dict)
+
     def exit(self):
         self.__option_cache = {}
     

@@ -48,18 +48,19 @@ class API:
             If not specified, defaults to './secret.yaml'
         """
         self.trader = None # Allows broker to handle the case when runs without a trader
-        
-        if path == None:
+
+        if path is None:
             path = './secret.yaml'
         # Check if file exists
         yml_file = Path(path)
-        if not yml_file.is_file():
-            if not self.no_secret(path):
-                return 
+        if not yml_file.is_file() and not self.no_secret(path):
+            return
         with open(path, 'r') as stream:
             self.config = yaml.safe_load(stream)
-        
+
         self.debugger = logging.getLogger('harvest')
+
+        self.timestamp = now()
     
     def no_secret(self, path: str): 
         """
@@ -74,7 +75,7 @@ class API:
         """
         pass
 
-    def setup(self, interval: str, trader=None, trader_main=None) -> None:
+    def setup(self, interval:Dict, trader=None, trader_main=None) -> None:
         """
         This function is called right before the algorithm begins.
 
@@ -124,6 +125,7 @@ class API:
                 cur = now()
                 minutes = cur.minute
                 if minutes % val == 0 and minutes != cur_min:
+                    self.timestamp = cur
                     self.main()
                     time.sleep(sleep)
                 cur_min = minutes
@@ -133,6 +135,7 @@ class API:
                 cur = now()
                 minutes = cur.minute
                 if minutes == 0 and minutes != cur_min:
+                    self.timestamp = cur
                     self.main()
                     time.sleep(sleep)
                 cur_min = minutes
@@ -142,6 +145,7 @@ class API:
                 minutes = cur.minute
                 hours = cur.hour
                 if hours == 19 and minutes == 50:
+                    self.timestamp = cur
                     self.main()
                     time.sleep(80000)
                 cur_min = minutes
@@ -160,24 +164,7 @@ class API:
         
         The dictionary should be passed to the trader by calling `self.trader_main(dict)` 
         """
-    
-        # Iterate through securities in the watchlist. For those that have
-        # intervals that needs to be called now, fetch the latest data
-
-        df_dict = {}
-        for sym in self.interval:
-            inter  = self.interval[sym]["interval"]
-            if is_freq(now(), inter):
-                n = now()
-                latest = self.fetch_price_history(
-                    sym,
-                    inter,
-                    n - interval_to_timedelta(inter),
-                    n
-                )
-                df_dict[sym] = latest.iloc[-1]
-      
-        self.trader_main(df_dict)
+        raise NotImplementedError()
 
     def exit(self):
         """
@@ -209,7 +196,7 @@ class API:
                     tries = tries - 1 
                     self.debugger.debug("Retrying...")
                     continue
-            raise Exception(f"{func} failed")
+            
         return wrapper
     
     def _run_once( func ):
@@ -227,7 +214,7 @@ class API:
 
     def fetch_price_history(self,
         symbol: str,
-        interval: str,
+        interval: Interval,
         start: dt.datetime=None, 
         end: dt.datetime=None, 
         ):
