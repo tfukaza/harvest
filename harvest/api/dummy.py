@@ -18,8 +18,7 @@ class DummyStreamer(API):
     be useful for testing algorithms. When used as a streamer, it will return
     randomly generated prices. 
     """
-
-    interval_list = ['1MIN', '5MIN', '15MIN', '30MIN', '1HR', '1DAY']
+    interval_list = [Interval.MIN_1, Interval.MIN_5, Interval.MIN_15, Interval.MIN_30, Interval.HR_1, Interval.DAY_1]
     default_now = dt.datetime(year=2000, month=1, day=1, hour=0, minute=0)
 
     def __init__(self, path: str=None, now: dt.datetime=default_now, realistic_times: bool=False):
@@ -33,9 +32,9 @@ class DummyStreamer(API):
         self.interval = self.interval_list[0]
         # Store random values and generates for each asset tot make `fetch_price_history` fixed
         self.randomness = {}
-
-    def setup(self, watch: List[str], interval, trader=None, trader_main=None):
-        super().setup(watch, interval, interval, trader, trader_main)
+    
+    def start(self) -> None:
+        pass
 
     def main(self):
         df_dict = {}
@@ -55,9 +54,9 @@ class DummyStreamer(API):
         today = self.now
         last = today - dt.timedelta(days=3)
         
-        for symbol in self.watch:
+        for symbol in self.interval:
             if not is_crypto(symbol):
-                results[symbol] = self.fetch_price_history(symbol, self.interval, last, today).iloc[[-1]]
+                results[symbol] = self.fetch_price_history(symbol, self.interval[symbol]["interval"], last, today).iloc[[-1]]
         return results
         
     def fetch_latest_crypto_price(self) -> Dict[str, pd.DataFrame]:
@@ -70,16 +69,16 @@ class DummyStreamer(API):
         results = {}
         today = self.now
         last = today - dt.timedelta(days=3)
-        for symbol in self.watch:
+        for symbol in self.interval:
             if is_crypto(symbol):
-                results[symbol] = self.fetch_price_history(symbol, self.interval, last, today).iloc[[-1]]
+                results[symbol] = self.fetch_price_history(symbol, self.interval[symbol]["interval"], last, today).iloc[[-1]]
         return results
 
     # -------------- Streamer methods -------------- #
 
     def fetch_price_history(self,
         symbol: str,
-        interval: str,
+        interval: Interval,
         start: dt.datetime=None, 
         end: dt.datetime=None
         ) -> pd.DataFrame:
@@ -249,6 +248,6 @@ class DummyStreamer(API):
             self.now = current_datetime
 
     def tick(self) -> None:
-        self.now += interval_to_timedelta(self.interval)
+        self.now += interval_to_timedelta(self.poll_interval)
         if not self.trader_main == None:
             self.main()

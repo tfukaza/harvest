@@ -95,8 +95,8 @@ class Trader:
     def storage_init(self):
         """Initializes the storage.
         """
-        for s in self.watchlist_global:
-            for i in [self.fetch_interval] + self.aggregations:
+        for s in self.interval:
+            for i in [self.interval[s]["interval"]] + self.interval[s]["aggregations"]:
                 df = self.streamer.fetch_price_history(s, i)
                 self.storage.store(s, i, df)
 
@@ -219,13 +219,14 @@ class Trader:
 
         for a in self.algo:
             a.setup()
+            a.trader = self
 
         self.debugger.debug("Setup complete")
 
         if server:
             self.server.start()
 
-        self.streamer.start(kill_switch)
+        self.streamer.start()
         
     def main(self, df_dict):
         
@@ -249,7 +250,7 @@ class Trader:
 
         new_algo = []
         for a in self.algo:
-            if not self.is_freq(self.timestamp, a.interval):
+            if not is_freq(self.timestamp, a.interval):
                 new_algo.append(a)
                 continue
             try:
@@ -325,11 +326,11 @@ class Trader:
 
     def _update_positions(self):
         pos = self.broker.fetch_stock_positions()
-        self.stock_positions = [p for p in pos if p['symbol'] in self.watch]
+        self.stock_positions = [p for p in pos if p['symbol'] in self.interval]
         pos = self.broker.fetch_option_positions()
-        self.option_positions = [p for p in pos if p['symbol'] in self.watch]
+        self.option_positions = [p for p in pos if p['symbol'] in self.interval]
         pos = self.broker.fetch_crypto_positions()
-        self.crypto_positions = [p for p in pos if p['symbol'] in self.watch]
+        self.crypto_positions = [p for p in pos if p['symbol'] in self.interval]
         ret = self.broker.fetch_account()
         self.account = ret
 

@@ -38,7 +38,7 @@ class BaseAlgo:
 
         self.interval = None 
         self.aggregations = None
-        self.watchlist = None
+        self.watchlist = []
 
     def config(self):
         self.interval = None 
@@ -295,18 +295,18 @@ class BaseAlgo:
             symbol = self.watchlist[0]
         if self.trader is None:
             if interval == None:
-                interval = '5MIN'
+                interval = Interval.MIN_5
             if prices is None:
                 raise Exception(f'No prices found for symbol {symbol}')
         else:
             if interval is None:
-                interval = self.trader.interval
+                interval = self.trader[symbol]["interval"]
             if prices == None:
                 prices = self.trader.storage.load(symbol, interval)[symbol][ref]
 
         return symbol, interval, ref, prices
 
-    def rsi(self, symbol: str=None, period: int=14, interval: str=None, ref: str='close', prices=None) -> np.array:
+    def rsi(self, symbol: str=None, period: int=14, interval: Interval=None, ref: str='close', prices=None) -> np.array:
         """Calculate RSI
 
         :param str? symbol:     Symbol to perform calculation on. defaults to first symbol in watchlist
@@ -331,7 +331,7 @@ class BaseAlgo:
         })
         return TA.RSI(ohlc, period=period).to_numpy()
     
-    def sma(self, symbol: str=None, period: int=14, interval: str='5MIN', ref: str='close', prices=None) -> np.array:
+    def sma(self, symbol: str=None, period: int=14, interval: Interval='5MIN', ref: str='close', prices=None) -> np.array:
         """Calculate SMA
 
         :param str? symbol:    Symbol to perform calculation on. defaults to first symbol in watchlist
@@ -356,7 +356,7 @@ class BaseAlgo:
         })
         return TA.SMA(ohlc, period=period).to_numpy()
     
-    def ema(self, symbol: str=None, period: int=14, interval: str='5MIN', ref: str='close', prices=None) -> np.array:
+    def ema(self, symbol: str=None, period: int=14, interval: Interval='5MIN', ref: str='close', prices=None) -> np.array:
         """Calculate EMA
 
         :param str? symbol:    Symbol to perform calculation on. defaults to first symbol in watchlist
@@ -381,7 +381,7 @@ class BaseAlgo:
         })
         return TA.EMA(ohlc, period=period).to_numpy()
     
-    def bbands(self, symbol: str=None, period: int=14, interval: str='5MIN', ref: str='close', dev: float=1.0, prices=None) -> Tuple[np.array, np.array, np.array]:
+    def bbands(self, symbol: str=None, period: int=14, interval: Interval=Interval.MIN_5, ref: str='close', dev: float=1.0, prices=None) -> Tuple[np.array, np.array, np.array]:
         """Calculate Bollinger Bands
 
         :param str? symbol:    Symbol to perform calculation on. defaults to first symbol in watchlist
@@ -475,7 +475,7 @@ class BaseAlgo:
         if symbol is None:
             symbol = self.watchlist[0]
         if len(symbol) <= 6:
-            return self.trader.storage.load(symbol, self.trader.interval)[symbol]['close'][-1]
+            return self.trader.storage.load(symbol, self.interval)[symbol]['close'][-1]
         for p in self.trader.option_positions:
             if p['occ_symbol'] == symbol:
                 return p['current_price'] * p['multiplier']
@@ -495,7 +495,7 @@ class BaseAlgo:
         if symbol is None:
             symbol = self.watchlist[0]
         if interval is None:
-            interval = self.trader.interval
+            interval = self.interval
         if len(symbol) <= 6:
             return list(self.trader.storage.load(symbol, interval)[symbol][ref])
         self.debugger.warning("Price list not available for options")
@@ -522,7 +522,7 @@ class BaseAlgo:
         if symbol is None:
             symbol = self.watchlist[0]
         if interval is None:
-            interval = self.trader.interval
+            interval = self.interval
         if len(symbol) <= 6:
             return self.trader.storage.load(symbol, interval).iloc[[-1]][symbol]
         self.debugger.warning("Candles not available for options")
@@ -549,7 +549,7 @@ class BaseAlgo:
         if symbol is None:
             symbol = self.watchlist[0]
         if interval is None:
-            interval = self.trader.interval
+            interval = self.interval
         return self.trader.storage.load(symbol, interval)[symbol]
     
     def get_asset_returns(self, symbol=None) -> float:
@@ -640,12 +640,12 @@ class BaseAlgo:
     def get_stock_watchlist(self) -> List:
         """Returns the current watchlist.
         """
-        return [s for s in self.watch if not is_crypto(s)]
+        return [s for s in self.watchlist if not is_crypto(s)]
     
     def get_crypto_watchlist(self) -> List:
         """Returns the current watchlist.
         """
-        return [s for s in self.watch if is_crypto(s)]
+        return [s for s in self.watchlist if is_crypto(s)]
 
     def get_time(self):
         """Returns the current hour and minute.

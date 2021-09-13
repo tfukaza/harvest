@@ -7,18 +7,20 @@ import pytz
 from pandas.testing import assert_frame_equal
 
 from harvest.api.dummy import DummyStreamer 
+from harvest.utils import *
 
 class TestDummyStreamer(unittest.TestCase):
 
     def test_fetch_prices(self):
         streamer = DummyStreamer()
+        streamer.poll_interval = Interval.MIN_1
         # Get per-minute data
-        df_1 = streamer.fetch_price_history('A', '1MIN')['A']
+        df_1 = streamer.fetch_price_history('A', Interval.MIN_1)['A']
         # Check that the last date is 1/1/2020-00:00:00
         self.assertEqual(df_1.index[-1], pytz.utc.localize(dt.datetime(2000, 1, 1, 0, 0)))
         # Advance the time by 1 minute
         streamer.tick()
-        df_2 = streamer.fetch_price_history('A', '1MIN')['A']
+        df_2 = streamer.fetch_price_history('A', Interval.MIN_1)['A']
         # Check that the last date is 1/1/2020-00:01:00
         self.assertEqual(df_2.index[-1], pytz.utc.localize(dt.datetime(2000, 1, 1, 0, 1)))
 
@@ -27,21 +29,74 @@ class TestDummyStreamer(unittest.TestCase):
 
     def test_setup(self):
         dummy = DummyStreamer()
-        watch = ['A', 'B', 'C', '@D']
-        dummy.setup(watch, '1MIN')
-        self.assertEqual(dummy.watch, watch)
+        interval = {
+            "A": {
+                "interval": Interval.MIN_1,
+                "agg,regations": []
+            },
+            "B": {
+                "interval": Interval.MIN_1,
+                "agg,regations": []
+            },
+            "C": {
+                "interval": Interval.MIN_1,
+                "agg,regations": []
+            },
+            "@D": {
+                "interval": Interval.MIN_1,
+                "agg,regations": []
+            }
+        }
+        dummy.setup(interval)
+       
+        self.assertEqual(dummy.interval, interval)
+
 
     def test_get_stock_price(self):
         dummy = DummyStreamer()
-        watch = ['A', 'B', 'C', '@D']
-        dummy.setup(watch, '1MIN')
+        interval = {
+            "A": {
+                "interval": Interval.MIN_1,
+                "agg,regations": []
+            },
+            "B": {
+                "interval": Interval.MIN_1,
+                "agg,regations": []
+            },
+            "C": {
+                "interval": Interval.MIN_1,
+                "agg,regations": []
+            },
+            "@D": {
+                "interval": Interval.MIN_1,
+                "agg,regations": []
+            }
+        }
+        dummy.setup(interval)
         d = dummy.fetch_latest_stock_price()
         self.assertEqual(len(d), 3)
 
     def test_get_crypto_price(self):
         dummy = DummyStreamer()
-        watch = ['A', 'B', 'C', '@D']
-        dummy.setup(watch, '1MIN')
+        interval = {
+            "A": {
+                "interval": Interval.MIN_1,
+                "agg,regations": []
+            },
+            "B": {
+                "interval": Interval.MIN_1,
+                "agg,regations": []
+            },
+            "C": {
+                "interval": Interval.MIN_1,
+                "agg,regations": []
+            },
+            "@D": {
+                "interval": Interval.MIN_1,
+                "agg,regations": []
+            }
+        }
+        dummy.setup(interval)
         d = dummy.fetch_latest_crypto_price()
         self.assertTrue('@D' in d)
         self.assertEqual(d['@D'].shape, (1, 5))
@@ -50,8 +105,8 @@ class TestDummyStreamer(unittest.TestCase):
         dummy1 = DummyStreamer()
         dummy2 = DummyStreamer()
 
-        df1 = dummy1.fetch_price_history('A', '1MIN')
-        df2 = dummy2.fetch_price_history('A', '1MIN')
+        df1 = dummy1.fetch_price_history('A', Interval.MIN_1)
+        df2 = dummy2.fetch_price_history('A', Interval.MIN_1)
 
         assert_frame_equal(df1, df2)
 
@@ -59,10 +114,10 @@ class TestDummyStreamer(unittest.TestCase):
         dummy1 = DummyStreamer()
         dummy2 = DummyStreamer()
 
-        df1B = dummy1.fetch_price_history('B', '5MIN')
-        df2A = dummy2.fetch_price_history('A', '5MIN')
-        df1A = dummy1.fetch_price_history('A', '5MIN')
-        df2B = dummy2.fetch_price_history('B', '5MIN')
+        df1B = dummy1.fetch_price_history('B', Interval.MIN_5)
+        df2A = dummy2.fetch_price_history('A', Interval.MIN_5)
+        df1A = dummy1.fetch_price_history('A', Interval.MIN_5)
+        df2B = dummy2.fetch_price_history('B', Interval.MIN_5)
 
         assert_frame_equal(df1A, df2A)
         assert_frame_equal(df1B, df2B)

@@ -28,7 +28,7 @@ class API:
         This should be initialized in setup_run (see below).
     """
 
-    interval_list = ['1MIN', '5MIN', '15MIN', '30MIN', '1HR', '1DAY']
+    interval_list = [Interval.MIN_1, Interval.MIN_5, Interval.MIN_15, Interval.MIN_30, Interval.HR_1, Interval.DAY_1]
     
     def __init__(self, path: str=None):
         """
@@ -491,10 +491,10 @@ class API:
         if self.trader is None:
             buy_power = self.fetch_account()['buying_power']
             # If there is no trader, streamer must be manually set
-            price = self.streamer.fetch_price_history( symbol, self.interval, now() - dt.timedelta(days=7), now())[symbol]['close'][-1]
+            price = self.streamer.fetch_price_history( symbol, self.interval[symbol]["interval"], now() - dt.timedelta(days=7), now())[symbol]['close'][-1]
         else:
             buy_power = self.trader.account['buying_power']
-            price = self.trader.storage.load(symbol, self.interval)[symbol]['close'][-1]
+            price = self.trader.storage.load(symbol, self.interval[symbol]["interval"])[symbol]['close'][-1]
 
         limit_price = mark_up(price)
         total_price = limit_price * quantity
@@ -522,9 +522,9 @@ class API:
             return None
        
         if self.trader is None:
-            price = self.streamer.fetch_price_history(symbol, self.interval, now() - dt.timedelta(days=7), now())[symbol]['close'][-1]
+            price = self.streamer.fetch_price_history(symbol, self.interval[symbol]["interval"], now() - dt.timedelta(days=7), now())[symbol]['close'][-1]
         else:
-            price = self.trader.storage.load(symbol, self.interval)[symbol]['close'][-1]
+            price = self.trader.storage.load(symbol, self.interval[symbol]["interval"])[symbol]['close'][-1]
 
         limit_price = mark_down(price)
        

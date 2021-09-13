@@ -6,6 +6,8 @@ import datetime as dt
 from harvest.api.paper import PaperBroker 
 from harvest.api.dummy import DummyStreamer
 
+from harvest.utils import *
+
 class TestPaperBroker(unittest.TestCase):
 
     def test_account(self):
@@ -36,7 +38,13 @@ class TestPaperBroker(unittest.TestCase):
     def test_buy_order_limit(self):
         dummy = PaperBroker() 
         dummy.streamer = DummyStreamer()
-        dummy.setup(['A'], '1MIN')
+        interval = {
+            "A": {
+                "interval": Interval.MIN_1,
+                "aggregations": []
+            }
+        }
+        dummy.setup(interval)
         order = dummy.order_limit('buy', 'A', 5, 50000)
         self.assertEqual(order['type'], 'STOCK')
         self.assertEqual(order['id'], 0)
@@ -54,7 +62,13 @@ class TestPaperBroker(unittest.TestCase):
     def test_buy(self):
         dummy = PaperBroker() 
         dummy.streamer = DummyStreamer()
-        dummy.setup(['A'], '1MIN')
+        interval = {
+            "A": {
+                "interval": Interval.MIN_1,
+                "aggregations": []
+            }
+        }
+        dummy.setup(interval)
         order = dummy.buy('A', 5)
         self.assertEqual(order['type'], 'STOCK')
         self.assertEqual(order['id'], 0)
@@ -73,7 +87,13 @@ class TestPaperBroker(unittest.TestCase):
         directory = pathlib.Path(__file__).parent.resolve()
         dummy = PaperBroker(str(directory) + '/../dummy_account.yaml') 
         dummy.streamer = DummyStreamer()
-        dummy.setup(['A'], '1MIN')
+        interval = {
+            "A": {
+                "interval": Interval.MIN_1,
+                "aggregations": []
+            }
+        }
+        dummy.setup(interval)
         order = dummy.order_limit('sell', 'A', 2, 50000)
         self.assertEqual(order['type'], 'STOCK')
         self.assertEqual(order['id'], 0)
@@ -92,7 +112,13 @@ class TestPaperBroker(unittest.TestCase):
         directory = pathlib.Path(__file__).parent.resolve()
         dummy = PaperBroker(str(directory) + '/../dummy_account.yaml')
         dummy.streamer = DummyStreamer()
-        dummy.setup(['A'], '1MIN')
+        interval = {
+            "A": {
+                "interval": Interval.MIN_1,
+                "aggregations": []
+            }
+        }
+        dummy.setup(interval)
         order = dummy.sell('A', 2)
         self.assertEqual(order['type'], 'STOCK')
         self.assertEqual(order['id'], 0)
@@ -110,7 +136,13 @@ class TestPaperBroker(unittest.TestCase):
     def test_order_option_limit(self):
         dummy = PaperBroker() 
         dummy.streamer = DummyStreamer()
-        dummy.setup(['A'], '1MIN')
+        interval = {
+            "A": {
+                "interval": Interval.MIN_1,
+                "aggregations": []
+            }
+        }
+        dummy.setup(interval)
         exp_date = dt.datetime.now() + dt.timedelta(hours=5)
         order = dummy.order_option_limit('buy', 'A', 5, 50000, 'OPTION', exp_date, 50001)
         self.assertEqual(order['type'], 'OPTION')

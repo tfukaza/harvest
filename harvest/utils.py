@@ -80,7 +80,7 @@ def is_crypto(symbol: str) -> bool:
 def normalize_pandas_dt_index(df: pd.DataFrame) -> pd.Index:
 	return df.index.floor('min')
 
-def aggregate_df(df, interval: str) -> pd.DataFrame:
+def aggregate_df(df, interval: Interval) -> pd.DataFrame:
     sym = df.columns[0][0]
     df = df[sym]
     op_dict = {
@@ -90,12 +90,13 @@ def aggregate_df(df, interval: str) -> pd.DataFrame:
         'close':'last',
         'volume':'sum'
     }
-    val = re.sub("[^0-9]", "", interval)
-    if interval[-1] == 'N':     # MIN interval
-        val = val+'T'
-    elif interval[-1] == 'R':   # 1HR interval
+    val, unit = expand_interval(interval)
+    val = str(val)
+    if unit == '1HR':
         val = 'H'
-    else:                       # 1DAY interval
+    elif unit == 'MIN':
+        val += 'T'
+    else:
         val = 'D'
     df = df.resample(val).agg(op_dict)
     df.columns = pd.MultiIndex.from_product([[sym], df.columns])

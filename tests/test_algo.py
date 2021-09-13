@@ -8,7 +8,7 @@ from harvest.trader import Trader
 from harvest.api.dummy import DummyStreamer
 from harvest.algo import BaseAlgo 
 
-from harvest.utils import gen_data
+from harvest.utils import Interval, gen_data
 
 import logging
 
@@ -45,11 +45,11 @@ class TestAlgo(unittest.TestCase):
 
         # Running methods like get_stock_price_list without a symbol parameter 
         # should return the symbol specified in the Algo class
-        prices1 = algo1.get_stock_price_list()
+        prices1 = algo1.get_asset_price_list()
         symbol1 = prices1.columns.values[0][0]
         self.assertEqual(symbol1, 'A')
 
-        prices2 = algo2.get_stock_price_list()
+        prices2 = algo2.get_asset_price_list()
         symbol2 = prices2.columns.values[0][0]
         self.assertEqual(symbol2, 'D')
     
@@ -58,13 +58,13 @@ class TestAlgo(unittest.TestCase):
 
         class Algo1(BaseAlgo):
             def config(self):
-                self.interval = '5MIN'
-                self.aggregations = ['15MIN', '1HR']
+                self.interval = Interval.MIN_1
+                self.aggregations = [Interval.MIN_15, Interval.DAY_1]
         
         class Algo2(BaseAlgo):
             def config(self):
-                self.interval = '30MIN'
-                self.aggregations = ['1DAY']
+                self.interval = Interval.MIN_30
+                self.aggregations = [Interval.DAY_1]
         
         algo1 = Algo1()
         algo2 = Algo2()
@@ -76,8 +76,8 @@ class TestAlgo(unittest.TestCase):
         t.start()
         s.tick()
 
-        self.assertEqual(t.interval, '5MIN')
-        self.assertEqual(t.aggregations, ['15MIN', '30MIN', '1HR', '1DAY'])
+        self.assertEqual(t.interval, Interval.MIN_5)
+        self.assertEqual(t.aggregations, [Interval.MIN_15, Interval.MIN_30, Interval.HR_1, Interval.DAY_1])
 
     def test_rsi(self):
         """
@@ -109,7 +109,10 @@ class TestAlgo(unittest.TestCase):
 
         alpha = 2 / (len(prices) + 1)
         weights = [(1 - alpha) ** t for t in range(len(prices))]
-        expected_ema = sum([w * price for w, price in zip(weights, prices[::-1])]) / sum(weights)
+        expected_ema = sum(
+            w * price for w, price in zip(weights, prices[::-1])
+        ) / sum(weights)
+
 
         self.assertAlmostEqual(ema, expected_ema, places=5)
 
@@ -122,7 +125,7 @@ class TestAlgo(unittest.TestCase):
         upper, middle, lower = algo.bbands(prices=prices)
 
         mean = sum(prices) / len(prices)
-        var = sum([(price - mean) ** 2 for price in prices]) / (len(prices) - 1)
+        var = sum((price - mean) ** 2 for price in prices) / (len(prices) - 1)
         std = var ** 0.5
         expected_middle = sum(prices) / len(prices)
 
@@ -138,7 +141,8 @@ class TestAlgo(unittest.TestCase):
         t = Trader(streamer)
         t.set_symbol('DUMMY')
         t.set_algo(BaseAlgo())
-        t.start("1MIN", kill_switch=True)
+        t.start("1MIN")
+        streamer.tick()
 
         upper, middle, lower = t.algo[0].bbands()
 
@@ -149,7 +153,8 @@ class TestAlgo(unittest.TestCase):
         t = Trader(s)
         t.set_symbol('A')
         t.set_algo(BaseAlgo())
-        t.start("1MIN", kill_switch=True)
+        t.start("1MIN")
+       
 
         # This should buy 5 of A
         t.algo[0].buy('A', 5)
@@ -164,12 +169,12 @@ class TestAlgo(unittest.TestCase):
         t = Trader(s)
         t.set_symbol('A')
         t.set_algo(BaseAlgo())
-        t.start("1MIN", kill_switch=True)
+        t.start("1MIN")
 
         t.algo[0].buy('A', 1)
         s.tick()
 
-        cost = s.fetch_price_history('A', '5MIN').iloc[-1]['A']['close']
+        cost = s.fetch_price_history('A', Interval.MIN_5).iloc[-1]['A']['close']
         get_cost = t.algo[0].get_asset_cost('A')
 
         self.assertEqual(get_cost, cost)
@@ -179,7 +184,7 @@ class TestAlgo(unittest.TestCase):
         t = Trader(s)
         t.set_symbol('A')
         t.set_algo(BaseAlgo())
-        t.start("1MIN", kill_switch=True)
+        t.start("1MIN")
 
         # This should buy 5 of A
         t.algo[0].buy('A', 5)
@@ -195,7 +200,7 @@ class TestAlgo(unittest.TestCase):
         t = Trader(s)
         t.set_symbol('A')
         t.set_algo(BaseAlgo())
-        t.start("1MIN", kill_switch=True)
+        t.start("1MIN")
 
         # This should buy 2 of A
         t.algo[0].buy('A', 2)
@@ -218,9 +223,9 @@ class TestAlgo(unittest.TestCase):
         t = Trader(s)
         t.set_symbol('A')
         t.set_algo(BaseAlgo())
-        t.start("1MIN", kill_switch=True)
+        t.start("1MIN")
 
-        price = round(t.storage.load('A', '1MIN')['A']['close'][-1] * 1.05, 2)
+        price = round(t.storage.load('A', Interval.MIN_1)['A']['close'][-1] * 1.05, 2)
         qty = int(1000000/price)
         t.algo[0].buy()
         s.tick()
@@ -242,7 +247,7 @@ class TestAlgo(unittest.TestCase):
         t = Trader(streamer)
         t.set_symbol('X')
         t.set_algo(BaseAlgo())
-        t.start("1MIN", kill_switch=True)
+        t.start("1MIN")
         streamer.tick()
         
         t.algo[0].buy_option('X     110101C01000000')
