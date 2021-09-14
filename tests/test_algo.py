@@ -46,25 +46,22 @@ class TestAlgo(unittest.TestCase):
         # Running methods like get_stock_price_list without a symbol parameter 
         # should return the symbol specified in the Algo class
         prices1 = algo1.get_asset_price_list()
-        symbol1 = prices1.columns.values[0][0]
-        self.assertEqual(symbol1, 'A')
-
-        prices2 = algo2.get_asset_price_list()
-        symbol2 = prices2.columns.values[0][0]
-        self.assertEqual(symbol2, 'D')
+        self.assertListEqual(prices1, list(t.storage.load("A", Interval.MIN_5)["A"]["close"]))
     
     # Trader class should be able to run algorithms at the individually specified intervals
     def test_config_interval(self):
 
         class Algo1(BaseAlgo):
             def config(self):
-                self.interval = Interval.MIN_1
-                self.aggregations = [Interval.MIN_15, Interval.DAY_1]
+                self.watchlist = ["A"]
+                self.interval = '5MIN'
+                self.aggregations = ['15MIN', '1DAY']
         
         class Algo2(BaseAlgo):
             def config(self):
-                self.interval = Interval.MIN_30
-                self.aggregations = [Interval.DAY_1]
+                self.watchlist = ["B"]
+                self.interval = '30MIN'
+                self.aggregations = ['1DAY']
         
         algo1 = Algo1()
         algo2 = Algo2()
@@ -76,8 +73,7 @@ class TestAlgo(unittest.TestCase):
         t.start()
         s.tick()
 
-        self.assertEqual(t.interval, Interval.MIN_5)
-        self.assertEqual(t.aggregations, [Interval.MIN_15, Interval.MIN_30, Interval.HR_1, Interval.DAY_1])
+        self.assertListEqual(t.interval["A"]["aggregations"], [Interval.MIN_15, Interval.DAY_1])
 
     def test_rsi(self):
         """

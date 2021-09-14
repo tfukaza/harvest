@@ -72,7 +72,7 @@ class BackTester(trader.Trader):
             a.setup()
             a.trader = self
             
-        self.main(interval)
+        self.main()
     
     def _setup(self, source, interval:str, aggregations=None, path=None):
         self._setup_params(interval, aggregations)
@@ -115,7 +115,7 @@ class BackTester(trader.Trader):
                     # TODO: check if file is updated with latest data
                 print(f"Formatting aggregation from {interval_txt} to {agg_txt}...")
                 points = int(conv[agg]/conv[interval])
-                for i in range(df_len):
+                for i in tqdm(range(df_len)):
                     #df_timestamp = df.index[i]
                     df_tmp = df.iloc[0:i+1]                    
                     df_tmp = df_tmp.iloc[-points:] # Only get recent data, since aggregating the entire df will take too long

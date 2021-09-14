@@ -28,6 +28,7 @@ class DummyStreamer(API):
 
         # Set the current time
         self._set_now(now)
+        self.timestamp = self.now
         # Used so `fetch_price_history` can work without running `setup`
         self.interval = self.interval_list[0]
         # Store random values and generates for each asset tot make `fetch_price_history` fixed

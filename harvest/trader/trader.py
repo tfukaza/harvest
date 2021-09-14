@@ -50,7 +50,7 @@ class Trader:
             self.broker = broker
 
         # # Initialize timestamp
-        self.timestamp_prev = now()
+        self.timestamp = self.streamer.timestamp
         # self.timestamp = self.timestamp_prev
 
         self.watchlist_global = []  # List of securities specified in this class, 
@@ -118,15 +118,15 @@ class Trader:
             for s in self.order_queue:
                 self.watchlist_global.append(s['symbol'])     
         
-        if len(self.watchlist_global) == 0:
-            raise Exception(f"No securities were added to watchlist")
-        
         # Remove duplicates in watchlist
         self.watchlist_global = list(set(self.watchlist_global))
         self.debugger.debug(f"Watchlist: {self.watchlist_global}")
 
         # Initialize a dict of symbols and the intervals they need to run at
         self._setup_params(interval, aggregations)
+
+        if len(self.interval) == 0:
+            raise Exception(f"No securities were added to watchlist")
 
         # Initialize the account
         self._setup_account()
@@ -177,7 +177,7 @@ class Trader:
         self.interval = {}
 
         # Initialize a dict with symbol keys and values indicating
-        # what dat intervals they need. 
+        # what data intervals they need. 
         for sym in self.watchlist_global:
             self.interval[sym] = {}
             self.interval[sym]["interval"] = interval 
@@ -223,7 +223,9 @@ class Trader:
             
         # Remove any duplicates in the dict
         for sym in self.interval:
-            self.interval[sym]["aggregations"] = list((set(self.interval[sym]["aggregations"]))).sort()
+            new_agg = list((set(self.interval[sym]["aggregations"])))
+            self.interval[sym]["aggregations"] = [] if new_agg is None else new_agg
+            
 
     def _setup_account(self):
         """Initializes local cache of account info. 
@@ -235,6 +237,7 @@ class Trader:
     def _storage_init(self):
         """Initializes the storage.
         """
+        
         for sym in self.interval:
             for inter in [self.interval[sym]["interval"]] + self.interval[sym]["aggregations"]:
                 df = self.streamer.fetch_price_history(sym, inter)

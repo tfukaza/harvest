@@ -33,10 +33,13 @@ def interval_string_to_enum(str_interval):
     else:
         raise ValueError(f'Invalid interval string {str_interval}')
 
-def interval_enum_to_string(enum:Interval):
-    name = enum.name
-    unit, val = name.split('_')
-    return val+unit
+def interval_enum_to_string(enum):
+    try:
+        name = enum.name
+        unit, val = name.split('_')
+        return val+unit
+    except:
+        return str(enum)
 
 def is_freq(time, interval):
     """Helper function to determine if algorithm should be invoked for the

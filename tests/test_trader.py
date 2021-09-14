@@ -23,7 +23,7 @@ class TestTrader(unittest.TestCase):
         t = Trader(DummyStreamer())
         t.set_symbol('A')
         t.set_algo(BaseAlgo())
-        t.start('1MIN', kill_switch=True)
+        t.start('1MIN')
 
         self.assertTrue(True)
     
@@ -93,7 +93,7 @@ class TestTrader(unittest.TestCase):
     #     s = DummyStreamer()
     #     t = Trader(s)
     #     t.set_symbol(['A', 'B'])
-    #     t.start('1MIN', kill_switch=True)
+    #     t.start('1MIN')
 
     #     # Save the last datapoint of B
     #     a_cur = t.storage.load('A', '1MIN')
@@ -117,7 +117,7 @@ class TestTrader(unittest.TestCase):
     # def test_timeout_cancel(self):
     #     t = Trader(DummyStreamer())
     #     t.set_symbol(['A', 'B'])
-    #     t.start('1MIN', kill_switch=True)
+    #     t.start('1MIN')
 
     #     # Save the last datapoint of B
     #     a_cur = t.storage.load('A', '1MIN')

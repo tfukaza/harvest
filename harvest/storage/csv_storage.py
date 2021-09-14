@@ -32,6 +32,7 @@ class CSVStorage(BaseStorage):
         files = [f for f in listdir(self.save_dir) if isfile(join(self.save_dir, f))]
 
         for file in files:
+            print(file)
             file_search = re.search('^([\w]+)-([\w]+).csv$', file)
             symbol, interval = file_search.group(1), file_search.group(2)
             interval = interval_string_to_enum(interval)
