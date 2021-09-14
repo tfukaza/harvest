@@ -43,7 +43,7 @@ class BaseAlgo:
     def config(self):
         self.interval = None 
         self.aggregations = None
-        self.watchlist = None
+        self.watchlist = []
 
     def setup(self):
         pass

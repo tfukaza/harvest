@@ -49,9 +49,9 @@ class Trader:
         else:
             self.broker = broker
 
-        # Initialize timestamp
+        # # Initialize timestamp
         self.timestamp_prev = now()
-        self.timestamp = self.timestamp_prev
+        # self.timestamp = self.timestamp_prev
 
         self.watchlist_global = []  # List of securities specified in this class, 
                                     # fetched from brokers, and retrieved from Algo class.
@@ -74,6 +74,7 @@ class Trader:
         # Initialize the web interface server
         self.server = Server(self)
 
+        # Set up logger
         self.debugger = logging.getLogger("harvest")
         self.debugger.setLevel("DEBUG")
         if debug:
@@ -92,88 +93,7 @@ class Trader:
         c_handler.setFormatter(c_format)
         self.debugger.addHandler(c_handler)
 
-    def storage_init(self):
-        """Initializes the storage.
-        """
-        for s in self.interval:
-            for i in [self.interval[s]["interval"]] + self.interval[s]["aggregations"]:
-                df = self.streamer.fetch_price_history(s, i)
-                self.storage.store(s, i, df)
-
-    def _setup_account(self):
-        """Initializes local cache of account info. 
-        For testing, it should manually be specified
-        """
-        ret = self.broker.fetch_account()
-        self.account = ret
-    
-    def _setup_stats(self):
-        """Initializes local cache of stocks, options, and crypto positions.
-        """
-        
-        # Get any pending orders 
-        ret = self.broker.fetch_order_queue()
-        self.order_queue = ret
-        self.debugger.debug(f"Fetched orders:\n{self.order_queue}")
-
-        # Get positions
-        pos = self.broker.fetch_stock_positions()
-        self.stock_positions = pos
-        pos = self.broker.fetch_option_positions()
-        self.option_positions = pos
-        pos = self.broker.fetch_crypto_positions()
-        self.crypto_positions = pos
-        self.debugger.debug(f"Fetched positions:\n{self.stock_positions}\n{self.option_positions}\n{self.crypto_positions}")
-
-        # Update option stats
-        self.broker.update_option_positions(self.option_positions)
-        self.debugger.debug(f"Updated option positions:\n{self.option_positions}")
-
-    def _setup_params(self, interval, aggregations):
-        # Set the global watchlist, interval, and aggregations
-        interval = interval_string_to_enum(interval)
-        aggregations = [ interval_string_to_enum(a) for a in aggregations ]
-        self.interval = {}
-        for sym in self.watchlist_global:
-            self.interval[sym] = {}
-            self.interval[sym]["interval"] = interval 
-            self.interval[sym]["aggregations"] = aggregations
-
-        if len(self.algo) == 0:
-            raise Exception(f"No algorithm specified.")
-
-        # Update the global config based on config specified in Algo class
-        for a in self.algo:
-            a.config()
-
-            if a.watchlist is None:
-                a.watchlist = self.watchlist_global
-            if a.interval is None:
-                a.interval = interval
-            if a.aggregations is None:
-                a.aggregations = aggregations
-
-            for sym in a.watchlist:
-                # If the symbol is already specified in the global watchlist, see if we need to 
-                # update to a more granular interval 
-                if sym in self.interval:
-                    cur_interval = self.interval[sym]["interval"]
-                    if a.interval < cur_interval:
-                        self.interval[sym]["aggregations"].append(cur_interval)
-                        self.interval[sym]["interval"] = a.interval
-                # If symbol is not in global watchlist, simply add it
-                else:
-                    self.interval[sym] = {}
-                    self.interval[sym]["interval"] = a.interval 
-                    self.interval[sym]["aggregations"] = a.aggregations
-
-                # If the algo specifies an aggregation that is currently not set, add it to the 
-                # global aggregation list
-                for agg in a.aggregations:
-                    if agg not in self.interval[sym]["aggregations"]:
-                        self.interval[sym]["aggregations"].append(agg)
-
-    def start(self, interval='5MIN', aggregations=[], sync=True, kill_switch: bool=False, server=False):
+    def start(self, interval='5MIN', aggregations=[], sync=True, server=False):
         """Entry point to start the system. 
         
         :param str? interval: The interval to run the algorithm. defaults to '5MIN'
@@ -205,17 +125,18 @@ class Trader:
         self.watchlist_global = list(set(self.watchlist_global))
         self.debugger.debug(f"Watchlist: {self.watchlist_global}")
 
+        # Initialize a dict of symbols and the intervals they need to run at
         self._setup_params(interval, aggregations)
 
         # Initialize the account
         self._setup_account()
 
+        # Initialize streamers and brokers
         self.broker.setup(self.interval, self, self.main)
         self.streamer.setup(self.interval, self, self.main)
 
-        self.debugger.debug(f"Interval: {interval}")
-
-        self.storage_init()
+        # Initialize the storage
+        self._storage_init()
 
         for a in self.algo:
             a.setup()
@@ -227,9 +148,99 @@ class Trader:
             self.server.start()
 
         self.streamer.start()
+    
+    def _setup_stats(self):
+        """Initializes local cache of stocks, options, and crypto positions.
+        """
         
+        # Get any pending orders 
+        ret = self.broker.fetch_order_queue()
+        self.order_queue = ret
+        self.debugger.debug(f"Fetched orders:\n{self.order_queue}")
+
+        # Get positions
+        pos = self.broker.fetch_stock_positions()
+        self.stock_positions = pos
+        pos = self.broker.fetch_option_positions()
+        self.option_positions = pos
+        pos = self.broker.fetch_crypto_positions()
+        self.crypto_positions = pos
+        self.debugger.debug(f"Fetched positions:\n{self.stock_positions}\n{self.option_positions}\n{self.crypto_positions}")
+
+        # Update option stats
+        self.broker.update_option_positions(self.option_positions)
+        self.debugger.debug(f"Updated option positions:\n{self.option_positions}")
+    
+    def _setup_params(self, interval, aggregations):
+        interval = interval_string_to_enum(interval)
+        aggregations = [ interval_string_to_enum(a) for a in aggregations ]
+        self.interval = {}
+
+        # Initialize a dict with symbol keys and values indicating
+        # what dat intervals they need. 
+        for sym in self.watchlist_global:
+            self.interval[sym] = {}
+            self.interval[sym]["interval"] = interval 
+            self.interval[sym]["aggregations"] = aggregations
+
+        # Update the dict based on parameters specified in Algo class
+        for a in self.algo:
+            a.config()
+
+            # If the algorithm does not specify a parameter, use the one
+            # specified in the Trader class
+            if len(a.watchlist) == 0:
+                a.watchlist = self.watchlist_global
+            if a.interval is None:
+                a.interval = interval
+            else:
+                a.interval = interval_string_to_enum(a.interval)
+            if a.aggregations is None:
+                a.aggregations = aggregations
+            else:
+                a.aggregations = [interval_string_to_enum(a) for a in a.aggregations]
+
+            # For each symbol specified in the Algo...
+            for sym in a.watchlist:
+                # If the algorithm needs data for the symbol at a higher frequency than 
+                # it is currently available in the Trader class, update the interval 
+                if sym in self.interval:
+                    cur_interval = self.interval[sym]["interval"]
+                    if a.interval < cur_interval:
+                        self.interval[sym]["aggregations"].append(cur_interval)
+                        self.interval[sym]["interval"] = a.interval
+                # If symbol is not in global watchlist, simply add it
+                else:
+                    self.interval[sym] = {}
+                    self.interval[sym]["interval"] = a.interval 
+                    self.interval[sym]["aggregations"] = a.aggregations
+
+                # If the algo specifies an aggregation that is currently not set, add it to the 
+                # global aggregation list
+                for agg in a.aggregations:
+                    if agg not in self.interval[sym]["aggregations"]:
+                        self.interval[sym]["aggregations"].append(agg)
+            
+        # Remove any duplicates in the dict
+        for sym in self.interval:
+            self.interval[sym]["aggregations"] = list((set(self.interval[sym]["aggregations"]))).sort()
+
+    def _setup_account(self):
+        """Initializes local cache of account info. 
+        For testing, it should manually be specified
+        """
+        ret = self.broker.fetch_account()
+        self.account = ret
+
+    def _storage_init(self):
+        """Initializes the storage.
+        """
+        for sym in self.interval:
+            for inter in [self.interval[sym]["interval"]] + self.interval[sym]["aggregations"]:
+                df = self.streamer.fetch_price_history(sym, inter)
+                self.storage.store(sym, inter, df)
+    
     def main(self, df_dict):
-        
         # Periodically refresh access tokens
         if self.timestamp.hour % 12 == 0 and self.timestamp.minute == 0:
             self.streamer.refresh_cred()
@@ -334,6 +345,8 @@ class Trader:
         ret = self.broker.fetch_account()
         self.account = ret
 
+    # --------------------- Interface Functions -----------------------
+
     def fetch_chain_info(self, *args, **kwargs):
         return self.streamer.fetch_chain_info(*args, **kwargs)
     
@@ -345,7 +358,7 @@ class Trader:
 
     def buy(self, symbol: str, quantity: int, in_force: str, extended: bool):
         ret = self.broker.buy(symbol, quantity, in_force, extended)
-        if ret == None:
+        if ret is None:
             self.debugger.debug("BUY failed")
             return None
         self.order_queue.append(ret)
@@ -357,7 +370,7 @@ class Trader:
 
     def sell(self, symbol: str, quantity: int, in_force: str, extended: bool):
         ret = self.broker.sell(symbol, quantity, in_force, extended)
-        if ret == None:
+        if ret is None:
             self.debugger.debug("SELL failed")
             return None
         self.order_queue.append(ret)
@@ -367,10 +380,9 @@ class Trader:
         self.logger.add_transaction(self.timestamp, 'sell', asset_type, symbol, quantity)
         return ret
 
-
     def buy_option(self, symbol: str, quantity: int, in_force: str):
         ret = self.broker.buy_option(symbol, quantity, in_force)
-        if ret == None:
+        if ret is None:
             raise Exception("BUY failed")
         self.order_queue.append(ret)
         self.debugger.debug(f"BUY: {self.timestamp}, {symbol}, {quantity}")
@@ -380,7 +392,7 @@ class Trader:
 
     def sell_option(self, symbol: str, quantity: int, in_force: str):
         ret = self.broker.sell_option(symbol, quantity, in_force)
-        if ret == None:
+        if ret is None:
             raise Exception("SELL failed")
         self.order_queue.append(ret)
         self.debugger.debug(f"SELL: {self.timestamp}, {symbol}, {quantity}")
@@ -394,10 +406,7 @@ class Trader:
         :param Algo algo: The algorithm to use. You can either pass in a single Algo class, or a 
             list of Algo classes. 
         """
-        if isinstance(algo, list):
-            self.algo = algo
-        else:
-            self.algo = [algo]
+        self.algo = algo if isinstance(algo, list) else [algo]
     
     def set_symbol(self, symbol):
         """Specifies the symbol(s) to watch.
@@ -410,10 +419,7 @@ class Trader:
         :symbol str symbol: Ticker Symbol(s) of stock or cryptocurrency to watch. 
             It can either be a string, or a list of strings. 
         """
-        if isinstance(symbol, list):
-            self.watchlist_global = symbol
-        else:
-            self.watchlist_global = [symbol]
+        self.watchlist_global = symbol if isinstance(symbol, list) else [symbol]
     
     def exit(self, signum, frame):
         # TODO: Gracefully exit
