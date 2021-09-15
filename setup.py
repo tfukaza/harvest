@@ -2,16 +2,23 @@ import subprocess
 from setuptools import Command, setup
 
 class LintCMD(Command):
-    user_options = []
+    user_options = [
+        ('check=', 'c', 'if True check if files pass linting checks; don\'t actually lint')
+    ]
 
     def initialize_options(self):
-        pass
+        self.check = False
 
     def finalize_options(self):
-        pass
+        self.check = self.check == 'True'
 
     def run(self):
-        subprocess.run(['black', 'harvest'])
+        command = ['black', 'harvest']
+
+        if self.check:
+            command.append('--check')
+
+        subprocess.run(command)
 
 class CoverageTestCMD(Command):
     user_options = []
