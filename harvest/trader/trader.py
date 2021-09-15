@@ -121,7 +121,7 @@ class Trader:
 
         if not self.streamer.has_interval(interval):
             raise Exception(
-                f"""Interval '{interval}' is not supported by the selected streamer.\n 
+                f"""Interval '{interval}' is not supported by the selected streamer.\n
                                 The streamer only supports {self.streamer.interval_list}"""
             )
 
@@ -233,7 +233,12 @@ class Trader:
         self.debugger.debug(f"Starting Harvest...")
 
         self.broker.setup(self.watch, interval, self, self.main)
-        self.streamer.setup(self.watch, interval, self, self.main)
+
+        if self.broker != self.streamer:
+            # Only call the streamer setup if it is a different
+            # instance than the broker otherwise some brokers can
+            # fail!
+            self.streamer.setup(self.watch, interval, self, self.main)
         self._setup(interval, aggregations, sync)
 
         self.debugger.debug(f"Initializing algorithms...")

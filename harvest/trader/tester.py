@@ -101,7 +101,11 @@ class BackTester(trader.Trader):
         self.aggregations = aggregations if not aggregations == None else []
 
         self.broker.setup(self.watch, interval, self, self.main)
-        self.streamer.setup(self.watch, interval, self, self.main)
+        if self.broker != self.streamer:
+            # Only call the streamer setup if it is a different
+            # instance than the broker otherwise some brokers can
+            # fail!
+            self.streamer.setup(self.watch, interval, self, self.main)
 
         self.fetch_interval = interval
         self._setup_account()
