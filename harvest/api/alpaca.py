@@ -12,11 +12,16 @@ from alpaca_trade_api.rest import REST, TimeFrame, URL
 from alpaca_trade_api import Stream
 
 # Submodule imports
-from harvest.api._base import API
+from harvest.api._base import StreamAPI, API
 from harvest.utils import *
 
 
-class Alpaca(API):
+class Alpaca(StreamAPI):
+
+    interval_list = [
+        Interval.MIN_1,
+    ]
+
     def __init__(
         self,
         path: str = None,
@@ -45,7 +50,7 @@ class Alpaca(API):
 
     async def update_data(self, bar):
         # Update data with the latest bars
-        self.data_lock.acquire()
+        #self.data_lock.acquire()
         bar = bar.__dict__["_raw"]
         symbol = bar["symbol"]
         df = pd.DataFrame(
@@ -60,11 +65,15 @@ class Alpaca(API):
                 }
             ]
         )
-        if symbol in self.watch_stock:
-            self.data["stocks"][symbol] = self._format_df(df, symbol)
-        elif f"@{symbol}" in self.watch_crypto:
-            self.data["cryptos"][f"@{symbol}"] = self._format_df(df, f"@{symbol}")
-        self.data_lock.release()
+        # if symbol in self.watch_stock:
+        #     self.data["stocks"][symbol] = self._format_df(df, symbol)
+        # elif f"@{symbol}" in self.watch_crypto:
+        #     self.data["cryptos"][f"@{symbol}"] = self._format_df(df, f"@{symbol}")
+        # self.data_lock.release()
+        if is_crypto(symbol):
+            self.main(self._format_df(df, symbol))
+        else:
+            self.main(self._format_df(df, f"@{symbol}"))
 
     def no_secret(self, path: str) -> bool:
         return self.create_secret(path)
@@ -74,12 +83,14 @@ class Alpaca(API):
         asyncio.set_event_loop(loop)
         self.stream.run()
 
-    def setup(self, watch: List[str], interval: str, trader=None, trader_main=None):
+    def setup(self, interval: Dict, trader=None, trader_main=None):
+        super().setup(interval, trader, trader_main)
+
         self.watch_stock = []
         self.watch_crypto = []
         cryptos = []
 
-        for s in watch:
+        for s in interval:
             if is_crypto(s):
                 self.watch_crypto.append(s)
                 cryptos.append(s[1:])
@@ -90,31 +101,30 @@ class Alpaca(API):
         threading.Thread(target=self.capture_data, daemon=True).start()
 
         self.option_cache = {}
-        super().setup(watch, interval, interval, trader, trader_main)
 
     def exit(self):
         self.option_cache = {}
 
-    def main(self):
-        df_dict = {}
-        df_dict.update(self.fetch_latest_stock_price())
-        df_dict.update(self.fetch_latest_crypto_price())
+    # def main(self):
+    #     df_dict = {}
+    #     df_dict.update(self.fetch_latest_stock_price())
+    #     df_dict.update(self.fetch_latest_crypto_price())
 
-        self.trader_main(df_dict)
+    #     self.trader_main(df_dict)
 
-    @API._exception_handler
-    def fetch_latest_stock_price(self):
-        self.data_lock.acquire()
-        df = self.data["stocks"]
-        self.data_lock.release()
-        return df
+    # @API._exception_handler
+    # def fetch_latest_stock_price(self):
+    #     self.data_lock.acquire()
+    #     df = self.data["stocks"]
+    #     self.data_lock.release()
+    #     return df
 
-    @API._exception_handler
-    def fetch_latest_crypto_price(self):
-        self.data_lock.acquire()
-        df = self.data["cryptos"]
-        self.data_lock.release()
-        return df
+    # @API._exception_handler
+    # def fetch_latest_crypto_price(self):
+    #     self.data_lock.acquire()
+    #     df = self.data["cryptos"]
+    #     self.data_lock.release()
+    #     return df
 
     # -------------- Streamer methods -------------- #
 

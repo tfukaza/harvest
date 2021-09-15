@@ -713,7 +713,7 @@ class StreamAPI(API):
         # self.block_queue = {}
         # self.needed = self.watchlist_global.copy()
 
-    def start(self, kill_switch: bool = False):
+    def start(self):
         """ """
         pass
 
