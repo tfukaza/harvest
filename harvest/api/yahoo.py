@@ -14,18 +14,11 @@ from harvest.utils import *
 
 class YahooStreamer(API):
 
-<<<<<<< HEAD
     interval_list = [Interval.MIN_1, Interval.MIN_5, Interval.MIN_15, Interval.MIN_30, Interval.HR_1]
 
     def __init__(self, path=None):
         self.debugger = logging.getLogger('harvest')
         self.timestamp = now()
-=======
-    interval_list = ["1MIN", "5MIN", "15MIN", "30MIN", "1HR"]
-
-    def __init__(self, path=None):
-        self.debugger = logging.getLogger("harvest")
->>>>>>> origin/main
 
     def setup(self, interval:Dict, trader=None, trader_main=None):
         super().setup(interval, trader, trader_main)
@@ -34,21 +27,11 @@ class YahooStreamer(API):
         # self.watch_crypto = []
         self.watch_ticker = {}
 
-<<<<<<< HEAD
         for s in interval:
             if is_crypto(s):
                 self.watch_ticker[s] = yf.Ticker(s[1:]+"-USD")
-=======
-        if interval not in self.interval_list:
-            raise Exception(f"Invalid interval {interval}")
-        for s in watch:
-            if is_crypto(s):
-                self.watch_crypto.append(s[1:] + "-USD")
-                self.watch_ticker[s] = yf.Ticker(s[1:] + "-USD")
->>>>>>> origin/main
             else:
                 self.watch_ticker[s] = yf.Ticker(s)
-<<<<<<< HEAD
         
         self.option_cache = {}
 
@@ -58,14 +41,6 @@ class YahooStreamer(API):
             interval_fmt = f'{val}m'
         elif unit == 'HR':
             interval_fmt = f'{val}h'
-=======
-
-        val, unit = expand_interval(interval)
-        if unit == "MIN":
-            self.interval_fmt = f"{val}m"
-        elif unit == "HR":
-            self.interval_fmt = f"{val}h"
->>>>>>> origin/main
 
         return interval_fmt
 
@@ -90,7 +65,6 @@ class YahooStreamer(API):
 
         if len(combo) == 1:
             s = combo[0]
-<<<<<<< HEAD
             interval_fmt = self.fmt_interval(self.interval[s]["interval"])
             df = yf.download(s, period='1d', interval=interval_fmt, prepost=True)
             self.debugger.debug(f"From yfinance got: {df}")
@@ -113,21 +87,6 @@ class YahooStreamer(API):
                 names = ' '.join(required_intervals[i])
                 df_tmp = yf.download(names, period='1d', interval=self.fmt_interval(i), prepost=True)
                 df = df.join(df_tmp)
-=======
-            df = yf.download(s, period="5d", interval=self.interval_fmt, prepost=True)
-            self.debugger.debug(f"From yfinance got: {df}")
-            if len(df.index) == 0:
-                return
-            if s[-4:] == "-USD":
-                s = "@" + s[:-4]
-            df = self._format_df(df, s)
-            df_dict[s] = df
-        else:
-            names = " ".join(self.watch_stock + self.watch_crypto)
-            df = yf.download(
-                names, period="5d", interval=self.interval_fmt, prepost=True
-            )
->>>>>>> origin/main
             self.debugger.debug(f"From yfinance got: {df}")
             if len(df.index) == 0:
                 return
@@ -148,17 +107,10 @@ class YahooStreamer(API):
     def fetch_price_history(
         self,
         symbol: str,
-<<<<<<< HEAD
         interval: Interval,
         start: dt.datetime = None, 
         end: dt.datetime = None, 
        ):
-=======
-        interval: str,
-        start: dt.datetime = None,
-        end: dt.datetime = None,
-    ):
->>>>>>> origin/main
 
         self.debugger.debug(f"Fetching {symbol} {interval} price history")
         if isinstance(interval, str):
@@ -180,21 +132,12 @@ class YahooStreamer(API):
         elif unit == "HR":
             get_fmt = f"{val}h"
         else:
-<<<<<<< HEAD
             get_fmt = '1d'      
         
         if interval == Interval.MIN_1:
             period = '5d'
         elif interval >= Interval.MIN_5 and interval <= Interval.HR_1:
             period = '1mo'
-=======
-            get_fmt = "1d"
-
-        if interval == "1MIN":
-            period = "5d"
-        elif interval in ["5MIN", "15MIN", "30MIN", "1HR"]:
-            period = "1mo"
->>>>>>> origin/main
         else:
             period = "max"
 

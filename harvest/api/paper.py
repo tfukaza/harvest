@@ -19,11 +19,7 @@ class PaperBroker(API):
     randomly generated prices. When used as a broker, it paper trades.
     """
 
-<<<<<<< HEAD
     interval_list = [Interval.MIN_1, Interval.MIN_5, Interval.MIN_15, Interval.MIN_30, Interval.HR_1, Interval.DAY_1]
-=======
-    interval_list = ["1MIN", "5MIN", "15MIN", "30MIN", "1DAY"]
->>>>>>> origin/main
 
     def __init__(self, account_path: str = None, commission_fee=0):
         """
