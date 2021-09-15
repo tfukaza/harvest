@@ -86,6 +86,7 @@ def mark_down(x):
 def has_timezone(date: dt.datetime) -> bool:
     return date.tzinfo is not None and date.tzinfo.utcoffset(date) is not None
 
+
 def set_system_timezone(date: dt.datetime) -> dt.datetime:
     """
     :date: A python datetime object that does not have tzinfo set.
@@ -94,6 +95,7 @@ def set_system_timezone(date: dt.datetime) -> dt.datetime:
     """
     timezone = pytz.timezone(str(tzlocal.get_localzone()))
     return timezone.localize(date).astimezone(pytz.utc)
+
 
 ############ Functions used for testing #################
 
