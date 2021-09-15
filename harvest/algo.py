@@ -34,15 +34,15 @@ class BaseAlgo:
     """
 
     def __init__(self):
-        self.trader = None 
-        self.debugger = logging.getLogger('harvest')
+        self.trader = None
+        self.debugger = logging.getLogger("harvest")
 
-        self.interval = None 
+        self.interval = None
         self.aggregations = None
         self.watchlist = []
 
     def config(self):
-        self.interval = None 
+        self.interval = None
         self.aggregations = None
         self.watchlist = []
 
@@ -215,7 +215,11 @@ class BaseAlgo:
         """
         if symbol is None:
             symbol = self.watchlist[0]
-            symbols = [s['occ_symbol'] for s in self.get_account_option_positions() if s['symbol'] == symbol]
+            symbols = [
+                s["occ_symbol"]
+                for s in self.get_account_option_positions()
+                if s["symbol"] == symbol
+            ]
         else:
             symbols = [symbol]
         for s in symbols:
@@ -246,7 +250,7 @@ class BaseAlgo:
         if symbol is None:
             symbol = self.watchlist[0]
 
-        exp_dates = self.get_option_chain_info(symbol)['exp_dates']
+        exp_dates = self.get_option_chain_info(symbol)["exp_dates"]
         if lower_exp is not None:
             exp_dates = list(filter(lambda x: x >= lower_exp, exp_dates))
         if upper_exp is not None:
@@ -256,14 +260,14 @@ class BaseAlgo:
         exp_date = exp_dates[0]
         chain = self.get_option_chain(symbol, exp_date)
         if lower_strike is not None:
-            chain = chain[chain['strike'] >= lower_strike]
+            chain = chain[chain["strike"] >= lower_strike]
         if upper_strike is not None:
-            chain = chain[chain['strike'] <= upper_strike]
+            chain = chain[chain["strike"] <= upper_strike]
 
         if type is not None:
-            chain = chain[chain['type'] == type]
+            chain = chain[chain["type"] == type]
 
-        chain = chain.sort_values(by=['strike', 'exp_date'])
+        chain = chain.sort_values(by=["strike", "exp_date"])
 
         return chain
 
@@ -291,9 +295,9 @@ class BaseAlgo:
             - exp_date(datetime.datetime): The expiration date
             - strike(float): Strike price
             - type(str): 'call' or 'put'
-        
-        The index is the {OCC} symbol of the option. 
-        """ 
+
+        The index is the {OCC} symbol of the option.
+        """
         if symbol is None:
             symbol = self.watchlist[0]
         return self.trader.fetch_chain_data(symbol, date)
@@ -307,8 +311,8 @@ class BaseAlgo:
             - price: price of option
             - ask: ask price
             - bid: bid price
-        
-        """ 
+
+        """
         if symbol is None:
             symbol = self.watchlist[0]
         return self.trader.fetch_option_market_data(symbol)
@@ -322,7 +326,7 @@ class BaseAlgo:
             if interval == None:
                 interval = Interval.MIN_5
             if prices is None:
-                raise Exception(f'No prices found for symbol {symbol}')
+                raise Exception(f"No prices found for symbol {symbol}")
         else:
             if interval is None:
                 interval = self.trader[symbol]["interval"]
@@ -331,7 +335,14 @@ class BaseAlgo:
 
         return symbol, interval, ref, prices
 
-    def rsi(self, symbol: str=None, period: int=14, interval: Interval=None, ref: str='close', prices=None) -> np.array:
+    def rsi(
+        self,
+        symbol: str = None,
+        period: int = 14,
+        interval: Interval = None,
+        ref: str = "close",
+        prices=None,
+    ) -> np.array:
         """Calculate RSI
 
         :param str? symbol:     Symbol to perform calculation on. defaults to first symbol in watchlist
@@ -350,15 +361,24 @@ class BaseAlgo:
             self.debugger.warning("Not enough data to calculate RSI, returning None")
             return None
 
-        ohlc = pd.DataFrame({
-            'close': np.array(prices),
-            'open': np.zeros(len(prices)),
-            'high': np.zeros(len(prices)),
-            'low': np.zeros(len(prices)),
-        })
+        ohlc = pd.DataFrame(
+            {
+                "close": np.array(prices),
+                "open": np.zeros(len(prices)),
+                "high": np.zeros(len(prices)),
+                "low": np.zeros(len(prices)),
+            }
+        )
         return TA.RSI(ohlc, period=period).to_numpy()
-    
-    def sma(self, symbol: str=None, period: int=14, interval: Interval='5MIN', ref: str='close', prices=None) -> np.array:
+
+    def sma(
+        self,
+        symbol: str = None,
+        period: int = 14,
+        interval: Interval = "5MIN",
+        ref: str = "close",
+        prices=None,
+    ) -> np.array:
         """Calculate SMA
 
         :param str? symbol:    Symbol to perform calculation on. defaults to first symbol in watchlist
@@ -377,15 +397,24 @@ class BaseAlgo:
             self.debugger.warning("Not enough data to calculate SMA, returning None")
             return None
 
-        ohlc = pd.DataFrame({
-            'close': np.array(prices),
-            'open': np.zeros(len(prices)),
-            'high': np.zeros(len(prices)),
-            'low': np.zeros(len(prices)),
-        })
+        ohlc = pd.DataFrame(
+            {
+                "close": np.array(prices),
+                "open": np.zeros(len(prices)),
+                "high": np.zeros(len(prices)),
+                "low": np.zeros(len(prices)),
+            }
+        )
         return TA.SMA(ohlc, period=period).to_numpy()
-    
-    def ema(self, symbol: str=None, period: int=14, interval: Interval='5MIN', ref: str='close', prices=None) -> np.array:
+
+    def ema(
+        self,
+        symbol: str = None,
+        period: int = 14,
+        interval: Interval = "5MIN",
+        ref: str = "close",
+        prices=None,
+    ) -> np.array:
         """Calculate EMA
 
         :param str? symbol:    Symbol to perform calculation on. defaults to first symbol in watchlist
@@ -404,15 +433,25 @@ class BaseAlgo:
             self.debugger.warning("Not enough data to calculate EMA, returning None")
             return None
 
-        ohlc = pd.DataFrame({
-            'close': np.array(prices),
-            'open': np.zeros(len(prices)),
-            'high': np.zeros(len(prices)),
-            'low': np.zeros(len(prices)),
-        })
+        ohlc = pd.DataFrame(
+            {
+                "close": np.array(prices),
+                "open": np.zeros(len(prices)),
+                "high": np.zeros(len(prices)),
+                "low": np.zeros(len(prices)),
+            }
+        )
         return TA.EMA(ohlc, period=period).to_numpy()
-    
-    def bbands(self, symbol: str=None, period: int=14, interval: Interval=Interval.MIN_5, ref: str='close', dev: float=1.0, prices=None) -> Tuple[np.array, np.array, np.array]:
+
+    def bbands(
+        self,
+        symbol: str = None,
+        period: int = 14,
+        interval: Interval = Interval.MIN_5,
+        ref: str = "close",
+        dev: float = 1.0,
+        prices=None,
+    ) -> Tuple[np.array, np.array, np.array]:
         """Calculate Bollinger Bands
 
         :param str? symbol:    Symbol to perform calculation on. defaults to first symbol in watchlist
@@ -479,8 +518,8 @@ class BaseAlgo:
                     return p["quantity"]
         else:
             for p in self.trader.option_positions:
-                if p['occ_symbol'] == symbol:
-                    return p['quantity']
+                if p["occ_symbol"] == symbol:
+                    return p["quantity"]
         return 0
 
     def get_asset_cost(self, symbol: str = None) -> float:
@@ -499,8 +538,8 @@ class BaseAlgo:
                     return p["avg_price"]
         else:
             for p in self.trader.option_positions:
-                if p['occ_symbol'].replace(' ', '') == symbol.replace(' ', ''):
-                    return p['avg_price']
+                if p["occ_symbol"].replace(" ", "") == symbol.replace(" ", ""):
+                    return p["avg_price"]
 
         raise Exception(f"{symbol} is not currently owned")
 
@@ -514,12 +553,11 @@ class BaseAlgo:
         if symbol is None:
             symbol = self.watchlist[0]
         if len(symbol) <= 6:
-            return self.trader.storage.load(symbol, self.interval)[symbol]['close'][-1]
+            return self.trader.storage.load(symbol, self.interval)[symbol]["close"][-1]
         for p in self.trader.option_positions:
-            if p['occ_symbol'] == symbol:
-                return p['current_price'] * p['multiplier']
-        return self.get_option_market_data(symbol)['price'] * 100
-            
+            if p["occ_symbol"] == symbol:
+                return p["current_price"] * p["multiplier"]
+        return self.get_option_market_data(symbol)["price"] * 100
 
     def get_asset_price_list(
         self, symbol: str = None, interval: list = None, ref: str = "close"
@@ -541,7 +579,7 @@ class BaseAlgo:
             return list(self.trader.storage.load(symbol, interval)[symbol][ref])
         self.debugger.warning("Price list not available for options")
         return None
-    
+
     def get_asset_candle(self, symbol: str, interval=None) -> pd.DataFrame():
         """Returns the most recent candle as a pandas DataFrame
 
@@ -568,8 +606,10 @@ class BaseAlgo:
             return self.trader.storage.load(symbol, interval).iloc[[-1]][symbol]
         self.debugger.warning("Candles not available for options")
         return None
-    
-    def get_asset_candle_list(self, symbol:str=None, interval=None) -> pd.DataFrame():
+
+    def get_asset_candle_list(
+        self, symbol: str = None, interval=None
+    ) -> pd.DataFrame():
         """Returns the candles of an asset as a pandas DataFrame
 
         This function is not compatible with options.
@@ -608,7 +648,7 @@ class BaseAlgo:
             cost = cost * 100
         price = self.get_asset_price(symbol)
         return (price - cost) / cost
-    
+
     def get_asset_max_quantity(self, symbol=None):
         """Calculates the maximum quantity of an asset that can be bought given the current buying power.
 
@@ -624,10 +664,10 @@ class BaseAlgo:
         print(f"{symbol} price: {price}, buying power: {power}")
         if is_crypto(symbol):
             price = mark_up(price)
-            return math.floor(power/price * 10**5) / 10**5
+            return math.floor(power / price * 10 ** 5) / 10 ** 5
         else:
             price = mark_up(price)
-            return math.floor(power/price)
+            return math.floor(power / price)
 
     def get_account_buying_power(self) -> float:
         """Returns the current buying power of the user
@@ -678,13 +718,11 @@ class BaseAlgo:
         return self.watch
 
     def get_stock_watchlist(self) -> List:
-        """Returns the current watchlist.
-        """
+        """Returns the current watchlist."""
         return [s for s in self.watchlist if not is_crypto(s)]
-    
+
     def get_crypto_watchlist(self) -> List:
-        """Returns the current watchlist.
-        """
+        """Returns the current watchlist."""
         return [s for s in self.watchlist if is_crypto(s)]
 
     def get_time(self):
@@ -726,7 +764,7 @@ class BaseAlgo:
         """
         if symbol is None:
             symbol = self.watchlist[0]
-        pos = [p for p in self.trader.option_positions if p['symbol'] == symbol]
+        pos = [p for p in self.trader.option_positions if p["symbol"] == symbol]
         return len(pos)
 
     def is_day_trade(self, action, symbol=None) -> bool:
@@ -739,14 +777,14 @@ class BaseAlgo:
         history = self.trader.logger.get_transactions()
         if len(history) < 1:
             return False
-        recent = history.loc[self.get_date():]
-        recent = recent[recent['symbol'] == symbol]
-        if action == 'buy':
+        recent = history.loc[self.get_date() :]
+        recent = recent[recent["symbol"] == symbol]
+        if action == "buy":
             return False
-        if action == 'sell':
-            recent = recent.loc[recent['action'] == 'buy']
+        if action == "sell":
+            recent = recent.loc[recent["action"] == "buy"]
             return len(recent.index) > 0
-    
+
     # Used for testing
     def add_symbol(self, symbol: str):
         """Adds a symbol to the watchlist.
@@ -754,11 +792,3 @@ class BaseAlgo:
         :param str symbol: Symbol of stock or crypto asset.
         """
         self.watchlist.append(symbol)
-
-    
-    
-
-        
-        
-        
-

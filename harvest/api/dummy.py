@@ -19,7 +19,15 @@ class DummyStreamer(API):
     be useful for testing algorithms. When used as a streamer, it will return
     randomly generated prices.
     """
-    interval_list = [Interval.MIN_1, Interval.MIN_5, Interval.MIN_15, Interval.MIN_30, Interval.HR_1, Interval.DAY_1]
+
+    interval_list = [
+        Interval.MIN_1,
+        Interval.MIN_5,
+        Interval.MIN_15,
+        Interval.MIN_30,
+        Interval.HR_1,
+        Interval.DAY_1,
+    ]
     default_now = dt.datetime(year=2000, month=1, day=1, hour=0, minute=0)
 
     def __init__(
@@ -39,7 +47,7 @@ class DummyStreamer(API):
         self.interval = self.interval_list[0]
         # Store random values and generates for each asset tot make `fetch_price_history` fixed
         self.randomness = {}
-    
+
     def start(self) -> None:
         pass
 
@@ -60,10 +68,12 @@ class DummyStreamer(API):
         results = {}
         today = self.now
         last = today - dt.timedelta(days=3)
-        
+
         for symbol in self.interval:
             if not is_crypto(symbol):
-                results[symbol] = self.fetch_price_history(symbol, self.interval[symbol]["interval"], last, today).iloc[[-1]]
+                results[symbol] = self.fetch_price_history(
+                    symbol, self.interval[symbol]["interval"], last, today
+                ).iloc[[-1]]
         return results
 
     def fetch_latest_crypto_price(self) -> Dict[str, pd.DataFrame]:
@@ -78,7 +88,9 @@ class DummyStreamer(API):
         last = today - dt.timedelta(days=3)
         for symbol in self.interval:
             if is_crypto(symbol):
-                results[symbol] = self.fetch_price_history(symbol, self.interval[symbol]["interval"], last, today).iloc[[-1]]
+                results[symbol] = self.fetch_price_history(
+                    symbol, self.interval[symbol]["interval"], last, today
+                ).iloc[[-1]]
         return results
 
     # -------------- Streamer methods -------------- #
@@ -87,9 +99,9 @@ class DummyStreamer(API):
         self,
         symbol: str,
         interval: Interval,
-        start: dt.datetime=None, 
-        end: dt.datetime=None
-        ) -> pd.DataFrame:
+        start: dt.datetime = None,
+        end: dt.datetime = None,
+    ) -> pd.DataFrame:
 
         if start is None:
             if interval in ["1MIN", "5MIN", "15MIN", "30MIN"]:

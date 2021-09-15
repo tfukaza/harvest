@@ -6,95 +6,69 @@ import datetime as dt
 from harvest.api.yahoo import YahooStreamer
 from harvest.utils import *
 
+
 class TestYahooStreamer(unittest.TestCase):
     def test_fetch_prices(self):
         yh = YahooStreamer()
-        df = yh.fetch_price_history('SPY', Interval.HR_1)
+        df = yh.fetch_price_history("SPY", Interval.HR_1)
         df = df["SPY"]
-        self.assertEqual(list(df.columns.values), ['open', 'high', 'low', 'close', 'volume'])
+        self.assertEqual(
+            list(df.columns.values), ["open", "high", "low", "close", "volume"]
+        )
 
     def test_setup(self):
         yh = YahooStreamer()
         interval = {
-            "SPY": {
-                "interval": Interval.MIN_15,
-                "aggregations": []
-            },
-            "AAPL": {
-                "interval": Interval.MIN_1,
-                "aggregations": []
-            }
+            "SPY": {"interval": Interval.MIN_15, "aggregations": []},
+            "AAPL": {"interval": Interval.MIN_1, "aggregations": []},
         }
 
         yh.setup(interval)
         self.assertEqual(yh.poll_interval, Interval.MIN_1)
         self.assertListEqual([s for s in yh.interval], ["SPY", "AAPL"])
-    
+
     def test_main(self):
         interval = {
-            "SPY": {
-                "interval": Interval.MIN_1,
-                "aggregations": []
-            },
-            "AAPL": {
-                "interval": Interval.MIN_1,
-                "aggregations": []
-            },
-            "@BTC": {
-                "interval": Interval.MIN_1,
-                "aggregations": []
-            }
+            "SPY": {"interval": Interval.MIN_1, "aggregations": []},
+            "AAPL": {"interval": Interval.MIN_1, "aggregations": []},
+            "@BTC": {"interval": Interval.MIN_1, "aggregations": []},
         }
 
         def test_main(df):
             self.assertEqual(len(df), 3)
-            self.assertEqual(df['SPY'].columns[0][0], 'SPY')
-            self.assertEqual(df['AAPL'].columns[0][0], 'AAPL')
-            self.assertEqual(df['@BTC'].columns[0][0], '@BTC')
-            
+            self.assertEqual(df["SPY"].columns[0][0], "SPY")
+            self.assertEqual(df["AAPL"].columns[0][0], "AAPL")
+            self.assertEqual(df["@BTC"].columns[0][0], "@BTC")
+
         yh = YahooStreamer()
-        watch = ['SPY', 'AAPL', '@BTC']
+        watch = ["SPY", "AAPL", "@BTC"]
         yh.setup(interval, None, test_main)
-        yh.main()        
-    
+        yh.main()
+
     def test_main_single(self):
-        interval = {
-            "SPY": {
-                "interval": Interval.MIN_1,
-                "aggregations": []
-            }
-        }
+        interval = {"SPY": {"interval": Interval.MIN_1, "aggregations": []}}
+
         def test_main(df):
             self.assertEqual(len(df), 1)
-            self.assertEqual(df['SPY'].columns[0][0], 'SPY')
-            
+            self.assertEqual(df["SPY"].columns[0][0], "SPY")
+
         yh = YahooStreamer()
         yh.setup(interval, None, test_main)
-        yh.main()      
-    
+        yh.main()
+
     def test_chain_info(self):
         yh = YahooStreamer()
-        interval = {
-            "LMND": {
-                "interval": Interval.MIN_1,
-                "aggregations": []
-            }
-        }
+        interval = {"LMND": {"interval": Interval.MIN_1, "aggregations": []}}
         yh.setup(interval, None, None)
-        info = yh.fetch_chain_info('LMND')
-        self.assertGreater(len(info['exp_dates']), 0)
-    
+        info = yh.fetch_chain_info("LMND")
+        self.assertGreater(len(info["exp_dates"]), 0)
+
     def test_chain_data(self):
         yh = YahooStreamer()
-        interval = {
-            "LMND": {
-                "interval": Interval.MIN_1,
-                "aggregations": []
-            }
-        }
+        interval = {"LMND": {"interval": Interval.MIN_1, "aggregations": []}}
         yh.setup(interval, None, None)
-        dates = yh.fetch_chain_info('LMND')['exp_dates']
-        data = yh.fetch_chain_data('LMND', dates[0])
+        dates = yh.fetch_chain_info("LMND")["exp_dates"]
+        data = yh.fetch_chain_data("LMND", dates[0])
         self.assertGreater(len(data), 0)
         self.assertListEqual(list(data.columns), ["exp_date", "strike", "type"])
 
@@ -104,5 +78,5 @@ class TestYahooStreamer(unittest.TestCase):
         self.assertTrue(True)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

@@ -29,9 +29,16 @@ class API:
         This should be initialized in setup_run (see below).
     """
 
-    interval_list = [Interval.MIN_1, Interval.MIN_5, Interval.MIN_15, Interval.MIN_30, Interval.HR_1, Interval.DAY_1]
-    
-    def __init__(self, path: str=None):
+    interval_list = [
+        Interval.MIN_1,
+        Interval.MIN_5,
+        Interval.MIN_15,
+        Interval.MIN_30,
+        Interval.HR_1,
+        Interval.DAY_1,
+    ]
+
+    def __init__(self, path: str = None):
         """
         Here, you should perform any authentications necessary to
         communicate with the API this class is using.
@@ -53,19 +60,19 @@ class API:
         )
 
         if path is None:
-            path = './secret.yaml'
+            path = "./secret.yaml"
         # Check if file exists
         yml_file = Path(path)
         if not yml_file.is_file() and not self.no_secret(path):
             return
-        with open(path, 'r') as stream:
+        with open(path, "r") as stream:
             self.config = yaml.safe_load(stream)
 
-        self.debugger = logging.getLogger('harvest')
+        self.debugger = logging.getLogger("harvest")
 
         self.timestamp = now()
-    
-    def no_secret(self, path: str): 
+
+    def no_secret(self, path: str):
         """
         This method is called when the yaml file with credentials
         is not found."""
@@ -78,7 +85,7 @@ class API:
         """
         pass
 
-    def setup(self, interval:Dict, trader=None, trader_main=None) -> None:
+    def setup(self, interval: Dict, trader=None, trader_main=None) -> None:
         """
         This function is called right before the algorithm begins.
 
@@ -92,7 +99,7 @@ class API:
             # If the specified interval is not supported on this API, raise Exception
             if inter < self.interval_list[0]:
                 raise Exception(f"Specified interval {inter} is not supported.")
-            # If the exact inteval is not supported but it can be recreated by aggregating 
+            # If the exact inteval is not supported but it can be recreated by aggregating
             # candles from a more granular interval
             if inter not in self.interval_list:
                 granular_int = [i for i in self.crypto_interval_list if i < inter]
@@ -103,10 +110,10 @@ class API:
             if min_interval is None or interval[sym]["interval"] < min_interval:
                 min_interval = interval[sym]["interval"]
 
-        self.interval = interval        
+        self.interval = interval
         self.poll_interval = min_interval
 
-    def start(self, kill_switch: bool=False):
+    def start(self, kill_switch: bool = False):
         """
         This method begins streaming data from the API.
 
@@ -120,9 +127,9 @@ class API:
         """
         cur_min = -1
         val, unit = expand_interval(self.poll_interval)
-        
+
         print("Running...")
-        if unit == 'MIN':
+        if unit == "MIN":
             sleep = val * 60 - 10
             while 1:
                 cur = now()
@@ -155,7 +162,7 @@ class API:
 
     def main(self) -> Dict[str, pd.DataFrame]:
         """
-        This method should create a dictionary where each key is the symbol for an asset, 
+        This method should create a dictionary where each key is the symbol for an asset,
         and the value is the corresponding data in the following pandas dataframe format:
                       Symbol
                       open   high    low close   volume
@@ -199,18 +206,19 @@ class API:
                     tries = tries - 1
                     self.debugger.debug("Retrying...")
                     continue
-            
+
         return wrapper
-    
-    def _run_once( func ):
-        """
-        """
+
+    def _run_once(func):
+        """ """
+
         def wrapper(*args, **kwargs):
             self = args[0]
             if self.run_count == 0:
-                self.run_count+=1
-                return func 
-            return None 
+                self.run_count += 1
+                return func
+            return None
+
         return wrapper
 
     # -------------- Streamer methods -------------- #
@@ -219,9 +227,9 @@ class API:
         self,
         symbol: str,
         interval: Interval,
-        start: dt.datetime=None, 
-        end: dt.datetime=None, 
-        ):
+        start: dt.datetime = None,
+        end: dt.datetime = None,
+    ):
         """
         Fetches historical price data for the specified asset and period
         using the API.
@@ -509,10 +517,17 @@ class API:
         if self.trader is None:
             buy_power = self.fetch_account()["buying_power"]
             # If there is no trader, streamer must be manually set
-            price = self.streamer.fetch_price_history( symbol, self.interval[symbol]["interval"], now() - dt.timedelta(days=7), now())[symbol]['close'][-1]
+            price = self.streamer.fetch_price_history(
+                symbol,
+                self.interval[symbol]["interval"],
+                now() - dt.timedelta(days=7),
+                now(),
+            )[symbol]["close"][-1]
         else:
-            buy_power = self.trader.account['buying_power']
-            price = self.trader.storage.load(symbol, self.interval[symbol]["interval"])[symbol]['close'][-1]
+            buy_power = self.trader.account["buying_power"]
+            price = self.trader.storage.load(symbol, self.interval[symbol]["interval"])[
+                symbol
+            ]["close"][-1]
 
         limit_price = mark_up(price)
         total_price = limit_price * quantity
@@ -552,9 +567,16 @@ class API:
             return None
 
         if self.trader is None:
-            price = self.streamer.fetch_price_history(symbol, self.interval[symbol]["interval"], now() - dt.timedelta(days=7), now())[symbol]['close'][-1]
+            price = self.streamer.fetch_price_history(
+                symbol,
+                self.interval[symbol]["interval"],
+                now() - dt.timedelta(days=7),
+                now(),
+            )[symbol]["close"][-1]
         else:
-            price = self.trader.storage.load(symbol, self.interval[symbol]["interval"])[symbol]['close'][-1]
+            price = self.trader.storage.load(symbol, self.interval[symbol]["interval"])[
+                symbol
+            ]["close"][-1]
 
         limit_price = mark_down(price)
 
@@ -671,12 +693,14 @@ Reduce purchase quantity or increase buying power."""
 
 
 class StreamAPI(API):
-    """
-    """
-    def __init__(self, path: str=None):
+    """ """
+
+    def __init__(self, path: str = None):
         super().__init__(path)
 
-        self.block_lock = threading.Lock() # Lock for streams that receive data asynchronously.
+        self.block_lock = (
+            threading.Lock()
+        )  # Lock for streams that receive data asynchronously.
         self.block_queue = {}
         self.first = True
 
@@ -689,29 +713,31 @@ class StreamAPI(API):
         # self.block_queue = {}
         # self.needed = self.watchlist_global.copy()
 
-    def start(self, kill_switch: bool=False):
-        """
-        """
+    def start(self, kill_switch: bool = False):
+        """ """
         pass
 
     def main(self, df_dict) -> Dict[str, pd.DataFrame]:
-        """
-        """
+        """ """
         self.block_lock.acquire()
         # First, identify which symbols need to have data fetched
         # for this timestamp
         if self.first:
-            self.needed = [sym for sym in self.interval if is_freq(now(), self.interval[sym]["interval"])]
+            self.needed = [
+                sym
+                for sym in self.interval
+                if is_freq(now(), self.interval[sym]["interval"])
+            ]
         got = [k for k in df_dict]
 
         self.debugger.debug(f"Needs: {self.needed}")
         self.debugger.debug(f"Got data for: {got}")
         missing = list(set(self.needed) - set(got))
         self.debugger.debug(f"Still need data for: {missing}")
- 
+
         self.block_queue.update(df_dict)
-        #self.debugger.debug(self.block_queue)
-        
+        # self.debugger.debug(self.block_queue)
+
         # If all data has been received, pass on the data
         if len(missing) == 0:
             self.debugger.debug("All data received")
@@ -720,15 +746,15 @@ class StreamAPI(API):
             self.all_recv = True
             self.first = True
             self.block_lock.release()
-            return 
-        
+            return
+
         # If there are data that has not been received, start a timer
         if self.first:
             timer = threading.Thread(target=self.timeout, daemon=True)
             timer.start()
             self.all_recv = False
             self.first = False
-        
+
         self.needed = missing
         self.block_lock.release()
 
@@ -738,7 +764,7 @@ class StreamAPI(API):
         if not self.all_recv:
             self.debugger.debug("Force flush")
             self.flush()
- 
+
     def flush(self):
         # For missing data, repeat the existing one
         self.block_lock.acquire()
@@ -751,8 +777,3 @@ class StreamAPI(API):
         self.block_lock.release()
         self.main_helper(self.block_queue)
         self.block_queue = {}
-
-
-        
-
-   

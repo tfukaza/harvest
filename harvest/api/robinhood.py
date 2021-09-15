@@ -13,6 +13,7 @@ import yaml
 from harvest.api._base import API
 from harvest.utils import *
 
+
 class Robinhood(API):
 
     interval_list = [Interval.SEC_15, Interval.MIN_5, Interval.HR_1, Interval.DAY_1]
@@ -44,78 +45,77 @@ class Robinhood(API):
     def setup(self, interval, trader=None, trader_main=None):
 
         super().setup(interval, trader, trader_main)
-       
+
         # Robinhood only supports 15SEC, 1MIN interval for crypto
         for sym in interval:
             if not is_crypto(sym) and interval[sym]["interval"] < Interval.MIN_5:
-                raise Exception(f'Interval {interval[sym]["interval"]} is only supported for crypto')
-        
+                raise Exception(
+                    f'Interval {interval[sym]["interval"]} is only supported for crypto'
+                )
+
         # self.__watch_stock = []
         # self.__watch_crypto = []
         # self.__watch_crypto_fmt = []
-      
+
         # for s in interval:
         #     if is_crypto(s):
         #         self.__watch_crypto_fmt.append(s[1:])
         #         self.__watch_crypto.append(s)
         #     else:
         #         self.__watch_stock.append(s)
-         
+
         self.__option_cache = {}
 
     def main(self):
-          # Iterate through securities in the watchlist. For those that have
+        # Iterate through securities in the watchlist. For those that have
         # intervals that needs to be called now, fetch the latest data
 
         df_dict = {}
         for sym in self.interval:
-            inter  = self.interval[sym]["interval"]
+            inter = self.interval[sym]["interval"]
             if is_freq(self.timestamp, inter):
                 n = self.timestamp
                 latest = self.fetch_price_history(
-                    sym,
-                    inter,
-                    n - interval_to_timedelta(inter),
-                    n
+                    sym, inter, n - interval_to_timedelta(inter), n
                 )
                 df_dict[sym] = latest.iloc[-1]
-      
+
         self.trader_main(df_dict)
 
     def exit(self):
         self.__option_cache = {}
-    
+
     # @API._exception_handler
     # def fetch_latest_stock_price(self):
     #     df={}
     #     for s in self.__watch_stock:
     #         ret = rh.get_stock_historicals(
     #             s,
-    #             interval=self.__interval_fmt, 
-    #             span='day', 
+    #             interval=self.__interval_fmt,
+    #             span='day',
     #             )
     #         if 'error' in ret or ret == None or (type(ret) == list and len(ret) == 0):
     #             continue
     #         df_tmp = pd.DataFrame.from_dict(ret)
     #         df_tmp = self._format_df(df_tmp, [s], self.interval).iloc[[-1]]
     #         df[s] = df_tmp
-        
-    #     return df        
+
+    #     return df
 
     # @API._exception_handler
     # def fetch_latest_crypto_price(self):
     #     df={}
     #     for s in self.__watch_crypto_fmt:
     #         ret = rh.get_crypto_historicals(
-    #             s, 
-    #             interval=self.__interval_fmt, 
+    #             s,
+    #             interval=self.__interval_fmt,
     #             span='hour',
     #             )
     #         df_tmp = pd.DataFrame.from_dict(ret)
     #         df_tmp = self._format_df(df_tmp, ['@'+s], self.interval).iloc[[-1]]
     #         df['@'+s] = df_tmp
-        
-    #     return df       
+
+    #     return df
 
     # -------------- Streamer methods -------------- #
 

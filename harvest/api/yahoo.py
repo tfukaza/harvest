@@ -14,13 +14,19 @@ from harvest.utils import *
 
 class YahooStreamer(API):
 
-    interval_list = [Interval.MIN_1, Interval.MIN_5, Interval.MIN_15, Interval.MIN_30, Interval.HR_1]
+    interval_list = [
+        Interval.MIN_1,
+        Interval.MIN_5,
+        Interval.MIN_15,
+        Interval.MIN_30,
+        Interval.HR_1,
+    ]
 
     def __init__(self, path=None):
-        self.debugger = logging.getLogger('harvest')
+        self.debugger = logging.getLogger("harvest")
         self.timestamp = now()
 
-    def setup(self, interval:Dict, trader=None, trader_main=None):
+    def setup(self, interval: Dict, trader=None, trader_main=None):
         super().setup(interval, trader, trader_main)
 
         # self.watch_stock = []
@@ -29,27 +35,27 @@ class YahooStreamer(API):
 
         for s in interval:
             if is_crypto(s):
-                self.watch_ticker[s] = yf.Ticker(s[1:]+"-USD")
+                self.watch_ticker[s] = yf.Ticker(s[1:] + "-USD")
             else:
                 self.watch_ticker[s] = yf.Ticker(s)
-        
+
         self.option_cache = {}
 
     def fmt_interval(self, interval):
         val, unit = expand_interval(interval)
-        if unit == 'MIN':
-            interval_fmt = f'{val}m'
-        elif unit == 'HR':
-            interval_fmt = f'{val}h'
+        if unit == "MIN":
+            interval_fmt = f"{val}m"
+        elif unit == "HR":
+            interval_fmt = f"{val}h"
 
         return interval_fmt
 
     def fmt_symbol(self, symbol):
         return symbol[1:] + "-USD" if is_crypto(symbol) else symbol
-    
+
     def unfmt_symbol(self, symbol):
-        if symbol[-4:] == '-USD':
-            return '@'+symbol[:-4]
+        if symbol[-4:] == "-USD":
+            return "@" + symbol[:-4]
         return symbol
 
     def exit(self):
@@ -66,7 +72,7 @@ class YahooStreamer(API):
         if len(combo) == 1:
             s = combo[0]
             interval_fmt = self.fmt_interval(self.interval[s]["interval"])
-            df = yf.download(s, period='1d', interval=interval_fmt, prepost=True)
+            df = yf.download(s, period="1d", interval=interval_fmt, prepost=True)
             self.debugger.debug(f"From yfinance got: {df}")
             if len(df.index) == 0:
                 return
@@ -74,7 +80,7 @@ class YahooStreamer(API):
             df = self._format_df(df, s)
             df_dict[s] = df
         else:
-            names = ' '.join(combo)
+            names = " ".join(combo)
             df = pd.DataFrame()
             required_intervals = {}
             for s in combo:
@@ -84,8 +90,10 @@ class YahooStreamer(API):
                 else:
                     required_intervals[i] = [s]
             for i in required_intervals:
-                names = ' '.join(required_intervals[i])
-                df_tmp = yf.download(names, period='1d', interval=self.fmt_interval(i), prepost=True)
+                names = " ".join(required_intervals[i])
+                df_tmp = yf.download(
+                    names, period="1d", interval=self.fmt_interval(i), prepost=True
+                )
                 df = df.join(df_tmp)
             self.debugger.debug(f"From yfinance got: {df}")
             if len(df.index) == 0:
@@ -108,9 +116,9 @@ class YahooStreamer(API):
         self,
         symbol: str,
         interval: Interval,
-        start: dt.datetime = None, 
-        end: dt.datetime = None, 
-       ):
+        start: dt.datetime = None,
+        end: dt.datetime = None,
+    ):
 
         self.debugger.debug(f"Fetching {symbol} {interval} price history")
         if isinstance(interval, str):
@@ -132,12 +140,12 @@ class YahooStreamer(API):
         elif unit == "HR":
             get_fmt = f"{val}h"
         else:
-            get_fmt = '1d'      
-        
+            get_fmt = "1d"
+
         if interval == Interval.MIN_1:
-            period = '5d'
+            period = "5d"
         elif interval >= Interval.MIN_5 and interval <= Interval.HR_1:
-            period = '1mo'
+            period = "1mo"
         else:
             period = "max"
 

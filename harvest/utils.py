@@ -6,6 +6,7 @@ from enum import IntEnum, auto
 import pytz
 import pandas as pd
 
+
 class Interval(IntEnum):
     SEC_15 = auto()
     MIN_1 = auto()
@@ -15,41 +16,44 @@ class Interval(IntEnum):
     HR_1 = auto()
     DAY_1 = auto()
 
+
 def interval_string_to_enum(str_interval):
-    if str_interval == '15SEC':
+    if str_interval == "15SEC":
         return Interval.SEC_15
-    elif str_interval == '1MIN':
+    elif str_interval == "1MIN":
         return Interval.MIN_1
-    elif str_interval == '5MIN':
+    elif str_interval == "5MIN":
         return Interval.MIN_5
-    elif str_interval == '15MIN':
+    elif str_interval == "15MIN":
         return Interval.MIN_15
-    elif str_interval == '30MIN':
+    elif str_interval == "30MIN":
         return Interval.MIN_30
-    elif str_interval == '1HR':
+    elif str_interval == "1HR":
         return Interval.HR_1
-    elif str_interval == '1DAY':
+    elif str_interval == "1DAY":
         return Interval.DAY_1
     else:
-        raise ValueError(f'Invalid interval string {str_interval}')
+        raise ValueError(f"Invalid interval string {str_interval}")
+
 
 def interval_enum_to_string(enum):
     try:
         name = enum.name
-        unit, val = name.split('_')
-        return val+unit
+        unit, val = name.split("_")
+        return val + unit
     except:
         return str(enum)
+
 
 def is_freq(time, interval):
     """Helper function to determine if algorithm should be invoked for the
     current timestamp. For example, if interval is 30MIN,
     algorithm should be called when minutes are 0 and 30.
     """
-    time = time.astimezone(pytz.timezone('UTC'))
-    
+    time = time.astimezone(pytz.timezone("UTC"))
+
     if interval == Interval.MIN_1:
-        return True 
+        return True
 
     minutes = time.minute
     hours = time.hour
@@ -62,17 +66,15 @@ def is_freq(time, interval):
 
     return minutes % val == 0
 
+
 def expand_interval(interval: Interval):
     string = interval.name
-    unit, value = string.split('_')
+    unit, value = string.split("_")
     return int(value), unit
 
-def interval_to_timedelta(interval:Interval) -> dt.timedelta:
-    expanded_units = {
-        'DAY': 'days',
-        'HR': 'hours',
-        'MIN': 'minutes'
-    }
+
+def interval_to_timedelta(interval: Interval) -> dt.timedelta:
+    expanded_units = {"DAY": "days", "HR": "hours", "MIN": "minutes"}
     value, unit = expand_interval(interval)
     params = {expanded_units[unit]: value}
     return dt.timedelta(**params)
@@ -98,12 +100,12 @@ def aggregate_df(df, interval: Interval) -> pd.DataFrame:
     }
     val, unit = expand_interval(interval)
     val = str(val)
-    if unit == '1HR':
-        val = 'H'
-    elif unit == 'MIN':
-        val += 'T'
+    if unit == "1HR":
+        val = "H"
+    elif unit == "MIN":
+        val += "T"
     else:
-        val = 'D'
+        val = "D"
     df = df.resample(val).agg(op_dict)
     df.columns = pd.MultiIndex.from_product([[sym], df.columns])
 

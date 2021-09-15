@@ -43,7 +43,7 @@ class Webull(API):
                 )
                 if not self.api.is_logged_in():
                     self.debugger.debug(f"Token login failed. \n{e}")
-                    wb_tokens = None    
+                    wb_tokens = None
             except Exception as e:
                 self.debugger.debug(f"Token login failed. \n{e}")
                 wb_tokens = None

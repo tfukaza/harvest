@@ -19,7 +19,14 @@ class PaperBroker(API):
     randomly generated prices. When used as a broker, it paper trades.
     """
 
-    interval_list = [Interval.MIN_1, Interval.MIN_5, Interval.MIN_15, Interval.MIN_30, Interval.HR_1, Interval.DAY_1]
+    interval_list = [
+        Interval.MIN_1,
+        Interval.MIN_5,
+        Interval.MIN_15,
+        Interval.MIN_30,
+        Interval.HR_1,
+        Interval.DAY_1,
+    ]
 
     def __init__(self, account_path: str = None, commission_fee=0):
         """
@@ -121,9 +128,16 @@ class PaperBroker(API):
         sym = ret["symbol"]
 
         if self.trader is None:
-            price = self.streamer.fetch_price_history(sym, self.interval[sym]["interval"], dt.datetime.now() - dt.timedelta(days=7), dt.datetime.now())[sym]['close'][-1]
+            price = self.streamer.fetch_price_history(
+                sym,
+                self.interval[sym]["interval"],
+                dt.datetime.now() - dt.timedelta(days=7),
+                dt.datetime.now(),
+            )[sym]["close"][-1]
         else:
-            price = self.trader.storage.load(sym, self.interval[sym]["interval"])[sym]['close'][-1]
+            price = self.trader.storage.load(sym, self.interval[sym]["interval"])[sym][
+                "close"
+            ][-1]
 
         qty = ret["quantity"]
         original_price = price * qty
