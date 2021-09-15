@@ -1,8 +1,10 @@
 import re
+import time
 import random
 import datetime as dt
 
 import pytz
+import tzlocal
 import pandas as pd
 
 
@@ -84,6 +86,14 @@ def mark_down(x):
 def has_timezone(date: dt.datetime) -> bool:
     return date.tzinfo is not None and date.tzinfo.utcoffset(date) is not None
 
+def set_system_timezone(date: dt.datetime) -> dt.datetime:
+    """
+    :date: A python datetime object that does not have tzinfo set.
+    If tzinfo is set, an error will occur. Converts first to the
+    timezone of the user's system and then to UTC.
+    """
+    timezone = pytz.timezone(str(tzlocal.get_localzone()))
+    return timezone.localize(date).astimezone(pytz.utc)
 
 ############ Functions used for testing #################
 
