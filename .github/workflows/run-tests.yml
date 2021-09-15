@@ -20,7 +20,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-
+    
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
       with:
@@ -44,9 +44,7 @@ jobs:
 
     - name: Run linter
       run: python setup.py lint -c True
-      with:
-        fail_on_error: true
-
+    
     - name: Run test
       run: python setup.py test
 
