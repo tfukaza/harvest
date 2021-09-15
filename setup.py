@@ -18,7 +18,7 @@ class LintCMD(Command):
         if self.check:
             command.append('--check')
 
-        subprocess.run(command)
+        exit(subprocess.run(command).returncode)
 
 class CoverageTestCMD(Command):
     user_options = []
@@ -30,9 +30,10 @@ class CoverageTestCMD(Command):
         pass
 
     def run(self):
-        subprocess.run(['coverage', 'run', '--source', 'harvest', '--omit', 'harvest/api/robinhood.py,harvest/api/alpaca.py', '-m', 'unittest', 'discover', '-s', 'tests'])
-        subprocess.run(['coverage', 'report'])
-        subprocess.run(['coverage', 'html'])
+        a = subprocess.run(['coverage', 'run', '--source', 'harvest', '--omit', 'harvest/api/robinhood.py,harvest/api/alpaca.py', '-m', 'unittest', 'discover', '-s', 'tests']).resturncode
+        b = subprocess.run(['coverage', 'report']).returncode
+        c = subprocess.run(['coverage', 'html']).returncode
+        exit(a + b + c)
 
 setup(
     cmdclass={
