@@ -44,7 +44,7 @@ jobs:
 
     - name: Run tests
       run: |
-        python setup.py lint -c=True
+        python setup.py lint -c True
         python setup.py test
 
     - name: Upload to CodeCov
