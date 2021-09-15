@@ -19,6 +19,7 @@ from harvest.storage import BaseStorage
 from harvest.storage import BaseLogger
 from harvest.server import Server
 
+
 class Trader:
     """
     :broker: Both the broker and streamer store a Broker object.
@@ -58,11 +59,11 @@ class Trader:
 
         self.account = {}           # Local cache of account data.
 
-        self.stock_positions = []   # Local cache of current stock positions.
+        self.stock_positions = []  # Local cache of current stock positions.
         self.option_positions = []  # Local cache of current options positions.
         self.crypto_positions = []  # Local cache of current crypto positions.
 
-        self.order_queue = []       # Queue of unfilled orders.
+        self.order_queue = []  # Queue of unfilled orders.
 
         # Initialize the storage
         self.storage = BaseStorage() if storage is None else storage
@@ -80,7 +81,9 @@ class Trader:
         if debug:
             f_handler = logging.FileHandler("trader.log")
             f_handler.setLevel(logging.DEBUG)
-            f_format = logging.Formatter('%(asctime)s : %(name)s : %(levelname)s : %(message)s')
+            f_format = logging.Formatter(
+                "%(asctime)s : %(name)s : %(levelname)s : %(message)s"
+            )
             f_handler.setFormatter(f_format)
             self.debugger.addHandler(f_handler)
 
@@ -89,7 +92,9 @@ class Trader:
             c_handler.setLevel(logging.DEBUG)
         else:
             c_handler.setLevel(logging.INFO)
-        c_format = logging.Formatter('%(asctime)s : %(name)s : %(levelname)s : %(message)s')
+        c_format = logging.Formatter(
+            "%(asctime)s : %(name)s : %(levelname)s : %(message)s"
+        )
         c_handler.setFormatter(c_format)
         self.debugger.addHandler(c_handler)
 
@@ -150,10 +155,9 @@ class Trader:
         self.streamer.start()
     
     def _setup_stats(self):
-        """Initializes local cache of stocks, options, and crypto positions.
-        """
-        
-        # Get any pending orders 
+        """Initializes local cache of stocks, options, and crypto positions."""
+
+        # Get any pending orders
         ret = self.broker.fetch_order_queue()
         self.order_queue = ret
         self.debugger.debug(f"Fetched orders:\n{self.order_queue}")
@@ -165,7 +169,9 @@ class Trader:
         self.option_positions = pos
         pos = self.broker.fetch_crypto_positions()
         self.crypto_positions = pos
-        self.debugger.debug(f"Fetched positions:\n{self.stock_positions}\n{self.option_positions}\n{self.crypto_positions}")
+        self.debugger.debug(
+            f"Fetched positions:\n{self.stock_positions}\n{self.option_positions}\n{self.crypto_positions}"
+        )
 
         # Update option stats
         self.broker.update_option_positions(self.option_positions)
@@ -247,7 +253,7 @@ class Trader:
         # Periodically refresh access tokens
         if self.timestamp.hour % 12 == 0 and self.timestamp.minute == 0:
             self.streamer.refresh_cred()
-        
+
         # Save the data locally
         for sym in df_dict:
             self.storage.store(sym, self.interval[sym]["interval"], df_dict[sym])
@@ -283,13 +289,13 @@ class Trader:
         """
         self.debugger.debug(f"Updating order queue: {self.order_queue}")
         for i, order in enumerate(self.order_queue):
-            if 'type' not in order:
+            if "type" not in order:
                 raise Exception(f"key error in {order}\nof {self.order_queue}")
-            if order['type'] == 'STOCK':
+            if order["type"] == "STOCK":
                 stat = self.broker.fetch_stock_order_status(order["id"])
-            elif order['type'] == 'OPTION':
+            elif order["type"] == "OPTION":
                 stat = self.broker.fetch_option_order_status(order["id"])
-            elif order['type'] == 'CRYPTO':
+            elif order["type"] == "CRYPTO":
                 stat = self.broker.fetch_crypto_order_status(order["id"])
             self.debugger.debug(f"Updating status of order {order['id']}")
             self.order_queue[i] = stat
@@ -298,20 +304,19 @@ class Trader:
         new_order = []
         order_filled = False
         for order in self.order_queue:
-            if order['status'] == 'filled':
-                order_filled = True  
+            if order["status"] == "filled":
+                order_filled = True
             else:
                 new_order.append(order)
         self.order_queue = new_order
 
         # if an order was processed, update the positions and account info
         return order_filled
-           
+
     def _update_stats(self, df_dict, new=False, option_update=False):
-        """Update local cache of stocks, options, and crypto positions
-        """
+        """Update local cache of stocks, options, and crypto positions"""
         # Update entries in local cache
-        # API should also be called if load_watch is false, as there is a high chance 
+        # API should also be called if load_watch is false, as there is a high chance
         # that data in local cache are not representative of the entire portfolio,
         # meaning total equity cannot be calculated locally
         if new:
@@ -352,10 +357,10 @@ class Trader:
 
     def fetch_chain_info(self, *args, **kwargs):
         return self.streamer.fetch_chain_info(*args, **kwargs)
-    
+
     def fetch_chain_data(self, *args, **kwargs):
         return self.streamer.fetch_chain_data(*args, **kwargs)
-    
+
     def fetch_option_market_data(self, *args, **kwargs):
         return self.streamer.fetch_option_market_data(*args, **kwargs)
 
@@ -367,8 +372,8 @@ class Trader:
         self.order_queue.append(ret)
         self.debugger.debug(f"BUY: {self.timestamp}, {symbol}, {quantity}")
         self.debugger.debug(f"BUY order queue: {self.order_queue}")
-        asset_type = 'crypto' if is_crypto(symbol) else 'stock'
-        self.logger.add_transaction(self.timestamp, 'buy', asset_type, symbol, quantity)
+        asset_type = "crypto" if is_crypto(symbol) else "stock"
+        self.logger.add_transaction(self.timestamp, "buy", asset_type, symbol, quantity)
         return ret
 
     def sell(self, symbol: str, quantity: int, in_force: str, extended: bool):
@@ -379,8 +384,10 @@ class Trader:
         self.order_queue.append(ret)
         self.debugger.debug(f"SELL: {self.timestamp}, {symbol}, {quantity}")
         self.debugger.debug(f"SELL order queue: {self.order_queue}")
-        asset_type = 'crypto' if is_crypto(symbol) else 'stock'
-        self.logger.add_transaction(self.timestamp, 'sell', asset_type, symbol, quantity)
+        asset_type = "crypto" if is_crypto(symbol) else "stock"
+        self.logger.add_transaction(
+            self.timestamp, "sell", asset_type, symbol, quantity
+        )
         return ret
 
     def buy_option(self, symbol: str, quantity: int, in_force: str):
@@ -390,7 +397,7 @@ class Trader:
         self.order_queue.append(ret)
         self.debugger.debug(f"BUY: {self.timestamp}, {symbol}, {quantity}")
         self.debugger.debug(f"BUY order queue: {self.order_queue}")
-        self.logger.add_transaction(self.timestamp, 'buy', 'option', symbol, quantity)
+        self.logger.add_transaction(self.timestamp, "buy", "option", symbol, quantity)
         return ret
 
     def sell_option(self, symbol: str, quantity: int, in_force: str):
@@ -400,27 +407,27 @@ class Trader:
         self.order_queue.append(ret)
         self.debugger.debug(f"SELL: {self.timestamp}, {symbol}, {quantity}")
         self.debugger.debug(f"SELL order queue: {self.order_queue}")
-        self.logger.add_transaction(self.timestamp, 'sell', 'option', symbol, quantity)
+        self.logger.add_transaction(self.timestamp, "sell", "option", symbol, quantity)
         return ret
-    
+
     def set_algo(self, algo):
         """Specifies the algorithm to use.
 
-        :param Algo algo: The algorithm to use. You can either pass in a single Algo class, or a 
-            list of Algo classes. 
+        :param Algo algo: The algorithm to use. You can either pass in a single Algo class, or a
+            list of Algo classes.
         """
         self.algo = algo if isinstance(algo, list) else [algo]
     
     def set_symbol(self, symbol):
         """Specifies the symbol(s) to watch.
-        
-        Cryptocurrencies should be prepended with an `@` to differentiate them from stocks. 
-        For example, '@ETH' will refer to Etherium, while 'ETH' will refer to Ethan Allen Interiors. 
+
+        Cryptocurrencies should be prepended with an `@` to differentiate them from stocks.
+        For example, '@ETH' will refer to Etherium, while 'ETH' will refer to Ethan Allen Interiors.
         If this method was previously called, the symbols specified earlier will be replaced with the
         new symbols.
-        
-        :symbol str symbol: Ticker Symbol(s) of stock or cryptocurrency to watch. 
-            It can either be a string, or a list of strings. 
+
+        :symbol str symbol: Ticker Symbol(s) of stock or cryptocurrency to watch.
+            It can either be a string, or a list of strings.
         """
         self.watchlist_global = symbol if isinstance(symbol, list) else [symbol]
     
@@ -428,5 +435,3 @@ class Trader:
         # TODO: Gracefully exit
         self.debugger.debug("\nStopping Harvest...")
         exit(0)
-    
-    

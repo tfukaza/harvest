@@ -18,10 +18,11 @@ from harvest.api.paper import PaperBroker
 from harvest.storage import BaseLogger
 from harvest.utils import *
 
+
 class BackTester(trader.Trader):
     """
     This class replaces several key functions to allow backtesting
-    on historical data. 
+    on historical data.
     """
 
     def __init__(self, streamer=None, config={}):
@@ -35,13 +36,13 @@ class BackTester(trader.Trader):
 
         self.storage = PickleStorage(limit_size=False)  # local cache of historic price
 
-        self.account = {}           # Local cash of account info 
+        self.account = {}  # Local cash of account info
 
-        self.stock_positions = []   # Local cache of current stock positions
+        self.stock_positions = []  # Local cache of current stock positions
         self.option_positions = []  # Local cache of current options positions
         self.crypto_positions = []  # Local cache of current crypto positions
 
-        self.order_queue = []       # Queue of unfilled orders 
+        self.order_queue = []  # Queue of unfilled orders
 
         self.logger = BaseLogger()
 
@@ -272,7 +273,7 @@ class BackTester(trader.Trader):
             self.timestamp += interval_to_timedelta(self.poll_interval)
 
         # pr.disable()
-        # import pstats 
+        # import pstats
         # st = pstats.Stats(pr)
         # st.sort_stats('cumtime')
         # st.print_stats(0.1)
@@ -288,14 +289,11 @@ class BackTester(trader.Trader):
             "equity": 1000000.0,
             "cash": 1000000.0,
             "buying_power": 1000000.0,
-            "multiplier": 1
+            "multiplier": 1,
         }
-    
+
     def fetch_position(self, key):
         pass
 
     def fetch_account(self):
         pass
-
-  
-  

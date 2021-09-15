@@ -1,8 +1,9 @@
 from flask import Flask, render_template
 from flask_cors import CORS
-import threading 
+import threading
 import logging
 import json
+
 
 class Server:
     """
@@ -10,24 +11,27 @@ class Server:
     """
 
     def __init__(self, trader):
-        self.app = Flask(__name__, template_folder='gui', static_folder='gui', static_url_path='/')
+        self.app = Flask(
+            __name__, template_folder="gui", static_folder="gui", static_url_path="/"
+        )
         CORS(self.app)
 
-        self.app.add_url_rule('/', view_func=self.interface)
-        self.app.add_url_rule('/api/crypto_positions', view_func=self.crypto_positions)
-        
+        self.app.add_url_rule("/", view_func=self.interface)
+        self.app.add_url_rule("/api/crypto_positions", view_func=self.crypto_positions)
+
         self.trader = trader
 
-        self.debugger = logging.getLogger('harvest')
-    
+        self.debugger = logging.getLogger("harvest")
+
     def start(self):
         self.debugger.info("Starting web server")
-        server = threading.Thread(target=self.app.run, kwargs={'port':11111}, daemon=True)
+        server = threading.Thread(
+            target=self.app.run, kwargs={"port": 11111}, daemon=True
+        )
         server.start()
 
     def interface(self):
-        return render_template('index.html')
-     
+        return render_template("index.html")
+
     def crypto_positions(self):
         return json.dumps(self.trader.crypto_positions)
-        

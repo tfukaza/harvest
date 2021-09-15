@@ -11,13 +11,21 @@ import yfinance as yf
 from harvest.api._base import API
 from harvest.utils import *
 
+
 class YahooStreamer(API):
 
+<<<<<<< HEAD
     interval_list = [Interval.MIN_1, Interval.MIN_5, Interval.MIN_15, Interval.MIN_30, Interval.HR_1]
 
     def __init__(self, path=None):
         self.debugger = logging.getLogger('harvest')
         self.timestamp = now()
+=======
+    interval_list = ["1MIN", "5MIN", "15MIN", "30MIN", "1HR"]
+
+    def __init__(self, path=None):
+        self.debugger = logging.getLogger("harvest")
+>>>>>>> origin/main
 
     def setup(self, interval:Dict, trader=None, trader_main=None):
         super().setup(interval, trader, trader_main)
@@ -26,11 +34,21 @@ class YahooStreamer(API):
         # self.watch_crypto = []
         self.watch_ticker = {}
 
+<<<<<<< HEAD
         for s in interval:
             if is_crypto(s):
                 self.watch_ticker[s] = yf.Ticker(s[1:]+"-USD")
+=======
+        if interval not in self.interval_list:
+            raise Exception(f"Invalid interval {interval}")
+        for s in watch:
+            if is_crypto(s):
+                self.watch_crypto.append(s[1:] + "-USD")
+                self.watch_ticker[s] = yf.Ticker(s[1:] + "-USD")
+>>>>>>> origin/main
             else:
                 self.watch_ticker[s] = yf.Ticker(s)
+<<<<<<< HEAD
         
         self.option_cache = {}
 
@@ -40,6 +58,14 @@ class YahooStreamer(API):
             interval_fmt = f'{val}m'
         elif unit == 'HR':
             interval_fmt = f'{val}h'
+=======
+
+        val, unit = expand_interval(interval)
+        if unit == "MIN":
+            self.interval_fmt = f"{val}m"
+        elif unit == "HR":
+            self.interval_fmt = f"{val}h"
+>>>>>>> origin/main
 
         return interval_fmt
 
@@ -64,6 +90,7 @@ class YahooStreamer(API):
 
         if len(combo) == 1:
             s = combo[0]
+<<<<<<< HEAD
             interval_fmt = self.fmt_interval(self.interval[s]["interval"])
             df = yf.download(s, period='1d', interval=interval_fmt, prepost=True)
             self.debugger.debug(f"From yfinance got: {df}")
@@ -86,35 +113,58 @@ class YahooStreamer(API):
                 names = ' '.join(required_intervals[i])
                 df_tmp = yf.download(names, period='1d', interval=self.fmt_interval(i), prepost=True)
                 df = df.join(df_tmp)
+=======
+            df = yf.download(s, period="5d", interval=self.interval_fmt, prepost=True)
+            self.debugger.debug(f"From yfinance got: {df}")
+            if len(df.index) == 0:
+                return
+            if s[-4:] == "-USD":
+                s = "@" + s[:-4]
+            df = self._format_df(df, s)
+            df_dict[s] = df
+        else:
+            names = " ".join(self.watch_stock + self.watch_crypto)
+            df = yf.download(
+                names, period="5d", interval=self.interval_fmt, prepost=True
+            )
+>>>>>>> origin/main
             self.debugger.debug(f"From yfinance got: {df}")
             if len(df.index) == 0:
                 return
             for s in combo:
-                df_tmp = df.iloc[:, df.columns.get_level_values(1)==s]
+                df_tmp = df.iloc[:, df.columns.get_level_values(1) == s]
                 if len(df_tmp.index) == 0:
                     continue
                 df_tmp.columns = df_tmp.columns.droplevel(1)
-                if s[-4:] == '-USD':
-                    s = '@'+s[:-4]
+                if s[-4:] == "-USD":
+                    s = "@" + s[:-4]
                 df_tmp = self._format_df(df_tmp, s)
                 df_dict[s] = df_tmp
         self.trader_main(df_dict)
 
     # -------------- Streamer methods -------------- #
-    
+
     @API._exception_handler
-    def fetch_price_history( self,  
+    def fetch_price_history(
+        self,
         symbol: str,
+<<<<<<< HEAD
         interval: Interval,
         start: dt.datetime = None, 
         end: dt.datetime = None, 
        ):
+=======
+        interval: str,
+        start: dt.datetime = None,
+        end: dt.datetime = None,
+    ):
+>>>>>>> origin/main
 
         self.debugger.debug(f"Fetching {symbol} {interval} price history")
         if isinstance(interval, str):
             interval = interval_string_to_enum(interval)
 
-        if start is None:  
+        if start is None:
             start = epoch_zero()
         if end is None:
             end = now()
@@ -123,88 +173,103 @@ class YahooStreamer(API):
 
         if start >= end:
             return df
-        
+
         val, unit = expand_interval(interval)
-        if unit == 'MIN':
-            get_fmt = f'{val}m'
-        elif unit == 'HR':
-            get_fmt = f'{val}h'      
+        if unit == "MIN":
+            get_fmt = f"{val}m"
+        elif unit == "HR":
+            get_fmt = f"{val}h"
         else:
+<<<<<<< HEAD
             get_fmt = '1d'      
         
         if interval == Interval.MIN_1:
             period = '5d'
         elif interval >= Interval.MIN_5 and interval <= Interval.HR_1:
             period = '1mo'
+=======
+            get_fmt = "1d"
+
+        if interval == "1MIN":
+            period = "5d"
+        elif interval in ["5MIN", "15MIN", "30MIN", "1HR"]:
+            period = "1mo"
+>>>>>>> origin/main
         else:
-            period='max'
-        
+            period = "max"
+
         crypto = False
         if is_crypto(symbol):
-            symbol = symbol[1:]+"-USD"
+            symbol = symbol[1:] + "-USD"
             crypto = True
-        
+
         df = yf.download(symbol, period=period, interval=get_fmt, prepost=True)
         if crypto:
-            symbol = '@'+symbol[:-4]
+            symbol = "@" + symbol[:-4]
         df = self._format_df(df, symbol)
         df = df.loc[start:end]
         return df
-    
+
     @API._exception_handler
     def fetch_chain_info(self, symbol: str):
         return {
-            "id": "n/a", 
-            "exp_dates": [ str_to_date(s) for s in self.watch_ticker[symbol].options],
-            "multiplier": 100
-        }    
+            "id": "n/a",
+            "exp_dates": [str_to_date(s) for s in self.watch_ticker[symbol].options],
+            "multiplier": 100,
+        }
 
     @API._exception_handler
     def fetch_chain_data(self, symbol: str, date: dt.datetime):
 
-        if bool(self.option_cache) and symbol in self.option_cache and date in self.option_cache[symbol]:
+        if (
+            bool(self.option_cache)
+            and symbol in self.option_cache
+            and date in self.option_cache[symbol]
+        ):
             return self.option_cache[symbol][date]
-        
+
         df = pd.DataFrame(columns=["contractSymbol", "exp_date", "strike", "type"])
-        
+
         chain = self.watch_ticker[symbol].option_chain(date_to_str(date))
         puts = chain.puts
-        puts['type'] = 'put'
+        puts["type"] = "put"
         calls = chain.calls
-        calls['type'] = 'call'
+        calls["type"] = "call"
         df = df.append(puts)
         df = df.append(calls)
 
         df = df.rename(columns={"contractSymbol": "occ_symbol"})
-        df['exp_date'] = df.apply(lambda x: self.occ_to_data(x['occ_symbol'])[1], axis=1)
+        df["exp_date"] = df.apply(
+            lambda x: self.occ_to_data(x["occ_symbol"])[1], axis=1
+        )
         df = df[["occ_symbol", "exp_date", "strike", "type"]]
-        df.set_index('occ_symbol', inplace=True)
+        df.set_index("occ_symbol", inplace=True)
 
         if not symbol in self.option_cache:
             self.option_cache[symbol] = {}
         self.option_cache[symbol][date] = df
 
         return df
-    
+
     @API._exception_handler
     def fetch_option_market_data(self, occ_symbol: str):
-        occ_symbol = occ_symbol.replace(' ', '')
+        occ_symbol = occ_symbol.replace(" ", "")
         symbol, date, typ, _ = self.occ_to_data(occ_symbol)
         chain = self.watch_ticker[symbol].option_chain(date_to_str(date))
-        if typ == 'call':
+        if typ == "call":
             chain = chain.calls
         else:
             chain = chain.puts
-        df = chain[chain['contractSymbol'] == occ_symbol]
+        df = chain[chain["contractSymbol"] == occ_symbol]
         print(occ_symbol, df)
         return {
-                'price': float(df['lastPrice'].iloc[0]),
-                'ask':   float(df['ask'].iloc[0]),
-                'bid':   float(df['bid'].iloc[0])
-            }
+            "price": float(df["lastPrice"].iloc[0]),
+            "ask": float(df["ask"].iloc[0]),
+            "bid": float(df["bid"].iloc[0]),
+        }
 
     # ------------- Broker methods ------------- #
-    
+
     @API._exception_handler
     def fetch_stock_positions(self):
         raise Exception("Not implemented")
@@ -212,11 +277,11 @@ class YahooStreamer(API):
     @API._exception_handler
     def fetch_option_positions(self):
         raise Exception("Not implemented")
-    
+
     @API._exception_handler
     def fetch_crypto_positions(self, key=None):
         raise Exception("Not implemented")
-    
+
     @API._exception_handler
     def update_option_positions(self, positions: List[Any]):
         raise Exception("Not implemented")
@@ -228,48 +293,68 @@ class YahooStreamer(API):
     @API._exception_handler
     def fetch_stock_order_status(self, id):
         raise Exception("Not implemented")
-    
+
     @API._exception_handler
     def fetch_option_order_status(self, id):
         raise Exception("Not implemented")
-    
+
     @API._exception_handler
     def fetch_crypto_order_status(self, id):
         raise Exception("Not implemented")
-    
+
     @API._exception_handler
     def fetch_order_queue(self):
         raise Exception("Not implemented")
 
-    def order_limit(self, 
-        side: str, 
+    def order_limit(
+        self,
+        side: str,
         symbol: str,
-        quantity: float, 
-        limit_price: float, 
-        in_force: str='gtc', 
-        extended: bool=False):
-            raise Exception("Not implemented")
-    
-    def order_option_limit(self, side: str, symbol: str, quantity: int, limit_price: float, option_type, exp_date: dt.datetime, strike, in_force: str='gtc'):
+        quantity: float,
+        limit_price: float,
+        in_force: str = "gtc",
+        extended: bool = False,
+    ):
         raise Exception("Not implemented")
-    
+
+    def order_option_limit(
+        self,
+        side: str,
+        symbol: str,
+        quantity: int,
+        limit_price: float,
+        option_type,
+        exp_date: dt.datetime,
+        strike,
+        in_force: str = "gtc",
+    ):
+        raise Exception("Not implemented")
+
     # ------------- Helper methods ------------- #
 
     def _format_df(self, df: pd.DataFrame, symbol: str):
         df = df.copy()
         df.reset_index(inplace=True)
         ts_name = df.columns[0]
-        df['timestamp'] = df[ts_name]
-        df = df.set_index(['timestamp'])
+        df["timestamp"] = df[ts_name]
+        df = df.set_index(["timestamp"])
         d = df.index[0]
         if d.tzinfo is None or d.tzinfo.utcoffset(d) is None:
-            df = df.tz_localize('UTC')
+            df = df.tz_localize("UTC")
         else:
-            df = df.tz_convert(tz='UTC')
+            df = df.tz_convert(tz="UTC")
         df = df.drop([ts_name], axis=1)
-        df = df.rename(columns={"Open": "open", "Close": "close", "High" : "high", "Low" : "low", "Volume" : "volume"})
+        df = df.rename(
+            columns={
+                "Open": "open",
+                "Close": "close",
+                "High": "high",
+                "Low": "low",
+                "Volume": "volume",
+            }
+        )
         df = df[["open", "high", "low", "close", "volume"]].astype(float)
-    
+
         df.columns = pd.MultiIndex.from_product([[symbol], df.columns])
 
         return df.dropna()
