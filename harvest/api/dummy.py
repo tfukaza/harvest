@@ -13,40 +13,54 @@ import numpy as np
 from harvest.api._base import API
 from harvest.utils import *
 
+
 class DummyStreamer(API):
-    """DummyStreamer, as its name implies, is a dummy broker class that can 
+    """DummyStreamer, as its name implies, is a dummy broker class that can
     be useful for testing algorithms. When used as a streamer, it will return
-    randomly generated prices. 
+    randomly generated prices.
     """
 
-    interval_list = ['1MIN', '5MIN', '15MIN', '30MIN', '1HR', '1DAY']
+    interval_list = [
+        Interval.MIN_1,
+        Interval.MIN_5,
+        Interval.MIN_15,
+        Interval.MIN_30,
+        Interval.HR_1,
+        Interval.DAY_1,
+    ]
     default_now = dt.datetime(year=2000, month=1, day=1, hour=0, minute=0)
 
-    def __init__(self, path: str=None, now: dt.datetime=default_now, realistic_times: bool=False):
+    def __init__(
+        self,
+        path: str = None,
+        now: dt.datetime = default_now,
+        realistic_times: bool = False,
+    ):
         self.trader = None
         self.trader_main = None
         self.realistic_times = realistic_times
 
         # Set the current time
         self._set_now(now)
+        self.timestamp = self.now
         # Used so `fetch_price_history` can work without running `setup`
         self.interval = self.interval_list[0]
         # Store random values and generates for each asset tot make `fetch_price_history` fixed
         self.randomness = {}
 
-    def setup(self, watch: List[str], interval, trader=None, trader_main=None):
-        super().setup(watch, interval, interval, trader, trader_main)
+    def start(self) -> None:
+        pass
 
     def main(self):
         df_dict = {}
         df_dict.update(self.fetch_latest_stock_price())
         df_dict.update(self.fetch_latest_crypto_price())
-      
+
         self.trader_main(df_dict)
-    
+
     def fetch_latest_stock_price(self) -> Dict[str, pd.DataFrame]:
         """
-        Gets fake stock data in the last three day interval and returns the last 
+        Gets fake stock data in the last three day interval and returns the last
         value. The reason the last three days are needed is because no data is returned
         when the stock market is closed, e.g. weekends.
         """
@@ -54,15 +68,17 @@ class DummyStreamer(API):
         results = {}
         today = self.now
         last = today - dt.timedelta(days=3)
-        
-        for symbol in self.watch:
+
+        for symbol in self.interval:
             if not is_crypto(symbol):
-                results[symbol] = self.fetch_price_history(symbol, self.interval, last, today).iloc[[-1]]
+                results[symbol] = self.fetch_price_history(
+                    symbol, self.interval[symbol]["interval"], last, today
+                ).iloc[[-1]]
         return results
-        
+
     def fetch_latest_crypto_price(self) -> Dict[str, pd.DataFrame]:
         """
-        Gets fake crypto data in the last three day interval and  returns the last 
+        Gets fake crypto data in the last three day interval and  returns the last
         value. The reason the last three days are needed is because no data is returned
         when the stock market is closed, e.g. weekends.
         """
@@ -70,24 +86,27 @@ class DummyStreamer(API):
         results = {}
         today = self.now
         last = today - dt.timedelta(days=3)
-        for symbol in self.watch:
+        for symbol in self.interval:
             if is_crypto(symbol):
-                results[symbol] = self.fetch_price_history(symbol, self.interval, last, today).iloc[[-1]]
+                results[symbol] = self.fetch_price_history(
+                    symbol, self.interval[symbol]["interval"], last, today
+                ).iloc[[-1]]
         return results
 
     # -------------- Streamer methods -------------- #
 
-    def fetch_price_history(self,
+    def fetch_price_history(
+        self,
         symbol: str,
-        interval: str,
-        start: dt.datetime=None, 
-        end: dt.datetime=None
-        ) -> pd.DataFrame:
+        interval: Interval,
+        start: dt.datetime = None,
+        end: dt.datetime = None,
+    ) -> pd.DataFrame:
 
-        if start is None:  
-            if interval in ['1MIN', '5MIN', '15MIN', '30MIN']:
+        if start is None:
+            if interval in ["1MIN", "5MIN", "15MIN", "30MIN"]:
                 start = self.now - dt.timedelta(days=2)
-            elif interval == '1HR':
+            elif interval == "1HR":
                 start = self.now - dt.timedelta(days=14)
             else:
                 start = self.now - dt.timedelta(days=365)
@@ -114,34 +133,38 @@ class DummyStreamer(API):
                 # If the new end index is greater than the data we have
 
                 # Get the rng for this symbol
-                rng = self.randomness[symbol + '_rng'] 
+                rng = self.randomness[symbol + "_rng"]
 
                 # Generate a bunch of random numbers from -0.5 to 0.5
-                increments = rng.random(num_of_random - len(self.randomness[symbol])) - 0.499
+                increments = (
+                    rng.random(num_of_random - len(self.randomness[symbol])) - 0.499
+                )
 
                 # Get sum of the previous price changes
                 latest_price_change = self.randomness[symbol][-1]
 
                 # Calculate the change in price since the first price
-                new_price_changes = latest_price_change + np.cumsum(increments) 
+                new_price_changes = latest_price_change + np.cumsum(increments)
 
                 # Store the new prices
-                self.randomness[symbol] = np.append(self.randomness[symbol], new_price_changes)
-            
+                self.randomness[symbol] = np.append(
+                    self.randomness[symbol], new_price_changes
+                )
+
         else:
-            # If there is no information about the asset 
+            # If there is no information about the asset
 
             # Create an rng using the asset's symbol as a seed
-            rng = np.random.default_rng(int.from_bytes(symbol.encode('ascii'), 'big'))
+            rng = np.random.default_rng(int.from_bytes(symbol.encode("ascii"), "big"))
             num_of_random = 1 + end_index
             increments = rng.random(num_of_random) - 0.499
 
             # Store the price change since the first price
             self.randomness[symbol] = np.cumsum(increments)
-            self.randomness[symbol + '_rng'] = rng
+            self.randomness[symbol + "_rng"] = rng
 
         # The inital price is arbitarly calculated from the first change in price
-        start_price = 1000 * (self.randomness[symbol][0] + 0.51)     
+        start_price = 1000 * (self.randomness[symbol][0] + 0.51)
 
         times = []
         current_time = start
@@ -153,62 +176,65 @@ class DummyStreamer(API):
 
         # Calculate olhcv from the prices
         open_s = 0.95 * prices
-        low = 0.8 * prices 
-        high = 1.2 * prices 
-        close = 1.05 * prices 
+        low = 0.8 * prices
+        high = 1.2 * prices
+        close = 1.05 * prices
         volume = (1000 * (prices + 20)).astype(int)
 
-
-        # Fake the timestamps 
+        # Fake the timestamps
         while current_time <= end:
             times.append(current_time)
             current_time += dt.timedelta(minutes=1)
 
         d = {
-            'timestamp': times,
-            'open': open_s,
-            'high': high,
-            'low': low, 
-            'close': close,
-            'volume': volume
+            "timestamp": times,
+            "open": open_s,
+            "high": high,
+            "low": low,
+            "close": close,
+            "volume": volume,
         }
 
-        results = pd.DataFrame(data=d).set_index('timestamp')
+        results = pd.DataFrame(data=d).set_index("timestamp")
 
         if self.realistic_times:
             open_time = dt.time(hour=13, minute=30)
             close_time = dt.time(hour=20)
 
             # Removes datapoints when the stock marked is closed. Does not handle holidays.
-            results = results.loc[(open_time < results.index.time) & (results.index.time < close_time)]
-            results = results[(results.index.dayofweek != 5) & (results.index.dayofweek != 6)]
-        
+            results = results.loc[
+                (open_time < results.index.time) & (results.index.time < close_time)
+            ]
+            results = results[
+                (results.index.dayofweek != 5) & (results.index.dayofweek != 6)
+            ]
+
         results.columns = pd.MultiIndex.from_product([[symbol], results.columns])
         results = aggregate_df(results, interval)
 
         return results
-    
+
     # TODO: Generate dummy option data
     def fetch_chain_info(self, symbol: str):
         raise Exception("Not implemented")
-    
+
     def fetch_chain_data(self, symbol: str):
         raise Exception("Not implemented")
-    
+
     def fetch_option_market_data(self, symbol: str):
         # This is a placeholder so Trader doesn't crash
         message = hashlib.sha256()
-        message.update(symbol.encode('utf-8'))
-        message.update(str(self.now).encode('utf-8'))
+        message.update(symbol.encode("utf-8"))
+        message.update(str(self.now).encode("utf-8"))
         hsh = message.digest()
-        price = int.from_bytes(hsh[:4], 'big') / (2 ** 32)
-        price = (price+1) * 1.5
+        price = int.from_bytes(hsh[:4], "big") / (2 ** 32)
+        price = (price + 1) * 1.5
         print(price)
-      
+
         return {
-            'price': price,
-            'ask': price*1.05, 
-            'bid': price*0.95,
+            "price": price,
+            "ask": price * 1.05,
+            "bid": price * 0.95,
         }
 
     # ------------- Broker methods ------------- #
@@ -221,13 +247,13 @@ class DummyStreamer(API):
 
     def fetch_crypto_positions(self) -> List[Dict[str, Any]]:
         raise Exception("Not implemented")
-    
+
     def update_option_positions(self, positions) -> List[Dict[str, Any]]:
         raise Exception("Not implemented")
 
     def fetch_account(self) -> Dict[str, Any]:
         raise Exception("Not implemented")
-    
+
     def fetch_stock_order_status(self, id: int) -> Dict[str, Any]:
         raise Exception("Not implemented")
 
@@ -236,19 +262,22 @@ class DummyStreamer(API):
 
     def fetch_crypto_order_status(self, id: int) -> Dict[str, Any]:
         raise Exception("Not implemented")
-    
+
     def fetch_order_queue(self) -> List[Dict[str, Any]]:
         raise Exception("Not implemented")
 
     # ------------- Helper methods ------------- #
 
     def _set_now(self, current_datetime: dt.datetime) -> None:
-        if current_datetime.tzinfo is None or current_datetime.tzinfo.utcoffset(current_datetime) is None:
+        if (
+            current_datetime.tzinfo is None
+            or current_datetime.tzinfo.utcoffset(current_datetime) is None
+        ):
             self.now = pytz.utc.localize(current_datetime)
-        else: 
+        else:
             self.now = current_datetime
 
     def tick(self) -> None:
-        self.now += interval_to_timedelta(self.interval)
+        self.now += interval_to_timedelta(self.poll_interval)
         if not self.trader_main == None:
             self.main()

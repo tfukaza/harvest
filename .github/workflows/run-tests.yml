@@ -20,7 +20,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-
+    
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
       with:
@@ -30,6 +30,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         python setup.py install
+        python -m pip install .[Dev]
 
     - name: Store polygon secret in file
       run: 'echo "api_key: $POLYGON_API_KEY" > poly_secret.yaml'
@@ -38,13 +39,13 @@ jobs:
       env:
         POLYGON_API_KEY: ${{secrets.POLYGON_API_KEY}}
     
-    - name: Set ENV
-      run: 'export GITHUB_ACTION=TRUE'
-
-    - name: Run tests
-      run: |
-        pip install coverage
-        coverage run --source harvest --omit harvest/api/robinhood.py,harvest/api/alpaca.py -m unittest discover -s tests
+    - name: Run linter
+      run: python setup.py lint -c True
+    
+    - name: Run test
+      run: python setup.py test
+      env:
+        GITHUB_ACTION: True
 
     - name: Upload to CodeCov
       uses: codecov/codecov-action@v1

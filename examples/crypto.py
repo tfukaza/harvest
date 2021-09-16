@@ -8,21 +8,22 @@ It also demonstrates some built-in functions.
 """
 
 # Constants
-N=3
+N = 3
+
+
 class Crypto(BaseAlgo):
-    
     def setup(self):
         self.hold = False
         self.ret = 0
         self.cutoff = 0.0
-    
+
     def main(self):
         # Get the current time as a datetime object
         self.timestamp = self.get_datetime()
         print(f"Time: {self.timestamp}")
 
         # Get a list of price history for Dogecoin
-        # When a symbol is not specified, it defaults to the first symbol on 
+        # When a symbol is not specified, it defaults to the first symbol on
         # our watchlist (DOGE)
         # If an interval is not specified, it defaults to the interval of the algorithm (30MIN)
         prices = self.get_asset_price_list()
@@ -82,22 +83,22 @@ class Crypto(BaseAlgo):
                 self.hold = False
             else:
                 print(f"HOLD: {ret}")
-        
+
             if ret > self.cutoff:
-                self.cutoff = int(ret*100)/100.0 + 0.01
-            
+                self.cutoff = int(ret * 100) / 100.0 + 0.01
 
     def buy_eval(self, trends, prices, candles):
-        c = bool(trends[-1] > 0 and candles['open'][-1] < candles['close'][-1])
+        c = bool(trends[-1] > 0 and candles["open"][-1] < candles["close"][-1])
         return c
-    
+
     def sell_eval(self, ret):
-        c = bool(ret > self.cutoff+0.02 or ret < self.cutoff-0.001)
+        c = bool(ret > self.cutoff + 0.02 or ret < self.cutoff - 0.001)
         return c
-       
+
+
 if __name__ == "__main__":
-    t = Trader( Robinhood(), PaperBroker())
-    t.set_symbol('@DOGE')   # Cryptocurrencies are prepended with an '@'
+    t = Trader(Robinhood(), PaperBroker())
+    t.set_symbol("@DOGE")  # Cryptocurrencies are prepended with an '@'
     t.set_algo(Crypto())
-    
-    t.start(interval='1MIN') # Run the algorithm once every 30 minutes
+
+    t.start(interval="1MIN")  # Run the algorithm once every 30 minutes
