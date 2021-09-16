@@ -9,7 +9,7 @@ from harvest.api.webullapi import Webull
 
 class TestWebull(unittest.TestCase):
     def test_fetch_prices(self):
-        if not "GITHUB_ACTION" in os.environ:
+        if "GITHUB_ACTION" in os.environ:
             return
         wb = Webull()
         df = wb.fetch_price_history("SPY", interval="1MIN")["SPY"]
@@ -19,7 +19,7 @@ class TestWebull(unittest.TestCase):
         )
 
     def test_setup(self):
-        if not "GITHUB_ACTION" in os.environ:
+        if "GITHUB_ACTION" in os.environ:
             return
         wb = Webull()
         watch = ["SPY", "AAPL", "@BTC", "@ETH"]
@@ -29,7 +29,7 @@ class TestWebull(unittest.TestCase):
         self.assertEqual(wb.watch_crypto, ["@BTC", "@ETH"])
 
     def test_main(self):
-        if not "GITHUB_ACTION" in os.environ:
+        if "GITHUB_ACTION" in os.environ:
             return
         def test_main(df):
             self.assertEqual(len(df), 3)
@@ -43,7 +43,7 @@ class TestWebull(unittest.TestCase):
         wb.main()
 
     def test_main_single(self):
-        if not "GITHUB_ACTION" in os.environ:
+        if "GITHUB_ACTION" in os.environ:
             return
         def test_main(df):
             self.assertEqual(len(df), 1)
@@ -55,7 +55,7 @@ class TestWebull(unittest.TestCase):
         wb.main()
 
     def test_chain_info(self):
-        if not "GITHUB_ACTION" in os.environ:
+        if "GITHUB_ACTION" in os.environ:
             return
         wb = Webull()
         watch = ["SPY"]
@@ -64,7 +64,7 @@ class TestWebull(unittest.TestCase):
         self.assertGreater(len(info["exp_dates"]), 0)
 
     def test_chain_data(self):
-        if not "GITHUB_ACTION" in os.environ:
+        if "GITHUB_ACTION" in os.environ:
             return
         wb = Webull()
         watch = ["LMND"]
