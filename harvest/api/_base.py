@@ -16,6 +16,7 @@ import pandas as pd
 # Submodule imports
 from harvest.utils import *
 
+
 class API:
     """
     The API class communicates with various API endpoints to perform the
@@ -40,7 +41,7 @@ class API:
     def __init__(self, path: str = None):
         """
         Performs initializations of the class, such as setting the
-        timestamp and loading credentials. 
+        timestamp and loading credentials.
 
         There are three API class types, 'streamer', 'broker', and 'both'. A
         'streamer' is responsible for fetching data and interacting with
@@ -54,7 +55,9 @@ class API:
         :path: path to the YAML file containing credentials to communicate with the API.
             If not specified, defaults to './secret.yaml'
         """
-        self.trader = None  # Allows broker to handle the case when runs without a trader
+        self.trader = (
+            None  # Allows broker to handle the case when runs without a trader
+        )
 
         if path is None:
             path = "./secret.yaml"
@@ -84,7 +87,7 @@ class API:
 
     def setup(self, interval: Dict, trader=None, trader_main=None) -> None:
         """
-        This function is called right before the algorithm begins, 
+        This function is called right before the algorithm begins,
         and initializes several runtime parameters like
         the symbols to watch and what interval data is needed.
         """
@@ -724,9 +727,9 @@ class StreamAPI(API):
         pass
 
     def main(self, df_dict):
-        """ 
-        Streaming is event driven, so sometimes not all data comes in at once. 
-        StreamAPI class 
+        """
+        Streaming is event driven, so sometimes not all data comes in at once.
+        StreamAPI class
         """
         self.block_lock.acquire()
         # First, identify which symbols need to have data fetched

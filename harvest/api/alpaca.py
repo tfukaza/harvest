@@ -50,7 +50,7 @@ class Alpaca(StreamAPI):
 
     async def update_data(self, bar):
         # Update data with the latest bars
-        #self.data_lock.acquire()
+        # self.data_lock.acquire()
         bar = bar.__dict__["_raw"]
         symbol = bar["symbol"]
         df = pd.DataFrame(
@@ -90,10 +90,10 @@ class Alpaca(StreamAPI):
         self.stream.on_bar(*(self.watch_stock + cryptos))(self.update_data)
 
         self.option_cache = {}
-    
+
     def start(self):
         threading.Thread(target=self.capture_data, daemon=True).start()
-    
+
     def capture_data(self):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
