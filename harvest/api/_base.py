@@ -58,7 +58,7 @@ class API:
         self.trader = (
             None  # Allows broker to handle the case when runs without a trader
         )
-   
+
         if path is None:
             path = "./secret.yaml"
         # Check if file exists
@@ -742,7 +742,6 @@ class StreamAPI(API):
                 if is_freq(now(), self.interval[sym]["interval"])
             ]
             self.timestamp = df_dict[got[0]].index[0]
-        
 
         self.debugger.debug(f"Needs: {self.needed}")
         self.debugger.debug(f"Got data for: {got}")
@@ -784,7 +783,11 @@ class StreamAPI(API):
         # For missing data, repeat the existing one
         self.block_lock.acquire()
         for n in self.needed:
-            data = self.trader.storage.load(n, self.interval[n]["interval"]).iloc[[-1]].copy()
+            data = (
+                self.trader.storage.load(n, self.interval[n]["interval"])
+                .iloc[[-1]]
+                .copy()
+            )
             data.index = [self.timestamp]
             self.block_queue[n] = data
         self.block_lock.release()

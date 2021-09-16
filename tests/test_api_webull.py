@@ -9,13 +9,14 @@ try:
 except ImportError:
     pass
 
-class TestWebull(unittest.TestCase):
 
-    def not_gh_action( func ):
+class TestWebull(unittest.TestCase):
+    def not_gh_action(func):
         def wrapper(*args, **kwargs):
             if "GITHUB_ACTION" in os.environ:
-                return 
+                return
             func(*args, **kwargs)
+
         return wrapper
 
     @not_gh_action
@@ -82,6 +83,7 @@ class TestWebull(unittest.TestCase):
         df = wb.fetch_option_market_data(sym)
 
         self.assertTrue(True)
+
 
 if __name__ == "__main__" and "GITHUB_ACTION" not in os.environ:
     print(os.environ)

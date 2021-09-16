@@ -11,7 +11,6 @@ from harvest.utils import *
 
 
 class TestCSVStorage(unittest.TestCase):
-    
     @classmethod
     def setUpClass(self):
         self.storage_dir = "test_csv_data"

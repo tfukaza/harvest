@@ -276,7 +276,9 @@ class Trader:
         # If an order was processed, fetch the latest position info.
         # Otherwise, calculate current positions locally
         update = self._update_order_queue()
-        self._update_stats(df_dict, new=update, option_update=len(self.option_positions) > 0)
+        self._update_stats(
+            df_dict, new=update, option_update=len(self.option_positions) > 0
+        )
 
         new_algo = []
         for a in self.algo:
