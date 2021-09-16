@@ -2,20 +2,80 @@ import re
 import time
 import random
 import datetime as dt
+from enum import IntEnum, auto
 
 import pytz
 import tzlocal
 import pandas as pd
 
 
-def expand_interval(interval: str):
-    time_search = re.search("([0-9]+)(MIN|HR|DAY)", interval)
-    value = int(time_search.group(1))
-    unit = time_search.group(2)
-    return value, unit
+class Interval(IntEnum):
+    SEC_15 = auto()
+    MIN_1 = auto()
+    MIN_5 = auto()
+    MIN_15 = auto()
+    MIN_30 = auto()
+    HR_1 = auto()
+    DAY_1 = auto()
 
 
-def interval_to_timedelta(interval: str) -> dt.timedelta:
+def interval_string_to_enum(str_interval):
+    if str_interval == "15SEC":
+        return Interval.SEC_15
+    elif str_interval == "1MIN":
+        return Interval.MIN_1
+    elif str_interval == "5MIN":
+        return Interval.MIN_5
+    elif str_interval == "15MIN":
+        return Interval.MIN_15
+    elif str_interval == "30MIN":
+        return Interval.MIN_30
+    elif str_interval == "1HR":
+        return Interval.HR_1
+    elif str_interval == "1DAY":
+        return Interval.DAY_1
+    else:
+        raise ValueError(f"Invalid interval string {str_interval}")
+
+
+def interval_enum_to_string(enum):
+    try:
+        name = enum.name
+        unit, val = name.split("_")
+        return val + unit
+    except:
+        return str(enum)
+
+
+def is_freq(time, interval):
+    """Helper function to determine if algorithm should be invoked for the
+    current timestamp. For example, if interval is 30MIN,
+    algorithm should be called when minutes are 0 and 30.
+    """
+    time = time.astimezone(pytz.timezone("UTC"))
+
+    if interval == Interval.MIN_1:
+        return True
+
+    minutes = time.minute
+    hours = time.hour
+    if interval == Interval.DAY_1:
+        # TODO: Use API to get real-time market hours
+        return minutes == 50 and hours == 19
+    elif interval == Interval.HR_1:
+        return minutes == 0
+    val, _ = expand_interval(interval)
+
+    return minutes % val == 0
+
+
+def expand_interval(interval: Interval):
+    string = interval.name
+    unit, value = string.split("_")
+    return int(value), unit
+
+
+def interval_to_timedelta(interval: Interval) -> dt.timedelta:
     expanded_units = {"DAY": "days", "HR": "hours", "MIN": "minutes"}
     value, unit = expand_interval(interval)
     params = {expanded_units[unit]: value}
@@ -30,7 +90,7 @@ def normalize_pandas_dt_index(df: pd.DataFrame) -> pd.Index:
     return df.index.floor("min")
 
 
-def aggregate_df(df, interval: str) -> pd.DataFrame:
+def aggregate_df(df, interval: Interval) -> pd.DataFrame:
     sym = df.columns[0][0]
     df = df[sym]
     op_dict = {
@@ -40,12 +100,13 @@ def aggregate_df(df, interval: str) -> pd.DataFrame:
         "close": "last",
         "volume": "sum",
     }
-    val = re.sub("[^0-9]", "", interval)
-    if interval[-1] == "N":  # MIN interval
-        val = val + "T"
-    elif interval[-1] == "R":  # 1HR interval
+    val, unit = expand_interval(interval)
+    val = str(val)
+    if unit == "1HR":
         val = "H"
-    else:  # 1DAY interval
+    elif unit == "MIN":
+        val += "T"
+    else:
         val = "D"
     df = df.resample(val).agg(op_dict)
     df.columns = pd.MultiIndex.from_product([[sym], df.columns])

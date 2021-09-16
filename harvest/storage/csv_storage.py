@@ -6,6 +6,7 @@ import datetime as dt
 from typing import Tuple
 
 from harvest.storage import BaseStorage
+from harvest.utils import *
 
 
 """
@@ -32,8 +33,10 @@ class CSVStorage(BaseStorage):
         files = [f for f in listdir(self.save_dir) if isfile(join(self.save_dir, f))]
 
         for file in files:
+            print(file)
             file_search = re.search("^([\w]+)-([\w]+).csv$", file)
             symbol, interval = file_search.group(1), file_search.group(2)
+            interval = interval_string_to_enum(interval)
             data = pd.read_csv(join(self.save_dir, file), index_col=0, parse_dates=True)
             data.index = pd.to_datetime(data.index, unit="s")
             data.columns = pd.MultiIndex.from_product([[symbol], data.columns])
@@ -42,7 +45,7 @@ class CSVStorage(BaseStorage):
     def store(
         self,
         symbol: str,
-        interval: str,
+        interval: Interval,
         data: pd.DataFrame,
         remove_duplicate: bool = True,
     ) -> None:
@@ -59,6 +62,6 @@ class CSVStorage(BaseStorage):
         if not data.empty:
             self.storage_lock.acquire()
             self.storage[symbol][interval][symbol].to_csv(
-                self.save_dir + f"/{symbol}-{interval}.csv"
+                self.save_dir + f"/{symbol}-{interval_enum_to_string(interval)}.csv"
             )
             self.storage_lock.release()

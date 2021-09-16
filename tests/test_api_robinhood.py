@@ -1,5 +1,6 @@
 import unittest
 
+
 class TestRHBroker(unittest.TestCase):
     def test_trade(self):
         """
@@ -7,7 +8,6 @@ class TestRHBroker(unittest.TestCase):
         """
         pass
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()
-
-

@@ -60,9 +60,6 @@ class Webull(API):
         self.api.refresh_login(save_token=True)
         # self.login()
 
-    def no_secret(self, path):
-        return self.create_secret(path)
-
     def setup(self, watch: List[str], interval, trader=None, trader_main=None):
         self.watch_stock = []
         self.watch_crypto = []

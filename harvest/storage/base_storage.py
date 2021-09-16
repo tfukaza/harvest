@@ -37,7 +37,7 @@ class BaseStorage:
         self.debugger = logging.getLogger("harvest")
 
     def store(
-        self, symbol: str, interval: str, data: pd.DataFrame, remove_duplicate=True
+        self, symbol: str, interval: Interval, data: pd.DataFrame, remove_duplicate=True
     ) -> None:
         """
         Stores the stock data in the storage dictionary.
@@ -94,7 +94,11 @@ class BaseStorage:
         self.storage_lock.release()
 
     def aggregate(
-        self, symbol: str, base: str, target: str, remove_duplicate: bool = True
+        self,
+        symbol: str,
+        base: Interval,
+        target: Interval,
+        remove_duplicate: bool = True,
     ):
         """
         Aggregates the stock data from the interval specified in 'from' to 'to'.
@@ -112,7 +116,7 @@ class BaseStorage:
             ]
         self.storage_lock.release()
 
-    def reset(self, symbol: str, interval: str):
+    def reset(self, symbol: str, interval: Interval):
         """
         Resets to an empty dataframe
         """
@@ -123,7 +127,7 @@ class BaseStorage:
     def load(
         self,
         symbol: str,
-        interval: str = "",
+        interval: Interval = None,
         start: dt.datetime = None,
         end: dt.datetime = None,
         no_slice=False,
@@ -148,17 +152,17 @@ class BaseStorage:
 
         self.storage_lock.release()
 
-        if interval == "":
+        if interval is None:
             # If the interval is not given, return the data with the
             # smallest interval that has data in the range.
             intervals = [
                 (interval, interval_to_timedelta(interval))
-                for interval in self.storage[symbol].keys()
+                for interval in self.storage[symbol]
             ]
             intervals.sort(key=lambda interval_timedelta: interval_timedelta[1])
             for interval_timedelta in intervals:
                 data = self.load(symbol, interval_timedelta[0], start, end)
-                if not data is None:
+                if data is not None:
                     return data
             return None
 
@@ -168,12 +172,13 @@ class BaseStorage:
         if interval not in self.storage[symbol]:
             # If we don't have the given interval but we a smaller one,
             # then aggregate the data
+            print(self.storage[symbol])
             intervals = [
                 (interval, interval_to_timedelta(interval))
-                for interval in self.storage[symbol].keys()
+                for interval in self.storage[symbol]
                 if interval_to_timedelta(interval) < dt_interval
             ]
-            if len(intervals) == 0:
+            if not intervals:
                 self.storage_lock.release()
                 return None
 
@@ -195,7 +200,7 @@ class BaseStorage:
 
         return data.loc[start:end]
 
-    def data_range(self, symbol: str, interval: str) -> Tuple[dt.datetime]:
+    def data_range(self, symbol: str, interval: Interval) -> Tuple[dt.datetime]:
         """
         Returns the oldest and latest datetime of a particular symbol.
         :symbol: a stock or crypto

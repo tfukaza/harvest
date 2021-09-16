@@ -19,9 +19,6 @@ class PolygonStreamer(API):
         super().__init__(path)
         self.basic = is_basic_account
 
-    def no_secret(self, path: str) -> bool:
-        return self.create_secret(path)
-
     def setup(self, watch: List[str], interval: str, trader=None, trader_main=None):
         self.watch_stock = []
         self.watch_crypto = []
@@ -61,7 +58,7 @@ class PolygonStreamer(API):
     def fetch_price_history(
         self,
         symbol: str,
-        interval: str,
+        interval: Interval,
         start: dt.datetime = None,
         end: dt.datetime = None,
     ):
