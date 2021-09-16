@@ -4,12 +4,10 @@ import unittest
 import datetime as dt
 import os
 
-# Prevent running on Github Actions because webull is not installed
-if "GITHUB_ACTION" in os.environ:
-    exit(0)
-
-from harvest.api.webullapi import Webull
-
+try:
+    from harvest.api.webullapi import Webull
+except ImportError:
+    pass
 
 class TestWebull(unittest.TestCase):
     def test_fetch_prices(self):
@@ -72,5 +70,5 @@ class TestWebull(unittest.TestCase):
         self.assertTrue(True)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__" and "GITHUB_ACTION" not in os.environ:
     unittest.main()
