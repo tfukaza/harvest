@@ -39,14 +39,13 @@ jobs:
       env:
         POLYGON_API_KEY: ${{secrets.POLYGON_API_KEY}}
     
-    - name: Set ENV
-      run: 'export GITHUB_ACTION=TRUE'
-
     - name: Run linter
       run: python setup.py lint -c True
     
     - name: Run test
       run: python setup.py test
+      env:
+        GITHUB_ACTION: True
 
     - name: Upload to CodeCov
       uses: codecov/codecov-action@v1

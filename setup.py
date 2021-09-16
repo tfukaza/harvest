@@ -50,7 +50,7 @@ class CoverageTestCMD(Command):
                 "-s",
                 "tests",
             ]
-        ).resturncode
+        ).returncode
         b = subprocess.run(["coverage", "report"]).returncode
         c = subprocess.run(["coverage", "html"]).returncode
         exit(a + b + c)
