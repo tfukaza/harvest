@@ -71,4 +71,5 @@ class TestWebull(unittest.TestCase):
 
 
 if __name__ == "__main__" and "GITHUB_ACTION" not in os.environ:
+    print(os.environ)
     unittest.main()
