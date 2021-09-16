@@ -719,7 +719,7 @@ class StreamAPI(API):
         self.block_queue = {}
         self.first = True
 
-    def setup(self, interval: str, trader=None, trader_main=None) -> None:
+    def setup(self, interval: Dict, trader=None, trader_main=None) -> None:
         super().setup(interval, trader, trader_main)
         self.blocker = {}
 
