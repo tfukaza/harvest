@@ -4,13 +4,19 @@ import unittest
 import datetime as dt
 import os
 
-from harvest.api.webullapi import Webull
-
+from harvest.api.webull import Webull
 
 class TestWebull(unittest.TestCase):
+
+    def not_gh_action( func ):
+        def wrapper(*args, **kwargs):
+            if "GITHUB_ACTION" in os.environ:
+                return 
+            func(*args, **kwargs)
+        return wrapper
+
+    @not_gh_action
     def test_fetch_prices(self):
-        if not "GITHUB_ACTION" in os.environ:
-            return
         wb = Webull()
         df = wb.fetch_price_history("SPY", interval="1MIN")["SPY"]
         self.assertEqual(
@@ -18,9 +24,8 @@ class TestWebull(unittest.TestCase):
             sorted(["open", "high", "low", "close", "volume"]),
         )
 
+    @not_gh_action
     def test_setup(self):
-        if not "GITHUB_ACTION" in os.environ:
-            return
         wb = Webull()
         watch = ["SPY", "AAPL", "@BTC", "@ETH"]
         wb.setup(watch, "1MIN")
@@ -28,9 +33,8 @@ class TestWebull(unittest.TestCase):
         self.assertEqual(wb.watch_stock, ["SPY", "AAPL"])
         self.assertEqual(wb.watch_crypto, ["@BTC", "@ETH"])
 
+    @not_gh_action
     def test_main(self):
-        if not "GITHUB_ACTION" in os.environ:
-            return
         def test_main(df):
             self.assertEqual(len(df), 3)
             self.assertEqual(df["SPY"].columns[0][0], "SPY")
@@ -42,9 +46,8 @@ class TestWebull(unittest.TestCase):
         wb.setup(watch, "1MIN", None, test_main)
         wb.main()
 
+    @not_gh_action
     def test_main_single(self):
-        if not "GITHUB_ACTION" in os.environ:
-            return
         def test_main(df):
             self.assertEqual(len(df), 1)
             self.assertEqual(df["SPY"].columns[0][0], "SPY")
@@ -54,18 +57,16 @@ class TestWebull(unittest.TestCase):
         wb.setup(watch, "1MIN", None, test_main)
         wb.main()
 
+    @not_gh_action
     def test_chain_info(self):
-        if not "GITHUB_ACTION" in os.environ:
-            return
         wb = Webull()
         watch = ["SPY"]
         wb.setup(watch, "1MIN", None, None)
         info = wb.fetch_chain_info("SPY")
         self.assertGreater(len(info["exp_dates"]), 0)
 
+    @not_gh_action
     def test_chain_data(self):
-        if not "GITHUB_ACTION" in os.environ:
-            return
         wb = Webull()
         watch = ["LMND"]
         wb.setup(watch, "1MIN", None, None)
@@ -78,7 +79,6 @@ class TestWebull(unittest.TestCase):
         df = wb.fetch_option_market_data(sym)
 
         self.assertTrue(True)
-
 
 if __name__ == "__main__":
     unittest.main()

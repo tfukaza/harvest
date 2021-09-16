@@ -58,12 +58,12 @@ class API:
         self.trader = (
             None  # Allows broker to handle the case when runs without a trader
         )
-
+   
         if path is None:
             path = "./secret.yaml"
         # Check if file exists
         yml_file = Path(path)
-        if not yml_file.is_file() and not self.no_secret(path):
+        if not yml_file.is_file() and not self.create_secret(path):
             return
         with open(path, "r") as stream:
             self.config = yaml.safe_load(stream)
@@ -72,7 +72,7 @@ class API:
 
         self.timestamp = now()
 
-    def no_secret(self, path: str):
+    def create_secret(self, path: str):
         """
         This method is called when the yaml file with credentials
         is not found."""
@@ -732,6 +732,7 @@ class StreamAPI(API):
         StreamAPI class
         """
         self.block_lock.acquire()
+        got = [k for k in df_dict]
         # First, identify which symbols need to have data fetched
         # for this timestamp
         if self.first:
@@ -740,7 +741,8 @@ class StreamAPI(API):
                 for sym in self.interval
                 if is_freq(now(), self.interval[sym]["interval"])
             ]
-        got = [k for k in df_dict]
+            self.timestamp = df_dict[got[0]].index[0]
+        
 
         self.debugger.debug(f"Needs: {self.needed}")
         self.debugger.debug(f"Got data for: {got}")
@@ -768,6 +770,7 @@ class StreamAPI(API):
             self.first = False
 
         self.needed = missing
+        self.got = got
         self.block_lock.release()
 
     def timeout(self):
@@ -780,12 +783,10 @@ class StreamAPI(API):
     def flush(self):
         # For missing data, repeat the existing one
         self.block_lock.acquire()
-        got = list(set(self.watch) - set(self.needed))[0]
-        timestamp = self.block_queue[got].index[-1]
         for n in self.needed:
-            data = self.trader.storage.load(n, self.fetch_interval).iloc[[-1]].copy()
-            data.index = [timestamp]
+            data = self.trader.storage.load(n, self.interval[n]["interval"]).iloc[[-1]].copy()
+            data.index = [self.timestamp]
             self.block_queue[n] = data
         self.block_lock.release()
-        self.main_helper(self.block_queue)
+        self.trader_main(self.block_queue)
         self.block_queue = {}

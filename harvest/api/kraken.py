@@ -121,9 +121,6 @@ class Kraken(API):
         super().__init__(path)
         self.api = krakenex.API(self.config["api_key"], self.config["secret_key"])
 
-    def no_secret(self, path: str) -> bool:
-        return self.create_secret(path)
-
     def setup(self, watch: List[str], interval: str, trader=None, trader_main=None):
         self.watch_crypto = []
         if is_crypto(s):

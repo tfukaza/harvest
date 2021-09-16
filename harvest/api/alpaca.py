@@ -70,9 +70,6 @@ class Alpaca(StreamAPI):
         else:
             self.main(self._format_df(df, f"@{symbol}"))
 
-    def no_secret(self, path: str) -> bool:
-        return self.create_secret(path)
-
     def setup(self, interval: Dict, trader=None, trader_main=None):
         super().setup(interval, trader, trader_main)
 

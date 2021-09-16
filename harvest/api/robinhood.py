@@ -38,9 +38,6 @@ class Robinhood(API):
         self.login()
         self.debugger.debug("Logged into Robinhood...")
 
-    def no_secret(self, path):
-        return self.create_secret(path)
-
     @API._run_once
     def setup(self, interval, trader=None, trader_main=None):
 
