@@ -13,7 +13,7 @@ class TestPolygonStreamer(unittest.TestCase):
             return
         poly = PolygonStreamer("poly_secret.yaml", True)
         df = poly.fetch_price_history(
-            "AAPL", "1HR", now() - dt.timedelta(days=7), now()
+            "AAPL", Interval.HR_1, now() - dt.timedelta(days=7), now()
         )["AAPL"]
         self.assertEqual(
             list(df.columns.values), ["open", "high", "low", "close", "volume"]

@@ -60,37 +60,6 @@ class TestTrader(unittest.TestCase):
         with self.assertRaises(Exception):
             t.start("30MIN", ["5MIN", "1DAY"])
 
-    # def test_is_freq(self):
-    #     """If invalid aggregation is set, it should raise an error"""
-    #     t = Trader(DummyStreamer())
-    #     t.fetch_interval = '1MIN'
-
-    #     # If interval is '1MIN', it should always return True
-    #     t.interval = '1MIN'
-    #     self.assertTrue(t.is_freq(dt.datetime(2000,1,1,0,0,0)))
-    #     self.assertTrue(t.is_freq(dt.datetime(2000,1,1,1,1,1)))
-
-    #     # If interval is '5MIN', it should return True every 5 minutes
-    #     t.interval = '5MIN'
-    #     self.assertTrue(t.is_freq(dt.datetime(2000,1,1,0,5,0)))
-    #     self.assertTrue(t.is_freq(dt.datetime(2000,1,1,1,35,0)))
-    #     self.assertFalse(t.is_freq(dt.datetime(2000,1,1,1,36,0)))
-    #     self.assertFalse(t.is_freq(dt.datetime(2000,1,1,1,59,0)))
-
-    #     # If interval is '30MIN', it should return True every 30 minutes
-    #     t.interval = '30MIN'
-    #     self.assertTrue(t.is_freq(dt.datetime(2000,1,1,0,30,0)))
-    #     self.assertTrue(t.is_freq(dt.datetime(2000,1,1,1,30,0)))
-    #     self.assertFalse(t.is_freq(dt.datetime(2000,1,1,1,31,0)))
-    #     self.assertFalse(t.is_freq(dt.datetime(2000,1,1,1,59,0)))
-
-    #     # If interval is '1HR', it should return True every hour
-    #     t.interval = '1HR'
-    #     self.assertTrue(t.is_freq(dt.datetime(2000,1,1,0,0,0)))
-    #     self.assertTrue(t.is_freq(dt.datetime(2000,1,1,1,0,0)))
-    #     self.assertFalse(t.is_freq(dt.datetime(2000,1,1,1,1,0)))
-    #     self.assertFalse(t.is_freq(dt.datetime(2000,1,1,1,59,0)))
-
 
 if __name__ == "__main__":
     unittest.main()

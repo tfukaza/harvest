@@ -58,7 +58,7 @@ class PolygonStreamer(API):
     def fetch_price_history(
         self,
         symbol: str,
-        interval: str,
+        interval: Interval,
         start: dt.datetime = None,
         end: dt.datetime = None,
     ):
