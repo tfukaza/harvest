@@ -65,11 +65,6 @@ class Alpaca(StreamAPI):
                 }
             ]
         )
-        # if symbol in self.watch_stock:
-        #     self.data["stocks"][symbol] = self._format_df(df, symbol)
-        # elif f"@{symbol}" in self.watch_crypto:
-        #     self.data["cryptos"][f"@{symbol}"] = self._format_df(df, f"@{symbol}")
-        # self.data_lock.release()
         if is_crypto(symbol):
             self.main(self._format_df(df, symbol))
         else:
@@ -77,11 +72,6 @@ class Alpaca(StreamAPI):
 
     def no_secret(self, path: str) -> bool:
         return self.create_secret(path)
-
-    def capture_data(self):
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        self.stream.run()
 
     def setup(self, interval: Dict, trader=None, trader_main=None):
         super().setup(interval, trader, trader_main)
@@ -98,33 +88,19 @@ class Alpaca(StreamAPI):
                 self.watch_stock.append(s)
 
         self.stream.on_bar(*(self.watch_stock + cryptos))(self.update_data)
-        threading.Thread(target=self.capture_data, daemon=True).start()
 
         self.option_cache = {}
+    
+    def start(self):
+        threading.Thread(target=self.capture_data, daemon=True).start()
+    
+    def capture_data(self):
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        self.stream.run()
 
     def exit(self):
         self.option_cache = {}
-
-    # def main(self):
-    #     df_dict = {}
-    #     df_dict.update(self.fetch_latest_stock_price())
-    #     df_dict.update(self.fetch_latest_crypto_price())
-
-    #     self.trader_main(df_dict)
-
-    # @API._exception_handler
-    # def fetch_latest_stock_price(self):
-    #     self.data_lock.acquire()
-    #     df = self.data["stocks"]
-    #     self.data_lock.release()
-    #     return df
-
-    # @API._exception_handler
-    # def fetch_latest_crypto_price(self):
-    #     self.data_lock.acquire()
-    #     df = self.data["cryptos"]
-    #     self.data_lock.release()
-    #     return df
 
     # -------------- Streamer methods -------------- #
 
