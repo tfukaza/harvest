@@ -79,7 +79,12 @@ class BackTester(trader.Trader):
             a.setup()
             a.trader = self
 
-        self.main()
+        self.broker.setup(self.watch, interval, self, self.main)
+        if self.broker != self.streamer:
+            # Only call the streamer setup if it is a different
+            # instance than the broker otherwise some brokers can
+            # fail!
+            self.streamer.setup(self.watch, interval, self, self.main)
 
     def _setup(self, source, interval: str, aggregations=None, path=None):
         self._setup_params(interval, aggregations)

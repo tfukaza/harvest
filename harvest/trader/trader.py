@@ -143,9 +143,13 @@ class Trader:
         # Initialize the account
         self._setup_account()
 
-        # Initialize streamers and brokers
-        self.broker.setup(self.interval, self, self.main)
-        self.streamer.setup(self.interval, self, self.main)
+        self.broker.setup(self.watch, interval, self, self.main)
+        if self.broker != self.streamer:
+            # Only call the streamer setup if it is a different
+            # instance than the broker otherwise some brokers can
+            # fail!
+            self.streamer.setup(self.watch, interval, self, self.main)
+        self._setup(interval, aggregations, sync)
 
         # Initialize the storage
         self._storage_init()

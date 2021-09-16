@@ -233,7 +233,6 @@ class Alpaca(StreamAPI):
         if self.basic:
             error("Basic accounts can't access crypto. Returning None")
             return None
-
         return self.api.get_order(order_id).__dict__["_raw"]
 
     @API._exception_handler
