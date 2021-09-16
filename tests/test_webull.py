@@ -4,13 +4,15 @@ import unittest
 import datetime as dt
 import os
 
+# Prevent running on Github Actions because webull is not installed
+if "GITHUB_ACTION" in os.environ:
+    exit(0)
+
 from harvest.api.webullapi import Webull
 
 
 class TestWebull(unittest.TestCase):
     def test_fetch_prices(self):
-        if "GITHUB_ACTION" in os.environ:
-            return
         wb = Webull()
         df = wb.fetch_price_history("SPY", interval="1MIN")["SPY"]
         self.assertEqual(
@@ -19,8 +21,6 @@ class TestWebull(unittest.TestCase):
         )
 
     def test_setup(self):
-        if "GITHUB_ACTION" in os.environ:
-            return
         wb = Webull()
         watch = ["SPY", "AAPL", "@BTC", "@ETH"]
         wb.setup(watch, "1MIN")
@@ -29,8 +29,6 @@ class TestWebull(unittest.TestCase):
         self.assertEqual(wb.watch_crypto, ["@BTC", "@ETH"])
 
     def test_main(self):
-        if "GITHUB_ACTION" in os.environ:
-            return
         def test_main(df):
             self.assertEqual(len(df), 3)
             self.assertEqual(df["SPY"].columns[0][0], "SPY")
@@ -43,8 +41,6 @@ class TestWebull(unittest.TestCase):
         wb.main()
 
     def test_main_single(self):
-        if "GITHUB_ACTION" in os.environ:
-            return
         def test_main(df):
             self.assertEqual(len(df), 1)
             self.assertEqual(df["SPY"].columns[0][0], "SPY")
@@ -55,8 +51,6 @@ class TestWebull(unittest.TestCase):
         wb.main()
 
     def test_chain_info(self):
-        if "GITHUB_ACTION" in os.environ:
-            return
         wb = Webull()
         watch = ["SPY"]
         wb.setup(watch, "1MIN", None, None)
@@ -64,8 +58,6 @@ class TestWebull(unittest.TestCase):
         self.assertGreater(len(info["exp_dates"]), 0)
 
     def test_chain_data(self):
-        if "GITHUB_ACTION" in os.environ:
-            return
         wb = Webull()
         watch = ["LMND"]
         wb.setup(watch, "1MIN", None, None)
