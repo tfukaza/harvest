@@ -54,7 +54,7 @@ class BaseStorage:
             return None
 
         # Removes the seconds and milliseconds
-        data.index = normalize_pandas_dt_index(data)
+        #data.index = normalize_pandas_dt_index(data)
 
         self.storage_lock.acquire()
 
@@ -166,28 +166,28 @@ class BaseStorage:
                     return data
             return None
 
-        dt_interval = interval_to_timedelta(interval)
+        #dt_interval = interval_to_timedelta(interval)
 
-        self.storage_lock.acquire()
-        if interval not in self.storage[symbol]:
-            # If we don't have the given interval but we a smaller one,
-            # then aggregate the data
-            print(self.storage[symbol])
-            intervals = [
-                (interval, interval_to_timedelta(interval))
-                for interval in self.storage[symbol]
-                if interval_to_timedelta(interval) < dt_interval
-            ]
-            if not intervals:
-                self.storage_lock.release()
-                return None
+        # self.storage_lock.acquire()
+        # if interval not in self.storage[symbol]:
+        #     # If we don't have the given interval but we a smaller one,
+        #     # then aggregate the data
+        #     print(self.storage[symbol])
+        #     intervals = [
+        #         (interval, interval_to_timedelta(interval))
+        #         for interval in self.storage[symbol]
+        #         if interval_to_timedelta(interval) < dt_interval
+        #     ]
+        #     if not intervals:
+        #         self.storage_lock.release()
+        #         return None
 
-            data = self.storage[symbol][intervals[-1][0]]
-            data = aggregate_df(data, interval)
-        else:
-            data = self.storage[symbol][interval]
-        self.storage_lock.release()
-
+        #     data = self.storage[symbol][intervals[-1][0]]
+        #     data = aggregate_df(data, interval)
+        # else:
+        #     data = self.storage[symbol][interval]
+        # self.storage_lock.release()
+        data = self.storage[symbol][interval]
         if no_slice:
             return data
 

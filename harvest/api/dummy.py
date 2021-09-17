@@ -281,3 +281,4 @@ class DummyStreamer(API):
         self.now += interval_to_timedelta(self.poll_interval)
         if not self.trader_main == None:
             self.main()
+    

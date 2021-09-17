@@ -46,7 +46,6 @@ def interval_enum_to_string(enum):
     except:
         return str(enum)
 
-
 def is_freq(time, interval):
     """Helper function to determine if algorithm should be invoked for the
     current timestamp. For example, if interval is 30MIN,
@@ -74,6 +73,15 @@ def expand_interval(interval: Interval):
     unit, value = string.split("_")
     return int(value), unit
 
+def expand_string_interval(interval: str):
+    """
+    Given a string interval, returns the unit of time and the number of units.
+    For example, "3DAY" should return (3, "DAY")
+    """
+    num = [c for c in interval if c.isdigit()]
+    value = int("".join(num))
+    unit = interval[len(num):]
+    return value, unit
 
 def interval_to_timedelta(interval: Interval) -> dt.timedelta:
     expanded_units = {"DAY": "days", "HR": "hours", "MIN": "minutes"}
@@ -81,14 +89,11 @@ def interval_to_timedelta(interval: Interval) -> dt.timedelta:
     params = {expanded_units[unit]: value}
     return dt.timedelta(**params)
 
-
 def is_crypto(symbol: str) -> bool:
     return symbol[0] == "@"
 
-
 def normalize_pandas_dt_index(df: pd.DataFrame) -> pd.Index:
     return df.index.floor("min")
-
 
 def aggregate_df(df, interval: Interval) -> pd.DataFrame:
     sym = df.columns[0][0]
@@ -131,9 +136,14 @@ def epoch_zero() -> dt.datetime:
 def date_to_str(day) -> str:
     return day.strftime("%Y-%m-%d")
 
-
 def str_to_date(day) -> str:
-    return dt.datetime.strptime(day, "%Y-%m-%d")
+    return pytz.utc.localize(dt.datetime.strptime(day, "%Y-%m-%d"))
+
+def str_to_datetime(date: str) -> dt.datetime:
+    """
+    :date: A string in the format MM-DD-YYYY:HH:MM:SS
+    """
+    return pytz.utc.localize(dt.datetime.strptime(date, "%m-%d-%Y:%H:%M:%S"))
 
 
 def mark_up(x):

@@ -705,6 +705,9 @@ Reduce purchase quantity or increase buying power."""
         option_type = "call" if symbol[6] == "C" else "put"
         price = float(symbol[7:]) / 1000
         return sym, date, option_type, price
+    
+    def current_timestamp(self):
+        return self.timestamp
 
 
 class StreamAPI(API):
