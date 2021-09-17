@@ -67,7 +67,7 @@ if __name__ == '__main__':
     # Store the OHLC data in a folder called `em_storage` with each file stored as a csv document
     csv_storage = CSVStorage(save_dir='em_storage')
     # Our streamer and broker will be Alpaca. My secret keys are stored in `alpaca_secret.yaml`
-    alpaca = Alpaca(path='alpaca_account.yaml', is_basic_account=True, paper_trader=True)
+    alpaca = Alpaca(path='accounts/alpaca_account.yaml', is_basic_account=True, paper_trader=True)
     em_algo = EMAlgo()
     trader = Trader(streamer=alpaca, broker=alpaca, storage=csv_storage, debug=True)
 
