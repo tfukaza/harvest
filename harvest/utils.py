@@ -1,13 +1,22 @@
+# Builtin Imports
 import re
 import time
 import random
+import logging
 import datetime as dt
 from enum import IntEnum, auto
 
+# External Imports
 import pytz
 import tzlocal
 import pandas as pd
 
+logging.basicConfig(
+    filename="harvest.log",
+    format="%(asctime)s : %(name)s : %(levelname)s : %(message)s",
+    datefmt="%m/%d/%Y %I:%M:%S %p",
+)
+logger = logging.getLogger("harvest")
 
 class Interval(IntEnum):
     SEC_15 = auto()

@@ -5,7 +5,6 @@ import sys
 from sys import exit
 from signal import signal, SIGINT
 import time
-import logging
 
 # External libraries
 
@@ -83,27 +82,8 @@ class Trader:
         self.server = Server(self)
 
         # Set up logger
-        self.debugger = logging.getLogger("harvest")
-        self.debugger.setLevel("DEBUG")
         if debug:
-            f_handler = logging.FileHandler("trader.log")
-            f_handler.setLevel(logging.DEBUG)
-            f_format = logging.Formatter(
-                "%(asctime)s : %(name)s : %(levelname)s : %(message)s"
-            )
-            f_handler.setFormatter(f_format)
-            self.debugger.addHandler(f_handler)
-
-        c_handler = logging.StreamHandler()
-        if debug:
-            c_handler.setLevel(logging.DEBUG)
-        else:
-            c_handler.setLevel(logging.INFO)
-        c_format = logging.Formatter(
-            "%(asctime)s : %(name)s : %(levelname)s : %(message)s"
-        )
-        c_handler.setFormatter(c_format)
-        self.debugger.addHandler(c_handler)
+            logger.setLevel("DEBUG")
 
     def start(self, interval="5MIN", aggregations=[], sync=True, server=False):
         """Entry point to start the system.

@@ -234,7 +234,7 @@ class Alpaca(StreamAPI):
 
     @API._exception_handler
     def fetch_order_queue(self):
-        return [pos.__dict__["_raw"] for pos in api.list_positions()]
+        return [pos.__dict__["_raw"] for pos in self.api.list_positions()]
 
     def order_limit(
         self,
