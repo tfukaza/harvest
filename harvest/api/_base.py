@@ -7,7 +7,6 @@ from pathlib import Path
 import yaml
 import traceback
 import threading
-
 from typing import List, Dict, Any
 
 # External libraries
@@ -15,7 +14,6 @@ import pandas as pd
 
 # Submodule imports
 from harvest.utils import *
-
 
 class API:
     """
@@ -64,6 +62,7 @@ class API:
         # Check if file exists
         yml_file = Path(path)
         if not yml_file.is_file() and not self.create_secret(path):
+            debugger.debug("Broker not initalized with account information.")
             return
         with open(path, "r") as stream:
             self.config = yaml.safe_load(stream)
@@ -89,6 +88,7 @@ class API:
         and initializes several runtime parameters like
         the symbols to watch and what interval data is needed.
         """
+
         self.trader = trader
         self.trader_main = trader_main
 
@@ -111,6 +111,9 @@ class API:
 
         self.interval = interval
         self.poll_interval = min_interval
+        debugger.debug(f"Interval: {self.interval}")
+        debugger.debug(f"Poll Interval: {self.poll_interval}")
+        debugger.debug(f"{type(self).__name__} setup finished")
 
     def start(self):
         """
@@ -127,7 +130,7 @@ class API:
         cur_min = -1
         val, unit = expand_interval(self.poll_interval)
 
-        print("Running...")
+        debugger.info(f"{type(self).__name__} started...")
         if unit == "MIN":
             sleep = val * 60 - 10
             while 1:
@@ -193,7 +196,7 @@ class API:
         This function is called after every invocation of algo's handler.
         The intended purpose is for brokers to clear any cache it may have created.
         """
-        pass
+        debugger.info("f{type(self).__name__} exited")
 
     def _exception_handler(func):
         """
@@ -212,12 +215,12 @@ class API:
                     return func(*args, **kwargs)
                 except Exception as e:
                     self = args[0]
-                    debugger.debug(f"Error: {e}")
+                    debugger.error(f"Error: {e}")
                     traceback.print_exc()
-                    debugger.debug("Logging out and back in...")
+                    debugger.error("Logging out and back in...")
                     args[0].refresh_cred()
                     tries = tries - 1
-                    debugger.debug("Retrying...")
+                    debugger.error("Retrying...")
                     continue
 
         return wrapper
@@ -523,7 +526,7 @@ class API:
         :returns: The result of order_limit(). Returns None if there is an issue with the parameters.
         """
         if quantity <= 0.0:
-            debugger.warning(
+            debugger.error(
                 f"Quantity cannot be less than or equal to 0: was given {quantity}"
             )
             return None
@@ -546,11 +549,12 @@ class API:
         total_price = limit_price * quantity
 
         if total_price >= buy_power:
-            debugger.warning(
+            debugger.error(
                 f"""Not enough buying power.\n Total price ({price} * {quantity} * 1.05 = {limit_price*quantity}) exceeds buying power {buy_power}.\n Reduce purchase quantity or increase buying power."""
             )
             return None
 
+        debugger.debug(f"type(self).__name__ ordered a buy of {quantity} {symbol}")
         return self.order_limit(
             "buy", symbol, quantity, limit_price, in_force, extended
         )
@@ -593,6 +597,7 @@ class API:
 
         limit_price = mark_down(price)
 
+        debugger.debug(f"type(self).__name__ ordered a sell of {quantity} {symbol}")
         return self.order_limit(
             "sell", symbol, quantity, limit_price, in_force, extended
         )
@@ -722,7 +727,7 @@ class StreamAPI(API):
         self.blocker = {}
 
     def start(self):
-        pass
+        debugger.debug(f"{type(self).__name__ started...")
 
     def main(self, df_dict):
         """

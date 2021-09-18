@@ -1,7 +1,6 @@
 # Builtins
 import yaml
 import datetime as dt
-from logging import critical, error, info, warning, debug
 from typing import Any, Dict, List, Tuple
 
 # External libraries
@@ -126,7 +125,7 @@ class Kraken(API):
         if is_crypto(s):
             self.watch_crypto.append(s)
         else:
-            warning("Kraken does not support stocks!")
+            debugger.error("Kraken does not support stocks.")
 
         self.option_cache = {}
         super().setup(watch, interval, interval, trader, trader_main)
@@ -160,7 +159,7 @@ class Kraken(API):
         end: dt.datetime = None,
     ):
 
-        debug(f"Fetching {symbol} {interval} price history")
+        debugger.debug(f"Fetching {symbol} {interval} price history")
 
         if start is None:
             start = now() - dt.timedelta(days=365 * 5)
@@ -185,28 +184,31 @@ class Kraken(API):
 
     @API._exception_handler
     def fetch_chain_info(self, symbol: str):
-        raise Exception("Kraken does not support options.")
+        raise NotImplementedError("Kraken does not support options.")
 
     @API._exception_handler
     def fetch_chain_data(self, symbol: str, date: dt.datetime):
-        raise Exception("Kraken does not suppoet options.")
+        raise NotImplementedError("Kraken does not suppoet options.")
 
     @API._exception_handler
     def fetch_option_market_data(self, occ_symbol: str):
-        raise Exception("Kraken does not support options")
+        raise NotImplementedError("Kraken does not support options.")
 
     # ------------- Broker methods ------------- #
 
     @API._exception_handler
     def fetch_stock_positions(self):
-        raise Exception("Kraken does not support stocks.")
+        debugger.error("Kraken does not support stocks. Returning an empty list.")
+        return []
 
     @API._exception_handler
     def fetch_option_positions(self):
-        raise Exception("Kraken does not support options")
+        debugger.error("Kraken does not support options")
+        return []
 
     @API._exception_handler
-    def fetch_crypto_positions(self, key=None):
+    def fetch_crypto_positions(self):
+        return self.api.query_private
         return [
             pos.__dict__["_raw"]
             for pos in self.api.list_positions()

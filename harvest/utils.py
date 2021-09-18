@@ -1,5 +1,6 @@
 # Builtin Imports
 import re
+import sys
 import time
 import random
 import logging
@@ -11,14 +12,17 @@ import pytz
 import tzlocal
 import pandas as pd
 
+formatter = logging.Formatter("%(asctime)s : %(name)s : %(levelname)s : %(message)s")
 logging.basicConfig(
-    filename="harvest.log",
     level=logging.INFO,
     format="%(asctime)s : %(name)s : %(levelname)s : %(message)s",
     datefmt="%m/%d/%Y %I:%M:%S %p",
+    handlers=[
+        logging.FileHandler("harvest.log"),
+        logging.StreamHandler(sys.stdout)
+    ]
 )
 debugger = logging.getLogger("harvest")
-debugger.addHandler(logging.StreamHandler())
 
 class Interval(IntEnum):
     SEC_15 = auto()

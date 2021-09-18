@@ -3,7 +3,6 @@ import json
 import yaml
 import datetime as dt
 import urllib.request
-from logging import critical, error, info, warning, debug
 from typing import Any, Dict, List, Tuple
 
 # External libraries

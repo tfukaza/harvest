@@ -1,6 +1,5 @@
 from typing import List
-from logging import error
-
+from harvest.utils import debugger
 
 class Plugin:
     """
@@ -36,6 +35,6 @@ class Plugin:
         try:
             exec(f"import {dep}")
         except ModuleNotFoundError as e:
-            error(f"Error importing module!\n {e}")
-            error(self.installation())
+            debugger.error(f"Error importing module!\n {e}")
+            debugger.error(self.installation())
             raise e

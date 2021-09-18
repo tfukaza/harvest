@@ -1,7 +1,6 @@
 # Builtins
 import datetime as dt
 from typing import Any, Dict, List, Tuple
-from logging import critical, error, info, warning, debug
 import hashlib
 
 # External libraries
@@ -198,6 +197,7 @@ class DummyStreamer(API):
         results = pd.DataFrame(data=d).set_index("timestamp")
 
         if self.realistic_times:
+            debugger.debug("Dummy Broker excluding information when the stock market is closed.")
             open_time = dt.time(hour=13, minute=30)
             close_time = dt.time(hour=20)
 
@@ -216,10 +216,10 @@ class DummyStreamer(API):
 
     # TODO: Generate dummy option data
     def fetch_chain_info(self, symbol: str):
-        raise Exception("Not implemented")
+        raise NotImplementedError("Dummy Streamer does not support broker functions.")
 
     def fetch_chain_data(self, symbol: str):
-        raise Exception("Not implemented")
+        raise NotImplementedError("Dummy Streamer does not support broker functions.")
 
     def fetch_option_market_data(self, symbol: str):
         # This is a placeholder so Trader doesn't crash
@@ -229,7 +229,7 @@ class DummyStreamer(API):
         hsh = message.digest()
         price = int.from_bytes(hsh[:4], "big") / (2 ** 32)
         price = (price + 1) * 1.5
-        print(price)
+        debugger.debug(f"Dummy Streamer fake fetch option market data price for {symbol}: {price}")
 
         return {
             "price": price,
@@ -240,31 +240,31 @@ class DummyStreamer(API):
     # ------------- Broker methods ------------- #
 
     def fetch_stock_positions(self) -> List[Dict[str, Any]]:
-        raise Exception("Not implemented")
+        raise NotImplementedError("Dummy Streamer does not support broker functions.")
 
     def fetch_option_positions(self) -> List[Dict[str, Any]]:
-        raise Exception("Not implemented")
+        raise NotImplementedError("Dummy Streamer does not support broker functions.")
 
     def fetch_crypto_positions(self) -> List[Dict[str, Any]]:
-        raise Exception("Not implemented")
+        raise NotImplementedError("Dummy Streamer does not support broker functions.")
 
     def update_option_positions(self, positions) -> List[Dict[str, Any]]:
-        raise Exception("Not implemented")
+        raise NotImplementedError("Dummy Streamer does not support broker functions.")
 
     def fetch_account(self) -> Dict[str, Any]:
-        raise Exception("Not implemented")
+        raise NotImplementedError("Dummy Streamer does not support broker functions.")
 
     def fetch_stock_order_status(self, id: int) -> Dict[str, Any]:
-        raise Exception("Not implemented")
+        raise NotImplementedError("Dummy Streamer does not support broker functions.")
 
     def fetch_option_order_status(self, id: int) -> Dict[str, Any]:
-        raise Exception("Not implemented")
+        raise NotImplementedError("Dummy Streamer does not support broker functions.")
 
     def fetch_crypto_order_status(self, id: int) -> Dict[str, Any]:
-        raise Exception("Not implemented")
+        raise NotImplementedError("Dummy Streamer does not support broker functions.")
 
     def fetch_order_queue(self) -> List[Dict[str, Any]]:
-        raise Exception("Not implemented")
+        raise NotImplementedError("Dummy Streamer does not support broker functions.")
 
     # ------------- Helper methods ------------- #
 
