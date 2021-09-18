@@ -13,11 +13,12 @@ import pandas as pd
 
 logging.basicConfig(
     filename="harvest.log",
+    level=logging.INFO,
     format="%(asctime)s : %(name)s : %(levelname)s : %(message)s",
     datefmt="%m/%d/%Y %I:%M:%S %p",
 )
 debugger = logging.getLogger("harvest")
-
+debugger.addHandler(logging.StreamHandler())
 
 class Interval(IntEnum):
     SEC_15 = auto()
