@@ -23,7 +23,6 @@ class YahooStreamer(API):
     ]
 
     def __init__(self, path=None):
-        self.debugger = logging.getLogger("harvest")
         self.timestamp = now()
 
     def setup(self, interval: Dict, trader=None, trader_main=None):
@@ -73,7 +72,7 @@ class YahooStreamer(API):
             s = combo[0]
             interval_fmt = self.fmt_interval(self.interval[s]["interval"])
             df = yf.download(s, period="1d", interval=interval_fmt, prepost=True)
-            self.debugger.debug(f"From yfinance got: {df}")
+            debugger.debug(f"From yfinance got: {df}")
             if len(df.index) == 0:
                 return
             s = self.unfmt_symbol(s)
@@ -95,7 +94,7 @@ class YahooStreamer(API):
                     names, period="1d", interval=self.fmt_interval(i), prepost=True
                 )
                 df = df.join(df_tmp)
-            self.debugger.debug(f"From yfinance got: {df}")
+            debugger.debug(f"From yfinance got: {df}")
             if len(df.index) == 0:
                 return
             for s in combo:
@@ -120,7 +119,7 @@ class YahooStreamer(API):
         end: dt.datetime = None,
     ):
 
-        self.debugger.debug(f"Fetching {symbol} {interval} price history")
+        debugger.debug(f"Fetching {symbol} {interval} price history")
         if isinstance(interval, str):
             interval = interval_string_to_enum(interval)
 

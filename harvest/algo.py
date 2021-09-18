@@ -20,9 +20,9 @@ Methods that perform an action should follow this naming convention:
     - target: The entity the method operates on, such as 'stock', 'option', 'account'
     - returns: What the method returns, such as 'list', 'price'
 
-When dealing with dates, unlike datetime objects in other classes, 
-dates in Algo class are NOT localized to UTC timezone. This keeps the 
-interface easier for users, especially for beginners of Python. 
+When dealing with dates, unlike datetime objects in other classes,
+dates in Algo class are NOT localized to UTC timezone. This keeps the
+interface easier for users, especially for beginners of Python.
 """
 
 
@@ -35,8 +35,6 @@ class BaseAlgo:
 
     def __init__(self):
         self.trader = None
-        self.debugger = logging.getLogger("harvest")
-
         self.interval = None
         self.aggregations = None
         self.watchlist = []
@@ -57,7 +55,7 @@ class BaseAlgo:
         if value is None:
             setattr(self, plugin.name, plugin)
         else:
-            self.debugger.error(
+            debugger.error(
                 f"Plugin name is already in use! {plugin.name} points to {value}."
             )
 
@@ -92,7 +90,7 @@ class BaseAlgo:
         if quantity is None:
             quantity = self.get_asset_max_quantity(symbol)
 
-        self.debugger.debug(f"Algo BUY: {symbol}, {quantity}")
+        debugger.debug(f"Algo BUY: {symbol}, {quantity}")
         return self.trader.buy(symbol, quantity, in_force, extended)
 
     def sell(
@@ -124,7 +122,7 @@ class BaseAlgo:
         if quantity is None:
             quantity = self.get_asset_quantity(symbol)
 
-        self.debugger.debug(f"Algo SELL: {symbol}, {quantity}")
+        debugger.debug(f"Algo SELL: {symbol}, {quantity}")
         return self.trader.sell(symbol, quantity, in_force, extended)
 
     # def await_buy(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
@@ -358,7 +356,7 @@ class BaseAlgo:
         )
 
         if len(prices) < period:
-            self.debugger.warning("Not enough data to calculate RSI, returning None")
+            debugger.warning("Not enough data to calculate RSI, returning None")
             return None
 
         ohlc = pd.DataFrame(
@@ -394,7 +392,7 @@ class BaseAlgo:
         )
 
         if len(prices) < period:
-            self.debugger.warning("Not enough data to calculate SMA, returning None")
+            debugger.warning("Not enough data to calculate SMA, returning None")
             return None
 
         ohlc = pd.DataFrame(
@@ -430,7 +428,7 @@ class BaseAlgo:
         )
 
         if len(prices) < period:
-            self.debugger.warning("Not enough data to calculate EMA, returning None")
+            debugger.warning("Not enough data to calculate EMA, returning None")
             return None
 
         ohlc = pd.DataFrame(
@@ -468,7 +466,7 @@ class BaseAlgo:
         )
 
         if len(prices) < period:
-            self.debugger.warning("Not enough data to calculate BBands, returning None")
+            debugger.warning("Not enough data to calculate BBands, returning None")
             return None, None, None
 
         ohlc = pd.DataFrame(
@@ -577,7 +575,7 @@ class BaseAlgo:
             interval = self.interval
         if len(symbol) <= 6:
             return list(self.trader.storage.load(symbol, interval)[symbol][ref])
-        self.debugger.warning("Price list not available for options")
+        debugger.warning("Price list not available for options")
         return None
 
     def get_asset_candle(self, symbol: str, interval=None) -> pd.DataFrame():
@@ -604,7 +602,7 @@ class BaseAlgo:
             interval = self.interval
         if len(symbol) <= 6:
             return self.trader.storage.load(symbol, interval).iloc[[-1]][symbol]
-        self.debugger.warning("Candles not available for options")
+        debugger.warning("Candles not available for options")
         return None
 
     def get_asset_candle_list(

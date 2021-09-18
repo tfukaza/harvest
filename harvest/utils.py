@@ -16,7 +16,8 @@ logging.basicConfig(
     format="%(asctime)s : %(name)s : %(levelname)s : %(message)s",
     datefmt="%m/%d/%Y %I:%M:%S %p",
 )
-logger = logging.getLogger("harvest")
+debugger = logging.getLogger("harvest")
+
 
 class Interval(IntEnum):
     SEC_15 = auto()

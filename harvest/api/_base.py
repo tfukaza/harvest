@@ -68,8 +68,6 @@ class API:
         with open(path, "r") as stream:
             self.config = yaml.safe_load(stream)
 
-        self.debugger = logging.getLogger("harvest")
-
         self.timestamp = now()
 
     def create_secret(self, path: str):
@@ -214,12 +212,12 @@ class API:
                     return func(*args, **kwargs)
                 except Exception as e:
                     self = args[0]
-                    self.debugger.debug(f"Error: {e}")
+                    debugger.debug(f"Error: {e}")
                     traceback.print_exc()
-                    self.debugger.debug("Logging out and back in...")
+                    debugger.debug("Logging out and back in...")
                     args[0].refresh_cred()
                     tries = tries - 1
-                    self.debugger.debug("Retrying...")
+                    debugger.debug("Retrying...")
                     continue
 
         return wrapper
@@ -525,7 +523,7 @@ class API:
         :returns: The result of order_limit(). Returns None if there is an issue with the parameters.
         """
         if quantity <= 0.0:
-            self.debugger.warning(
+            debugger.warning(
                 f"Quantity cannot be less than or equal to 0: was given {quantity}"
             )
             return None
@@ -548,7 +546,7 @@ class API:
         total_price = limit_price * quantity
 
         if total_price >= buy_power:
-            self.debugger.warning(
+            debugger.warning(
                 f"""Not enough buying power.\n Total price ({price} * {quantity} * 1.05 = {limit_price*quantity}) exceeds buying power {buy_power}.\n Reduce purchase quantity or increase buying power."""
             )
             return None
@@ -576,7 +574,7 @@ class API:
         if symbol == None:
             symbol = self.watch[0]
         if quantity <= 0.0:
-            self.debugger.warning(
+            debugger.warning(
                 f"Quantity cannot be less than or equal to 0: was given {quantity}"
             )
             return None
@@ -610,7 +608,7 @@ class API:
         :returns: The result of order_option_limit(). Returns None if there is an issue with the parameters.
         """
         if quantity <= 0.0:
-            self.debugger.warning(
+            debugger.warning(
                 f"Quantity cannot be less than or equal to 0: was given {quantity}"
             )
             return None
@@ -625,7 +623,7 @@ class API:
         total_price = limit_price * quantity
 
         if total_price >= buy_power:
-            self.debugger.warning(
+            debugger.warning(
                 f"""
 Not enough buying power 🏦.\n
 Total price ({price} * {quantity} * 1.05 = {limit_price*quantity}) exceeds buying power {buy_power}.\n
@@ -655,7 +653,7 @@ Reduce purchase quantity or increase buying power."""
         :returns: The result of order_option_limit(). Returns None if there is an issue with the parameters.
         """
         if quantity <= 0.0:
-            self.debugger.warning(
+            debugger.warning(
                 f"Quantity cannot be less than or equal to 0: was given {quantity}"
             )
             return None
@@ -743,17 +741,17 @@ class StreamAPI(API):
             ]
             self.timestamp = df_dict[got[0]].index[0]
 
-        self.debugger.debug(f"Needs: {self.needed}")
-        self.debugger.debug(f"Got data for: {got}")
+        debugger.debug(f"Needs: {self.needed}")
+        debugger.debug(f"Got data for: {got}")
         missing = list(set(self.needed) - set(got))
-        self.debugger.debug(f"Still need data for: {missing}")
+        debugger.debug(f"Still need data for: {missing}")
 
         self.block_queue.update(df_dict)
-        # self.debugger.debug(self.block_queue)
+        # debugger.debug(self.block_queue)
 
         # If all data has been received, pass on the data
         if len(missing) == 0:
-            self.debugger.debug("All data received")
+            debugger.debug("All data received")
             self.trader_main(self.block_queue)
             self.block_queue = {}
             self.all_recv = True
@@ -773,10 +771,10 @@ class StreamAPI(API):
         self.block_lock.release()
 
     def timeout(self):
-        self.debugger.debug("Begin timeout timer")
+        debugger.debug("Begin timeout timer")
         time.sleep(1)
         if not self.all_recv:
-            self.debugger.debug("Force flush")
+            debugger.debug("Force flush")
             self.flush()
 
     def flush(self):
