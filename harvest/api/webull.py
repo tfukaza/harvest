@@ -13,7 +13,6 @@ import yaml
 from harvest.api._base import API
 from harvest.utils import *
 
-
 class Webull(API):
     def __init__(self, path: str = None, paper_trader: bool = False):
         super().__init__(path)
@@ -49,9 +48,7 @@ class Webull(API):
         elif not wb_tokens and hasattr(self, "config"):
             debugger.debug("Trying interactive login.")
             self.api.login(self.config["wb_username"], self.config["wb_password"])
-        debugger.debug(
-            f"Logged-in?: {self.api.is_logged_in()}, Paper: {self.paper}"
-        )
+        debugger.debug(f"Logged-in?: {self.api.is_logged_in()}, Paper: {self.paper}")
 
     def refresh_cred(self):
         debugger.debug("Refreshing creds for Webull...")
@@ -515,9 +512,7 @@ class Webull(API):
             }
 
         except:
-            debugger.error(
-                "Error while placing order.\nReturned: {ret}", exc_info=True
-            )
+            debugger.error("Error while placing order.\nReturned: {ret}", exc_info=True)
             raise Exception("Error while placing order")
 
     def _format_df(

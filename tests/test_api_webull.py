@@ -4,11 +4,7 @@ import unittest
 import datetime as dt
 import os
 
-try:
-    from harvest.api.webullapi import Webull
-except ImportError:
-    pass
-
+from harvest.api.webull import Webull
 
 class TestWebull(unittest.TestCase):
     def not_gh_action(func):
@@ -85,6 +81,5 @@ class TestWebull(unittest.TestCase):
         self.assertTrue(True)
 
 
-if __name__ == "__main__" and "GITHUB_ACTION" not in os.environ:
-    print(os.environ)
+if __name__ == "__main__":
     unittest.main()
