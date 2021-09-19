@@ -12,6 +12,7 @@ import yaml
 from harvest.api._base import API
 from harvest.utils import *
 
+
 class Webull(API):
     def __init__(self, path: str = None, paper_trader: bool = False):
         super().__init__(path)

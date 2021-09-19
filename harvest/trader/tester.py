@@ -306,7 +306,7 @@ class BackTester(trader.Trader):
         # st.print_stats(0.1)
         # st.dump_stats("stat.txt")
 
-        print(self.account)
+        debugger.debug(self.account)
 
     def _queue_update(self, new_df: pd.DataFrame, time):
         pass

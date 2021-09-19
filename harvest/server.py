@@ -5,6 +5,7 @@ import json
 
 from harvest.utils import debugger
 
+
 class Server:
     """
     Runs a web server in a new thread.

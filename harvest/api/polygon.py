@@ -48,7 +48,7 @@ class PolygonStreamer(API):
                 s, 1, "day", now() - dt.timedelta(days=1), now()
             )
             df_dict[s] = df
-            print(df)
+            debuger.debug(df)
         self.trader_main(df_dict)
 
     # -------------- Streamer methods -------------- #
@@ -128,7 +128,7 @@ class PolygonStreamer(API):
         else:
             chain = chain.puts
         df = chain[chain["contractSymbol"] == occ_symbol]
-        print(occ_symbol, df)
+        debugger.debug(occ_symbol, df)
         return {
             "price": float(df["lastPrice"].iloc[0]),
             "ask": float(df["ask"].iloc[0]),

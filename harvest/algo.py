@@ -658,7 +658,7 @@ class BaseAlgo:
 
         power = self.get_account_buying_power()
         price = self.get_asset_price(symbol)
-        print(f"{symbol} price: {price}, buying power: {power}")
+        debugger.debug(f"{symbol} price: {price}, buying power: {power}")
         if is_crypto(symbol):
             price = mark_up(price)
             return math.floor(power / price * 10 ** 5) / 10 ** 5

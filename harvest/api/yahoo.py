@@ -210,7 +210,7 @@ class YahooStreamer(API):
         else:
             chain = chain.puts
         df = chain[chain["contractSymbol"] == occ_symbol]
-        print(occ_symbol, df)
+        debugger.debug(occ_symbol, df)
         return {
             "price": float(df["lastPrice"].iloc[0]),
             "ask": float(df["ask"].iloc[0]),
