@@ -20,5 +20,5 @@ class TestPolygonStreamer(unittest.TestCase):
         )
 
 
-if __name__ == "__main__"n:
+if __name__ == "__main__":
     unittest.main()
