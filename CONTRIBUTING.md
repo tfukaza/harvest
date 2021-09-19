@@ -19,6 +19,23 @@ Run the following in the root of the project directory to install local changes 
 ```bash
 pip install .
 ```
+### Logging
+In order to help users understand what exactly Harvest is doing we use logging. Here are Harvest's guidelines to consistant logging:
+* `DEBUG`: User will have to enable showing debug logs. Use it to log when important events or decisions are made by Harvest and not the user. For example:
+    * Record when a streamer recieves data from a websocket endpoint.
+    * Record when a file is read into storage.
+* `INFO`: Let users know of important things that occur and to give users confidence that the program is running as expected. Logs events that the user created. For example:
+    * Logs the parameters to a user's buy or sell.
+* `WARNING`: Something bad happened and Harvest can automatically fix the issue without any user input. For example:
+    * Warns if the user tries to get stock data from over a period of time that their account allows, we can fix that start time.
+* `ERROR`: Something unexpected happened but can easily be fixed by the user. For example:
+    * Log error if the user tried to add a stock ticker that does not exists.
+    * Log error if the user tried to add a stock ticker to a broker that only supports crypto.
+    * Log error if the user tried to get stock positions from a broker that only supports crypto, can return an empty list.
+    * Log error if an API call failed.
+* `raise Exception`: Something really bad happened and the entire system must be shutdown because there is no way to recover. The main difference between raising an exception and logging an error is because if the logged error is not addressed by the user the entire program will still be able to run while raising an exception requires the user to edit their code. For example:
+    * Errors if a call to a function that should return something without a solid null case. For example returning an empty list is a fine null case but an empty dictionary or None isn't (since no one checks for the None case).
+    * Errors if the user tried to get a particular stock position from a broker that only supports crypto. The user expects a dictionary but Harvest has no way of providing this. 
 
 ### Unit Testing
 After any modifications to the code, conduct unit tests by running:
