@@ -1,8 +1,6 @@
 # Builtins
 import datetime as dt
-import logging
 import time
-import logging
 from pathlib import Path
 import yaml
 import traceback
@@ -14,6 +12,7 @@ import pandas as pd
 
 # Submodule imports
 from harvest.utils import *
+
 
 class API:
     """
@@ -196,7 +195,7 @@ class API:
         This function is called after every invocation of algo's handler.
         The intended purpose is for brokers to clear any cache it may have created.
         """
-        debugger.info("f{type(self).__name__} exited")
+        debugger.info(f"{type(self).__name__} exited")
 
     def _exception_handler(func):
         """
@@ -597,7 +596,7 @@ class API:
 
         limit_price = mark_down(price)
 
-        debugger.debug(f"type(self).__name__ ordered a sell of {quantity} {symbol}")
+        debugger.debug(f"{type(self).__name__} ordered a sell of {quantity} {symbol}")
         return self.order_limit(
             "sell", symbol, quantity, limit_price, in_force, extended
         )
@@ -727,7 +726,7 @@ class StreamAPI(API):
         self.blocker = {}
 
     def start(self):
-        debugger.debug(f"{type(self).__name__ started...")
+        debugger.debug(f"{type(self).__name__} started...")
 
     def main(self, df_dict):
         """

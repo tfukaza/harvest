@@ -44,7 +44,9 @@ class BackTester(trader.Trader):
         self.order_queue = []  # Queue of unfilled orders
 
         self.logger = BaseLogger()
-        debugger.debug(f"Streamer: {type(self.streamer).__name__}\nBroker: {type(self.broker).__name__}\nStorage: {type(self.storage).__name__}")
+        debugger.debug(
+            f"Streamer: {type(self.streamer).__name__}\nBroker: {type(self.broker).__name__}\nStorage: {type(self.storage).__name__}"
+        )
 
     def start(
         self,
@@ -69,7 +71,6 @@ class BackTester(trader.Trader):
         :param str? path: The path to the directory which backtesting data is stored.
             This parameter must be set accordingly if 'source' is set to 'CSV' or 'PICKLE'. defaults to './data'.
         """
-
 
         debugger.debug(f"Storing asset data in {path}")
         for a in self.algo:
@@ -128,7 +129,9 @@ class BackTester(trader.Trader):
                 if file.is_file():
                     continue
                     # TODO: check if file is updated with latest data
-                debugger.debug(f"Formatting aggregation from {interval_txt} to {agg_txt}...")
+                debugger.debug(
+                    f"Formatting aggregation from {interval_txt} to {agg_txt}..."
+                )
                 points = int(conv[agg] / conv[interval])
                 for i in tqdm(range(df_len)):
                     # df_timestamp = df.index[i]

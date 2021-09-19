@@ -17,12 +17,10 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s : %(name)s : %(levelname)s : %(message)s",
     datefmt="%m/%d/%Y %I:%M:%S %p",
-    handlers=[
-        logging.FileHandler("harvest.log"),
-        logging.StreamHandler(sys.stdout)
-    ]
+    handlers=[logging.FileHandler("harvest.log"), logging.StreamHandler(sys.stdout)],
 )
 debugger = logging.getLogger("harvest")
+
 
 class Interval(IntEnum):
     SEC_15 = auto()

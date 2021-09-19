@@ -197,7 +197,9 @@ class DummyStreamer(API):
         results = pd.DataFrame(data=d).set_index("timestamp")
 
         if self.realistic_times:
-            debugger.debug("Dummy Broker excluding information when the stock market is closed.")
+            debugger.debug(
+                "Dummy Broker excluding information when the stock market is closed."
+            )
             open_time = dt.time(hour=13, minute=30)
             close_time = dt.time(hour=20)
 
@@ -229,7 +231,9 @@ class DummyStreamer(API):
         hsh = message.digest()
         price = int.from_bytes(hsh[:4], "big") / (2 ** 32)
         price = (price + 1) * 1.5
-        debugger.debug(f"Dummy Streamer fake fetch option market data price for {symbol}: {price}")
+        debugger.debug(
+            f"Dummy Streamer fake fetch option market data price for {symbol}: {price}"
+        )
 
         return {
             "price": price,

@@ -154,7 +154,9 @@ class Alpaca(StreamAPI):
     @API._exception_handler
     def fetch_crypto_positions(self, key=None):
         if self.basic:
-            debugger.error("Alpaca basic accounts do not support crypto. Returning an empty list.")
+            debugger.error(
+                "Alpaca basic accounts do not support crypto. Returning an empty list."
+            )
             return []
 
         return [
@@ -238,7 +240,9 @@ class Alpaca(StreamAPI):
         end: dt.datetime,
     ) -> pd.DataFrame:
         if self.basic and is_crypto(symbol):
-            debugger.error("Alpaca basic accounts do not support crypto. Returning empty dataframe")
+            debugger.error(
+                "Alpaca basic accounts do not support crypto. Returning empty dataframe"
+            )
             return pd.DataFrame()
 
         if self.basic and start < now() - dt.timedelta(days=365 * 5):

@@ -221,17 +221,23 @@ class YahooStreamer(API):
 
     @API._exception_handler
     def fetch_stock_positions(self):
-        debugger.error("Yahoo does not support broker functions. Returning an empty list.")
+        debugger.error(
+            "Yahoo does not support broker functions. Returning an empty list."
+        )
         return []
 
     @API._exception_handler
     def fetch_option_positions(self):
-        debugger.error("Yahoo does not support broker functions. Returning an empty list.")
+        debugger.error(
+            "Yahoo does not support broker functions. Returning an empty list."
+        )
         return []
 
     @API._exception_handler
     def fetch_crypto_positions(self, key=None):
-        debugger.error("Yahoo does not support broker functions. Returning an empty list.")
+        debugger.error(
+            "Yahoo does not support broker functions. Returning an empty list."
+        )
         return []
 
     @API._exception_handler

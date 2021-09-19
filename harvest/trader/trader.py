@@ -85,7 +85,9 @@ class Trader:
         if debug:
             debugger.setLevel("DEBUG")
 
-        debugger.debug(f"Streamer: {type(self.streamer).__name__}\nBroker: {type(self.broker).__name__}\nStorage: {type(self.storage).__name__}")
+        debugger.debug(
+            f"Streamer: {type(self.streamer).__name__}\nBroker: {type(self.broker).__name__}\nStorage: {type(self.storage).__name__}"
+        )
 
     def start(self, interval="5MIN", aggregations=[], sync=True, server=False):
         """Entry point to start the system.
