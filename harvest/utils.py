@@ -187,3 +187,11 @@ def gen_data(symbol: str, points: int = 50) -> pd.DataFrame:
     df.columns = pd.MultiIndex.from_product([[symbol], df.columns])
 
     return df
+
+def not_gh_action(func):
+    def wrapper(*args, **kwargs):
+        if "GITHUB_ACTIONS" in os.environ:
+            return
+        func(*args, **kwargs)
+        return wrapper
+

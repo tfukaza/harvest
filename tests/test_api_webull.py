@@ -4,6 +4,7 @@ import unittest
 import datetime as dt
 import os
 
+from harvest.utils import not_gh_action
 from harvest.api.webull import Webull
 
 class TestWebull(unittest.TestCase):

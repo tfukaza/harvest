@@ -553,7 +553,7 @@ class API:
             )
             return None
 
-        debugger.debug(f"type(self).__name__ ordered a buy of {quantity} {symbol}")
+        debugger.debug(f"{type(self).__name__} ordered a buy of {quantity} {symbol}")
         return self.order_limit(
             "buy", symbol, quantity, limit_price, in_force, extended
         )
