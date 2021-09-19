@@ -188,7 +188,7 @@ class Kraken(API):
 
     @API._exception_handler
     def fetch_chain_data(self, symbol: str, date: dt.datetime):
-        raise NotImplementedError("Kraken does not suppoet options.")
+        raise NotImplementedError("Kraken does not support options.")
 
     @API._exception_handler
     def fetch_option_market_data(self, occ_symbol: str):
@@ -208,24 +208,19 @@ class Kraken(API):
 
     @API._exception_handler
     def fetch_crypto_positions(self):
-        return self.api.query_private
-        return [
-            pos.__dict__["_raw"]
-            for pos in self.api.list_positions()
-            if pos.asset_class == "crypto"
-        ]
+        return self.get_result(self.api.query_private("OpenOrders"))
 
     @API._exception_handler
     def update_option_positions(self, positions: List[Any]):
-        raise Exception("Kraken does not support options.")
+        raise NotImplementedError("Kraken does not support options.")
 
     @API._exception_handler
     def fetch_account(self):
-        return self.api.query_private("Balance")["results"]
+        return self.get_result(self.api.query_private("Balance"))
 
     @API._exception_handler
     def fetch_stock_order_status(self, order_id: str):
-        return self.api.get_order(order_id).__dict__["_raw"]
+        return NotImplementedError("Kraken does not support stocks.")
 
     @API._exception_handler
     def fetch_option_order_status(self, id):
@@ -256,8 +251,7 @@ class Kraken(API):
         if is_crypto(symbol):
             symbol = ticker_to_kraken(symbol)
         else:
-            error("Kraken does not support stocks.")
-            return
+            raise Exception("Kraken does not support stocks.")
 
         order = self.get_result(
             self.api.query_private(
@@ -283,7 +277,7 @@ class Kraken(API):
         strike,
         in_force: str = "gtc",
     ):
-        raise Exception("Kraken does not support options.")
+        raise NotImplementedError("Kraken does not support options.")
 
     # ------------- Helper methods ------------- #
 

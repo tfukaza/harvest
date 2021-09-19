@@ -2,7 +2,6 @@
 import re
 import datetime as dt
 from typing import Any, Dict, List, Tuple
-import logging
 
 # External libraries
 import pandas as pd
@@ -77,16 +76,16 @@ class PaperBroker(API):
         start: dt.datetime = None,
         end: dt.datetime = None,
     ) -> pd.DataFrame:
-        raise Exception("Not implemented")
+        raise NotImplementedError("Paper broker does not support streamer functions.")
 
     def fetch_chain_info(self, symbol: str):
-        raise Exception("Not implemented")
+        raise NotImplementedError("Paper broker does not support streamer functions.")
 
     def fetch_chain_data(self, symbol: str):
-        raise Exception("Not implemented")
+        raise NotImplementedError("Paper broker does not support streamer functions.")
 
     def fetch_option_market_data(self, symbol: str):
-        raise Exception("Not implemented")
+        raise NotImplementedError("Paper broker does not support streamer functions.")
 
     # ------------- Broker methods ------------- #
 
@@ -153,13 +152,13 @@ class PaperBroker(API):
                     original_price, self.commission_fee, "sell"
                 )
                 if self.buying_power < actual_price:
-                    debugger.warning(
+                    debugger.error(
                         f"""Not enough buying power.\n Total price ({actual_price}) exceeds buying power {self.buying_power}.\n Reduce purchase quantity or increase buying power."""
                     )
                 # Check to see the price does not exceed the limit price
                 elif ret["limit_price"] < price:
                     limit_price = ret["limit_price"]
-                    info(
+                    debugger.info(
                         f"Limit price for {sym} is less than current price ({limit_price} < {price})."
                     )
                 else:
@@ -224,12 +223,12 @@ class PaperBroker(API):
                     original_price, self.commission_fee, "buy"
                 )
                 if self.buying_power < actual_price:
-                    debugger.warning(
+                    debugger.error(
                         f"""Not enough buying power.\n Total price ({actual_price}) exceeds buying power {self.buying_power}.\n Reduce purchase quantity or increase buying power."""
                     )
                 elif ret["limit_price"] < price:
                     limit_price = ret["limit_price"]
-                    info(
+                    debugger.info(
                         f"Limit price for {sym} is less than current price ({limit_price} < {price})."
                     )
                 else:

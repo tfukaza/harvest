@@ -34,7 +34,7 @@ class Interval(IntEnum):
     DAY_1 = auto()
 
 
-def interval_string_to_enum(str_interval):
+def interval_string_to_enum(str_interval: str):
     if str_interval == "15SEC":
         return Interval.SEC_15
     elif str_interval == "1MIN":

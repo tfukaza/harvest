@@ -1,7 +1,6 @@
 # Builtins
 import datetime as dt
 from typing import Any, Dict, List, Tuple
-import logging
 
 # External libraries
 import pandas as pd
@@ -49,10 +48,10 @@ class YahooStreamer(API):
 
         return interval_fmt
 
-    def fmt_symbol(self, symbol):
+    def fmt_symbol(self, symbol: str):
         return symbol[1:] + "-USD" if is_crypto(symbol) else symbol
 
-    def unfmt_symbol(self, symbol):
+    def unfmt_symbol(self, symbol: str):
         if symbol[-4:] == "-USD":
             return "@" + symbol[:-4]
         return symbol
@@ -222,39 +221,42 @@ class YahooStreamer(API):
 
     @API._exception_handler
     def fetch_stock_positions(self):
-        raise Exception("Not implemented")
+        debugger.error("Yahoo does not support broker functions. Returning an empty list.")
+        return []
 
     @API._exception_handler
     def fetch_option_positions(self):
-        raise Exception("Not implemented")
+        debugger.error("Yahoo does not support broker functions. Returning an empty list.")
+        return []
 
     @API._exception_handler
     def fetch_crypto_positions(self, key=None):
-        raise Exception("Not implemented")
+        debugger.error("Yahoo does not support broker functions. Returning an empty list.")
+        return []
 
     @API._exception_handler
     def update_option_positions(self, positions: List[Any]):
-        raise Exception("Not implemented")
+        raise NotImplementedError("Yahoo does not support broker functions.")
 
     @API._exception_handler
     def fetch_account(self):
-        raise Exception("Not implemented")
+        raise NotImplementedError("Yahoo does not support broker functions.")
 
     @API._exception_handler
     def fetch_stock_order_status(self, id):
-        raise Exception("Not implemented")
+        raise NotImplementedError("Yahoo does not support broker functions.")
 
     @API._exception_handler
     def fetch_option_order_status(self, id):
-        raise Exception("Not implemented")
+        raise NotImplementedError("Yahoo does not support broker functions.")
 
     @API._exception_handler
     def fetch_crypto_order_status(self, id):
-        raise Exception("Not implemented")
+        raise NotImplementedError("Yahoo does not support broker functions.")
 
     @API._exception_handler
     def fetch_order_queue(self):
-        raise Exception("Not implemented")
+        raise NotImplementedError("Yahoo does not support broker functions.")
 
     def order_limit(
         self,
@@ -265,7 +267,7 @@ class YahooStreamer(API):
         in_force: str = "gtc",
         extended: bool = False,
     ):
-        raise Exception("Not implemented")
+        raise NotImplementedError("Yahoo does not support broker functions.")
 
     def order_option_limit(
         self,
@@ -278,7 +280,7 @@ class YahooStreamer(API):
         strike,
         in_force: str = "gtc",
     ):
-        raise Exception("Not implemented")
+        raise NotImplementedError("Yahoo does not support broker functions.")
 
     # ------------- Helper methods ------------- #
 

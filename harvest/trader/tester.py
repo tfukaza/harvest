@@ -44,6 +44,7 @@ class BackTester(trader.Trader):
         self.order_queue = []  # Queue of unfilled orders
 
         self.logger = BaseLogger()
+        debugger.debug(f"Streamer: {type(self.streamer).__name__}\nBroker: {type(self.broker).__name__}\nStorage: {type(self.storage).__name__}")
 
     def start(
         self,
@@ -69,6 +70,8 @@ class BackTester(trader.Trader):
             This parameter must be set accordingly if 'source' is set to 'CSV' or 'PICKLE'. defaults to './data'.
         """
 
+
+        debugger.debug(f"Storing asset data in {path}")
         for a in self.algo:
             a.config()
 
@@ -117,7 +120,7 @@ class BackTester(trader.Trader):
             df = self.storage.load(sym, interval)
             df_len = len(df.index)
 
-            print(f"Formatting {sym} data...")
+            debugger.debug(f"Formatting {sym} data...")
             for agg in self.interval[sym]["aggregations"]:
                 agg_txt = interval_enum_to_string(agg)
                 tmp_path = f"{path}/{sym}-{interval_txt}+{agg_txt}.pickle"
@@ -125,7 +128,7 @@ class BackTester(trader.Trader):
                 if file.is_file():
                     continue
                     # TODO: check if file is updated with latest data
-                print(f"Formatting aggregation from {interval_txt} to {agg_txt}...")
+                debugger.debug(f"Formatting aggregation from {interval_txt} to {agg_txt}...")
                 points = int(conv[agg] / conv[interval])
                 for i in tqdm(range(df_len)):
                     # df_timestamp = df.index[i]
@@ -137,7 +140,7 @@ class BackTester(trader.Trader):
                     self.storage.store(
                         sym, agg - 16, agg_df.iloc[[-1]], remove_duplicate=False
                     )
-        print("Formatting complete")
+        debugger.debug("Formatting complete")
 
         # # Save the current state of the queue
         # for s in self.watch:

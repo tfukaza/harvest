@@ -29,7 +29,7 @@ class Plugin:
         """
         Returns how to install the necessary prerequsites for this plugin.
         """
-        raise Exception("Not implemented")
+        raise NotImplementedError(f"No installation steps for plugin: {type(self)__.name__}")
 
     def _check_dependency(self, dep: str) -> None:
         try:
