@@ -31,7 +31,7 @@ jobs:
         python -m pip install --upgrade pip
         python setup.py install
         python -m pip install .[Dev]
-        pyhton -m pip install webull
+        python -m pip install webull
 
     - name: Store polygon secret in file
       run: 'echo "api_key: $POLYGON_API_KEY" > poly_secret.yaml'
