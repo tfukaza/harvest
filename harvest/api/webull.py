@@ -1,7 +1,6 @@
 # Builtins
 import datetime as dt
 from typing import Any, Dict, List, Tuple
-import logging
 import os.path
 
 # External libraries
@@ -12,7 +11,6 @@ import yaml
 # Submodule imports
 from harvest.api._base import API
 from harvest.utils import *
-
 
 class Webull(API):
     def __init__(self, path: str = None, paper_trader: bool = False):

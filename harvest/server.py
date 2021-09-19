@@ -1,9 +1,9 @@
 from flask import Flask, render_template
 from flask_cors import CORS
 import threading
-import logging
 import json
 
+from harvest.utils import debugger
 
 class Server:
     """

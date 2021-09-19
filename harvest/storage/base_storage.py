@@ -4,7 +4,6 @@ import datetime as dt
 from threading import Lock
 from typing import Tuple
 import re
-import logging
 
 from harvest.utils import *
 
@@ -171,7 +170,7 @@ class BaseStorage:
         if interval not in self.storage[symbol]:
             # If we don't have the given interval but we a smaller one,
             # then aggregate the data
-            print(self.storage[symbol])
+            debugger.debug(self.storage[symbol])
             intervals = [
                 (interval, interval_to_timedelta(interval))
                 for interval in self.storage[symbol]
