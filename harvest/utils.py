@@ -188,10 +188,10 @@ def gen_data(symbol: str, points: int = 50) -> pd.DataFrame:
 
     return df
 
+
 def not_gh_action(func):
     def wrapper(*args, **kwargs):
         if "GITHUB_ACTIONS" in os.environ:
             return
         func(*args, **kwargs)
         return wrapper
-
