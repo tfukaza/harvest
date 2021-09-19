@@ -224,7 +224,7 @@ class Kraken(API):
 
     @API._exception_handler
     def fetch_option_order_status(self, id):
-        raise Exception("Kraken dies not support options.")
+        raise Exception("Kraken does not support options.")
 
     @API._exception_handler
     def fetch_crypto_order_status(self, id: str):
@@ -233,6 +233,8 @@ class Kraken(API):
         if id in orders.keys():
             return orders.get(id)
         raise Exception(f"{id} not found in your orders.")
+
+    # --------------- Methods for Trading --------------- #
 
     @API._exception_handler
     def fetch_order_queue(self):

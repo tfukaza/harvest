@@ -137,65 +137,22 @@ class PolygonStreamer(API):
 
     # ------------- Broker methods ------------- #
 
-    @API._exception_handler
-    def fetch_stock_positions(self):
-        raise Exception("Not implemented")
+    # Not implemented functions:
+    #   fetch_stock_positions
+    #   fetch_option_positions
+    #   fetch_crypto_positions
+    #   update_option_positions
+    #   fetch_account
+    #   fetch_stock_order_status
+    #   fetch_option_order_status
+    #   fetch_crypto_order_status
+    #   fetch_order_queue
 
-    @API._exception_handler
-    def fetch_option_positions(self):
-        raise Exception("Not implemented")
+    # --------------- Methods for Trading --------------- #
 
-    @API._exception_handler
-    def fetch_crypto_positions(self, key=None):
-        raise Exception("Not implemented")
-
-    @API._exception_handler
-    def update_option_positions(self, positions: List[Any]):
-        raise Exception("Not implemented")
-
-    @API._exception_handler
-    def fetch_account(self):
-        raise Exception("Not implemented")
-
-    @API._exception_handler
-    def fetch_stock_order_status(self, id):
-        raise Exception("Not implemented")
-
-    @API._exception_handler
-    def fetch_option_order_status(self, id):
-        raise Exception("Not implemented")
-
-    @API._exception_handler
-    def fetch_crypto_order_status(self, id):
-        raise Exception("Not implemented")
-
-    @API._exception_handler
-    def fetch_order_queue(self):
-        raise Exception("Not implemented")
-
-    def order_limit(
-        self,
-        side: str,
-        symbol: str,
-        quantity: float,
-        limit_price: float,
-        in_force: str = "gtc",
-        extended: bool = False,
-    ):
-        raise Exception("Not implemented")
-
-    def order_option_limit(
-        self,
-        side: str,
-        symbol: str,
-        quantity: int,
-        limit_price: float,
-        option_type,
-        exp_date: dt.datetime,
-        strike,
-        in_force: str = "gtc",
-    ):
-        raise Exception("Not implemented")
+    # Not implemented functions:
+    #   order_limit
+    #   order_option_limit
 
     # ------------- Helper methods ------------- #
 
