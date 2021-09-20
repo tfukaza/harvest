@@ -77,11 +77,14 @@ class Trader:
 
         self.logger = BaseLogger()
 
+        self._setup_debugger(debug)
+
         self.algo = []  # List of algorithms to run.
 
         # Initialize the web interface server
         self.server = Server(self)
 
+    def _setup_debugger(self, debug):
         # Set up logger
         self.debugger = logging.getLogger("harvest")
         self.debugger.setLevel("DEBUG")

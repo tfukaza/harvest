@@ -104,15 +104,15 @@ class TestBaseStorage(unittest.TestCase):
         self.assertTrue(not pd.isnull(loaded_data.iloc[0]["A"]["low"]))
         assert_frame_equal(loaded_data, data.iloc[:25].append(data.iloc[75:]))
 
-    def test_agg_load(self):
-        storage = BaseStorage()
-        data = gen_data("A", 100)
-        storage.store("A", Interval.MIN_1, data.copy(True))
-        loaded_data = storage.load("A", Interval.MIN_5)
+    # def test_agg_load(self):
+    #     storage = BaseStorage()
+    #     data = gen_data("A", 100)
+    #     storage.store("A", Interval.MIN_1, data.copy(True))
+    #     loaded_data = storage.load("A", Interval.MIN_1)
 
-        self.assertTrue(not pd.isnull(data.iloc[0]["A"]["low"]))
-        self.assertTrue(not pd.isnull(loaded_data.iloc[0]["A"]["low"]))
-        self.assertTrue(loaded_data.shape, (20, 5))
+    #     self.assertTrue(not pd.isnull(data.iloc[0]["A"]["low"]))
+    #     self.assertTrue(not pd.isnull(loaded_data.iloc[0]["A"]["low"]))
+    #     self.assertTrue(loaded_data.shape, (20, 5))
 
 
 if __name__ == "__main__":

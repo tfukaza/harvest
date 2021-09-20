@@ -75,6 +75,17 @@ def expand_interval(interval: Interval):
     return int(value), unit
 
 
+def expand_string_interval(interval: str):
+    """
+    Given a string interval, returns the unit of time and the number of units.
+    For example, "3DAY" should return (3, "DAY")
+    """
+    num = [c for c in interval if c.isdigit()]
+    value = int("".join(num))
+    unit = interval[len(num) :]
+    return value, unit
+
+
 def interval_to_timedelta(interval: Interval) -> dt.timedelta:
     expanded_units = {"DAY": "days", "HR": "hours", "MIN": "minutes"}
     value, unit = expand_interval(interval)
@@ -133,7 +144,14 @@ def date_to_str(day) -> str:
 
 
 def str_to_date(day) -> str:
-    return dt.datetime.strptime(day, "%Y-%m-%d")
+    return pytz.utc.localize(dt.datetime.strptime(day, "%Y-%m-%d"))
+
+
+def str_to_datetime(date: str) -> dt.datetime:
+    """
+    :date: A string in the format MM-DD-YYYY:HH:MM:SS
+    """
+    return pytz.utc.localize(dt.datetime.strptime(date, "%m-%d-%Y:%H:%M:%S"))
 
 
 def mark_up(x):
