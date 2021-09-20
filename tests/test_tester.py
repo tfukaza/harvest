@@ -11,40 +11,42 @@ from harvest.utils import *
 
 
 class TestTester(unittest.TestCase):
-    @classmethod
-    def setUpClass(self):
-        self.data_dir = "data"
+    def tear_up_down(func):
+        def wrapper(*args, **kwargs):
+            try:
+                func(*args, **kwargs)
+            finally:
+                path = pathlib.Path("data")
+                shutil.rmtree(path)
 
-    # def test_start_do_nothing(self):
-    #     """ Do a quick run-through of the BackTester
-    #     to ensure it can run without crashing.
-    #     """
-    #     s = DummyStreamer()
-    #     t = BackTester(s)
-    #     t.set_symbol('A')
-    #     t.set_algo(BaseAlgo())
-    #     t.start('1MIN', ['5MIN'])
-    #     self.assertTrue(True)
+        return wrapper
 
-    # This test is disabled for now since DummyStreamer returns
-    # a large amount of data and tests take too long to run
-    # def test_check_aggregation(self):
-    #     """
-    #     """
-    #     t = BackTester(DummyStreamer())
-    #     t.set_symbol('A')
-    #     t.set_algo(BaseAlgo())
-    #     t.start('1MIN', ['1DAY'])
+    @tear_up_down
+    def test_start_do_nothing(self):
+        """Do a quick run-through of the BackTester
+        to ensure it can run without crashing.
+        """
+        s = DummyStreamer()
+        t = BackTester(s)
+        t.set_symbol("A")
+        t.set_algo(BaseAlgo())
+        t.start("1MIN", ["5MIN"], period="1DAY")
+        self.assertTrue(True)
 
-    #     minutes = list(t.storage.load('A', Interval.MIN_1)['A']['close'])[-200:]
-    #     days_agg = list(t.storage.load('A', Interval.DAY_1-16)['A']['close'])[-200:]
+    @tear_up_down
+    def test_check_aggregation(self):
+        """ """
+        t = BackTester(DummyStreamer())
+        t.set_symbol("A")
+        t.set_algo(BaseAlgo())
+        t.start("1MIN", ["1DAY"], period="1DAY")
 
-    #     self.assertListEqual(minutes, days_agg)
+        minutes = list(t.storage.load("A", Interval.MIN_1)["A"]["close"])[-200:]
+        days_agg = list(t.storage.load("A", int(Interval.DAY_1) - 16)["A"]["close"])[
+            -200:
+        ]
 
-    @classmethod
-    def tearDownClass(self):
-        path = pathlib.Path(self.data_dir)
-        shutil.rmtree(path)
+        self.assertListEqual(minutes, days_agg)
 
 
 if __name__ == "__main__":
