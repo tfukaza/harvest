@@ -76,6 +76,12 @@ Now you're all set!
 # Contributing
 Contributions are greatly appreciated. Check out the [CONTRIBUTING](CONTRIBUTING.md) document for details, and [ABOUT](ABOUT.md) for the long-term goals of this project. 
 
+Currently looking for...
+- Python devs to code the framework
+- Backend devs for the Flask backend
+- Frontend devs to make the web GUI based on Svelte
+- UX/UI designers for the web GUI
+
 # Disclaimer
 - Harvest is not officially associated with Robinhood LLC.  
     - Robinhood was also not designed to be used for algo-trading. Excessive access to their API can result in your account getting locked. 

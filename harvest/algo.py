@@ -326,7 +326,7 @@ class BaseAlgo:
                 raise Exception(f"No prices found for symbol {symbol}")
         else:
             if interval is None:
-                interval = self.trader[symbol]["interval"]
+                interval = self.trader.interval[symbol]["interval"]
             if prices == None:
                 prices = self.trader.storage.load(symbol, interval)[symbol][ref]
 
@@ -372,7 +372,7 @@ class BaseAlgo:
         self,
         symbol: str = None,
         period: int = 14,
-        interval: Interval = "5MIN",
+        interval: Interval = None,
         ref: str = "close",
         prices=None,
     ) -> np.array:
@@ -408,7 +408,7 @@ class BaseAlgo:
         self,
         symbol: str = None,
         period: int = 14,
-        interval: Interval = "5MIN",
+        interval: Interval = None,
         ref: str = "close",
         prices=None,
     ) -> np.array:
@@ -444,7 +444,7 @@ class BaseAlgo:
         self,
         symbol: str = None,
         period: int = 14,
-        interval: Interval = Interval.MIN_5,
+        interval: Interval = None,
         ref: str = "close",
         dev: float = 1.0,
         prices=None,
