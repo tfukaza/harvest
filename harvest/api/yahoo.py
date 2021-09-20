@@ -1,7 +1,6 @@
 # Builtins
 import datetime as dt
 from typing import Any, Dict, List, Tuple
-import logging
 
 # External libraries
 import pandas as pd
@@ -23,7 +22,6 @@ class YahooStreamer(API):
     ]
 
     def __init__(self, path=None):
-        self.debugger = logging.getLogger("harvest")
         self.timestamp = now()
 
     def setup(self, interval: Dict, trader=None, trader_main=None):
@@ -50,10 +48,10 @@ class YahooStreamer(API):
 
         return interval_fmt
 
-    def fmt_symbol(self, symbol):
+    def fmt_symbol(self, symbol: str):
         return symbol[1:] + "-USD" if is_crypto(symbol) else symbol
 
-    def unfmt_symbol(self, symbol):
+    def unfmt_symbol(self, symbol: str):
         if symbol[-4:] == "-USD":
             return "@" + symbol[:-4]
         return symbol
@@ -73,7 +71,7 @@ class YahooStreamer(API):
             s = combo[0]
             interval_fmt = self.fmt_interval(self.interval[s]["interval"])
             df = yf.download(s, period="1d", interval=interval_fmt, prepost=True)
-            self.debugger.debug(f"From yfinance got: {df}")
+            debugger.debug(f"From yfinance got: {df}")
             if len(df.index) == 0:
                 return
             s = self.unfmt_symbol(s)
@@ -95,7 +93,7 @@ class YahooStreamer(API):
                     names, period="1d", interval=self.fmt_interval(i), prepost=True
                 )
                 df = df.join(df_tmp)
-            self.debugger.debug(f"From yfinance got: {df}")
+            debugger.debug(f"From yfinance got: {df}")
             if len(df.index) == 0:
                 return
             for s in combo:
@@ -120,7 +118,7 @@ class YahooStreamer(API):
         end: dt.datetime = None,
     ):
 
-        self.debugger.debug(f"Fetching {symbol} {interval} price history")
+        debugger.debug(f"Fetching {symbol} {interval} price history")
         if isinstance(interval, str):
             interval = interval_string_to_enum(interval)
 
@@ -212,7 +210,7 @@ class YahooStreamer(API):
         else:
             chain = chain.puts
         df = chain[chain["contractSymbol"] == occ_symbol]
-        print(occ_symbol, df)
+        debugger.debug(occ_symbol, df)
         return {
             "price": float(df["lastPrice"].iloc[0]),
             "ask": float(df["ask"].iloc[0]),
@@ -223,39 +221,48 @@ class YahooStreamer(API):
 
     @API._exception_handler
     def fetch_stock_positions(self):
-        raise Exception("Not implemented")
+        debugger.error(
+            "Yahoo does not support broker functions. Returning an empty list."
+        )
+        return []
 
     @API._exception_handler
     def fetch_option_positions(self):
-        raise Exception("Not implemented")
+        debugger.error(
+            "Yahoo does not support broker functions. Returning an empty list."
+        )
+        return []
 
     @API._exception_handler
     def fetch_crypto_positions(self, key=None):
-        raise Exception("Not implemented")
+        debugger.error(
+            "Yahoo does not support broker functions. Returning an empty list."
+        )
+        return []
 
     @API._exception_handler
     def update_option_positions(self, positions: List[Any]):
-        raise Exception("Not implemented")
+        raise NotImplementedError("Yahoo does not support broker functions.")
 
     @API._exception_handler
     def fetch_account(self):
-        raise Exception("Not implemented")
+        raise NotImplementedError("Yahoo does not support broker functions.")
 
     @API._exception_handler
     def fetch_stock_order_status(self, id):
-        raise Exception("Not implemented")
+        raise NotImplementedError("Yahoo does not support broker functions.")
 
     @API._exception_handler
     def fetch_option_order_status(self, id):
-        raise Exception("Not implemented")
+        raise NotImplementedError("Yahoo does not support broker functions.")
 
     @API._exception_handler
     def fetch_crypto_order_status(self, id):
-        raise Exception("Not implemented")
+        raise NotImplementedError("Yahoo does not support broker functions.")
 
     @API._exception_handler
     def fetch_order_queue(self):
-        raise Exception("Not implemented")
+        raise NotImplementedError("Yahoo does not support broker functions.")
 
     def order_limit(
         self,
@@ -266,7 +273,7 @@ class YahooStreamer(API):
         in_force: str = "gtc",
         extended: bool = False,
     ):
-        raise Exception("Not implemented")
+        raise NotImplementedError("Yahoo does not support broker functions.")
 
     def order_option_limit(
         self,
@@ -279,7 +286,7 @@ class YahooStreamer(API):
         strike,
         in_force: str = "gtc",
     ):
-        raise Exception("Not implemented")
+        raise NotImplementedError("Yahoo does not support broker functions.")
 
     # ------------- Helper methods ------------- #
 

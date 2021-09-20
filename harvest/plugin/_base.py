@@ -1,5 +1,5 @@
 from typing import List
-from logging import error
+from harvest.utils import debugger
 
 
 class Plugin:
@@ -30,12 +30,14 @@ class Plugin:
         """
         Returns how to install the necessary prerequsites for this plugin.
         """
-        raise Exception("Not implemented")
+        raise NotImplementedError(
+            f"No installation steps for plugin: {type(self).__name__}"
+        )
 
     def _check_dependency(self, dep: str) -> None:
         try:
             exec(f"import {dep}")
         except ModuleNotFoundError as e:
-            error(f"Error importing module!\n {e}")
-            error(self.installation())
+            debugger.error(f"Error importing module!\n {e}")
+            debugger.error(self.installation())
             raise e

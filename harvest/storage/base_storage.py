@@ -4,7 +4,6 @@ import datetime as dt
 from threading import Lock
 from typing import Tuple
 import re
-import logging
 
 from harvest.utils import *
 
@@ -34,7 +33,6 @@ class BaseStorage:
         self.storage = {}
         self.queue_size = int(queue_size)
         self.limit_size = limit_size
-        self.debugger = logging.getLogger("harvest")
 
     def store(
         self, symbol: str, interval: Interval, data: pd.DataFrame, remove_duplicate=True
@@ -78,7 +76,7 @@ class BaseStorage:
             if self.limit_size:
                 data = data[-self.queue_size :]
             if len(data) < self.queue_size:
-                self.debugger.warning(
+                debugger.warning(
                     f"Symbol {symbol}, interval {interval} initialized with only {len(data)} data points"
                 )
             # Just add the data into storage

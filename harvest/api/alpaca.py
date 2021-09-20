@@ -3,7 +3,6 @@ import yaml
 import asyncio
 import threading
 import datetime as dt
-from logging import critical, error, info, warning, debug
 from typing import Any, Dict, List, Tuple
 
 # External libraries
@@ -110,7 +109,7 @@ class Alpaca(StreamAPI):
         end: dt.datetime = None,
     ):
 
-        debug(f"Fetching {symbol} {interval} price history")
+        debugger.debug(f"Fetching {symbol} {interval} price history")
 
         if start is None:
             start = now() - dt.timedelta(days=365 * 5)
@@ -127,61 +126,15 @@ class Alpaca(StreamAPI):
 
     @API._exception_handler
     def fetch_chain_info(self, symbol: str):
-        return {
-            "id": "n/a",
-            "exp_dates": [str_to_date(s) for s in self.watch_ticker[symbol].options],
-            "multiplier": 100,
-        }
+        raise NotImplementedError("Alpaca does not support options.")
 
     @API._exception_handler
     def fetch_chain_data(self, symbol: str, date: dt.datetime):
-
-        if (
-            bool(self.option_cache)
-            and symbol in self.option_cache
-            and date in self.option_cache[symbol]
-        ):
-            return self.option_cache[symbol][date]
-
-        df = pd.DataFrame(columns=["contractSymbol", "exp_date", "strike", "type"])
-
-        chain = self.watch_ticker[symbol].option_chain(date_to_str(date))
-        puts = chain.puts
-        puts["type"] = "put"
-        calls = chain.calls
-        calls["type"] = "call"
-        df = df.append(puts)
-        df = df.append(calls)
-
-        df = df.rename(columns={"contractSymbol": "occ_symbol"})
-        df["exp_date"] = df.apply(
-            lambda x: self.occ_to_data(x["occ_symbol"])[1], axis=1
-        )
-        df = df[["occ_symbol", "exp_date", "strike", "type"]]
-        df.set_index("occ_symbol", inplace=True)
-
-        if not symbol in self.option_cache:
-            self.option_cache[symbol] = {}
-        self.option_cache[symbol][date] = df
-
-        return df
+        raise NotImplementedError("Alpaca does not support options.")
 
     @API._exception_handler
     def fetch_option_market_data(self, occ_symbol: str):
-        occ_symbol = occ_symbol.replace(" ", "")
-        symbol, date, typ, _ = self.occ_to_data(occ_symbol)
-        chain = self.watch_ticker[symbol].option_chain(date_to_str(date))
-        if typ == "call":
-            chain = chain.calls
-        else:
-            chain = chain.puts
-        df = chain[chain["contractSymbol"] == occ_symbol]
-        print(occ_symbol, df)
-        return {
-            "price": float(df["lastPrice"].iloc[0]),
-            "ask": float(df["ask"].iloc[0]),
-            "bid": float(df["bid"].iloc[0]),
-        }
+        raise NotImplementedError("Alpaca does not support options.")
 
     # ------------- Broker methods ------------- #
 
@@ -195,13 +148,16 @@ class Alpaca(StreamAPI):
 
     @API._exception_handler
     def fetch_option_positions(self):
-        raise Exception("Not implemented")
+        debugger.error("Alpaca does not support options. Returning an empty list.")
+        return []
 
     @API._exception_handler
     def fetch_crypto_positions(self, key=None):
         if self.basic:
-            error("Basic accounts can't access crypto. Returning None")
-            return None
+            debugger.error(
+                "Alpaca basic accounts do not support crypto. Returning an empty list."
+            )
+            return []
 
         return [
             pos.__dict__["_raw"]
@@ -211,7 +167,7 @@ class Alpaca(StreamAPI):
 
     @API._exception_handler
     def update_option_positions(self, positions: List[Any]):
-        raise Exception("Alpaca does not support options.")
+        raise NotImplementedError("Alpaca does not support options.")
 
     @API._exception_handler
     def fetch_account(self):
@@ -223,18 +179,17 @@ class Alpaca(StreamAPI):
 
     @API._exception_handler
     def fetch_option_order_status(self, id):
-        raise Exception("Alpaca does not support options.")
+        raise NotImplementedError("Alpaca does not support options.")
 
     @API._exception_handler
     def fetch_crypto_order_status(self, id):
         if self.basic:
-            error("Basic accounts can't access crypto. Returning None")
-            return None
+            raise Exception("Alpaca basic accounts do not support crypto.")
         return self.api.get_order(order_id).__dict__["_raw"]
 
     @API._exception_handler
     def fetch_order_queue(self):
-        return [pos.__dict__["_raw"] for pos in api.list_positions()]
+        return [pos.__dict__["_raw"] for pos in self.api.list_positions()]
 
     def order_limit(
         self,
@@ -246,8 +201,7 @@ class Alpaca(StreamAPI):
         extended: bool = False,
     ):
         if self.basic and is_crypto(symbol):
-            error("Basic accounts can't buy/sell crypto. Returning None")
-            return None
+            raise Exception("Alpaca basic accounts do not support crypto.")
 
         if is_crypto(symbol):
             symbol = symbol[1:]
@@ -273,7 +227,7 @@ class Alpaca(StreamAPI):
         strike,
         in_force: str = "gtc",
     ):
-        raise Exception("Alpaca does not support options.")
+        raise NotImplementedError("Alpaca does not support options.")
 
     # ------------- Helper methods ------------- #
 
@@ -286,11 +240,13 @@ class Alpaca(StreamAPI):
         end: dt.datetime,
     ) -> pd.DataFrame:
         if self.basic and is_crypto(symbol):
-            error("Basic accounts can't access crypto. Returning empty dataframe")
+            debugger.error(
+                "Alpaca basic accounts do not support crypto. Returning empty dataframe"
+            )
             return pd.DataFrame()
 
         if self.basic and start < now() - dt.timedelta(days=365 * 5):
-            warning(
+            debugger.warning(
                 "Start time is over five years old! Only data from the past five years will be returned for basic accounts."
             )
 

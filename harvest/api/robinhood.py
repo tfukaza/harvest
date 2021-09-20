@@ -23,7 +23,7 @@ class Robinhood(API):
         self.login()
 
     def login(self):
-        self.debugger.debug("Logging into Robinhood...")
+        debugger.debug("Logging into Robinhood...")
         totp = pyotp.TOTP(self.config["robin_mfa"]).now()
         rh.login(
             self.config["robin_username"],
@@ -33,10 +33,10 @@ class Robinhood(API):
         )
 
     def refresh_cred(self):
-        self.debugger.debug("Logging out of Robinhood...")
+        debugger.debug("Logging out of Robinhood...")
         rh.authentication.logout()
         self.login()
-        self.debugger.debug("Logged into Robinhood...")
+        debugger.debug("Logged into Robinhood...")
 
     @API._run_once
     def setup(self, interval, trader=None, trader_main=None):
@@ -484,9 +484,7 @@ class Robinhood(API):
                 "symbol": symbol,
             }
         except:
-            self.debugger.error(
-                "Error while placing order.\nReturned: {ret}", exc_info=True
-            )
+            debugger.error("Error while placing order.\nReturned: {ret}", exc_info=True)
             raise Exception("Error while placing order.")
 
     def order_option_limit(
@@ -532,9 +530,7 @@ class Robinhood(API):
                 "symbol": symbol,
             }
         except:
-            self.debugger.error(
-                "Error while placing order.\nReturned: {ret}", exc_info=True
-            )
+            debugger.error("Error while placing order.\nReturned: {ret}", exc_info=True)
             raise Exception("Error while placing order")
 
     def _format_df(

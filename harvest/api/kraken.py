@@ -1,7 +1,6 @@
 # Builtins
 import yaml
 import datetime as dt
-from logging import critical, error, info, warning, debug
 from typing import Any, Dict, List, Tuple
 
 # External libraries
@@ -126,7 +125,7 @@ class Kraken(API):
         if is_crypto(s):
             self.watch_crypto.append(s)
         else:
-            warning("Kraken does not support stocks!")
+            debugger.error("Kraken does not support stocks.")
 
         self.option_cache = {}
         super().setup(watch, interval, interval, trader, trader_main)
@@ -160,7 +159,7 @@ class Kraken(API):
         end: dt.datetime = None,
     ):
 
-        debug(f"Fetching {symbol} {interval} price history")
+        debugger.debug(f"Fetching {symbol} {interval} price history")
 
         if start is None:
             start = now() - dt.timedelta(days=365 * 5)
@@ -185,45 +184,43 @@ class Kraken(API):
 
     @API._exception_handler
     def fetch_chain_info(self, symbol: str):
-        raise Exception("Kraken does not support options.")
+        raise NotImplementedError("Kraken does not support options.")
 
     @API._exception_handler
     def fetch_chain_data(self, symbol: str, date: dt.datetime):
-        raise Exception("Kraken does not suppoet options.")
+        raise NotImplementedError("Kraken does not support options.")
 
     @API._exception_handler
     def fetch_option_market_data(self, occ_symbol: str):
-        raise Exception("Kraken does not support options")
+        raise NotImplementedError("Kraken does not support options.")
 
     # ------------- Broker methods ------------- #
 
     @API._exception_handler
     def fetch_stock_positions(self):
-        raise Exception("Kraken does not support stocks.")
+        debugger.error("Kraken does not support stocks. Returning an empty list.")
+        return []
 
     @API._exception_handler
     def fetch_option_positions(self):
-        raise Exception("Kraken does not support options")
+        debugger.error("Kraken does not support options")
+        return []
 
     @API._exception_handler
-    def fetch_crypto_positions(self, key=None):
-        return [
-            pos.__dict__["_raw"]
-            for pos in self.api.list_positions()
-            if pos.asset_class == "crypto"
-        ]
+    def fetch_crypto_positions(self):
+        return self.get_result(self.api.query_private("OpenOrders"))
 
     @API._exception_handler
     def update_option_positions(self, positions: List[Any]):
-        raise Exception("Kraken does not support options.")
+        raise NotImplementedError("Kraken does not support options.")
 
     @API._exception_handler
     def fetch_account(self):
-        return self.api.query_private("Balance")["results"]
+        return self.get_result(self.api.query_private("Balance"))
 
     @API._exception_handler
     def fetch_stock_order_status(self, order_id: str):
-        return self.api.get_order(order_id).__dict__["_raw"]
+        return NotImplementedError("Kraken does not support stocks.")
 
     @API._exception_handler
     def fetch_option_order_status(self, id):
@@ -254,8 +251,7 @@ class Kraken(API):
         if is_crypto(symbol):
             symbol = ticker_to_kraken(symbol)
         else:
-            error("Kraken does not support stocks.")
-            return
+            raise Exception("Kraken does not support stocks.")
 
         order = self.get_result(
             self.api.query_private(
@@ -281,7 +277,7 @@ class Kraken(API):
         strike,
         in_force: str = "gtc",
     ):
-        raise Exception("Kraken does not support options.")
+        raise NotImplementedError("Kraken does not support options.")
 
     # ------------- Helper methods ------------- #
 

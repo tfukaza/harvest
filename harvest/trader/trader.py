@@ -5,7 +5,6 @@ import sys
 from sys import exit
 from signal import signal, SIGINT
 import time
-import logging
 
 # External libraries
 
@@ -86,27 +85,12 @@ class Trader:
 
     def _setup_debugger(self, debug):
         # Set up logger
-        self.debugger = logging.getLogger("harvest")
-        self.debugger.setLevel("DEBUG")
         if debug:
-            f_handler = logging.FileHandler("trader.log")
-            f_handler.setLevel(logging.DEBUG)
-            f_format = logging.Formatter(
-                "%(asctime)s : %(name)s : %(levelname)s : %(message)s"
-            )
-            f_handler.setFormatter(f_format)
-            self.debugger.addHandler(f_handler)
+            debugger.setLevel("DEBUG")
 
-        c_handler = logging.StreamHandler()
-        if debug:
-            c_handler.setLevel(logging.DEBUG)
-        else:
-            c_handler.setLevel(logging.INFO)
-        c_format = logging.Formatter(
-            "%(asctime)s : %(name)s : %(levelname)s : %(message)s"
+        debugger.debug(
+            f"Streamer: {type(self.streamer).__name__}\nBroker: {type(self.broker).__name__}\nStorage: {type(self.storage).__name__}"
         )
-        c_handler.setFormatter(c_format)
-        self.debugger.addHandler(c_handler)
 
     def start(self, interval="5MIN", aggregations=[], sync=True, server=False):
         """Entry point to start the system.
@@ -119,7 +103,7 @@ class Trader:
         :kill_switch: If true, kills the infinite loop in streamer. Primarily used for testing. defaults to False.
 
         """
-        self.debugger.debug(f"Setting up Harvest...")
+        debugger.debug(f"Setting up Harvest...")
 
         # If sync is on, call the broker to load pending orders and all positions currently held.
         if sync:
@@ -135,7 +119,7 @@ class Trader:
 
         # Remove duplicates in watchlist
         self.watchlist_global = list(set(self.watchlist_global))
-        self.debugger.debug(f"Watchlist: {self.watchlist_global}")
+        debugger.debug(f"Watchlist: {self.watchlist_global}")
 
         # Initialize a dict of symbols and the intervals they need to run at
         self._setup_params(interval, aggregations)
@@ -160,7 +144,7 @@ class Trader:
             a.setup()
             a.trader = self
 
-        self.debugger.debug("Setup complete")
+        debugger.debug("Setup complete")
 
         if server:
             self.server.start()
@@ -173,7 +157,7 @@ class Trader:
         # Get any pending orders
         ret = self.broker.fetch_order_queue()
         self.order_queue = ret
-        self.debugger.debug(f"Fetched orders:\n{self.order_queue}")
+        debugger.debug(f"Fetched orders:\n{self.order_queue}")
 
         # Get positions
         pos = self.broker.fetch_stock_positions()
@@ -182,13 +166,13 @@ class Trader:
         self.option_positions = pos
         pos = self.broker.fetch_crypto_positions()
         self.crypto_positions = pos
-        self.debugger.debug(
+        debugger.debug(
             f"Fetched positions:\n{self.stock_positions}\n{self.option_positions}\n{self.crypto_positions}"
         )
 
         # Update option stats
         self.broker.update_option_positions(self.option_positions)
-        self.debugger.debug(f"Updated option positions:\n{self.option_positions}")
+        debugger.debug(f"Updated option positions:\n{self.option_positions}")
 
     def _setup_params(self, interval, aggregations):
         interval = interval_string_to_enum(interval)
@@ -292,7 +276,7 @@ class Trader:
                 a.main()
                 new_algo.append(a)
             except Exception as e:
-                self.debugging.warning(
+                debugger.warning(
                     f"Algorithm {a} failed, removing from algorithm list.\nException: {e}"
                 )
         self.algo = new_algo
@@ -304,7 +288,7 @@ class Trader:
         """Check to see if outstanding orders have been accepted or rejected
         and update the order queue accordingly.
         """
-        self.debugger.debug(f"Updating order queue: {self.order_queue}")
+        debugger.debug(f"Updating order queue: {self.order_queue}")
         for i, order in enumerate(self.order_queue):
             if "type" not in order:
                 raise Exception(f"key error in {order}\nof {self.order_queue}")
@@ -314,10 +298,10 @@ class Trader:
                 stat = self.broker.fetch_option_order_status(order["id"])
             elif order["type"] == "CRYPTO":
                 stat = self.broker.fetch_crypto_order_status(order["id"])
-            self.debugger.debug(f"Updating status of order {order['id']}")
+            debugger.debug(f"Updating status of order {order['id']}")
             self.order_queue[i] = stat
 
-        self.debugger.debug(f"Updated order queue: {self.order_queue}")
+        debugger.debug(f"Updated order queue: {self.order_queue}")
         new_order = []
         order_filled = False
         for order in self.order_queue:
@@ -341,9 +325,9 @@ class Trader:
         if option_update:
             self.broker.update_option_positions(self.option_positions)
 
-        self.debugger.debug(f"Stock positions: {self.stock_positions}")
-        self.debugger.debug(f"Option positions: {self.option_positions}")
-        self.debugger.debug(f"Crypto positions: {self.crypto_positions}")
+        debugger.debug(f"Stock positions: {self.stock_positions}")
+        debugger.debug(f"Option positions: {self.option_positions}")
+        debugger.debug(f"Crypto positions: {self.crypto_positions}")
 
         if new:
             return
@@ -384,11 +368,11 @@ class Trader:
     def buy(self, symbol: str, quantity: int, in_force: str, extended: bool):
         ret = self.broker.buy(symbol, quantity, in_force, extended)
         if ret is None:
-            self.debugger.debug("BUY failed")
+            debugger.debug("BUY failed")
             return None
         self.order_queue.append(ret)
-        self.debugger.debug(f"BUY: {self.timestamp}, {symbol}, {quantity}")
-        self.debugger.debug(f"BUY order queue: {self.order_queue}")
+        debugger.debug(f"BUY: {self.timestamp}, {symbol}, {quantity}")
+        debugger.debug(f"BUY order queue: {self.order_queue}")
         asset_type = "crypto" if is_crypto(symbol) else "stock"
         self.logger.add_transaction(self.timestamp, "buy", asset_type, symbol, quantity)
         return ret
@@ -396,11 +380,11 @@ class Trader:
     def sell(self, symbol: str, quantity: int, in_force: str, extended: bool):
         ret = self.broker.sell(symbol, quantity, in_force, extended)
         if ret is None:
-            self.debugger.debug("SELL failed")
+            debugger.debug("SELL failed")
             return None
         self.order_queue.append(ret)
-        self.debugger.debug(f"SELL: {self.timestamp}, {symbol}, {quantity}")
-        self.debugger.debug(f"SELL order queue: {self.order_queue}")
+        debugger.debug(f"SELL: {self.timestamp}, {symbol}, {quantity}")
+        debugger.debug(f"SELL order queue: {self.order_queue}")
         asset_type = "crypto" if is_crypto(symbol) else "stock"
         self.logger.add_transaction(
             self.timestamp, "sell", asset_type, symbol, quantity
@@ -412,8 +396,8 @@ class Trader:
         if ret is None:
             raise Exception("BUY failed")
         self.order_queue.append(ret)
-        self.debugger.debug(f"BUY: {self.timestamp}, {symbol}, {quantity}")
-        self.debugger.debug(f"BUY order queue: {self.order_queue}")
+        debugger.debug(f"BUY: {self.timestamp}, {symbol}, {quantity}")
+        debugger.debug(f"BUY order queue: {self.order_queue}")
         self.logger.add_transaction(self.timestamp, "buy", "option", symbol, quantity)
         return ret
 
@@ -422,8 +406,8 @@ class Trader:
         if ret is None:
             raise Exception("SELL failed")
         self.order_queue.append(ret)
-        self.debugger.debug(f"SELL: {self.timestamp}, {symbol}, {quantity}")
-        self.debugger.debug(f"SELL order queue: {self.order_queue}")
+        debugger.debug(f"SELL: {self.timestamp}, {symbol}, {quantity}")
+        debugger.debug(f"SELL order queue: {self.order_queue}")
         self.logger.add_transaction(self.timestamp, "sell", "option", symbol, quantity)
         return ret
 
@@ -450,5 +434,5 @@ class Trader:
 
     def exit(self, signum, frame):
         # TODO: Gracefully exit
-        self.debugger.debug("\nStopping Harvest...")
+        debugger.debug("\nStopping Harvest...")
         exit(0)
