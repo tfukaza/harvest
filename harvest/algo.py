@@ -375,7 +375,7 @@ class BaseAlgo:
         self,
         symbol: str = None,
         period: int = 14,
-        interval: Interval = "5MIN",
+        interval: Interval = None,
         ref: str = "close",
         prices=None,
     ) -> np.array:
@@ -411,7 +411,7 @@ class BaseAlgo:
         self,
         symbol: str = None,
         period: int = 14,
-        interval: Interval = "5MIN",
+        interval: Interval = None,
         ref: str = "close",
         prices=None,
     ) -> np.array:
@@ -447,7 +447,7 @@ class BaseAlgo:
         self,
         symbol: str = None,
         period: int = 14,
-        interval: Interval = Interval.MIN_5,
+        interval: Interval = None,
         ref: str = "close",
         dev: float = 1.0,
         prices=None,
