@@ -54,7 +54,7 @@ class BaseStorage:
             return None
 
         # Removes the seconds and milliseconds
-        #data.index = normalize_pandas_dt_index(data)
+        # data.index = normalize_pandas_dt_index(data)
 
         self.storage_lock.acquire()
 
@@ -166,7 +166,7 @@ class BaseStorage:
                     return data
             return None
 
-        #dt_interval = interval_to_timedelta(interval)
+        # dt_interval = interval_to_timedelta(interval)
 
         # self.storage_lock.acquire()
         # if interval not in self.storage[symbol]:

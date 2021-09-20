@@ -11,7 +11,6 @@ from harvest.utils import *
 
 
 class TestTester(unittest.TestCase):
-   
     def tear_up_down(func):
         def wrapper(*args, **kwargs):
             try:
@@ -19,34 +18,36 @@ class TestTester(unittest.TestCase):
             finally:
                 path = pathlib.Path("data")
                 shutil.rmtree(path)
-            
+
         return wrapper
 
     @tear_up_down
     def test_start_do_nothing(self):
-        """ Do a quick run-through of the BackTester
+        """Do a quick run-through of the BackTester
         to ensure it can run without crashing.
         """
         s = DummyStreamer()
         t = BackTester(s)
-        t.set_symbol('A')
+        t.set_symbol("A")
         t.set_algo(BaseAlgo())
-        t.start('1MIN', ['5MIN'], period="1DAY")
+        t.start("1MIN", ["5MIN"], period="1DAY")
         self.assertTrue(True)
 
     @tear_up_down
     def test_check_aggregation(self):
-        """
-        """
+        """ """
         t = BackTester(DummyStreamer())
-        t.set_symbol('A')
+        t.set_symbol("A")
         t.set_algo(BaseAlgo())
-        t.start('1MIN', ['1DAY'], period="1DAY")
+        t.start("1MIN", ["1DAY"], period="1DAY")
 
-        minutes = list(t.storage.load('A', Interval.MIN_1)['A']['close'])[-200:]
-        days_agg = list(t.storage.load('A', int(Interval.DAY_1)-16)['A']['close'])[-200:]
+        minutes = list(t.storage.load("A", Interval.MIN_1)["A"]["close"])[-200:]
+        days_agg = list(t.storage.load("A", int(Interval.DAY_1) - 16)["A"]["close"])[
+            -200:
+        ]
 
         self.assertListEqual(minutes, days_agg)
+
 
 if __name__ == "__main__":
     unittest.main()
