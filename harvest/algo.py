@@ -329,7 +329,7 @@ class BaseAlgo:
                 raise Exception(f"No prices found for symbol {symbol}")
         else:
             if interval is None:
-                interval = self.trader[symbol]["interval"]
+                interval = self.trader.interval[symbol]["interval"]
             if prices == None:
                 prices = self.trader.storage.load(symbol, interval)[symbol][ref]
 
