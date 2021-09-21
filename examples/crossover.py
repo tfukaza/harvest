@@ -3,6 +3,12 @@ from harvest.trader import Trader
 
 
 class Crossover(BaseAlgo):
+
+    def config(self):
+        self.watchlist = ["SPY"]
+        self.interval = "5MIN"
+        self.aggregations = []
+
     def main(self):
         # Get a list of sma values
         sma_short = self.sma(period=20)
@@ -16,8 +22,5 @@ class Crossover(BaseAlgo):
 
 if __name__ == "__main__":
     t = Trader()
-    t.set_symbol("SPY")
     t.set_algo(Crossover())
-
-    # Run the main() function once every 1 minute
-    t.start(interval="1MIN")
+    t.start()

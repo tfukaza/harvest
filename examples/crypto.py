@@ -10,8 +10,12 @@ It also demonstrates some built-in functions.
 # Constants
 N = 3
 
-
 class Crypto(BaseAlgo):
+
+    def config(self):
+        self.watchlist = ["@DOGE"]
+        self.interval = "30MIN"
+
     def setup(self):
         self.hold = False
         self.ret = 0
@@ -88,17 +92,12 @@ class Crypto(BaseAlgo):
                 self.cutoff = int(ret * 100) / 100.0 + 0.01
 
     def buy_eval(self, trends, prices, candles):
-        c = bool(trends[-1] > 0 and candles["open"][-1] < candles["close"][-1])
-        return c
+        return bool(trends[-1] > 0 and candles["open"][-1] < candles["close"][-1])
 
     def sell_eval(self, ret):
-        c = bool(ret > self.cutoff + 0.02 or ret < self.cutoff - 0.001)
-        return c
-
+        return bool(ret > self.cutoff + 0.02 or ret < self.cutoff - 0.001)
 
 if __name__ == "__main__":
     t = Trader(Robinhood(), PaperBroker())
-    t.set_symbol("@DOGE")  # Cryptocurrencies are prepended with an '@'
     t.set_algo(Crypto())
-
-    t.start(interval="1MIN")  # Run the algorithm once every 30 minutes
+    t.start() 
