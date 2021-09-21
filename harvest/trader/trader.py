@@ -141,8 +141,8 @@ class Trader:
         self._storage_init()
 
         for a in self.algo:
-            a.setup()
             a.trader = self
+            a.setup()
 
         debugger.debug("Setup complete")
 
