@@ -69,7 +69,7 @@ class YahooStreamer(API):
 
         if len(combo) == 1:
             s = combo[0]
-            interval_fmt = self.fmt_interval(self.interval[s]["interval"])
+            interval_fmt = self.fmt_interval(self.interval[self.unfmt_symbol(s)]["interval"])
             df = yf.download(s, period="1d", interval=interval_fmt, prepost=True)
             debugger.debug(f"From yfinance got: {df}")
             if len(df.index) == 0:
