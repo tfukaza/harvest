@@ -2,7 +2,6 @@
 import re
 import datetime as dt
 from typing import Any, Dict, List, Tuple
-import logging
 
 # External libraries
 import pandas as pd
@@ -65,8 +64,6 @@ class PaperBroker(API):
                 for crypto in account["cryptos"]:
                     self.cryptos.append(crypto)
 
-        self.debugger = logging.getLogger("harvest")
-
     def setup(self, interval, trader=None, trader_main=None):
         super().setup(interval, trader, trader_main)
 
@@ -79,16 +76,16 @@ class PaperBroker(API):
         start: dt.datetime = None,
         end: dt.datetime = None,
     ) -> pd.DataFrame:
-        raise Exception("Not implemented")
+        raise NotImplementedError("Paper broker does not support streamer functions.")
 
     def fetch_chain_info(self, symbol: str):
-        raise Exception("Not implemented")
+        raise NotImplementedError("Paper broker does not support streamer functions.")
 
     def fetch_chain_data(self, symbol: str):
-        raise Exception("Not implemented")
+        raise NotImplementedError("Paper broker does not support streamer functions.")
 
     def fetch_option_market_data(self, symbol: str):
-        raise Exception("Not implemented")
+        raise NotImplementedError("Paper broker does not support streamer functions.")
 
     # ------------- Broker methods ------------- #
 
@@ -155,13 +152,13 @@ class PaperBroker(API):
                     original_price, self.commission_fee, "sell"
                 )
                 if self.buying_power < actual_price:
-                    self.debugger.warning(
+                    debugger.error(
                         f"""Not enough buying power.\n Total price ({actual_price}) exceeds buying power {self.buying_power}.\n Reduce purchase quantity or increase buying power."""
                     )
                 # Check to see the price does not exceed the limit price
                 elif ret["limit_price"] < price:
                     limit_price = ret["limit_price"]
-                    info(
+                    debugger.info(
                         f"Limit price for {sym} is less than current price ({limit_price} < {price})."
                     )
                 else:
@@ -199,9 +196,9 @@ class PaperBroker(API):
 
             self.equity = self._calc_equity()
 
-        self.debugger.debug(f"Returning status: {ret}")
-        self.debugger.debug(f"Positions:\n{self.stocks}\n=========\n{self.cryptos}")
-        self.debugger.debug(f"Equity:{self._calc_equity()}")
+        debugger.debug(f"Returning status: {ret}")
+        debugger.debug(f"Positions:\n{self.stocks}\n=========\n{self.cryptos}")
+        debugger.debug(f"Equity:{self._calc_equity()}")
 
         return ret
 
@@ -226,12 +223,12 @@ class PaperBroker(API):
                     original_price, self.commission_fee, "buy"
                 )
                 if self.buying_power < actual_price:
-                    self.debugger.warning(
+                    debugger.error(
                         f"""Not enough buying power.\n Total price ({actual_price}) exceeds buying power {self.buying_power}.\n Reduce purchase quantity or increase buying power."""
                     )
                 elif ret["limit_price"] < price:
                     limit_price = ret["limit_price"]
-                    info(
+                    debugger.info(
                         f"Limit price for {sym} is less than current price ({limit_price} < {price})."
                     )
                 else:
@@ -259,7 +256,7 @@ class PaperBroker(API):
                     self.cash -= actual_price
                     self.buying_power -= actual_price
                     ret["status"] = "filled"
-                    self.debugger.debug(f"After BUY: {self.buying_power}")
+                    debugger.debug(f"After BUY: {self.buying_power}")
                     ret_1 = ret.copy()
                     self.orders.remove(ret)
                     ret = ret_1
@@ -267,13 +264,13 @@ class PaperBroker(API):
                 if pos == None:
                     raise Exception(f"Cannot sell {sym}, is not owned")
                 pos["quantity"] = pos["quantity"] - qty
-                self.debugger.debug(f"current:{self.buying_power}")
+                debugger.debug(f"current:{self.buying_power}")
                 actual_price = self.apply_commission(
                     original_price, self.commission_fee, "sell"
                 )
                 self.cash += actual_price
                 self.buying_power += actual_price
-                self.debugger.debug(
+                debugger.debug(
                     f"Made {sym} {occ_sym} {qty} {price}: {self.buying_power}"
                 )
                 if pos["quantity"] < 1e-8:
@@ -285,9 +282,9 @@ class PaperBroker(API):
 
             self.equity = self._calc_equity()
 
-        self.debugger.debug(f"Returning status: {ret}")
-        self.debugger.debug(f"Positions:\n{self.stocks}\n=========\n{self.cryptos}")
-        self.debugger.debug(f"Equity:{self._calc_equity()}")
+        debugger.debug(f"Returning status: {ret}")
+        debugger.debug(f"Positions:\n{self.stocks}\n=========\n{self.cryptos}")
+        debugger.debug(f"Equity:{self._calc_equity()}")
 
         return ret
 

@@ -25,7 +25,11 @@ from harvest.algo import *
 from harvest.trader import *
 from harvest.api import *
 
-class Watch(algo.BaseAlgo):
+class Watch(BaseAlgo):
+    def config(self):
+        self.watchlist = ["TWTR"]
+        self.interval = "5MIN"
+
     def main(self):
         sma_long = self.sma(period=50)
         sma_short = self.sma(period=20)
@@ -36,7 +40,6 @@ class Watch(algo.BaseAlgo):
 
 if __name__ == "__main__":
     t = tester.BackTester()
-    t.set_symbol('TWTR')
     t.set_algo(Watch())
     t.start()
 ```
@@ -68,16 +71,25 @@ pip install harvest-python[BROKER]
 ```
 Replace `BROKER` with a brokerage/data source of your choice:
 - Robinhood
-- Alpaca (Coming soon)
-- Polygon (Coming soon)
+- Alpaca 
+- Webull
+- Kraken
+- Polygon 
+- Yahoo
 
 Now you're all set!
 
 # Contributing
 Contributions are greatly appreciated. Check out the [CONTRIBUTING](CONTRIBUTING.md) document for details, and [ABOUT](ABOUT.md) for the long-term goals of this project. 
 
+Currently looking for...
+- Python devs to code the framework
+- Backend devs for the Flask backend
+- Frontend devs to make the web GUI based on Svelte
+- UX/UI designers for the web GUI
+
 # Disclaimer
-- Harvest is not officially associated with Robinhood LLC.  
-    - Robinhood was also not designed to be used for algo-trading. Excessive access to their API can result in your account getting locked. 
+- Harvest is not officially associated with Robinhood, Alpaca, WebBull, Kraken, Polygon, or Yahoo. 
+- Many of the brokers were also not designed to be used for algo-trading. Excessive access to their API can result in your account getting locked. 
 - Tutorials and documentation solely exist to provide technical references of the code. They are not recommendations of any specific securities or strategies. 
-- Use Harvest at your own responsibility. Developers of Harvest take no responsibility for any financial losses you incur by using Harvest.  
+- Use Harvest at your own responsibility. Developers of Harvest take no responsibility for any financial losses you incur by using Harvest. By using Harvest, you certify you understand that Harvest is a software in early development and may contain bugs and unexpected behaviors.

@@ -1,8 +1,9 @@
 from flask import Flask, render_template
 from flask_cors import CORS
 import threading
-import logging
 import json
+
+from harvest.utils import debugger
 
 
 class Server:
@@ -21,10 +22,8 @@ class Server:
 
         self.trader = trader
 
-        self.debugger = logging.getLogger("harvest")
-
     def start(self):
-        self.debugger.info("Starting web server")
+        debugger.info("Starting web server")
         server = threading.Thread(
             target=self.app.run, kwargs={"port": 11111}, daemon=True
         )

@@ -1,7 +1,6 @@
 # Builtins
 import datetime as dt
 from typing import Any, Dict, List, Tuple
-import logging
 import os.path
 
 # External libraries
@@ -17,7 +16,6 @@ from harvest.utils import *
 class Webull(API):
     def __init__(self, path: str = None, paper_trader: bool = False):
         super().__init__(path)
-        self.debugger = logging.getLogger("harvest")
         self.paper = paper_trader
         self.wb_tokens = None
         wb_filename = "webull_credentials.json"
@@ -30,10 +28,10 @@ class Webull(API):
             self.login()
 
     def login(self):
-        self.debugger.debug("Logging into Webull...")
+        debugger.debug("Logging into Webull...")
         wb_tokens = self.wb_tokens
         if wb_tokens:
-            self.debugger.debug("Trying token login")
+            debugger.debug("Trying token login")
             try:
                 ret = self.api.api_login(
                     access_token=wb_tokens["accessToken"],
@@ -42,20 +40,18 @@ class Webull(API):
                     uuid=wb_tokens["uuid"],
                 )
                 if not self.api.is_logged_in():
-                    self.debugger.debug(f"Token login failed. \n{e}")
+                    debugger.debug(f"Token login failed. \n{e}")
                     wb_tokens = None
             except Exception as e:
-                self.debugger.debug(f"Token login failed. \n{e}")
+                debugger.debug(f"Token login failed. \n{e}")
                 wb_tokens = None
         elif not wb_tokens and hasattr(self, "config"):
-            self.debugger.debug("Trying interactive login.")
+            debugger.debug("Trying interactive login.")
             self.api.login(self.config["wb_username"], self.config["wb_password"])
-        self.debugger.debug(
-            f"Logged-in?: {self.api.is_logged_in()}, Paper: {self.paper}"
-        )
+        debugger.debug(f"Logged-in?: {self.api.is_logged_in()}, Paper: {self.paper}")
 
     def refresh_cred(self):
-        self.debugger.debug("Refreshing creds for Webull...")
+        debugger.debug("Refreshing creds for Webull...")
         # self.api.logout()
         self.api.refresh_login(save_token=True)
         # self.login()
@@ -248,7 +244,7 @@ class Webull(API):
         ].id[0]
         ret = self.api.get_option_quote(stock=sym, optionId=oc_id)
         if not ret.get("data"):
-            self.debugger.error(f"Error in fetch_option_market_data.\nReturned: {ret}")
+            debugger.error(f"Error in fetch_option_market_data.\nReturned: {ret}")
             raise Exception(f"Error in fetch_option_market_data.\nReturned: {ret}")
             return
         try:
@@ -462,7 +458,7 @@ class Webull(API):
                 )
                 typ = "STOCK"
             if not ret or not ret.get("data"):
-                self.debugger.error(f"Error while placing order.\nReturned: {ret}")
+                debugger.error(f"Error while placing order.\nReturned: {ret}")
                 raise Exception("Error while placing order.")
             return {
                 "type": typ,
@@ -470,7 +466,7 @@ class Webull(API):
                 "symbol": symbol,
             }
         except:
-            self.debugger.error(
+            debugger.error(
                 f"Error while placing order.\nReturned: {ret}", exc_info=True
             )
             raise Exception("Error while placing order.")
@@ -491,7 +487,7 @@ class Webull(API):
             self.__option_cache[sym][date].index == symbol
         ].id[0]
         if not isinstance(oc_id, int):
-            self.debugger.error(
+            debugger.error(
                 f"Error while placing order_option_limit. Can't find optionId."
             )
             raise Exception("Error while placing order.")
@@ -507,7 +503,7 @@ class Webull(API):
             )
 
             if not ret or not ret.get("data"):
-                self.debugger.error(f"Error while placing order.\nReturned: {ret}")
+                debugger.error(f"Error while placing order.\nReturned: {ret}")
                 raise Exception("Error while placing order.")
             return {
                 "type": "OPTION",
@@ -516,9 +512,7 @@ class Webull(API):
             }
 
         except:
-            self.debugger.error(
-                "Error while placing order.\nReturned: {ret}", exc_info=True
-            )
+            debugger.error("Error while placing order.\nReturned: {ret}", exc_info=True)
             raise Exception("Error while placing order")
 
     def _format_df(

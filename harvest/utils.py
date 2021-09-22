@@ -1,12 +1,24 @@
+# Builtin Imports
 import re
+import sys
 import time
 import random
+import logging
 import datetime as dt
 from enum import IntEnum, auto
 
+# External Imports
 import pytz
 import tzlocal
 import pandas as pd
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s : %(name)s : %(levelname)s : %(message)s",
+    datefmt="%m/%d/%Y %I:%M:%S %p",
+    handlers=[logging.FileHandler("harvest.log"), logging.StreamHandler(sys.stdout)],
+)
+debugger = logging.getLogger("harvest")
 
 
 class Interval(IntEnum):
@@ -19,7 +31,7 @@ class Interval(IntEnum):
     DAY_1 = auto()
 
 
-def interval_string_to_enum(str_interval):
+def interval_string_to_enum(str_interval: str):
     if str_interval == "15SEC":
         return Interval.SEC_15
     elif str_interval == "1MIN":
@@ -73,6 +85,17 @@ def expand_interval(interval: Interval):
     string = interval.name
     unit, value = string.split("_")
     return int(value), unit
+
+
+def expand_string_interval(interval: str):
+    """
+    Given a string interval, returns the unit of time and the number of units.
+    For example, "3DAY" should return (3, "DAY")
+    """
+    num = [c for c in interval if c.isdigit()]
+    value = int("".join(num))
+    unit = interval[len(num) :]
+    return value, unit
 
 
 def interval_to_timedelta(interval: Interval) -> dt.timedelta:
@@ -133,7 +156,14 @@ def date_to_str(day) -> str:
 
 
 def str_to_date(day) -> str:
-    return dt.datetime.strptime(day, "%Y-%m-%d")
+    return pytz.utc.localize(dt.datetime.strptime(day, "%Y-%m-%d"))
+
+
+def str_to_datetime(date: str) -> dt.datetime:
+    """
+    :date: A string in the format MM-DD-YYYY:HH:MM:SS
+    """
+    return pytz.utc.localize(dt.datetime.strptime(date, "%m-%d-%Y:%H:%M:%S"))
 
 
 def mark_up(x):
@@ -175,3 +205,11 @@ def gen_data(symbol: str, points: int = 50) -> pd.DataFrame:
     df.columns = pd.MultiIndex.from_product([[symbol], df.columns])
 
     return df
+
+
+def not_gh_action(func):
+    def wrapper(*args, **kwargs):
+        if "GITHUB_ACTIONS" in os.environ:
+            return
+        func(*args, **kwargs)
+        return wrapper

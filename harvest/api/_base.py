@@ -1,13 +1,10 @@
 # Builtins
 import datetime as dt
-import logging
 import time
-import logging
 from pathlib import Path
 import yaml
 import traceback
 import threading
-
 from typing import List, Dict, Any
 
 # External libraries
@@ -64,11 +61,10 @@ class API:
         # Check if file exists
         yml_file = Path(path)
         if not yml_file.is_file() and not self.create_secret(path):
+            debugger.debug("Broker not initalized with account information.")
             return
         with open(path, "r") as stream:
             self.config = yaml.safe_load(stream)
-
-        self.debugger = logging.getLogger("harvest")
 
         self.timestamp = now()
 
@@ -91,6 +87,7 @@ class API:
         and initializes several runtime parameters like
         the symbols to watch and what interval data is needed.
         """
+
         self.trader = trader
         self.trader_main = trader_main
 
@@ -113,6 +110,9 @@ class API:
 
         self.interval = interval
         self.poll_interval = min_interval
+        debugger.debug(f"Interval: {self.interval}")
+        debugger.debug(f"Poll Interval: {self.poll_interval}")
+        debugger.debug(f"{type(self).__name__} setup finished")
 
     def start(self):
         """
@@ -129,7 +129,7 @@ class API:
         cur_min = -1
         val, unit = expand_interval(self.poll_interval)
 
-        print("Running...")
+        debugger.info(f"{type(self).__name__} started...")
         if unit == "MIN":
             sleep = val * 60 - 10
             while 1:
@@ -195,7 +195,7 @@ class API:
         This function is called after every invocation of algo's handler.
         The intended purpose is for brokers to clear any cache it may have created.
         """
-        pass
+        debugger.info(f"{type(self).__name__} exited")
 
     def _exception_handler(func):
         """
@@ -214,12 +214,12 @@ class API:
                     return func(*args, **kwargs)
                 except Exception as e:
                     self = args[0]
-                    self.debugger.debug(f"Error: {e}")
+                    debugger.error(f"Error: {e}")
                     traceback.print_exc()
-                    self.debugger.debug("Logging out and back in...")
+                    debugger.error("Logging out and back in...")
                     args[0].refresh_cred()
                     tries = tries - 1
-                    self.debugger.debug("Retrying...")
+                    debugger.error("Retrying...")
                     continue
 
         return wrapper
@@ -525,7 +525,7 @@ class API:
         :returns: The result of order_limit(). Returns None if there is an issue with the parameters.
         """
         if quantity <= 0.0:
-            self.debugger.warning(
+            debugger.error(
                 f"Quantity cannot be less than or equal to 0: was given {quantity}"
             )
             return None
@@ -548,11 +548,12 @@ class API:
         total_price = limit_price * quantity
 
         if total_price >= buy_power:
-            self.debugger.warning(
+            debugger.error(
                 f"""Not enough buying power.\n Total price ({price} * {quantity} * 1.05 = {limit_price*quantity}) exceeds buying power {buy_power}.\n Reduce purchase quantity or increase buying power."""
             )
             return None
 
+        debugger.debug(f"{type(self).__name__} ordered a buy of {quantity} {symbol}")
         return self.order_limit(
             "buy", symbol, quantity, limit_price, in_force, extended
         )
@@ -576,7 +577,7 @@ class API:
         if symbol == None:
             symbol = self.watch[0]
         if quantity <= 0.0:
-            self.debugger.warning(
+            debugger.warning(
                 f"Quantity cannot be less than or equal to 0: was given {quantity}"
             )
             return None
@@ -595,6 +596,7 @@ class API:
 
         limit_price = mark_down(price)
 
+        debugger.debug(f"{type(self).__name__} ordered a sell of {quantity} {symbol}")
         return self.order_limit(
             "sell", symbol, quantity, limit_price, in_force, extended
         )
@@ -610,7 +612,7 @@ class API:
         :returns: The result of order_option_limit(). Returns None if there is an issue with the parameters.
         """
         if quantity <= 0.0:
-            self.debugger.warning(
+            debugger.warning(
                 f"Quantity cannot be less than or equal to 0: was given {quantity}"
             )
             return None
@@ -625,7 +627,7 @@ class API:
         total_price = limit_price * quantity
 
         if total_price >= buy_power:
-            self.debugger.warning(
+            debugger.warning(
                 f"""
 Not enough buying power 🏦.\n
 Total price ({price} * {quantity} * 1.05 = {limit_price*quantity}) exceeds buying power {buy_power}.\n
@@ -655,7 +657,7 @@ Reduce purchase quantity or increase buying power."""
         :returns: The result of order_option_limit(). Returns None if there is an issue with the parameters.
         """
         if quantity <= 0.0:
-            self.debugger.warning(
+            debugger.warning(
                 f"Quantity cannot be less than or equal to 0: was given {quantity}"
             )
             return None
@@ -706,6 +708,9 @@ Reduce purchase quantity or increase buying power."""
         price = float(symbol[7:]) / 1000
         return sym, date, option_type, price
 
+    def current_timestamp(self):
+        return self.timestamp
+
 
 class StreamAPI(API):
     """ """
@@ -724,7 +729,7 @@ class StreamAPI(API):
         self.blocker = {}
 
     def start(self):
-        pass
+        debugger.debug(f"{type(self).__name__} started...")
 
     def main(self, df_dict):
         """
@@ -743,17 +748,17 @@ class StreamAPI(API):
             ]
             self.timestamp = df_dict[got[0]].index[0]
 
-        self.debugger.debug(f"Needs: {self.needed}")
-        self.debugger.debug(f"Got data for: {got}")
+        debugger.debug(f"Needs: {self.needed}")
+        debugger.debug(f"Got data for: {got}")
         missing = list(set(self.needed) - set(got))
-        self.debugger.debug(f"Still need data for: {missing}")
+        debugger.debug(f"Still need data for: {missing}")
 
         self.block_queue.update(df_dict)
-        # self.debugger.debug(self.block_queue)
+        # debugger.debug(self.block_queue)
 
         # If all data has been received, pass on the data
         if len(missing) == 0:
-            self.debugger.debug("All data received")
+            debugger.debug("All data received")
             self.trader_main(self.block_queue)
             self.block_queue = {}
             self.all_recv = True
@@ -773,10 +778,10 @@ class StreamAPI(API):
         self.block_lock.release()
 
     def timeout(self):
-        self.debugger.debug("Begin timeout timer")
+        debugger.debug("Begin timeout timer")
         time.sleep(1)
         if not self.all_recv:
-            self.debugger.debug("Force flush")
+            debugger.debug("Force flush")
             self.flush()
 
     def flush(self):

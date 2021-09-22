@@ -3,6 +3,12 @@ from harvest.trader import BackTester
 
 
 class BackTest(BaseAlgo):
+
+    def config(self):
+        self.watchlist = ["SPY"]
+        self.interval = "5MIN"
+        self.aggregations = []
+
     def main(self):
         prices = self.get_asset_price_list()
         sma_short = self.sma(period=20)
@@ -18,6 +24,5 @@ class BackTest(BaseAlgo):
 
 if __name__ == "__main__":
     t = BackTester()
-    t.set_symbol("SPY")
     t.set_algo(BackTest())
-    t.start("5MIN")
+    t.start()
