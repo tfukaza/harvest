@@ -281,7 +281,6 @@ class Webull(API):
             if not r.get("assetType") or r.get("assetType") != "OPTION":
                 continue
             # Get option data such as expiration date
-            print(ret)
             data = self.api.get_option_quote(
                 stock=r["ticker"]["tickerId"], optionId=r["tickerId"]
             )
