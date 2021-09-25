@@ -69,23 +69,11 @@ class PaperBroker(API):
 
     # -------------- Streamer methods -------------- #
 
-    def fetch_price_history(
-        self,
-        symbol: str,
-        interval: str,
-        start: dt.datetime = None,
-        end: dt.datetime = None,
-    ) -> pd.DataFrame:
-        raise NotImplementedError("Paper broker does not support streamer functions.")
-
-    def fetch_chain_info(self, symbol: str):
-        raise NotImplementedError("Paper broker does not support streamer functions.")
-
-    def fetch_chain_data(self, symbol: str):
-        raise NotImplementedError("Paper broker does not support streamer functions.")
-
-    def fetch_option_market_data(self, symbol: str):
-        raise NotImplementedError("Paper broker does not support streamer functions.")
+    # Not implemented:
+    #   fetch_price_history
+    #   fetch_chain_info
+    #   fetch_chain_data
+    #   fetch_option_market_data
 
     # ------------- Broker methods ------------- #
 
