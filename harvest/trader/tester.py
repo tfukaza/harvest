@@ -30,23 +30,8 @@ class BackTester(trader.Trader):
 
         self.streamer = YahooStreamer() if streamer is None else streamer
         self.broker = PaperBroker()
-
-        self.watchlist_global = []  # List of stocks to watch
-
         self.storage = PickleStorage(limit_size=False)  # local cache of historic price
-
-        self.account = {}  # Local cash of account info
-
-        self.stock_positions = []  # Local cache of current stock positions
-        self.option_positions = []  # Local cache of current options positions
-        self.crypto_positions = []  # Local cache of current crypto positions
-
-        self.order_queue = []  # Queue of unfilled orders
-
-        self.logger = BaseLogger()
-        debugger.debug(
-            f"Streamer: {type(self.streamer).__name__}\nBroker: {type(self.broker).__name__}\nStorage: {type(self.storage).__name__}"
-        )
+        self._init_attributes()
 
         self._setup_debugger(debug)
 

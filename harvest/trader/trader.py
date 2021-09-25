@@ -19,7 +19,7 @@ from harvest.storage import BaseLogger
 from harvest.server import Server
 
 
-class Trader:
+class LiveTrader:
     """
     :broker: Both the broker and streamer store a Broker object.
         Broker places orders and retrieves latest account info like equity.
@@ -39,49 +39,50 @@ class Trader:
     def __init__(self, streamer=None, broker=None, storage=None, debug=False):
         """Initializes the Trader."""
 
-        signal(SIGINT, self.exit)
+        self._init_checks()
 
+        self._set_streamer_broker(streamer, broker)
+        self.storage = BaseStorage() if storage is None else storage    # Initialize the storage
+        self._init_attributes()
+
+        self._setup_debugger(debug)
+    
+    def _init_checks(self):
         # Harvest only supports Python 3.8 or newer.
         if sys.version_info[0] < 3 or sys.version_info[1] < 8:
             raise Exception("Harvest requires Python 3.8 or above.")
-
+       
+    def _set_streamer_broker(self, streamer, broker):
+        """Sets the streamer and broker."""
         # If streamer is not specified, use YahooStreamer
         self.streamer = YahooStreamer() if streamer is None else streamer
-        # If broker is not specified and streamer is YahooStreamer, use PaperBroker
+        # Broker must be specified
         if broker is None:
-            if isinstance(self.streamer, (YahooStreamer, DummyStreamer)):
-                self.broker = PaperBroker()
+            # TODO: Raise exception is specified class is streaming only
+            if isinstance(self.streamer, YahooStreamer):
+                raise Exception("Broker must be specified")
             else:
                 self.broker = self.streamer
         else:
             self.broker = broker
 
-        # # Initialize timestamp
+    def _init_attributes(self):
+
+        signal(SIGINT, self.exit)
+
+        # Initialize timestamp
         self.timestamp = self.streamer.timestamp
-        # self.timestamp = self.timestamp_prev
 
-        self.watchlist_global = []  # List of securities specified in this class,
-        # fetched from brokers, and retrieved from Algo class.
-
+        self.watchlist_global = []  # List of securities specified in this class
+        self.algo = []  # List of algorithms to run.
         self.account = {}  # Local cache of account data.
-
         self.stock_positions = []  # Local cache of current stock positions.
         self.option_positions = []  # Local cache of current options positions.
         self.crypto_positions = []  # Local cache of current crypto positions.
-
         self.order_queue = []  # Queue of unfilled orders.
 
-        # Initialize the storage
-        self.storage = BaseStorage() if storage is None else storage
-
         self.logger = BaseLogger()
-
-        self._setup_debugger(debug)
-
-        self.algo = []  # List of algorithms to run.
-
-        # Initialize the web interface server
-        self.server = Server(self)
+        self.server = Server(self)  # Initialize the web interface server
 
     def _setup_debugger(self, debug):
         # Set up logger
@@ -436,3 +437,23 @@ class Trader:
         # TODO: Gracefully exit
         debugger.debug("\nStopping Harvest...")
         exit(0)
+
+class PaperTrader(LiveTrader):
+    """
+    A class for trading in the paper trading environment.
+    """
+
+    def __init__(self, streamer=None, storage=None, debug=False):
+        """Initializes the Trader."""
+
+        self._init_checks()
+
+        # If streamer is not specified, use YahooStreamer
+        self.streamer = YahooStreamer() if streamer is None else streamer
+        self.broker = PaperBroker()
+        
+        self.storage = BaseStorage() if storage is None else storage    # Initialize the storage
+        self._init_attributes()
+
+        self._setup_debugger(debug)
+       
