@@ -9,8 +9,8 @@ from harvest.api.paper import PaperBroker
 # Constants
 N = 3
 
-class Crypto(BaseAlgo):
 
+class Crypto(BaseAlgo):
     def config(self):
         self.watchlist = ["@ETH"]
         self.interval = "1MIN"
@@ -25,6 +25,7 @@ class Crypto(BaseAlgo):
             self.sell()
         else:
             self.buy()
+
 
 if __name__ == "__main__":
     t = Trader(debug=True)

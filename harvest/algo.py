@@ -246,6 +246,8 @@ class BaseAlgo:
         """
         if symbol is None:
             symbol = self.watchlist[0]
+        lower_exp = _convert_input_to_datetime(lower_exp)
+        upper_exp = _convert_input_to_datetime(upper_exp)
 
         exp_dates = self.get_option_chain_info(symbol)["exp_dates"]
         if lower_exp is not None:
@@ -282,7 +284,7 @@ class BaseAlgo:
             symbol = self.watchlist[0]
         return self.trader.fetch_chain_info(symbol)
 
-    def get_option_chain(self, symbol: str, date: dt.datetime):
+    def get_option_chain(self, symbol: str, date):
         """Returns the option chain for the specified symbol and expiration date.
 
         :param str symbol: symbol of stock
@@ -297,6 +299,7 @@ class BaseAlgo:
         """
         if symbol is None:
             symbol = self.watchlist[0]
+        date = _convert_input_to_datetime(date)
         return self.trader.fetch_chain_data(symbol, date)
 
     def get_option_market_data(self, symbol: str):

@@ -42,16 +42,18 @@ class LiveTrader:
         self._init_checks()
 
         self._set_streamer_broker(streamer, broker)
-        self.storage = BaseStorage() if storage is None else storage    # Initialize the storage
+        self.storage = (
+            BaseStorage() if storage is None else storage
+        )  # Initialize the storage
         self._init_attributes()
 
         self._setup_debugger(debug)
-    
+
     def _init_checks(self):
         # Harvest only supports Python 3.8 or newer.
         if sys.version_info[0] < 3 or sys.version_info[1] < 8:
             raise Exception("Harvest requires Python 3.8 or above.")
-       
+
     def _set_streamer_broker(self, streamer, broker):
         """Sets the streamer and broker."""
         # If streamer is not specified, use YahooStreamer
@@ -84,6 +86,8 @@ class LiveTrader:
         self.logger = BaseLogger()
         self.server = Server(self)  # Initialize the web interface server
 
+        self.timezone = time.tzname[0]
+
     def _setup_debugger(self, debug):
         # Set up logger
         if debug:
@@ -104,7 +108,7 @@ class LiveTrader:
         :kill_switch: If true, kills the infinite loop in streamer. Primarily used for testing. defaults to False.
 
         """
-        debugger.debug(f"Setting up Harvest...")
+        debugger.debug("Setting up Harvest...")
 
         # If sync is on, call the broker to load pending orders and all positions currently held.
         if sync:
@@ -126,7 +130,7 @@ class LiveTrader:
         self._setup_params(interval, aggregations)
 
         if len(self.interval) == 0:
-            raise Exception(f"No securities were added to watchlist")
+            raise Exception("No securities were added to watchlist")
 
         # Initialize the account
         self._setup_account()
@@ -134,8 +138,7 @@ class LiveTrader:
         self.broker.setup(self.interval, self, self.main)
         if self.broker != self.streamer:
             # Only call the streamer setup if it is a different
-            # instance than the broker otherwise some brokers can
-            # fail!
+            # instance than the broker otherwise some brokers can fail!
             self.streamer.setup(self.interval, self, self.main)
 
         # Initialize the storage
@@ -438,6 +441,7 @@ class LiveTrader:
         debugger.debug("\nStopping Harvest...")
         exit(0)
 
+
 class PaperTrader(LiveTrader):
     """
     A class for trading in the paper trading environment.
@@ -451,9 +455,10 @@ class PaperTrader(LiveTrader):
         # If streamer is not specified, use YahooStreamer
         self.streamer = YahooStreamer() if streamer is None else streamer
         self.broker = PaperBroker()
-        
-        self.storage = BaseStorage() if storage is None else storage    # Initialize the storage
+
+        self.storage = (
+            BaseStorage() if storage is None else storage
+        )  # Initialize the storage
         self._init_attributes()
 
         self._setup_debugger(debug)
-       

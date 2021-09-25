@@ -41,9 +41,9 @@ class BackTester(trader.Trader):
         aggregations: List[Any] = [],
         source: str = "PICKLE",
         path: str = "./data",
-        start: str = None,
-        end: str = None,
-        period: str = None,
+        start = None,
+        end = None,
+        period = None,
     ):
         """Runs backtesting.
 
@@ -74,7 +74,16 @@ class BackTester(trader.Trader):
 
         self.run_backtest()
 
-    def _setup(self, source, interval: str, aggregations, path, start, end, period):
+    def _setup(
+        self, 
+        source: str,
+        interval: str, 
+        aggregations: List, 
+        path: str, 
+        start, 
+        end,
+        period
+    ):
         self._setup_params(interval, aggregations)
         self._setup_account()
 
@@ -82,19 +91,18 @@ class BackTester(trader.Trader):
 
         self.storage.limit_size = False
 
-        start = None if start is None else str_to_datetime(start)
-        end = None if end is None else str_to_datetime(end)
-
-        val, unit = expand_string_interval(period) if period is not None else (1, "DAY")
+        start = _convert_input_to_datetime(start, self.timezone)
+        end = _convert_input_to_datetime(end, self.timezone)
+        period = _convert_input_to_timedelta(period)
 
         if start is None and end is None:
             end = self.streamer.current_timestamp()
-            start = end - dt.timedelta(days=val) if period is not None else "MAX"
+            start = end - period if period is not None else "MAX"
         elif start is None:
-            start = end - dt.timedelta(days=val) if period is not None else "MAX"
+            start = end - period if period is not None else "MAX"
         elif end is None:
             end = (
-                start + dt.timedelta(days=val)
+                start + period
                 if period is not None
                 else self.streamer.current_timestamp()
             )

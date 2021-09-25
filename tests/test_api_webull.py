@@ -7,6 +7,7 @@ import os
 from harvest.utils import not_gh_action
 from harvest.api.webull import Webull
 
+
 class TestWebull(unittest.TestCase):
     def not_gh_action(func):
         def wrapper(*args, **kwargs):

@@ -11,7 +11,6 @@ introducing option-related functions.
 
 
 class Option(BaseAlgo):
-
     def config(self):
         self.watchlist = ["SPY"]
         self.interval = "5MIN"
@@ -64,6 +63,7 @@ class Option(BaseAlgo):
         print(f"BUY: {occ}")
 
         self.hold = True
+
 
 if __name__ == "__main__":
     t = Trader(Robinhood())
