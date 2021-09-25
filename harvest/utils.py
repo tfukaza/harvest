@@ -30,11 +30,7 @@ class Interval(IntEnum):
     HR_1 = auto()
     DAY_1 = auto()
 
-class Timestamp():
-    pass
 
-class Timerange():
-    pass
 
 def interval_string_to_enum(str_interval: str):
     if str_interval == "15SEC":
@@ -159,29 +155,23 @@ def epoch_zero() -> dt.datetime:
 def date_to_str(day) -> str:
     return day.strftime("%Y-%m-%d")
 
-
 def str_to_date(day) -> str:
     return pytz.utc.localize(dt.datetime.strptime(day, "%Y-%m-%d"))
 
-
 def str_to_datetime(date: str) -> dt.datetime:
     """
-    :date: A string in the format MM-DD-YYYY:HH:MM:SS
+    :date: A string in the format YYYY-MM-DD hh:mm
     """
-    return pytz.utc.localize(dt.datetime.strptime(date, "%m-%d-%Y:%H:%M:%S"))
-
+    return pytz.utc.localize(dt.datetime.strptime(date, "%Y-%m-%d %H:%M"))
 
 def mark_up(x):
     return round(x * 1.05, 2)
 
-
 def mark_down(x):
     return round(x * 0.95, 2)
 
-
 def has_timezone(date: dt.datetime) -> bool:
     return date.tzinfo is not None and date.tzinfo.utcoffset(date) is not None
-
 
 def set_system_timezone(date: dt.datetime) -> dt.datetime:
     """
@@ -193,8 +183,39 @@ def set_system_timezone(date: dt.datetime) -> dt.datetime:
     return timezone.localize(date).astimezone(pytz.utc)
 
 
-############ Functions used for testing #################
+class Timestamp():
+    
+    def __init__(self, *args) -> None:
+        if len(args) == 1:
+            timestamp = args[1]
+            if isinstance(timestamp, str):
+                self.timestamp = str_to_datetime(timestamp)
+            elif isinstance(timestamp, dt.datetime):
+                self.timestamp = timestamp
+            else:
+                raise ValueError(f"Invalid timestamp type {type(timestamp)}")
+        elif len(args) > 1:
+            self.timestamp = dt.datetime(*args)
 
+    def __sub__(self, other):
+        return Timerange(self.timestamp - other.timestamp)
+
+class Timerange():
+    
+    def __init__(self, *args) -> None:
+        if len(args) == 1:
+            timerange = args[1]
+            if isinstance(timerange, dt.timedelta):
+                self.timerange = timerange
+            else:
+                raise ValueError(f"Invalid timestamp type {type(timerange)}")
+        elif len(args) > 1:
+            range_list = ['days', 'hours', 'minutes']
+            dict = {range_list[i]: arg for i, arg in enumerate(args)}
+            self.timerange = dt.timedelta(**dict)
+
+
+############ Functions used for testing #################
 
 def gen_data(symbol: str, points: int = 50) -> pd.DataFrame:
     n = now()
@@ -210,7 +231,6 @@ def gen_data(symbol: str, points: int = 50) -> pd.DataFrame:
     df.columns = pd.MultiIndex.from_product([[symbol], df.columns])
 
     return df
-
 
 def not_gh_action(func):
     def wrapper(*args, **kwargs):
