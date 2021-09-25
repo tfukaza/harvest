@@ -30,6 +30,11 @@ class Interval(IntEnum):
     HR_1 = auto()
     DAY_1 = auto()
 
+class Timestamp():
+    pass
+
+class Timerange():
+    pass
 
 def interval_string_to_enum(str_interval: str):
     if str_interval == "15SEC":
