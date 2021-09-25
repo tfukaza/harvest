@@ -9,13 +9,6 @@ from harvest.api.webull import Webull
 
 
 class TestWebull(unittest.TestCase):
-    def not_gh_action(func):
-        def wrapper(*args, **kwargs):
-            if "GITHUB_ACTION" in os.environ:
-                return
-            func(*args, **kwargs)
-
-        return wrapper
 
     @not_gh_action
     def test_fetch_prices(self):

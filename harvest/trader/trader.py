@@ -7,6 +7,7 @@ from signal import signal, SIGINT
 import time
 
 # External libraries
+import tzlocal
 
 # Submodule imports
 from harvest.utils import *
@@ -86,7 +87,8 @@ class LiveTrader:
         self.logger = BaseLogger()
         self.server = Server(self)  # Initialize the web interface server
 
-        self.timezone = time.tzname[0]
+        self.timezone = tzlocal.get_localzone()
+        debugger.debug(f"Timezone: {self.timezone}")
 
     def _setup_debugger(self, debug):
         # Set up logger

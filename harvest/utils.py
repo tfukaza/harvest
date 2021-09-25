@@ -5,7 +5,9 @@ import time
 import random
 import logging
 import datetime as dt
+from datetime import timezone as tz 
 from enum import IntEnum, auto
+from zoneinfo import ZoneInfo
 
 # External Imports
 import pytz
@@ -104,7 +106,6 @@ def interval_to_timedelta(interval: Interval) -> dt.timedelta:
     params = {expanded_units[unit]: value}
     return dt.timedelta(**params)
 
-
 def is_crypto(symbol: str) -> bool:
     return symbol[0] == "@"
 
@@ -141,22 +142,19 @@ def now() -> dt.datetime:
     """
     Returns the current time precise to the minute in the UTC timezone
     """
-    return pytz.utc.localize(dt.datetime.utcnow().replace(microsecond=0, second=0))
-
+    return dt.datetime.utcnow(tzinfo=tz.utc).replace(microsecond=0, second=0)
 
 def epoch_zero() -> dt.datetime:
     """
     Returns a datetime object corresponding to midnight 1/1/1970 UTC
     """
-    return pytz.utc.localize(dt.datetime(1970, 1, 1))
-
+    return dt.datetime(1970, 1, 1, tzinfo=tz.utc)
 
 def date_to_str(day) -> str:
     return day.strftime("%Y-%m-%d")
 
-
 def str_to_date(day) -> str:
-    return pytz.utc.localize(dt.datetime.strptime(day, "%Y-%m-%d"))
+    return dt.datetime.strptime(day, "%Y-%m-%d")
 
 def str_to_datetime(date: str) -> dt.datetime:
     """
@@ -169,22 +167,20 @@ def str_to_datetime(date: str) -> dt.datetime:
 def mark_up(x):
     return round(x * 1.05, 2)
 
-
 def mark_down(x):
     return round(x * 0.95, 2)
-
 
 def has_timezone(date: dt.datetime) -> bool:
     return date.tzinfo is not None and date.tzinfo.utcoffset(date) is not None
 
-def set_system_timezone(date: dt.datetime) -> dt.datetime:
-    """
-    :date: A python datetime object that does not have tzinfo set.
-    If tzinfo is set, an error will occur. Converts first to the
-    timezone of the user's system and then to UTC.
-    """
-    timezone = pytz.timezone(str(tzlocal.get_localzone()))
-    return timezone.localize(date).astimezone(pytz.utc)
+# def set_system_timezone(date: dt.datetime) -> dt.datetime:
+#     """
+#     :date: A python datetime object that does not have tzinfo set.
+#     If tzinfo is set, an error will occur. Converts first to the
+#     timezone of the user's system and then to UTC.
+#     """
+#     timezone = pytz.timezone(str(tzlocal.get_localzone()))
+#     return timezone.localize(date).astimezone(pytz.utc)
 
 class Timestamp:
     def __init__(self, *args) -> None:
@@ -202,7 +198,6 @@ class Timestamp:
     def __sub__(self, other):
         return Timerange(self.timestamp - other.timestamp)
 
-
 class Timerange:
     def __init__(self, *args) -> None:
         if len(args) == 1:
@@ -216,8 +211,8 @@ class Timerange:
             dict = {range_list[i]: arg for i, arg in enumerate(args)}
             self.timerange = dt.timedelta(**dict)
 
-def _convert_input_to_datetime(datetime, tz="UTC"):
-        tz = pytz.timezone(tz)
+def _convert_input_to_datetime(datetime, timezone:ZoneInfo):
+     
         if datetime is None:
             return None 
         elif isinstance(datetime, Timestamp):
@@ -229,8 +224,8 @@ def _convert_input_to_datetime(datetime, tz="UTC"):
         else:
             raise ValueError(f"Cannot convert {datetime} to datetime.")
 
-        datetime = datetime.replace(tzinfo=tz)
-        datetime = datetime.astimezone(pytz.utc)
+        datetime = datetime.replace(tzinfo=timezone)
+        datetime = datetime.astimezone(tz.utc)
     
 def _convert_input_to_timedelta(period):
     """Converts period into a timedelta object.

@@ -17,9 +17,9 @@ from harvest.api.yahoo import YahooStreamer
 from harvest.api.paper import PaperBroker
 from harvest.storage import BaseLogger
 from harvest.utils import *
+from harvest.utils import _convert_input_to_datetime, _convert_input_to_timedelta
 
-
-class BackTester(trader.Trader):
+class BackTester(trader.PaperTrader):
     """
     This class replaces several key functions to allow backtesting
     on historical data.
