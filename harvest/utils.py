@@ -142,7 +142,7 @@ def now() -> dt.datetime:
     """
     Returns the current time precise to the minute in the UTC timezone
     """
-    return dt.datetime.utcnow(tzinfo=tz.utc).replace(microsecond=0, second=0)
+    return dt.datetime.now(tz.utc).replace(microsecond=0, second=0)
 
 def epoch_zero() -> dt.datetime:
     """

@@ -5,13 +5,12 @@ import datetime as dt
 import os
 
 from harvest.utils import not_gh_action
-from harvest.api.webull import Webull
-
 
 class TestWebull(unittest.TestCase):
 
     @not_gh_action
     def test_fetch_prices(self):
+        from harvest.api.webull import Webull
         wb = Webull()
         df = wb.fetch_price_history("SPY", interval="1MIN")["SPY"]
         self.assertEqual(
@@ -21,6 +20,7 @@ class TestWebull(unittest.TestCase):
 
     @not_gh_action
     def test_setup(self):
+        from harvest.api.webull import Webull
         wb = Webull()
         watch = ["SPY", "AAPL", "@BTC", "@ETH"]
         wb.setup(watch, "1MIN")
@@ -30,6 +30,7 @@ class TestWebull(unittest.TestCase):
 
     @not_gh_action
     def test_main(self):
+        from harvest.api.webull import Webull
         def test_main(df):
             self.assertEqual(len(df), 3)
             self.assertEqual(df["SPY"].columns[0][0], "SPY")
@@ -43,6 +44,7 @@ class TestWebull(unittest.TestCase):
 
     @not_gh_action
     def test_main_single(self):
+        from harvest.api.webull import Webull
         def test_main(df):
             self.assertEqual(len(df), 1)
             self.assertEqual(df["SPY"].columns[0][0], "SPY")
@@ -54,6 +56,7 @@ class TestWebull(unittest.TestCase):
 
     @not_gh_action
     def test_chain_info(self):
+        from harvest.api.webull import Webull
         wb = Webull()
         watch = ["SPY"]
         wb.setup(watch, "1MIN", None, None)
@@ -62,6 +65,7 @@ class TestWebull(unittest.TestCase):
 
     @not_gh_action
     def test_chain_data(self):
+        from harvest.api.webull import Webull
         wb = Webull()
         watch = ["LMND"]
         wb.setup(watch, "1MIN", None, None)
