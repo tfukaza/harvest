@@ -82,4 +82,4 @@ Good logs and debug messages can not only help users, but other developers under
     * Errors if the user tried to get a particular stock position from a broker that only supports crypto. The user expects a dictionary but Harvest has no way of providing this. 
 
 ### Documenting
-Every method, no matter how trivial, should be documented 
+Every method, no matter how trivial, should be documented. This project uses the [reST format](https://stackabuse.com/python-docstrings/)  
