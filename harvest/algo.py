@@ -757,7 +757,9 @@ class BaseAlgo:
 
         :returns: The current date and time as a datetime object
         """
-        return datetime_utc_to_local(self.trader.streamer.timestamp, self.trader.timezone)
+        return datetime_utc_to_local(
+            self.trader.streamer.timestamp, self.trader.timezone
+        )
 
     def get_option_position_quantity(self, symbol: str = None) -> bool:
         """Returns the number of types of options held for a stock.

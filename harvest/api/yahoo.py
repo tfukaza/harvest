@@ -96,7 +96,7 @@ class YahooStreamer(API):
                 )
                 debugger.debug(f"From yfinance got: {df_tmp}")
                 df = df_tmp if df is None else df.join(df_tmp)
-            
+
             if len(df.index) == 0:
                 return
             for s in combo:
@@ -108,7 +108,7 @@ class YahooStreamer(API):
                     s = "@" + s[:-4]
                 df_tmp = self._format_df(df_tmp, s)
                 df_dict[s] = df_tmp
-        
+
         debugger.debug(f"From yfinance dict: {df_dict}")
         self.trader_main(df_dict)
 

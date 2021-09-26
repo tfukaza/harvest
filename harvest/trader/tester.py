@@ -19,6 +19,7 @@ from harvest.storage import BaseLogger
 from harvest.utils import *
 from harvest.utils import _convert_input_to_datetime, _convert_input_to_timedelta
 
+
 class BackTester(trader.PaperTrader):
     """
     This class replaces several key functions to allow backtesting
@@ -41,9 +42,9 @@ class BackTester(trader.PaperTrader):
         aggregations: List[Any] = [],
         source: str = "PICKLE",
         path: str = "./data",
-        start = None,
-        end = None,
-        period = None,
+        start=None,
+        end=None,
+        period=None,
     ):
         """Runs backtesting.
 
@@ -75,14 +76,14 @@ class BackTester(trader.PaperTrader):
         self.run_backtest()
 
     def _setup(
-        self, 
+        self,
         source: str,
-        interval: str, 
-        aggregations: List, 
-        path: str, 
-        start, 
+        interval: str,
+        aggregations: List,
+        path: str,
+        start,
         end,
-        period
+        period,
     ):
         self._setup_params(interval, aggregations)
         self._setup_account()
