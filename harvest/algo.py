@@ -296,6 +296,7 @@ class BaseAlgo:
             - type(str): 'call' or 'put'
 
         The index is the {OCC} symbol of the option.
+        Note that the expiration date is not adjusted to the local time zone.
         """
         if symbol is None:
             symbol = self.watchlist[0]
@@ -603,7 +604,8 @@ class BaseAlgo:
         if interval is None:
             interval = self.interval
         if len(symbol) <= 6:
-            return self.trader.storage.load(symbol, interval).iloc[[-1]][symbol]
+            df = self.trader.storage.load(symbol, interval).iloc[[-1]][symbol]
+            return pandas_timestamp_to_local(df, self.trader.timezone)
         debugger.warning("Candles not available for options")
         return None
 
@@ -631,7 +633,8 @@ class BaseAlgo:
             symbol = self.watchlist[0]
         if interval is None:
             interval = self.interval
-        return self.trader.storage.load(symbol, interval)[symbol]
+        df = self.trader.storage.load(symbol, interval)[symbol]
+        return pandas_timestamp_to_local(df, self.trader.timezone)
 
     def get_asset_returns(self, symbol=None) -> float:
         """Returns the return of a specified asset.
@@ -754,7 +757,7 @@ class BaseAlgo:
 
         :returns: The current date and time as a datetime object
         """
-        return self.trader.timestamp.replace(tzinfo=None)
+        return datetime_utc_to_local(self.trader.streamer.timestamp, self.trader.timezone)
 
     def get_option_position_quantity(self, symbol: str = None) -> bool:
         """Returns the number of types of options held for a stock.

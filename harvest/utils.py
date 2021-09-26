@@ -235,12 +235,30 @@ def _convert_input_to_timedelta(period):
     elif isinstance(period, Timerange):
         return period.timerange
     elif isinstance(period, str):
+        expanded_units = {"DAY": "days", "HR": "hours", "MIN": "minutes"}
         val, unit = expand_string_interval(period)
-        return dt.timedelta(**{unit: val})
+        return dt.timedelta(**{expanded_units[unit]: val})
     elif isinstance(period, dt.timedelta):
         return period
     else:
         raise ValueError(f"Cannot convert {period} to timedelta.")
+
+def pandas_timestamp_to_local(df: pd.DataFrame, timezone:ZoneInfo) -> pd.DataFrame:
+    """
+    Converts the timestamp of a dataframe to local time, represented as a 
+    timezone naive datetime object.
+    """
+    df.index = df.index.map(lambda x: datetime_utc_to_local(x, timezone))
+    return df
+
+def datetime_utc_to_local(datetime: dt.datetime, timezone:ZoneInfo) -> dt.datetime:
+    """
+    Converts a datetime object in UTC to local time, represented as a 
+    timezone naive datetime object.
+    """
+    return datetime.astimezone(timezone).replace(tzinfo=None)
+    
+
 
 ############ Functions used for testing #################
 
