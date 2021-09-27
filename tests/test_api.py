@@ -9,7 +9,7 @@ import pandas as pd
 
 from harvest.api._base import StreamAPI
 from harvest.api.dummy import DummyStreamer
-from harvest.trader import Trader
+from harvest.trader import PaperTrader
 from harvest.utils import *
 
 
@@ -25,7 +25,7 @@ class TestAPI(unittest.TestCase):
         stream.fetch_account = lambda: None
         stream.fetch_price_history = lambda x, y: pd.DataFrame()
         stream.fetch_account = lambda: {"cash": 100, "equity": 100}
-        t = Trader(stream)
+        t = PaperTrader(stream)
         stream.trader = t
         stream.trader_main = t.main
         t.set_symbol(["A", "B"])
@@ -75,7 +75,7 @@ class TestAPI(unittest.TestCase):
         stream.fetch_account = lambda: None
         stream.fetch_price_history = lambda x, y: pd.DataFrame()
         stream.fetch_account = lambda: {"cash": 100, "equity": 100}
-        t = Trader(stream)
+        t = PaperTrader(stream)
         stream.trader = t
         stream.trader_main = t.main
         t.set_symbol(["A", "B"])

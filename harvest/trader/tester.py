@@ -17,9 +17,10 @@ from harvest.api.yahoo import YahooStreamer
 from harvest.api.paper import PaperBroker
 from harvest.storage import BaseLogger
 from harvest.utils import *
+from harvest.utils import _convert_input_to_datetime, _convert_input_to_timedelta
 
 
-class BackTester(trader.Trader):
+class BackTester(trader.PaperTrader):
     """
     This class replaces several key functions to allow backtesting
     on historical data.
@@ -30,23 +31,8 @@ class BackTester(trader.Trader):
 
         self.streamer = YahooStreamer() if streamer is None else streamer
         self.broker = PaperBroker()
-
-        self.watchlist_global = []  # List of stocks to watch
-
         self.storage = PickleStorage(limit_size=False)  # local cache of historic price
-
-        self.account = {}  # Local cash of account info
-
-        self.stock_positions = []  # Local cache of current stock positions
-        self.option_positions = []  # Local cache of current options positions
-        self.crypto_positions = []  # Local cache of current crypto positions
-
-        self.order_queue = []  # Queue of unfilled orders
-
-        self.logger = BaseLogger()
-        debugger.debug(
-            f"Streamer: {type(self.streamer).__name__}\nBroker: {type(self.broker).__name__}\nStorage: {type(self.storage).__name__}"
-        )
+        self._init_attributes()
 
         self._setup_debugger(debug)
 
@@ -56,9 +42,9 @@ class BackTester(trader.Trader):
         aggregations: List[Any] = [],
         source: str = "PICKLE",
         path: str = "./data",
-        start: str = None,
-        end: str = None,
-        period: str = None,
+        start=None,
+        end=None,
+        period=None,
     ):
         """Runs backtesting.
 
@@ -89,7 +75,16 @@ class BackTester(trader.Trader):
 
         self.run_backtest()
 
-    def _setup(self, source, interval: str, aggregations, path, start, end, period):
+    def _setup(
+        self,
+        source: str,
+        interval: str,
+        aggregations: List,
+        path: str,
+        start,
+        end,
+        period,
+    ):
         self._setup_params(interval, aggregations)
         self._setup_account()
 
@@ -97,19 +92,18 @@ class BackTester(trader.Trader):
 
         self.storage.limit_size = False
 
-        start = None if start is None else str_to_datetime(start)
-        end = None if end is None else str_to_datetime(end)
-
-        val, unit = expand_string_interval(period) if period is not None else (1, "DAY")
+        start = _convert_input_to_datetime(start, self.timezone)
+        end = _convert_input_to_datetime(end, self.timezone)
+        period = _convert_input_to_timedelta(period)
 
         if start is None and end is None:
             end = self.streamer.current_timestamp()
-            start = end - dt.timedelta(days=val) if period is not None else "MAX"
+            start = end - period if period is not None else "MAX"
         elif start is None:
-            start = end - dt.timedelta(days=val) if period is not None else "MAX"
+            start = end - period if period is not None else "MAX"
         elif end is None:
             end = (
-                start + dt.timedelta(days=val)
+                start + period
                 if period is not None
                 else self.streamer.current_timestamp()
             )
