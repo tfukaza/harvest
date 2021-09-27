@@ -102,6 +102,7 @@ class TestWebull(unittest.TestCase):
         df = wb.fetch_option_market_data(sym)
         self.assertTrue(True)
 
+    @not_gh_action
     def test_order_option_limit(self):
         dummy = PaperBroker()
         dummy.streamer = Webull()
@@ -115,6 +116,7 @@ class TestWebull(unittest.TestCase):
         self.assertEqual(order["id"], 0)
         self.assertEqual(order["symbol"], "A")
 
+    @not_gh_action
     def test_sell(self):
         dummy = PaperBroker()
         dummy.streamer = Webull()
@@ -125,6 +127,7 @@ class TestWebull(unittest.TestCase):
         self.assertEqual(order["id"], 0)
         self.assertEqual(order["symbol"], "A")
 
+    @not_gh_action
     def test_sell_order_limit(self):
         dummy = PaperBroker()
         dummy.streamer = Webull()
@@ -135,6 +138,7 @@ class TestWebull(unittest.TestCase):
         self.assertEqual(order["id"], 0)
         self.assertEqual(order["symbol"], "A")
 
+    @not_gh_action
     def test_buy(self):
         dummy = PaperBroker()
         dummy.streamer = Webull()
@@ -145,6 +149,7 @@ class TestWebull(unittest.TestCase):
         self.assertEqual(order["id"], 0)
         self.assertEqual(order["symbol"], "A")
 
+    @not_gh_action
     def test_buy_order_limit(self):
         dummy = PaperBroker()
         dummy.streamer = Webull()
