@@ -602,7 +602,7 @@ class Webull(API):
                     break
 
         pin = w.get_password("Enter trade PIN for live trading: ")
-        print(isinstance(pin, int), len(pin))
+
         while len(pin) != 6:
             new_pin = w.get_bool(
                 "The pin code should be only 6 digits... do you want to re-try?",
