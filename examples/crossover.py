@@ -3,7 +3,6 @@ from harvest.trader import Trader
 
 
 class Crossover(BaseAlgo):
-
     def config(self):
         self.watchlist = ["SPY"]
         self.interval = "5MIN"

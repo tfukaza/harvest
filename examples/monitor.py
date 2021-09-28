@@ -5,14 +5,15 @@ from harvest.algo import BaseAlgo
 from harvest.trader import Trader
 from harvest.api.robinhood import Robinhood
 
-class Watch(BaseAlgo):
 
+class Watch(BaseAlgo):
     def config(self):
-        self.watchlist = ['@BTC']
+        self.watchlist = ["@BTC"]
         self.interval = "1MIN"
 
     def main(self):
         print(self.get_asset_price())
+
 
 if __name__ == "__main__":
     t = Trader(Robinhood())

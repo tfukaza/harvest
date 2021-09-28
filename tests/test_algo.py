@@ -4,7 +4,7 @@ import unittest
 from unittest.mock import patch
 
 # from harvest import algo
-from harvest.trader import Trader
+from harvest.trader import PaperTrader
 from harvest.api.dummy import DummyStreamer
 from harvest.algo import BaseAlgo
 
@@ -17,7 +17,7 @@ prices = [10, 12, 11, 9, 8, 10, 11, 12, 13, 15, 14, 16, 13, 14]
 
 class TestAlgo(unittest.TestCase):
 
-    # Watchlist set in the Algo class locally should take precendance over watchlist in Trader class
+    # Watchlist set in the Algo class locally should take precendance over watchlist in PaperTrader class
     def test_config_watchlist_1(self):
         class Algo1(BaseAlgo):
             def config(self):
@@ -31,7 +31,7 @@ class TestAlgo(unittest.TestCase):
         algo2 = Algo2()
 
         s = DummyStreamer()
-        t = Trader(s)
+        t = PaperTrader(s)
         t.set_algo([algo1, algo2])
         t.set_symbol(["1", "2", "3"])
 
@@ -51,7 +51,7 @@ class TestAlgo(unittest.TestCase):
             prices1, list(t.storage.load("A", Interval.MIN_5)["A"]["close"])
         )
 
-    # Trader class should be able to run algorithms at the individually specified intervals
+    # PaperTrader class should be able to run algorithms at the individually specified intervals
     def test_config_interval(self):
         class Algo1(BaseAlgo):
             def config(self):
@@ -69,7 +69,7 @@ class TestAlgo(unittest.TestCase):
         algo2 = Algo2()
 
         s = DummyStreamer()
-        t = Trader(s)
+        t = PaperTrader(s)
         t.set_algo([algo1, algo2])
 
         t.start()
@@ -134,10 +134,10 @@ class TestAlgo(unittest.TestCase):
 
     def test_bbands_trader(self):
         """
-        Test that bband values are calculated correctly based on data in Trader's Storage class.
+        Test that bband values are calculated correctly based on data in PaperTrader's Storage class.
         """
         streamer = DummyStreamer()
-        t = Trader(streamer)
+        t = PaperTrader(streamer)
         t.set_symbol("DUMMY")
         t.set_algo(BaseAlgo())
         t.start("1MIN")
@@ -149,7 +149,7 @@ class TestAlgo(unittest.TestCase):
 
     def test_get_asset_quantity(self):
         s = DummyStreamer()
-        t = Trader(s)
+        t = PaperTrader(s)
         t.set_symbol("A")
         t.set_algo(BaseAlgo())
         t.start("1MIN")
@@ -164,7 +164,7 @@ class TestAlgo(unittest.TestCase):
 
     def test_get_asset_cost(self):
         s = DummyStreamer()
-        t = Trader(s)
+        t = PaperTrader(s)
         t.set_symbol("A")
         t.set_algo(BaseAlgo())
         t.start("1MIN")
@@ -179,7 +179,7 @@ class TestAlgo(unittest.TestCase):
 
     def test_get_asset_price(self):
         s = DummyStreamer()
-        t = Trader(s)
+        t = PaperTrader(s)
         t.set_symbol("A")
         t.set_algo(BaseAlgo())
         t.start("1MIN")
@@ -195,7 +195,7 @@ class TestAlgo(unittest.TestCase):
 
     def test_buy_sell(self):
         s = DummyStreamer()
-        t = Trader(s)
+        t = PaperTrader(s)
         t.set_symbol("A")
         t.set_algo(BaseAlgo())
         t.start("1MIN")
@@ -218,7 +218,7 @@ class TestAlgo(unittest.TestCase):
 
     def test_buy_sell_auto(self):
         s = DummyStreamer()
-        t = Trader(s)
+        t = PaperTrader(s)
         t.set_symbol("A")
         t.set_algo(BaseAlgo())
         t.start("1MIN")
@@ -242,7 +242,7 @@ class TestAlgo(unittest.TestCase):
         mock_mark_up.return_value = 10
 
         streamer = DummyStreamer()
-        t = Trader(streamer)
+        t = PaperTrader(streamer)
         t.set_symbol("X")
         t.set_algo(BaseAlgo())
         t.start("1MIN")
