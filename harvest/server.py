@@ -34,8 +34,12 @@ class Server:
         )
         server.start()
 
-    @app.route("/api/login")
-    def login(self, methods=["POST"]):
+    @app.route("/api/login", methods=["GET", "POST"])
+    def login(self):
+
+        if request.method == "GET":
+            return render_template("/minimal/login.html")
+
         username = request.json["username"]
         password = request.json["password"]
 
@@ -50,9 +54,13 @@ class Server:
         else:
             return {"message", "Failed"}
 
-    @app.route("/api/init_password")
+    @app.route("/api/init_password", methods=["GET", "POST"])
     @login_required
-    def update_password(self, methods=["POST"]):
+    def update_password(self):
+
+        if request.method == "GET":
+            return render_template("/minimal/update_password.html")
+
         username = request.json["username"]
         cur_password = request.json["cur_password"]
         new_password = request.json["new_password"]
@@ -66,9 +74,9 @@ class Server:
         
         self.db.update_user_password(username, new_password)
 
-    @app.route("api/logout")
+    @app.route("/api/logout", methods=["POST"])
     @login_required
-    def logout(self, methods=["POST"]):
+    def logout(self):
         username = request.json["username"]
         user = self.db.get_user(username)
         logout_user(user)

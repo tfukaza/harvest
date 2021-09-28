@@ -1,0 +1,23 @@
+<form>
+    <label for="username">Username</label><br>
+    <input type="text" id="username" name="username"><br>   
+    <label for="password">Password</label><br>
+    <input type="password" id="password" name="password"><br>
+    <input type="submit" value="Login">
+</form> 
+
+<script>
+    function handleLogin(event) {
+        event.preventDefault();
+        const form = new FormData(event.target);
+        fetch('/api/login', {
+            method: 'POST',
+            json: true,
+            body: form
+        }).then(response => {})
+    }
+
+    const form = document.querySelector('form');
+    form.addEventListener('submit', handleLogin);
+
+</script>
