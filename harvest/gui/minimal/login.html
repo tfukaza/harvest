@@ -18,7 +18,13 @@
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify(data)
-        }).then(response => {})
+        }).then(response => {
+            if (response.redirected) {
+                window.location.href = response.url;
+            } else if (response.ok) {
+                window.location.href = '/';
+            }
+        })
     }
 
     const form = document.querySelector('form');
