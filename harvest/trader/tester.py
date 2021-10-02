@@ -96,17 +96,16 @@ class BackTester(trader.PaperTrader):
         end = _convert_input_to_datetime(end, self.timezone)
         period = _convert_input_to_timedelta(period)
 
-        if start is None and end is None:
-            end = self.streamer.current_timestamp()
-            start = end - period if period is not None else "MAX"
-        elif start is None:
-            start = end - period if period is not None else "MAX"
-        elif end is None:
-            end = (
-                start + period
-                if period is not None
-                else self.streamer.current_timestamp()
-            )
+        if start is None:
+            if end is None or period is None:
+                start = "MAX"
+            else:
+                start = end - period
+        if end is None:
+            if start is None or period is None:
+                end = "MAX"
+            else:
+                end = start + period
 
         if source == "PICKLE":
             self.read_pickle_data()
