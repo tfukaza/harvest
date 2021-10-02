@@ -328,7 +328,7 @@ class BackTester(trader.PaperTrader):
                     a.main()
                     new_algo.append(a)
                 except Exception as e:
-                    self.debugging.warning(
+                    debugger(
                         f"Algorithm {a} failed, removing from algorithm list.\nException: {e}"
                     )
             self.algo = new_algo
