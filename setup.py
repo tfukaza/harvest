@@ -36,7 +36,9 @@ class CoverageTestCMD(Command):
         pass
 
     def run(self):
-        a = subprocess.run(["coverage", "run", "-m", "unittest", "discover",  "-s", "tests"]).returncode
+        a = subprocess.run(
+            ["coverage", "run", "-m", "unittest", "discover", "-s", "tests"]
+        ).returncode
         b = subprocess.run(["coverage", "report"]).returncode
         c = subprocess.run(["coverage", "html"]).returncode
         exit(a + b + c)

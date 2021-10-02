@@ -5,9 +5,17 @@ from flask_cors import CORS
 import threading
 import json
 
-from flask_login import LoginManager, login_user, login_required, logout_user, current_user, UserMixin
+from flask_login import (
+    LoginManager,
+    login_user,
+    login_required,
+    logout_user,
+    current_user,
+    UserMixin,
+)
 
 from harvest.utils import debugger
+
 
 class User(UserMixin):
     def __init__(self, username, password):
@@ -15,8 +23,8 @@ class User(UserMixin):
         self.password = password
         self.default_password = True
 
+
 class DB:
-    
     def __init__(self):
         self.users = []
 
@@ -44,11 +52,9 @@ class DB:
         return None
 
 
-app = Flask(
-    __name__, template_folder="gui", static_folder="gui", static_url_path="/"
-)
+app = Flask(__name__, template_folder="gui", static_folder="gui", static_url_path="/")
 
-#CORS(app)
+# CORS(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "login"
@@ -57,25 +63,26 @@ db = DB()  # Initiate database
 
 trader = None
 
+
 class Server:
     """
     Runs a web server in a new thread.
     """
 
     def __init__(self, t):
-        app.config['SECRET_KEY'] = 'secret!' # TODO: Generate random secret key
-        db.add_user("admin", "admin") # Default user
+        app.config["SECRET_KEY"] = "secret!"  # TODO: Generate random secret key
+        db.add_user("admin", "admin")  # Default user
         global trader
         trader = t
 
     def start(self):
         debugger.info("Starting web server")
-        server = threading.Thread(
-            target=app.run, kwargs={"port": 11111}, daemon=True
-        )
+        server = threading.Thread(target=app.run, kwargs={"port": 11111}, daemon=True)
         server.start()
 
+
 # ========= Backend API endpoints =========
+
 
 @app.route("/api/login", methods=["POST"])
 def api_login():
@@ -95,6 +102,7 @@ def api_login():
     else:
         return redirect("/login")
 
+
 @app.route("/api/update_password", methods=["POST"])
 @login_required
 def api_update_password():
@@ -107,6 +115,7 @@ def api_update_password():
 
     logout_user()
     return redirect("/login")
+
 
 @app.route("/api/logout", methods=["POST"])
 @login_required
@@ -121,38 +130,47 @@ def api_logout():
 def api_crypto_positions():
     return json.dumps(trader.crypto_positions)
 
+
 @app.route("/api/stock_positions")
 @login_required
 def api_stock_positions():
     return json.dumps(trader.stock_positions)
+
 
 @app.route("/api/option_positions")
 @login_required
 def api_option_positions():
     return json.dumps(trader.option_positions)
 
+
 # ========= Web GUI endpoints =========
+
 
 @app.route("/")
 @login_required
 def interface():
     return render_template("index.html")
 
+
 @app.route("/login", methods=["GET"])
 def login():
     return render_template("minimal/login.html")
+
 
 @app.route("/update_password", methods=["GET"])
 @login_required
 def update_password():
     return render_template("minimal/update_password.html")
 
+
 # ========= Handlers =========
+
 
 @login_manager.unauthorized_handler
 def unauthorized():
     print("Need to log in")
     return json.dumps({"message": "need to log in"})
+
 
 @login_manager.user_loader
 def load_user(user_id):
