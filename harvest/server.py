@@ -115,10 +115,21 @@ def api_logout():
     user = db.get_user(username)
     logout_user(user)
 
+
 @app.route("/api/crypto_positions")
 @login_required
 def api_crypto_positions():
     return json.dumps(trader.crypto_positions)
+
+@app.route("/api/stock_positions")
+@login_required
+def api_stock_positions():
+    return json.dumps(trader.stock_positions)
+
+@app.route("/api/option_positions")
+@login_required
+def api_option_positions():
+    return json.dumps(trader.option_positions)
 
 # ========= Web GUI endpoints =========
 
