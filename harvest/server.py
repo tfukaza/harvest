@@ -32,6 +32,11 @@ class DB:
                 return True
         return False
 
+    def set_is_default_password(self, username, is_default):
+        for user in self.users:
+            if user.get_id() == username:
+                user.default_password = is_default
+
     def get_user(self, username):
         for user in self.users:
             if user.get_id() == username:
@@ -43,7 +48,7 @@ app = Flask(
     __name__, template_folder="gui", static_folder="gui", static_url_path="/"
 )
 
-CORS(app)
+#CORS(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "login"
@@ -60,6 +65,7 @@ class Server:
     def __init__(self, t):
         app.config['SECRET_KEY'] = 'secret!' # TODO: Generate random secret key
         db.add_user("admin", "admin") # Default user
+        global trader
         trader = t
 
     def start(self):
@@ -68,6 +74,8 @@ class Server:
             target=app.run, kwargs={"port": 11111}, daemon=True
         )
         server.start()
+
+# ========= Backend API endpoints =========
 
 @app.route("/api/login", methods=["POST"])
 def api_login():
@@ -85,7 +93,7 @@ def api_login():
         else:
             return redirect("/")
     else:
-        return json.dumps({"success": False})
+        return redirect("/login")
 
 @app.route("/api/update_password", methods=["POST"])
 @login_required
@@ -95,6 +103,7 @@ def api_update_password():
     new_password = request.json["password"]
 
     db.update_user_password(username, new_password)
+    db.set_is_default_password(username, False)
 
     logout_user()
     return redirect("/login")
@@ -102,7 +111,7 @@ def api_update_password():
 @app.route("/api/logout", methods=["POST"])
 @login_required
 def api_logout():
-    username = request.json["username"]
+    username = current_user.get_id()
     user = db.get_user(username)
     logout_user(user)
 
@@ -110,6 +119,8 @@ def api_logout():
 @login_required
 def api_crypto_positions():
     return json.dumps(trader.crypto_positions)
+
+# ========= Web GUI endpoints =========
 
 @app.route("/")
 @login_required
@@ -123,8 +134,9 @@ def login():
 @app.route("/update_password", methods=["GET"])
 @login_required
 def update_password():
-    print("Render update password")
     return render_template("minimal/update_password.html")
+
+# ========= Handlers =========
 
 @login_manager.unauthorized_handler
 def unauthorized():
