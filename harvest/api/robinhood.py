@@ -432,6 +432,8 @@ class Robinhood(API):
             )
         return queue
 
+    # --------------- Methods for Trading --------------- #
+
     # Order functions are not wrapped in the exception handler to prevent duplicate
     # orders from being made.
     def order_limit(

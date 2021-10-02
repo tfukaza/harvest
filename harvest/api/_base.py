@@ -72,7 +72,7 @@ class API:
         """
         This method is called when the yaml file with credentials
         is not found."""
-        raise Exception(f"{path} was not found")
+        raise Exception(f"{path} was not found.")
 
     def refresh_cred(self):
         """
@@ -129,7 +129,7 @@ class API:
         cur_min = -1
         val, unit = expand_interval(self.poll_interval)
 
-        debugger.info(f"{type(self).__name__} started...")
+        debugger.debug(f"{type(self).__name__} started...")
         if unit == "MIN":
             sleep = val * 60 - 10
             while 1:
@@ -195,7 +195,7 @@ class API:
         This function is called after every invocation of algo's handler.
         The intended purpose is for brokers to clear any cache it may have created.
         """
-        debugger.info(f"{type(self).__name__} exited")
+        debugger.debug(f"{type(self).__name__} exited")
 
     def _exception_handler(func):
         """
@@ -255,7 +255,9 @@ class API:
         :param end: The ending date of the period, inclusive.
         :returns: A pandas dataframe, same format as main()
         """
-        raise NotImplementedError("This endpoint is not supported in this broker")
+        raise NotImplementedError(
+            f"{type(self).__name__} does not support this streamer method: `fetch_price_history`."
+        )
 
     def fetch_chain_info(self, symbol: str):
         """
@@ -267,6 +269,9 @@ class API:
             - exp_dates: List of expiration dates as datetime objects
             - multiplier: Multiplier of the option, usually 100
         """
+        raise NotImplementedError(
+            f"{type(self).__name__} does not support this streamer method: `fetch_chain_info`."
+        )
 
     def fetch_chain_data(self, symbol: str):
         """
@@ -280,7 +285,9 @@ class API:
             ---     ---      ---     ---
         exp_date should be a timezone-aware datetime object localized to UTC
         """
-        raise NotImplementedError("This endpoint is not supported in this broker")
+        raise NotImplementedError(
+            f"{type(self).__name__} does not support this streamer method: `fetch_chain_data`."
+        )
 
     def fetch_option_market_data(self, symbol: str):
         """
@@ -292,7 +299,9 @@ class API:
             - ask: ask price
             - bid: bid price
         """
-        raise NotImplementedError("This endpoint is not supported in this broker")
+        raise NotImplementedError(
+            f"{type(self).__name__} does not support this streamer method: `fetch_option_market_data`."
+        )
 
     # ------------- Broker methods ------------- #
 
@@ -305,7 +314,10 @@ class API:
             - avg_price: The average price the stock was bought at
             - quantity: Quantity owned
         """
-        raise NotImplementedError("This endpoint is not supported in this broker")
+        debugger.error(
+            f"{type(self).__name__} does not support this broker method: `fetch_stock_positions`. Returning an empty list."
+        )
+        return []
 
     def fetch_option_positions(self):
         """
@@ -321,7 +333,10 @@ class API:
             - strike_price: Strike price of the option
             - type: 'call' or 'put'
         """
-        raise NotImplementedError("This endpoint is not supported in this broker")
+        debugger.error(
+            f"{type(self).__name__} does not support this broker method: `fetch_option_positions`. Returning an empty list."
+        )
+        return []
 
     def fetch_crypto_positions(self):
         """
@@ -332,7 +347,10 @@ class API:
             - avg_price: The average price the crypto was bought at
             - quantity: Quantity owned
         """
-        raise NotImplementedError("This endpoint is not supported in this broker")
+        debugger.error(
+            f"{type(self).__name__} does not support this broker method: `fetch_crypto_positions`. Returning an empty list."
+        )
+        return []
 
     def update_option_positions(self, positions: List[Any]):
         """
@@ -343,7 +361,9 @@ class API:
         :positions: The option_positions list in the Trader class.
         :returns: Nothing
         """
-        raise NotImplementedError("This endpoint is not supported in this broker")
+        debugger.error(
+            f"{type(self).__name__} does not support this broker method: `update_option_positions`. Doing nothing."
+        )
 
     def fetch_account(self):
         """
@@ -355,7 +375,9 @@ class API:
             - buying_power: Total buying power
             - multiplier: Scale of leverage, if leveraging
         """
-        raise NotImplementedError("This endpoint is not supported in this broker")
+        raise NotImplementedError(
+            f"{type(self).__name__} does not support this broker method: `fetch_account`."
+        )
 
     def fetch_stock_order_status(self, id):
         """
@@ -373,7 +395,9 @@ class API:
             - time_in_force: Time the order is in force
             - status: Status of the order
         """
-        raise NotImplementedError("This endpoint is not supported in this broker")
+        raise NotImplementedError(
+            f"{type(self).__name__} does not support this broker method: `fetch_stock_order_status`."
+        )
 
     def fetch_option_order_status(self, id):
         """
@@ -391,7 +415,9 @@ class API:
             - time_in_force: Time the order is in force
             - status: Status of the order
         """
-        raise NotImplementedError("This endpoint is not supported in this broker")
+        raise NotImplementedError(
+            f"{type(self).__name__} does not support this broker method: `fetch_option_order_status`."
+        )
 
     def fetch_crypto_order_status(self, id):
         """
@@ -409,7 +435,9 @@ class API:
             - time_in_force: Time the order is in force
             - status: Status of the order
         """
-        raise NotImplementedError("This endpoint is not supported in this broker")
+        raise NotImplementedError(
+            f"{type(self).__name__} does not support this broker method: `fetch_crypto_order_status`."
+        )
 
     def fetch_order_queue(self):
         """
@@ -446,7 +474,10 @@ class API:
                 - status: Status of the order
                 - side: 'buy' or 'sell'
         """
-        raise NotImplementedError("This endpoint is not supported in this broker")
+        debugger.error(
+            f"{type(self).__name__} does not support this broker method: `fetch_order_queue`. Returning an empty list."
+        )
+        return []
 
     # --------------- Methods for Trading --------------- #
 
@@ -475,7 +506,9 @@ class API:
             - symbol: symbol of asset
             Raises an exception if order fails.
         """
-        raise NotImplementedError("This endpoint is not supported in this broker")
+        raise NotImplementedError(
+            f"{type(self).__name__} does not support this broker method: `order_limit`."
+        )
 
     def order_option_limit(
         self,
@@ -506,7 +539,9 @@ class API:
             - symbol: symbol of asset
             Raises an exception if order fails.
         """
-        raise NotImplementedError("This endpoint is not supported in this broker")
+        raise NotImplementedError(
+            f"{type(self).__name__} does not support this broker method: `order_option_limit`."
+        )
 
     # -------------- Built-in methods -------------- #
     # These do not need to be re-implemented in a subclass
@@ -577,7 +612,7 @@ class API:
         if symbol == None:
             symbol = self.watch[0]
         if quantity <= 0.0:
-            debugger.warning(
+            debugger.error(
                 f"Quantity cannot be less than or equal to 0: was given {quantity}"
             )
             return None
@@ -612,7 +647,7 @@ class API:
         :returns: The result of order_option_limit(). Returns None if there is an issue with the parameters.
         """
         if quantity <= 0.0:
-            debugger.warning(
+            debugger.error(
                 f"Quantity cannot be less than or equal to 0: was given {quantity}"
             )
             return None
@@ -657,7 +692,7 @@ Reduce purchase quantity or increase buying power."""
         :returns: The result of order_option_limit(). Returns None if there is an issue with the parameters.
         """
         if quantity <= 0.0:
-            debugger.warning(
+            debugger.error(
                 f"Quantity cannot be less than or equal to 0: was given {quantity}"
             )
             return None

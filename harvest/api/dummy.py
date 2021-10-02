@@ -217,11 +217,6 @@ class DummyStreamer(API):
         return results
 
     # TODO: Generate dummy option data
-    def fetch_chain_info(self, symbol: str):
-        raise NotImplementedError("Dummy Streamer does not support broker functions.")
-
-    def fetch_chain_data(self, symbol: str):
-        raise NotImplementedError("Dummy Streamer does not support broker functions.")
 
     def fetch_option_market_data(self, symbol: str):
         # This is a placeholder so Trader doesn't crash
@@ -241,34 +236,28 @@ class DummyStreamer(API):
             "bid": price * 0.95,
         }
 
+    # Not implemented functions:
+    #   fetch_chain_info
+    #   fetch_chain_data
+
     # ------------- Broker methods ------------- #
 
-    def fetch_stock_positions(self) -> List[Dict[str, Any]]:
-        raise NotImplementedError("Dummy Streamer does not support broker functions.")
+    # Not implemented functions:
+    #   fetch_stock_positions
+    #   fetch_option_positions
+    #   fetch_crypto_positions
+    #   update_option_positions
+    #   fetch_account
+    #   fetch_stock_order_status
+    #   fetch_option_order_status
+    #   fetch_crypto_order_status
+    #   fetch_order_queue
 
-    def fetch_option_positions(self) -> List[Dict[str, Any]]:
-        raise NotImplementedError("Dummy Streamer does not support broker functions.")
+    # --------------- Methods for Trading --------------- #
 
-    def fetch_crypto_positions(self) -> List[Dict[str, Any]]:
-        raise NotImplementedError("Dummy Streamer does not support broker functions.")
-
-    def update_option_positions(self, positions) -> List[Dict[str, Any]]:
-        raise NotImplementedError("Dummy Streamer does not support broker functions.")
-
-    def fetch_account(self) -> Dict[str, Any]:
-        raise NotImplementedError("Dummy Streamer does not support broker functions.")
-
-    def fetch_stock_order_status(self, id: int) -> Dict[str, Any]:
-        raise NotImplementedError("Dummy Streamer does not support broker functions.")
-
-    def fetch_option_order_status(self, id: int) -> Dict[str, Any]:
-        raise NotImplementedError("Dummy Streamer does not support broker functions.")
-
-    def fetch_crypto_order_status(self, id: int) -> Dict[str, Any]:
-        raise NotImplementedError("Dummy Streamer does not support broker functions.")
-
-    def fetch_order_queue(self) -> List[Dict[str, Any]]:
-        raise NotImplementedError("Dummy Streamer does not support broker functions.")
+    # Not implemented functions:
+    #   order_limit
+    #   order_option_limit
 
     # ------------- Helper methods ------------- #
 

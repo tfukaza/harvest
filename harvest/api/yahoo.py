@@ -69,7 +69,9 @@ class YahooStreamer(API):
 
         if len(combo) == 1:
             s = combo[0]
-            interval_fmt = self.fmt_interval(self.interval[self.unfmt_symbol(s)]["interval"])
+            interval_fmt = self.fmt_interval(
+                self.interval[self.unfmt_symbol(s)]["interval"]
+            )
             df = yf.download(s, period="1d", interval=interval_fmt, prepost=True)
             debugger.debug(f"From yfinance got: {df}")
             if len(df.index) == 0:
@@ -79,7 +81,7 @@ class YahooStreamer(API):
             df_dict[s] = df
         else:
             names = " ".join(combo)
-            df = pd.DataFrame()
+            df = None
             required_intervals = {}
             for s in combo:
                 i = self.interval[self.unfmt_symbol(s)]["interval"]
@@ -92,8 +94,9 @@ class YahooStreamer(API):
                 df_tmp = yf.download(
                     names, period="1d", interval=self.fmt_interval(i), prepost=True
                 )
-                df = df.join(df_tmp)
-            debugger.debug(f"From yfinance got: {df}")
+                debugger.debug(f"From yfinance got: {df_tmp}")
+                df = df_tmp if df is None else df.join(df_tmp)
+
             if len(df.index) == 0:
                 return
             for s in combo:
@@ -105,6 +108,8 @@ class YahooStreamer(API):
                     s = "@" + s[:-4]
                 df_tmp = self._format_df(df_tmp, s)
                 df_dict[s] = df_tmp
+
+        debugger.debug(f"From yfinance dict: {df_dict}")
         self.trader_main(df_dict)
 
     # -------------- Streamer methods -------------- #
@@ -219,74 +224,22 @@ class YahooStreamer(API):
 
     # ------------- Broker methods ------------- #
 
-    @API._exception_handler
-    def fetch_stock_positions(self):
-        debugger.error(
-            "Yahoo does not support broker functions. Returning an empty list."
-        )
-        return []
+    # Not implemented functions:
+    #   fetch_stock_positions
+    #   fetch_option_positions
+    #   fetch_crypto_positions
+    #   update_option_positions
+    #   fetch_account
+    #   fetch_stock_order_status
+    #   fetch_option_order_status
+    #   fetch_crypto_order_status
+    #   fetch_order_queue
 
-    @API._exception_handler
-    def fetch_option_positions(self):
-        debugger.error(
-            "Yahoo does not support broker functions. Returning an empty list."
-        )
-        return []
+    # --------------- Methods for Trading --------------- #
 
-    @API._exception_handler
-    def fetch_crypto_positions(self, key=None):
-        debugger.error(
-            "Yahoo does not support broker functions. Returning an empty list."
-        )
-        return []
-
-    @API._exception_handler
-    def update_option_positions(self, positions: List[Any]):
-        raise NotImplementedError("Yahoo does not support broker functions.")
-
-    @API._exception_handler
-    def fetch_account(self):
-        raise NotImplementedError("Yahoo does not support broker functions.")
-
-    @API._exception_handler
-    def fetch_stock_order_status(self, id):
-        raise NotImplementedError("Yahoo does not support broker functions.")
-
-    @API._exception_handler
-    def fetch_option_order_status(self, id):
-        raise NotImplementedError("Yahoo does not support broker functions.")
-
-    @API._exception_handler
-    def fetch_crypto_order_status(self, id):
-        raise NotImplementedError("Yahoo does not support broker functions.")
-
-    @API._exception_handler
-    def fetch_order_queue(self):
-        raise NotImplementedError("Yahoo does not support broker functions.")
-
-    def order_limit(
-        self,
-        side: str,
-        symbol: str,
-        quantity: float,
-        limit_price: float,
-        in_force: str = "gtc",
-        extended: bool = False,
-    ):
-        raise NotImplementedError("Yahoo does not support broker functions.")
-
-    def order_option_limit(
-        self,
-        side: str,
-        symbol: str,
-        quantity: int,
-        limit_price: float,
-        option_type,
-        exp_date: dt.datetime,
-        strike,
-        in_force: str = "gtc",
-    ):
-        raise NotImplementedError("Yahoo does not support broker functions.")
+    # Not implemented functions:
+    #   order_limit
+    #   order_option_limit
 
     # ------------- Helper methods ------------- #
 

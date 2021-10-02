@@ -167,7 +167,7 @@ class Alpaca(StreamAPI):
 
     @API._exception_handler
     def update_option_positions(self, positions: List[Any]):
-        raise NotImplementedError("Alpaca does not support options.")
+        debugger.error("Alpaca does not support options. Doing nothing.")
 
     @API._exception_handler
     def fetch_account(self):
@@ -190,6 +190,8 @@ class Alpaca(StreamAPI):
     @API._exception_handler
     def fetch_order_queue(self):
         return [pos.__dict__["_raw"] for pos in self.api.list_positions()]
+
+    # --------------- Methods for Trading --------------- #
 
     def order_limit(
         self,

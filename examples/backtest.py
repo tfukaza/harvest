@@ -3,7 +3,6 @@ from harvest.trader import BackTester
 
 
 class BackTest(BaseAlgo):
-
     def config(self):
         self.watchlist = ["SPY"]
         self.interval = "5MIN"

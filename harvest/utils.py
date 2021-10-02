@@ -5,7 +5,9 @@ import time
 import random
 import logging
 import datetime as dt
+from datetime import timezone as tz
 from enum import IntEnum, auto
+from zoneinfo import ZoneInfo
 
 # External Imports
 import pytz
@@ -141,14 +143,14 @@ def now() -> dt.datetime:
     """
     Returns the current time precise to the minute in the UTC timezone
     """
-    return pytz.utc.localize(dt.datetime.utcnow().replace(microsecond=0, second=0))
+    return dt.datetime.now(tz.utc).replace(microsecond=0, second=0)
 
 
 def epoch_zero() -> dt.datetime:
     """
     Returns a datetime object corresponding to midnight 1/1/1970 UTC
     """
-    return pytz.utc.localize(dt.datetime(1970, 1, 1))
+    return dt.datetime(1970, 1, 1, tzinfo=tz.utc)
 
 
 def date_to_str(day) -> str:
@@ -156,14 +158,16 @@ def date_to_str(day) -> str:
 
 
 def str_to_date(day) -> str:
-    return pytz.utc.localize(dt.datetime.strptime(day, "%Y-%m-%d"))
+    return dt.datetime.strptime(day, "%Y-%m-%d")
 
 
 def str_to_datetime(date: str) -> dt.datetime:
     """
-    :date: A string in the format MM-DD-YYYY:HH:MM:SS
+    :date: A string in the format YYYY-MM-DD hh:mm
     """
-    return pytz.utc.localize(dt.datetime.strptime(date, "%m-%d-%Y:%H:%M:%S"))
+    if len(date) <= 10:
+        return dt.datetime.strptime(date, "%Y-%m-%d")
+    return dt.datetime.strptime(date, "%Y-%m-%d %H:%M")
 
 
 def mark_up(x):
@@ -178,14 +182,96 @@ def has_timezone(date: dt.datetime) -> bool:
     return date.tzinfo is not None and date.tzinfo.utcoffset(date) is not None
 
 
-def set_system_timezone(date: dt.datetime) -> dt.datetime:
+# def set_system_timezone(date: dt.datetime) -> dt.datetime:
+#     """
+#     :date: A python datetime object that does not have tzinfo set.
+#     If tzinfo is set, an error will occur. Converts first to the
+#     timezone of the user's system and then to UTC.
+#     """
+#     timezone = pytz.timezone(str(tzlocal.get_localzone()))
+#     return timezone.localize(date).astimezone(pytz.utc)
+
+
+class Timestamp:
+    def __init__(self, *args) -> None:
+        if len(args) == 1:
+            timestamp = args[1]
+            if isinstance(timestamp, str):
+                self.timestamp = str_to_datetime(timestamp)
+            elif isinstance(timestamp, dt.datetime):
+                self.timestamp = timestamp
+            else:
+                raise ValueError(f"Invalid timestamp type {type(timestamp)}")
+        elif len(args) > 1:
+            self.timestamp = dt.datetime(*args)
+
+    def __sub__(self, other):
+        return Timerange(self.timestamp - other.timestamp)
+
+
+class Timerange:
+    def __init__(self, *args) -> None:
+        if len(args) == 1:
+            timerange = args[1]
+            if isinstance(timerange, dt.timedelta):
+                self.timerange = timerange
+            else:
+                raise ValueError(f"Invalid timestamp type {type(timerange)}")
+        elif len(args) > 1:
+            range_list = ["days", "hours", "minutes"]
+            dict = {range_list[i]: arg for i, arg in enumerate(args)}
+            self.timerange = dt.timedelta(**dict)
+
+
+def _convert_input_to_datetime(datetime, timezone: ZoneInfo):
+
+    if datetime is None:
+        return None
+    elif isinstance(datetime, Timestamp):
+        datetime = tz.localize(datetime.timestamp)
+    elif isinstance(datetime, str):
+        datetime = str_to_datetime(datetime)
+    elif isinstance(datetime, dt.datetime):
+        datetime = tz.localize(datetime)
+    else:
+        raise ValueError(f"Cannot convert {datetime} to datetime.")
+
+    datetime = datetime.replace(tzinfo=timezone)
+    datetime = datetime.astimezone(tz.utc)
+
+
+def _convert_input_to_timedelta(period):
+    """Converts period into a timedelta object.
+    Period can be a string, timedelta object, or a Timerange object."""
+    if period is None:
+        return None
+    elif isinstance(period, Timerange):
+        return period.timerange
+    elif isinstance(period, str):
+        expanded_units = {"DAY": "days", "HR": "hours", "MIN": "minutes"}
+        val, unit = expand_string_interval(period)
+        return dt.timedelta(**{expanded_units[unit]: val})
+    elif isinstance(period, dt.timedelta):
+        return period
+    else:
+        raise ValueError(f"Cannot convert {period} to timedelta.")
+
+
+def pandas_timestamp_to_local(df: pd.DataFrame, timezone: ZoneInfo) -> pd.DataFrame:
     """
-    :date: A python datetime object that does not have tzinfo set.
-    If tzinfo is set, an error will occur. Converts first to the
-    timezone of the user's system and then to UTC.
+    Converts the timestamp of a dataframe to local time, represented as a
+    timezone naive datetime object.
     """
-    timezone = pytz.timezone(str(tzlocal.get_localzone()))
-    return timezone.localize(date).astimezone(pytz.utc)
+    df.index = df.index.map(lambda x: datetime_utc_to_local(x, timezone))
+    return df
+
+
+def datetime_utc_to_local(datetime: dt.datetime, timezone: ZoneInfo) -> dt.datetime:
+    """
+    Converts a datetime object in UTC to local time, represented as a
+    timezone naive datetime object.
+    """
+    return datetime.astimezone(timezone).replace(tzinfo=None)
 
 
 ############ Functions used for testing #################

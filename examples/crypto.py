@@ -10,8 +10,8 @@ It also demonstrates some built-in functions.
 # Constants
 N = 3
 
-class Crypto(BaseAlgo):
 
+class Crypto(BaseAlgo):
     def config(self):
         self.watchlist = ["@DOGE"]
         self.interval = "30MIN"
@@ -97,7 +97,8 @@ class Crypto(BaseAlgo):
     def sell_eval(self, ret):
         return bool(ret > self.cutoff + 0.02 or ret < self.cutoff - 0.001)
 
+
 if __name__ == "__main__":
     t = Trader(Robinhood(), PaperBroker())
     t.set_algo(Crypto())
-    t.start() 
+    t.start()
