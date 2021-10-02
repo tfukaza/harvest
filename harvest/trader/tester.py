@@ -126,7 +126,7 @@ class BackTester(trader.PaperTrader):
 
         if start != "MAX" and start < common_start:
             raise Exception(f"Not enough data is available for a start time of {start}")
-        if end > common_end:
+        if end != "MAX" and end > common_end:
             raise Exception(
                 f"Not enough data is available for an end time of {end}: \nLast datapoint is {common_end}"
             )
