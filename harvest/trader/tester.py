@@ -125,15 +125,13 @@ class BackTester(trader.PaperTrader):
                 if common_end is None or df.index[-1] < common_end:
                     common_end = df.index[-1]
 
-        if start < common_start:
+        if start != "MAX" and start < common_start:
             raise Exception(f"Not enough data is available for a start time of {start}")
         if end > common_end:
             raise Exception(
                 f"Not enough data is available for an end time of {end}: \nLast datapoint is {common_end}"
             )
-
-        common_start = start
-        common_end = end
+        
         self.common_start = common_start
         self.common_end = common_end
 
