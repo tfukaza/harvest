@@ -36,6 +36,8 @@ class PickleStorage(BaseStorage):
         for file in files:
             symbol, interval = file.split("@")
             interval = interval.split(".")[0]
+            if interval[0] == '-':
+                continue
             interval = interval_string_to_enum(interval)
 
             super().store(symbol, interval, pd.read_pickle(join(self.save_dir, file)))

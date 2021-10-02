@@ -310,6 +310,9 @@ class BackTester(trader.PaperTrader):
                 inter = self.interval[sym]["interval"]
                 if is_freq(self.timestamp, inter):
 
+                    # If data is not in the cache, skip it
+                    if not self.timestamp in self.df[sym][inter].index:
+                        continue
                     df = self.df[sym][inter].loc[[self.timestamp], :]
                     self.storage.store(s, inter, df, save_pickle=False)
                     # Add data to aggregation queue
