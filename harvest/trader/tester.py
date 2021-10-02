@@ -299,8 +299,9 @@ class BackTester(trader.PaperTrader):
             for sym in self.interval:
                 inter = self.interval[sym]["interval"]
                 if is_freq(self.timestamp, inter):
-                    data = self.df[sym][inter].loc[[self.timestamp], :]
-                    df_dict[sym] = data
+                    # If data is not in the cache, skip it
+                    if self.timestamp in self.df[sym][inter].index:
+                        df_dict[sym] = self.df[sym][inter].loc[self.timestamp]
 
             update = self._update_order_queue()
             self._update_stats(df_dict, new=update, option_update=True)
