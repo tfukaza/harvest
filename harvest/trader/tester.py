@@ -163,7 +163,7 @@ class BackTester(trader.PaperTrader):
             for agg in self.interval[sym]["aggregations"]:
                 agg_txt = interval_enum_to_string(agg)
                 # tmp_path = f"{path}/{sym}-{interval_txt}+{agg_txt}.pickle"
-                tmp_path = f"{path}/{sym}-{int(agg)-16}.pickle"
+                tmp_path = f"{path}/{sym}@{int(agg)-16}.pickle"
                 file = Path(tmp_path)
                 if file.is_file():
                     continue
@@ -328,7 +328,7 @@ class BackTester(trader.PaperTrader):
                     a.main()
                     new_algo.append(a)
                 except Exception as e:
-                    debugger(
+                    debugger.debug(
                         f"Algorithm {a} failed, removing from algorithm list.\nException: {e}"
                     )
             self.algo = new_algo
