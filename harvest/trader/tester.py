@@ -177,6 +177,7 @@ class BackTester(trader.PaperTrader):
                 tmp_path = f"{path}/{sym}@{int(agg)-16}.pickle"
                 file = Path(tmp_path)
                 if file.is_file():
+                    self.storage.load(sym, int(agg)-16)
                     continue
                     # TODO: check if file is updated with latest data
                 debugger.debug(

@@ -48,6 +48,19 @@ class TestTester(unittest.TestCase):
 
         self.assertListEqual(minutes, days_agg)
 
+    @tear_up_down
+    def test_check_run(self):
+        """ """
+        class TestAlgo(BaseAlgo):
+            def main(self):
+                print(self.get_datetime())
+
+        t = BackTester(DummyStreamer(), debug=True)
+        t.set_symbol("A")
+        t.set_algo(TestAlgo())
+        t.start("1MIN", ["1DAY"], period="1DAY")
+
+        self.assertTrue(True)
 
 if __name__ == "__main__":
     unittest.main()
