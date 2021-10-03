@@ -300,7 +300,7 @@ class BaseAlgo:
         """
         if symbol is None:
             symbol = self.watchlist[0]
-        date = _convert_input_to_datetime(date)
+        date = convert_input_to_datetime(date, self.trader.timezone)
         return self.trader.fetch_chain_data(symbol, date)
 
     def get_option_market_data(self, symbol: str):
