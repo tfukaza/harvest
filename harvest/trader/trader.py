@@ -341,6 +341,8 @@ class LiveTrader:
 
         net_value = 0
         for p in self.stock_positions + self.crypto_positions:
+            if not p in df_dict:
+                continue
             key = p["symbol"]
             price = df_dict[key][key]["close"]
             p["current_price"] = price
