@@ -81,7 +81,7 @@ class YahooStreamer(API):
             df_dict[s] = df
         else:
             names = " ".join(combo)
-            df = pd.DataFrame()
+            df = None
             required_intervals = {}
             for s in combo:
                 i = self.interval[self.unfmt_symbol(s)]["interval"]
@@ -94,8 +94,9 @@ class YahooStreamer(API):
                 df_tmp = yf.download(
                     names, period="1d", interval=self.fmt_interval(i), prepost=True
                 )
-                df = df.join(df_tmp)
-            debugger.debug(f"From yfinance got: {df}")
+                debugger.debug(f"From yfinance got: {df_tmp}")
+                df = df_tmp if df is None else df.join(df_tmp)
+
             if len(df.index) == 0:
                 return
             for s in combo:
@@ -107,6 +108,8 @@ class YahooStreamer(API):
                     s = "@" + s[:-4]
                 df_tmp = self._format_df(df_tmp, s)
                 df_dict[s] = df_tmp
+
+        debugger.debug(f"From yfinance dict: {df_dict}")
         self.trader_main(df_dict)
 
     # -------------- Streamer methods -------------- #

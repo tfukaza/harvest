@@ -8,6 +8,7 @@ import time
 import datetime as dt
 
 # External libraries
+import tzlocal
 
 # Submodule imports
 from harvest.utils import *
@@ -20,7 +21,7 @@ from harvest.storage import BaseLogger
 from harvest.server import Server
 
 
-class Trader:
+class LiveTrader:
     """
     :broker: Both the broker and streamer store a Broker object.
         Broker places orders and retrieves latest account info like equity.
@@ -40,49 +41,55 @@ class Trader:
     def __init__(self, streamer=None, broker=None, storage=None, debug=False):
         """Initializes the Trader."""
 
-        signal(SIGINT, self.exit)
+        self._init_checks()
 
+        self._set_streamer_broker(streamer, broker)
+        self.storage = (
+            BaseStorage() if storage is None else storage
+        )  # Initialize the storage
+        self._init_attributes()
+
+        self._setup_debugger(debug)
+
+    def _init_checks(self):
         # Harvest only supports Python 3.8 or newer.
         if sys.version_info[0] < 3 or sys.version_info[1] < 8:
             raise Exception("Harvest requires Python 3.8 or above.")
 
+    def _set_streamer_broker(self, streamer, broker):
+        """Sets the streamer and broker."""
         # If streamer is not specified, use YahooStreamer
         self.streamer = YahooStreamer() if streamer is None else streamer
-        # If broker is not specified and streamer is YahooStreamer, use PaperBroker
+        # Broker must be specified
         if broker is None:
-            if isinstance(self.streamer, (YahooStreamer, DummyStreamer)):
-                self.broker = PaperBroker()
+            # TODO: Raise exception is specified class is streaming only
+            if isinstance(self.streamer, YahooStreamer):
+                raise Exception("Broker must be specified")
             else:
                 self.broker = self.streamer
         else:
             self.broker = broker
 
-        # # Initialize timestamp
+    def _init_attributes(self):
+
+        signal(SIGINT, self.exit)
+
+        # Initialize timestamp
         self.timestamp = self.streamer.timestamp
-        # self.timestamp = self.timestamp_prev
 
-        self.watchlist_global = []  # List of securities specified in this class,
-        # fetched from brokers, and retrieved from Algo class.
-
+        self.watchlist_global = []  # List of securities specified in this class
+        self.algo = []  # List of algorithms to run.
         self.account = {}  # Local cache of account data.
-
         self.stock_positions = []  # Local cache of current stock positions.
         self.option_positions = []  # Local cache of current options positions.
         self.crypto_positions = []  # Local cache of current crypto positions.
-
         self.order_queue = []  # Queue of unfilled orders.
 
-        # Initialize the storage
-        self.storage = BaseStorage() if storage is None else storage
-
         self.logger = BaseLogger()
+        self.server = Server(self)  # Initialize the web interface server
 
-        self._setup_debugger(debug)
-
-        self.algo = []  # List of algorithms to run.
-
-        # Initialize the web interface server
-        self.server = Server(self)
+        self.timezone = tzlocal.get_localzone()
+        debugger.debug(f"Timezone: {self.timezone}")
 
     def _setup_debugger(self, debug):
         # Set up logger
@@ -103,8 +110,7 @@ class Trader:
         :param bool? sync: If true, the system will sync with the broker and fetch current positions and pending orders. defaults to true.
         :param bool? all_history: If true, gets all history for all the given assets and if false only get data in the past three days.
         """
-
-        debugger.debug(f"Setting up Harvest...")
+        debugger.debug("Setting up Harvest...")
 
         # If sync is on, call the broker to load pending orders and all positions currently held.
         if sync:
@@ -126,7 +132,7 @@ class Trader:
         self._setup_params(interval, aggregations)
 
         if len(self.interval) == 0:
-            raise Exception(f"No securities were added to watchlist")
+            raise Exception("No securities were added to watchlist")
 
         # Initialize the account
         self._setup_account()
@@ -134,8 +140,7 @@ class Trader:
         self.broker.setup(self.interval, self, self.main)
         if self.broker != self.streamer:
             # Only call the streamer setup if it is a different
-            # instance than the broker otherwise some brokers can
-            # fail!
+            # instance than the broker otherwise some brokers can fail!
             self.streamer.setup(self.interval, self, self.main)
 
         # Initialize the storage
@@ -252,6 +257,7 @@ class Trader:
                 self.storage.store(sym, inter, df)
 
     def main(self, df_dict):
+        self.timestamp = self.streamer.timestamp
         # Periodically refresh access tokens
         if self.timestamp.hour % 12 == 0 and self.timestamp.minute == 0:
             self.streamer.refresh_cred()
@@ -342,7 +348,9 @@ class Trader:
         net_value = 0
         for p in self.stock_positions + self.crypto_positions:
             key = p["symbol"]
-            price = df_dict[key][key]["close"][0]
+            if key not in df_dict:
+                continue
+            price = df_dict[key][key]["close"]
             p["current_price"] = price
             value = price * p["quantity"]
             p["market_value"] = value
@@ -443,3 +451,25 @@ class Trader:
         # TODO: Gracefully exit
         debugger.debug("\nStopping Harvest...")
         exit(0)
+
+
+class PaperTrader(LiveTrader):
+    """
+    A class for trading in the paper trading environment.
+    """
+
+    def __init__(self, streamer=None, storage=None, debug=False):
+        """Initializes the Trader."""
+
+        self._init_checks()
+
+        # If streamer is not specified, use YahooStreamer
+        self.streamer = YahooStreamer() if streamer is None else streamer
+        self.broker = PaperBroker()
+
+        self.storage = (
+            BaseStorage() if storage is None else storage
+        )  # Initialize the storage
+        self._init_attributes()
+
+        self._setup_debugger(debug)

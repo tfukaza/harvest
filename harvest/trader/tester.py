@@ -18,8 +18,7 @@ from harvest.api.paper import PaperBroker
 from harvest.storage import BaseLogger
 from harvest.utils import *
 
-
-class BackTester(trader.Trader):
+class BackTester(trader.PaperTrader):
     """
     This class replaces several key functions to allow backtesting
     on historical data.
@@ -30,23 +29,9 @@ class BackTester(trader.Trader):
 
         self.streamer = YahooStreamer() if streamer is None else streamer
         self.broker = PaperBroker()
-
-        self.watchlist_global = []  # List of stocks to watch
-
+        
         self.storage = PickleStorage(limit_size=False)  # local cache of historic price
-
-        self.account = {}  # Local cash of account info
-
-        self.stock_positions = []  # Local cache of current stock positions
-        self.option_positions = []  # Local cache of current options positions
-        self.crypto_positions = []  # Local cache of current crypto positions
-
-        self.order_queue = []  # Queue of unfilled orders
-
-        self.logger = BaseLogger()
-        debugger.debug(
-            f"Streamer: {type(self.streamer).__name__}\nBroker: {type(self.broker).__name__}\nStorage: {type(self.storage).__name__}"
-        )
+        self._init_attributes()
 
         self._setup_debugger(debug)
 
@@ -56,9 +41,9 @@ class BackTester(trader.Trader):
         aggregations: List[Any] = [],
         source: str = "PICKLE",
         path: str = "./data",
-        start: str = None,
-        end: str = None,
-        period: str = None,
+        start=None,
+        end=None,
+        period=None,
     ):
         """Runs backtesting.
 
@@ -81,6 +66,7 @@ class BackTester(trader.Trader):
             a.config()
 
         self._setup(source, interval, aggregations, path, start, end, period)
+        self.broker.setup(self.interval, self, self.main)
         self.streamer.setup(self.interval, self, self.main)
 
         for a in self.algo:
@@ -89,7 +75,16 @@ class BackTester(trader.Trader):
 
         self.run_backtest()
 
-    def _setup(self, source, interval: str, aggregations, path, start, end, period):
+    def _setup(
+        self,
+        source: str,
+        interval: str,
+        aggregations: List,
+        path: str,
+        start,
+        end,
+        period,
+    ):
         self._setup_params(interval, aggregations)
         self._setup_account()
 
@@ -97,22 +92,23 @@ class BackTester(trader.Trader):
 
         self.storage.limit_size = False
 
-        start = None if start is None else str_to_datetime(start)
-        end = None if end is None else str_to_datetime(end)
+        start = convert_input_to_datetime(start, self.timezone)
+        end = convert_input_to_datetime(end, self.timezone)
+        period = convert_input_to_timedelta(period)
 
-        val, unit = expand_string_interval(period) if period is not None else (1, "DAY")
-
-        if start is None and end is None:
-            end = self.streamer.current_timestamp()
-            start = end - dt.timedelta(days=val) if period is not None else "MAX"
-        elif start is None:
-            start = end - dt.timedelta(days=val) if period is not None else "MAX"
-        elif end is None:
-            end = (
-                start + dt.timedelta(days=val)
-                if period is not None
-                else self.streamer.current_timestamp()
-            )
+        if start is None:
+            if end is None:
+                if period is None:
+                    start = "MAX"
+                else:
+                    start = "PERIOD"
+            else:
+                start = end - period
+        if end is None:
+            if start == "MAX" or start == "PERIOD" or period is None:
+                end = "MAX"
+            else:
+                end = start + period
 
         if source == "PICKLE":
             self.read_pickle_data()
@@ -131,24 +127,30 @@ class BackTester(trader.Trader):
                 if common_end is None or df.index[-1] < common_end:
                     common_end = df.index[-1]
 
-        if start < common_start:
+        if start == "PERIOD":
+            start = common_end - period
+
+        if start != "MAX" and start < common_start:
             raise Exception(f"Not enough data is available for a start time of {start}")
-        if end > common_end:
+        if end != "MAX" and end > common_end:
             raise Exception(
                 f"Not enough data is available for an end time of {end}: \nLast datapoint is {common_end}"
             )
+        
+        if start == "MAX":
+            start = common_start
+        if end == "MAX":
+            end = common_end
+        
+        self.common_start = start
+        self.common_end = end
 
-        common_start = start
-        common_end = end
-        self.common_start = common_start
-        self.common_end = common_end
-
-        print(f"Common start: {common_start}, common end: {common_end}")
+        print(f"Common start: {start}, common end: {end}")
 
         for s in self.interval:
             for i in [self.interval[s]["interval"]] + self.interval[s]["aggregations"]:
                 df = self.storage.load(s, i, no_slice=True).copy()
-                df = df.loc[common_start:common_end]
+                df = df.loc[start:end]
                 self.storage.reset(s, i)
                 self.storage.store(s, i, df)
 
@@ -172,9 +174,11 @@ class BackTester(trader.Trader):
             for agg in self.interval[sym]["aggregations"]:
                 agg_txt = interval_enum_to_string(agg)
                 # tmp_path = f"{path}/{sym}-{interval_txt}+{agg_txt}.pickle"
-                tmp_path = f"{path}/{sym}-{int(agg)-16}.pickle"
+                tmp_path = f"{path}/{sym}@{int(agg)-16}.pickle"
                 file = Path(tmp_path)
                 if file.is_file():
+                    data = self.storage.open(sym, int(agg)-16)
+                    self.storage.store(sym, int(agg)-16, data, save_pickle=False)
                     continue
                     # TODO: check if file is updated with latest data
                 debugger.debug(
@@ -308,8 +312,9 @@ class BackTester(trader.Trader):
             for sym in self.interval:
                 inter = self.interval[sym]["interval"]
                 if is_freq(self.timestamp, inter):
-                    data = self.df[sym][inter].loc[[self.timestamp], :]
-                    df_dict[sym] = data
+                    # If data is not in the cache, skip it
+                    if self.timestamp in self.df[sym][inter].index:
+                        df_dict[sym] = self.df[sym][inter].loc[self.timestamp]
 
             update = self._update_order_queue()
             self._update_stats(df_dict, new=update, option_update=True)
@@ -318,6 +323,9 @@ class BackTester(trader.Trader):
                 inter = self.interval[sym]["interval"]
                 if is_freq(self.timestamp, inter):
 
+                    # If data is not in the cache, skip it
+                    if not self.timestamp in self.df[sym][inter].index:
+                        continue
                     df = self.df[sym][inter].loc[[self.timestamp], :]
                     self.storage.store(s, inter, df, save_pickle=False)
                     # Add data to aggregation queue
@@ -337,9 +345,12 @@ class BackTester(trader.Trader):
                     a.main()
                     new_algo.append(a)
                 except Exception as e:
-                    self.debugging.warning(
+                    debugger.debug(
                         f"Algorithm {a} failed, removing from algorithm list.\nException: {e}"
                     )
+            if len(new_algo) == 0:
+                debugger.debug(f"No algorithms left, exiting")
+                break
             self.algo = new_algo
 
             self.timestamp += interval_to_timedelta(self.streamer.poll_interval)

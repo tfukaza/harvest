@@ -34,9 +34,12 @@ class PickleStorage(BaseStorage):
         files = [f for f in listdir(self.save_dir) if isfile(join(self.save_dir, f))]
 
         for file in files:
-            symbol, interval = file.split("-")
+            symbol, interval = file.split("@")
             interval = interval.split(".")[0]
-            interval = interval_string_to_enum(interval)
+            if interval[0] == '-':
+                interval = int(interval[1:])
+            else:
+                interval = interval_string_to_enum(interval)
 
             super().store(symbol, interval, pd.read_pickle(join(self.save_dir, file)))
 
@@ -61,12 +64,16 @@ class PickleStorage(BaseStorage):
         if not data.empty and save_pickle:
             self.storage_lock.acquire()
             self.storage[symbol][interval].to_pickle(
-                self.save_dir + f"/{symbol}-{interval_enum_to_string(interval)}.pickle"
+                self.save_dir + f"/{symbol}@{interval_enum_to_string(interval)}.pickle"
             )
             self.storage_lock.release()
 
     def open(self, symbol: str, interval: Interval):
-        name = self.save_dir + f"/{symbol}-{interval_enum_to_string(interval)}.pickle"
+        if isinstance(interval, int):
+            interval = interval
+        else:
+            interval = interval_string_to_enum(interval)
+        name = self.save_dir + f"/{symbol}@{interval}.pickle"
         if isfile(name):
             return pd.read_pickle(name)
         else:

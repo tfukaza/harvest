@@ -8,7 +8,6 @@ from harvest.api.polygon import PolygonStreamer
 
 
 class TestPolygonStreamer(unittest.TestCase):
-
     @not_gh_action
     def test_fetch_prices(self):
         poly = PolygonStreamer("poly_secret.yaml", True)
