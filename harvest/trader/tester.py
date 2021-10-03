@@ -29,6 +29,7 @@ class BackTester(trader.PaperTrader):
 
         self.streamer = YahooStreamer() if streamer is None else streamer
         self.broker = PaperBroker()
+        
         self.storage = PickleStorage(limit_size=False)  # local cache of historic price
         self._init_attributes()
 
@@ -65,6 +66,7 @@ class BackTester(trader.PaperTrader):
             a.config()
 
         self._setup(source, interval, aggregations, path, start, end, period)
+        self.broker.setup(self.interval, self, self.main)
         self.streamer.setup(self.interval, self, self.main)
 
         for a in self.algo:
