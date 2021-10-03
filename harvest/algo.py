@@ -326,11 +326,15 @@ class BaseAlgo:
         if self.trader is None:
             if interval == None:
                 interval = Interval.MIN_5
+            else:
+                interval = interval_string_to_enum(interval)
             if prices is None:
                 raise Exception(f"No prices found for symbol {symbol}")
         else:
             if interval is None:
                 interval = self.trader.interval[symbol]["interval"]
+            else:
+                interval = interval_string_to_enum(interval)
             if prices == None:
                 prices = self.trader.storage.load(symbol, interval)[symbol][ref]
 
