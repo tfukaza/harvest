@@ -19,17 +19,20 @@ Methods that perform an action should follow this naming convention:
     - target: The entity the method operates on, such as 'stock', 'option', 'account'
     - returns: What the method returns, such as 'list', 'price'
 
-When dealing with dates, unlike datetime objects in other classes,
-dates in Algo class are NOT localized to UTC timezone. This keeps the
-interface easier for users, especially for beginners of Python.
+Algo class is the main interface between users and the program, so
+remember the following guidelines for handling inputs and outputs:
+-   Date inputs can be a string, a naive DateTime object, or a Timestamp object. 
+    These must be converted to UTC timezone DateTime objects using convert_input_to_datetime()
+    before being passed onto other parts of the code. The same applies for timedelta inputs.
+-   Conversely, date outputs must be converted to a naive DateTime object set to the user's timezone.
 """
 
 
 class BaseAlgo:
     """
-    The BaseAlgo class is where the algorithm resides.
-    It provides an interface to monitor stocks and place orders.
-    Helper functions are also provided for common calculations such as RSI and SMA.
+    The BaseAlgo class is an abstract class defining the interface for users to
+    track assets, monitor their accounts, and place orders.
+    It also provides function for technical analysis.
     """
 
     def __init__(self):
@@ -39,17 +42,34 @@ class BaseAlgo:
         self.watchlist = []
 
     def config(self):
+        """
+        This method is called before any other methods (except for __init__),
+        and initializes parameters for this class.
+        -  interval: The interval to run the algorithm.
+        -  aggregations: Intervals to aggregate data.
+        -  watchlist: List of assets this algorithm tracks.
+        Any parameters set to None or an empty List will fall back to respective paramters set in the Trader class.
+        """
         self.interval = None
         self.aggregations = None
         self.watchlist = []
 
     def setup(self):
+        """
+        Method called right before algorithm begins.
+        """
         pass
 
     def main(self):
+        """
+        Main method to run the algorithm.
+        """
         pass
 
     def add_plugin(self, plugin: Plugin):
+        """
+        Adds a plugin to the algorithm.
+        """
         value = getattr(self, plugin.name, None)
         if value is None:
             setattr(self, plugin.name, plugin)
@@ -124,48 +144,6 @@ class BaseAlgo:
         debugger.debug(f"Algo SELL: {symbol}, {quantity}")
         return self.trader.sell(symbol, quantity, in_force, extended)
 
-    # def await_buy(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
-    #     """Buys the specified asset, and hangs the code until the order is filled.
-
-    #     :param str? symbol:    Symbol of the asset to buy. defaults to first symbol in watchlist
-    #     :param float? quantity:  Quantity of asset to buy. defaults to buys as many as possible
-    #     :param str? in_force:  Duration the order is in force. '{gtc}' or '{gtd}'. defaults to 'gtc'
-    #     :param str? extended:  Whether to trade in extended hours or not. defaults to False
-    #     :returns: A dictionary with the following keys:
-
-    #         - type: 'STOCK' or 'CRYPTO'
-    #         - id: ID of order
-    #         - symbol: symbol of asset
-
-    #     :raises Exception: There is an error in the order process.
-    #     """
-    #     if symbol == None:
-    #         symbol = self.watchlist[0]
-    #     if quantity == None:
-    #         quantity = self.get_asset_max_quantity(symbol)
-    #     return self.trader.await_buy(symbol, quantity, in_force, extended)
-
-    # def await_sell(self, symbol: str=None, quantity: int=0, in_force: str='gtc', extended: bool=False):
-    #     """Sells the specified asset, and hangs the code until the order is filled.
-
-    #     :param str? symbol:    Symbol of the asset to sell. defaults to first symbol in watchlist
-    #     :param float? quantity:  Quantity of asset to sell defaults to sells all
-    #     :param str? in_force:  Duration the order is in force. '{gtc}' or '{gtd}'. defaults to 'gtc'
-    #     :param str? extended:  Whether to trade in extended hours or not. defaults to False
-    #     :returns: A dictionary with the following keys:
-
-    #         - type: 'STOCK' or 'CRYPTO'
-    #         - id: ID of order
-    #         - symbol: symbol of asset
-
-    #     :raises Exception: There is an error in the order process.
-    #     """
-    #     if symbol == None:
-    #         symbol = self.watchlist[0]
-    #     if quantity == None:
-    #         quantity = self.get_asset_quantity(symbol)
-    #     return self.trader.await_sell(symbol, quantity, in_force, extended)
-
     def buy_option(self, symbol: str, quantity: int = None, in_force: str = "gtc"):
         """Buys the specified option.
 
@@ -238,8 +216,8 @@ class BaseAlgo:
 
         :param str? symbol: Symbol of stock. defaults to first symbol in watchlist
         :param str? type: 'call' or 'put'
-        :param datetime lower_exp: Minimum expiration date of the option.
-        :param datetime upper_exp: Maximum expiration date of the option.
+        :param lower_exp: Minimum expiration date of the option.
+        :param upper_exp: Maximum expiration date of the option.
         :param float lower_strike: The minimum strike price of the option
         :param float upper_strike: The maximum strike price of the option
 
@@ -724,7 +702,7 @@ class BaseAlgo:
 
     def get_watchlist(self) -> List:
         """Returns the current watchlist."""
-        return self.watch
+        return self.watchlist
 
     def get_stock_watchlist(self) -> List:
         """Returns the current watchlist."""
@@ -763,9 +741,7 @@ class BaseAlgo:
 
         :returns: The current date and time as a datetime object
         """
-        return datetime_utc_to_local(
-            self.trader.timestamp, self.trader.timezone
-        )
+        return datetime_utc_to_local(self.trader.timestamp, self.trader.timezone)
 
     def get_option_position_quantity(self, symbol: str = None) -> bool:
         """Returns the number of types of options held for a stock.

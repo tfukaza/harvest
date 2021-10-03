@@ -18,6 +18,7 @@ from harvest.api.paper import PaperBroker
 from harvest.storage import BaseLogger
 from harvest.utils import *
 
+
 class BackTester(trader.PaperTrader):
     """
     This class replaces several key functions to allow backtesting
@@ -29,7 +30,7 @@ class BackTester(trader.PaperTrader):
 
         self.streamer = YahooStreamer() if streamer is None else streamer
         self.broker = PaperBroker()
-        
+
         self.storage = PickleStorage(limit_size=False)  # local cache of historic price
         self._init_attributes()
 
@@ -136,12 +137,12 @@ class BackTester(trader.PaperTrader):
             raise Exception(
                 f"Not enough data is available for an end time of {end}: \nLast datapoint is {common_end}"
             )
-        
+
         if start == "MAX":
             start = common_start
         if end == "MAX":
             end = common_end
-        
+
         self.common_start = start
         self.common_end = end
 
@@ -177,8 +178,8 @@ class BackTester(trader.PaperTrader):
                 tmp_path = f"{path}/{sym}@{int(agg)-16}.pickle"
                 file = Path(tmp_path)
                 if file.is_file():
-                    data = self.storage.open(sym, int(agg)-16)
-                    self.storage.store(sym, int(agg)-16, data, save_pickle=False)
+                    data = self.storage.open(sym, int(agg) - 16)
+                    self.storage.store(sym, int(agg) - 16, data, save_pickle=False)
                     continue
                     # TODO: check if file is updated with latest data
                 debugger.debug(
