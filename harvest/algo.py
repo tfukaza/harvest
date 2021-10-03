@@ -565,7 +565,7 @@ class BaseAlgo:
         return self.get_option_market_data(symbol)["price"] * 100
 
     def get_asset_price_list(
-        self, symbol: str = None, interval: list = None, ref: str = "close"
+        self, symbol: str = None, interval: str = None, ref: str = "close"
     ):
         """Returns a list of recent prices for an asset.
 
@@ -580,7 +580,8 @@ class BaseAlgo:
             symbol = self.watchlist[0]
         if interval is None:
             interval = self.interval
-        interval = interval_string_to_enum(interval)
+        else:
+            interval = interval_string_to_enum(interval)
         if len(symbol) <= 6:
             return list(self.trader.storage.load(symbol, interval)[symbol][ref])
         debugger.warning("Price list not available for options")
