@@ -33,6 +33,7 @@ class Robinhood(API):
         )
 
     def refresh_cred(self):
+        super().refresh_cred()
         debugger.debug("Logging out of Robinhood...")
         rh.authentication.logout()
         self.login()

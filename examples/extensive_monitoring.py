@@ -78,6 +78,6 @@ if __name__ == '__main__':
     trader.set_algo(em_algo)
 
     # Update every minute
-    trader.start('1MIN')
+    trader.start('1MIN', all_history=False)
 
 

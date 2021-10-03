@@ -5,6 +5,7 @@ import sys
 from sys import exit
 from signal import signal, SIGINT
 import time
+import datetime as dt
 
 # External libraries
 
@@ -92,7 +93,7 @@ class Trader:
             f"Streamer: {type(self.streamer).__name__}\nBroker: {type(self.broker).__name__}\nStorage: {type(self.storage).__name__}"
         )
 
-    def start(self, interval="5MIN", aggregations=[], sync=True, server=False):
+    def start(self, interval="5MIN", aggregations=[], sync=True, server=False, all_history=True):
         """Entry point to start the system.
 
         :param str? interval: The interval to run the algorithm. defaults to '5MIN'
@@ -100,9 +101,9 @@ class Trader:
             For example, if this is set to ['5MIN', '30MIN'], and interval is '1MIN', the algorithm will have access to
             5MIN, 30MIN aggregated data in addition to 1MIN data. defaults to None
         :param bool? sync: If true, the system will sync with the broker and fetch current positions and pending orders. defaults to true.
-        :kill_switch: If true, kills the infinite loop in streamer. Primarily used for testing. defaults to False.
-
+        :param bool? all_history: If true, gets all history for all the given assets and if false only get data in the past three days.
         """
+
         debugger.debug(f"Setting up Harvest...")
 
         # If sync is on, call the broker to load pending orders and all positions currently held.
@@ -138,7 +139,7 @@ class Trader:
             self.streamer.setup(self.interval, self, self.main)
 
         # Initialize the storage
-        self._storage_init()
+        self._storage_init(all_history)
 
         for a in self.algo:
             a.trader = self
@@ -236,14 +237,18 @@ class Trader:
         ret = self.broker.fetch_account()
         self.account = ret
 
-    def _storage_init(self):
-        """Initializes the storage."""
+    def _storage_init(self, all_history: bool):
+        """
+        Initializes the storage.
+        :all_history: bool :
+        """
 
         for sym in self.interval:
             for inter in [self.interval[sym]["interval"]] + self.interval[sym][
                 "aggregations"
             ]:
-                df = self.streamer.fetch_price_history(sym, inter)
+                start = None if all_history else now() - dt.timedelta(days=3)
+                df = self.streamer.fetch_price_history(sym, inter, start)
                 self.storage.store(sym, inter, df)
 
     def main(self, df_dict):
@@ -253,6 +258,7 @@ class Trader:
 
         # Save the data locally
         for sym in df_dict:
+            print(sym)
             self.storage.store(sym, self.interval[sym]["interval"], df_dict[sym])
 
         # Aggregate the data to other intervals
@@ -273,6 +279,7 @@ class Trader:
                 new_algo.append(a)
                 continue
             try:
+                debugger.info(f"Running algo: {a}")
                 a.main()
                 new_algo.append(a)
             except Exception as e:

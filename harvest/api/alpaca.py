@@ -49,7 +49,6 @@ class Alpaca(StreamAPI):
 
     async def update_data(self, bar):
         # Update data with the latest bars
-        # self.data_lock.acquire()
         bar = bar.__dict__["_raw"]
         symbol = bar["symbol"]
         df = pd.DataFrame(
@@ -64,10 +63,12 @@ class Alpaca(StreamAPI):
                 }
             ]
         )
-        if is_crypto(symbol):
-            self.main(self._format_df(df, symbol))
-        else:
-            self.main(self._format_df(df, f"@{symbol}"))
+
+        symbol = f"@{symbol}" if is_crypto(symbol) else symbol
+        debugger.info(f"Got data for {symbol}")
+        data = self._format_df(df, symbol)
+        print(data)
+        self.trader_main({symbol: data})
 
     def setup(self, interval: Dict, trader=None, trader_main=None):
         super().setup(interval, trader, trader_main)
@@ -104,7 +105,7 @@ class Alpaca(StreamAPI):
     def fetch_price_history(
         self,
         symbol: str,
-        interval: str,
+        interval: Interval,
         start: dt.datetime = None,
         end: dt.datetime = None,
     ):
@@ -119,9 +120,7 @@ class Alpaca(StreamAPI):
         if start >= end:
             return pd.DataFrame()
 
-        val, unit = expand_interval(interval)
-        df = self.get_data_from_alpaca(symbol, val, unit, start, end)
-
+        df = self.get_data_from_alpaca(symbol, interval, start, end)
         return df
 
     @API._exception_handler
@@ -236,8 +235,7 @@ class Alpaca(StreamAPI):
     def get_data_from_alpaca(
         self,
         symbol: str,
-        multipler: int,
-        timespan: str,
+        interval: Interval,
         start: dt.datetime,
         end: dt.datetime,
     ) -> pd.DataFrame:
@@ -247,11 +245,20 @@ class Alpaca(StreamAPI):
             )
             return pd.DataFrame()
 
-        if self.basic and start < now() - dt.timedelta(days=365 * 5):
+        current_time = now()
+        if self.basic and start < current_time - dt.timedelta(days=365 * 5):
             debugger.warning(
                 "Start time is over five years old! Only data from the past five years will be returned for basic accounts."
             )
+            start = current_time - dt.timedelta(days=365 * 5)
 
+        if self.basic and end >= current_time - dt.timedelta(minutes=15):
+            debugger.warning(
+                "End time is less than 15 minutes old! Only data over 15 minutes old will be returned for basic accounts."
+            )
+            end = current_time - dt.timedelta(minutes=15)
+
+        timespan = expand_interval(interval)[1]
         if timespan == "MIN":
             timespan = "1Min"
         elif timespan == "HR":
@@ -259,8 +266,8 @@ class Alpaca(StreamAPI):
         elif timespan == "DAY":
             timespan = "1Day"
 
-        start_str = start.strftime("%Y-%m-%d")
-        end_str = end.strftime("%Y-%m-%d")
+        start_str = start.isoformat()
+        end_str = end.isoformat()
 
         temp_symbol = symbol[1:] if is_crypto(symbol) else symbol
         bars = self.api.get_bars(
@@ -268,8 +275,7 @@ class Alpaca(StreamAPI):
         )
         df = pd.DataFrame((bar.__dict__["_raw"] for bar in bars))
         df = self._format_df(df, symbol)
-        df = aggregate_df(df, f"{multipler}{timespan}")
-        df = df.loc[start:end]
+        df = aggregate_df(df, interval)
         return df
 
     def _format_df(self, df: pd.DataFrame, symbol: str):
@@ -286,7 +292,7 @@ class Alpaca(StreamAPI):
             inplace=True,
         )
         df.set_index("timestamp", inplace=True)
-        df.index = pd.DatetimeIndex(df.index)
+        df.index = pd.DatetimeIndex(df.index, tz='utc')
 
         df.columns = pd.MultiIndex.from_product([[symbol], df.columns])
 
