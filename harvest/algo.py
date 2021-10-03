@@ -580,6 +580,7 @@ class BaseAlgo:
             symbol = self.watchlist[0]
         if interval is None:
             interval = self.interval
+        interval = interval_string_to_enum(interval)
         if len(symbol) <= 6:
             return list(self.trader.storage.load(symbol, interval)[symbol][ref])
         debugger.warning("Price list not available for options")
