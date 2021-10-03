@@ -232,7 +232,7 @@ def convert_input_to_datetime(datetime, timezone: ZoneInfo):
     elif isinstance(datetime, str):
         datetime = str_to_datetime(datetime)
     elif isinstance(datetime, dt.datetime):
-        datetime = tz.localize(datetime)
+        datetime = datetime.replace(tzinfo=timezone)
     else:
         raise ValueError(f"Cannot convert {datetime} to datetime.")
 
