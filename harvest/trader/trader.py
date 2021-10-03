@@ -342,7 +342,7 @@ class LiveTrader:
         net_value = 0
         for p in self.stock_positions + self.crypto_positions:
             key = p["symbol"]
-            price = df_dict[key][key]["close"][0]
+            price = df_dict[key][key]["close"]
             p["current_price"] = price
             value = price * p["quantity"]
             p["market_value"] = value
