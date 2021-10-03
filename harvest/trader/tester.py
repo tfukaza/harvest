@@ -177,7 +177,8 @@ class BackTester(trader.PaperTrader):
                 tmp_path = f"{path}/{sym}@{int(agg)-16}.pickle"
                 file = Path(tmp_path)
                 if file.is_file():
-                    self.storage.open(sym, int(agg)-16)
+                    data = self.storage.open(sym, int(agg)-16)
+                    self.storage.store(sym, int(agg)-16, data, save_pickle=False)
                     continue
                     # TODO: check if file is updated with latest data
                 debugger.debug(
@@ -347,6 +348,9 @@ class BackTester(trader.PaperTrader):
                     debugger.debug(
                         f"Algorithm {a} failed, removing from algorithm list.\nException: {e}"
                     )
+            if len(new_algo) == 0:
+                debugger.debug(f"No algorithms left, exiting")
+                break
             self.algo = new_algo
 
             self.timestamp += interval_to_timedelta(self.streamer.poll_interval)
