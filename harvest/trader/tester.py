@@ -17,8 +17,6 @@ from harvest.api.yahoo import YahooStreamer
 from harvest.api.paper import PaperBroker
 from harvest.storage import BaseLogger
 from harvest.utils import *
-from harvest.utils import _convert_input_to_datetime, _convert_input_to_timedelta
-
 
 class BackTester(trader.PaperTrader):
     """
@@ -92,9 +90,9 @@ class BackTester(trader.PaperTrader):
 
         self.storage.limit_size = False
 
-        start = _convert_input_to_datetime(start, self.timezone)
-        end = _convert_input_to_datetime(end, self.timezone)
-        period = _convert_input_to_timedelta(period)
+        start = convert_input_to_datetime(start, self.timezone)
+        end = convert_input_to_datetime(end, self.timezone)
+        period = convert_input_to_timedelta(period)
 
         if start is None:
             if end is None:
