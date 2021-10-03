@@ -223,7 +223,7 @@ class Timerange:
             self.timerange = dt.timedelta(**dict)
 
 
-def _convert_input_to_datetime(datetime, timezone: ZoneInfo):
+def convert_input_to_datetime(datetime, timezone: ZoneInfo):
 
     if datetime is None:
         return None
@@ -240,7 +240,7 @@ def _convert_input_to_datetime(datetime, timezone: ZoneInfo):
     datetime = datetime.astimezone(tz.utc)
 
 
-def _convert_input_to_timedelta(period):
+def convert_input_to_timedelta(period):
     """Converts period into a timedelta object.
     Period can be a string, timedelta object, or a Timerange object."""
     if period is None:

@@ -246,8 +246,8 @@ class BaseAlgo:
         """
         if symbol is None:
             symbol = self.watchlist[0]
-        lower_exp = _convert_input_to_datetime(lower_exp)
-        upper_exp = _convert_input_to_datetime(upper_exp)
+        lower_exp = convert_input_to_datetime(lower_exp)
+        upper_exp = convert_input_to_datetime(upper_exp)
 
         exp_dates = self.get_option_chain_info(symbol)["exp_dates"]
         if lower_exp is not None:
