@@ -253,6 +253,7 @@ class LiveTrader:
                 self.storage.store(sym, inter, df)
 
     def main(self, df_dict):
+        self.timestamp = self.streamer.timestamp
         # Periodically refresh access tokens
         if self.timestamp.hour % 12 == 0 and self.timestamp.minute == 0:
             self.streamer.refresh_cred()
