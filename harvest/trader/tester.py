@@ -97,12 +97,15 @@ class BackTester(trader.PaperTrader):
         period = _convert_input_to_timedelta(period)
 
         if start is None:
-            if end is None or period is None:
-                start = "MAX"
+            if end is None:
+                if period is None:
+                    start = "MAX"
+                else:
+                    start = "PERIOD"
             else:
                 start = end - period
         if end is None:
-            if start is None or period is None:
+            if start == "MAX" or start == "PERIOD" or period is None:
                 end = "MAX"
             else:
                 end = start + period
@@ -124,6 +127,9 @@ class BackTester(trader.PaperTrader):
                 if common_end is None or df.index[-1] < common_end:
                     common_end = df.index[-1]
 
+        if start == "PERIOD":
+            start = common_end - period
+
         if start != "MAX" and start < common_start:
             raise Exception(f"Not enough data is available for a start time of {start}")
         if end != "MAX" and end > common_end:
@@ -131,15 +137,20 @@ class BackTester(trader.PaperTrader):
                 f"Not enough data is available for an end time of {end}: \nLast datapoint is {common_end}"
             )
         
-        self.common_start = common_start
-        self.common_end = common_end
+        if start == "MAX":
+            start = common_start
+        if end == "MAX":
+            end = common_end
+        
+        self.common_start = start
+        self.common_end = end
 
-        print(f"Common start: {common_start}, common end: {common_end}")
+        print(f"Common start: {start}, common end: {end}")
 
         for s in self.interval:
             for i in [self.interval[s]["interval"]] + self.interval[s]["aggregations"]:
                 df = self.storage.load(s, i, no_slice=True).copy()
-                df = df.loc[common_start:common_end]
+                df = df.loc[start:end]
                 self.storage.reset(s, i)
                 self.storage.store(s, i, df)
 
