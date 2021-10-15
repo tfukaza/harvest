@@ -18,6 +18,7 @@ class Webull(API):
         super().__init__(path)
         self.paper = paper_trader
         self.wb_tokens = None
+        self.timestamp = now()
         wb_filename = "webull_credentials.json"
         if os.path.isfile(wb_filename):
             self.wb_tokens = pd.read_pickle(wb_filename)
