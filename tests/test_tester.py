@@ -51,6 +51,7 @@ class TestTester(unittest.TestCase):
     @tear_up_down
     def test_check_run(self):
         """ """
+
         class TestAlgo(BaseAlgo):
             def main(self):
                 print(self.get_datetime())
@@ -61,6 +62,7 @@ class TestTester(unittest.TestCase):
         t.start("1MIN", ["1DAY"], period="1DAY")
 
         self.assertTrue(True)
+
 
 if __name__ == "__main__":
     unittest.main()

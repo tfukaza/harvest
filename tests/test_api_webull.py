@@ -6,6 +6,7 @@ import os
 
 from harvest.utils import not_gh_action
 
+
 class TestWebull(unittest.TestCase):
     @not_gh_action
     def test_fetch_prices(self):

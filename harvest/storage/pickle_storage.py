@@ -36,7 +36,7 @@ class PickleStorage(BaseStorage):
         for file in files:
             symbol, interval = file.split("@")
             interval = interval.split(".")[0]
-            if interval[0] == '-':
+            if interval[0] == "-":
                 interval = int(interval[1:])
             else:
                 interval = interval_string_to_enum(interval)
