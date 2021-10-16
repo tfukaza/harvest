@@ -31,7 +31,7 @@ from the project's root directory. This will run the tests defined in the `tests
 ### Real-Time Testing
 Unit testing does not cover all possible situations Harvest might encounter. Whenever possible, run the program as if you are a user on your own machine to test the code in real-life environments. This is especially true for codes for specific brokerages, which automated unit tests cannot cover.   
 
-**Make sure you don't accidentally `git push` secret keys of the brokerage you are using🤐**
+**Make sure you don't accidentally `git push` secret keys of the brokerage you are using.**
 
 ## Web Interface
 The web interface of Harvest is made with the Svelte framework. 
@@ -43,25 +43,15 @@ npm run dev
 ```
 This will start the dev server. Any edits you make in `/gui/src` will automatically be built and saved to `/harvest/gui`. 
 
-## Website 
-The Harvest website is built using Next.js (switching to 11ty soon).
-
-### Running a Dev Server
-Navigate to `/website`, and run 
-```bash
-npm run dev
-``` 
-to start a hot-reloading dev server. If you think the website looks good, run 
-```bash
-npm run build && npm run export
-``` 
-to make sure the website can build without any problems. 
-
 # Coding Practices
 We want to make sure our code is stable and reliable - a good way to do that is to write clean, well-documented code. 
 
 ### Linting
-This project uses the [Black](https://github.com/psf/black) linter to format the code. Before pushing any code, run the linter on every file you edited.
+This project uses the [Black](https://github.com/psf/black) linter to format the code. Before pushing any code, run the linter on every file you edited. This can usually be done by running:
+```bash
+python -m black .
+```
+in the root directory of the project.
 
 ### Logging
 Good logs and debug messages can not only help users, but other developers understand what exactly Harvest is doing. Here are Harvest's guidelines to consistant logging:
