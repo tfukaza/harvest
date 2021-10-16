@@ -4,7 +4,7 @@ from harvest.trader import BackTester as b
 from docstring_parser import parse
 import json
 
-PATH = "./website/pages/docs-content/"
+PATH = "./tmp"
 
 a_func = [
     a.buy,
@@ -78,7 +78,7 @@ def generate_json(class_name, functions):
             }
         )
 
-    with open(f"./website/pages/docs-content/{class_name}.json", "w") as f:
+    with open(f"{PATH}/{class_name}.json", "w") as f:
         json.dump(data, f)
 
 
