@@ -138,8 +138,6 @@ class BackTester(trader.PaperTrader):
             start = common_end - period
         if end == "MAX":
             end = common_end
-        
-
 
         self.common_start = start
         self.common_end = end
