@@ -1,5 +1,5 @@
 from harvest.algo import BaseAlgo as a
-from harvest.trader import Trader as t
+from harvest.trader import LiveTrader as t
 from harvest.trader import BackTester as b
 from docstring_parser import parse
 import json
