@@ -189,9 +189,12 @@ class BackTester(trader.PaperTrader):
                     ]  # Only get recent data, since aggregating the entire df will take too long
                     agg_df = aggregate_df(df_tmp, agg)
                     self.storage.store(
-                        sym, int(agg) - 16, agg_df.iloc[[-1]], remove_duplicate=False
+                        sym, int(agg) - 16, agg_df.iloc[[-1]], remove_duplicate=False, save_pickle=False
                     )
         debugger.debug("Formatting complete")
+        for sym in self.interval:
+            for agg in self.interval[sym]["aggregations"]:
+                self.storage.store(sym, int(agg) - 16, self.storage.load(sym, int(agg) - 16, no_slice=True), remove_duplicate=False)
 
         # # Save the current state of the queue
         # for s in self.watch:

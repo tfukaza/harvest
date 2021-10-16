@@ -42,7 +42,7 @@ class TestTester(unittest.TestCase):
         t.start("1MIN", ["1DAY"], period="1DAY")
 
         minutes = list(t.storage.load("A", Interval.MIN_1)["A"]["close"])[-200:]
-        days_agg = list(t.storage.load("A", int(Interval.DAY_1) - 16)["A"]["close"])[
+        days_agg = list(t.storage.load("A", int(Interval.DAY_1) - 16, no_slice=True)["A"]["close"])[
             -200:
         ]
 
@@ -62,7 +62,6 @@ class TestTester(unittest.TestCase):
         t.start("1MIN", ["1DAY"], period="1DAY")
 
         self.assertTrue(True)
-
 
 if __name__ == "__main__":
     unittest.main()
