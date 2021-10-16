@@ -1,6 +1,5 @@
 # Builtins
 import datetime as dt
-from logging import critical, error, info, warning, debug
 from typing import Any, Dict, List, Tuple
 import os.path
 from pathlib import Path
@@ -19,136 +18,183 @@ from harvest.api.paper import PaperBroker
 from harvest.storage import BaseLogger
 from harvest.utils import *
 
-class BackTester(trader.Trader):
+
+class BackTester(trader.PaperTrader):
     """
     This class replaces several key functions to allow backtesting
-    on historical data. 
+    on historical data.
     """
 
-    def __init__(self, streamer=None, config={}):      
-        """Initializes the TestTrader. 
-        """
-        self.N = 200
-        
-        if streamer == None:
-            self.streamer = YahooStreamer()
-        else:
-            self.streamer = streamer
+    def __init__(self, streamer=None, debug=False, config={}):
+        """Initializes the TestTrader."""
+
+        self.streamer = YahooStreamer() if streamer is None else streamer
         self.broker = PaperBroker()
 
-        self.watch = []             # List of stocks to watch
+        self.storage = PickleStorage(limit_size=False)  # local cache of historic price
+        self._init_attributes()
 
-        self.storage = PickleStorage()  # local cache of historic price
-        self.storage.N = self.N
+        self._setup_debugger(debug)
 
-        self.account = {}           # Local cash of account info 
+    def start(
+        self,
+        interval: str = "5MIN",
+        aggregations: List[Any] = [],
+        source: str = "PICKLE",
+        path: str = "./data",
+        start=None,
+        end=None,
+        period=None,
+    ):
+        """Runs backtesting.
 
-        self.stock_positions = []   # Local cache of current stock positions
-        self.option_positions = []  # Local cache of current options positions
-        self.crypto_positions = []  # Local cache of current crypto positions
+        The interface is very similar to the Trader class, with some additional parameters for specifying
+        backtesting configurations.
 
-        self.order_queue = []       # Queue of unfilled orders 
-
-        self.logger = BaseLogger()
-
-        
-
-
-    def read_pickle_data(self):
-        """Function to read backtesting data from a local file. 
-
-        :interval: The interval of the data
-        :path: Path to the local data file
-        :date_format: The format of the data's timestamps
+        :param str? interval: The interval to run the algorithm on. defaults to '5MIN'.
+        :param List[str]? aggregations: The aggregations to run. defaults to [].
+        :param str? source: The source of backtesting data.
+            'FETCH' will pull the latest data using the broker (if specified).
+            'CSV' will read data from a locally saved CSV file.
+            'PICKLE' will read data from a locally saved pickle file, generated using the Trader class.
+            defaults to 'PICKLE'.
+        :param str? path: The path to the directory which backtesting data is stored.
+            This parameter must be set accordingly if 'source' is set to 'CSV' or 'PICKLE'. defaults to './data'.
         """
-        for s in self.watch:
-            for i in [self.interval] + self.aggregations:
-                df = self.storage.open(s, i).dropna()
-                if df.empty or now() - df.index[-1] > dt.timedelta(days=1):
-                    warning(f"Running FETCH")
-                    df = self.streamer.fetch_price_history(s, i).dropna()
-                self.storage.store(s, i, df)
 
-    def read_csv_data(self, path: str, date_format: str='%Y-%m-%d %H:%M:%S'):
-        """Function to read backtesting data from a local CSV file. 
+        debugger.debug(f"Storing asset data in {path}")
+        for a in self.algo:
+            a.config()
 
-        :interval: The interval of the data
-        :path: Path to the local data file
-        :date_format: The format of the data's timestamps
-        """
-        for s in self.watch: 
-            for i in [self.interval] + self.aggregations:
-                df = self.read_csv(f"{path}/{s}-{i}.csv").dropna()
-                if df.empty:
-                    warning(f"Running FETCH")
-                    df = self.streamer.fetch_price_history(s, i).dropna()
-                self.storage.store(s, self.interval, df)
-    
-    def read_csv(self, path:str) -> pd.DataFrame:
-        """Reads a CSV file and returns a Pandas DataFrame. 
+        self._setup(source, interval, aggregations, path, start, end, period)
+        self.broker.setup(self.interval, self, self.main)
+        self.streamer.setup(self.interval, self, self.main)
 
-        :path: Path to the CSV file. 
-        """
-        if not os.path.isfile(path):
-            return pd.DataFrame()
-        df = pd.read_csv(path)
-        df = df.set_index(['timestamp'])
-        if isinstance(df.index[0], str):
-            df.index = pd.to_datetime(df.index)
-        else:
-            df.index = pd.to_datetime(df.index, unit='s')
-        df = df[["open", "high", "low", "close", "volume"]].astype(float)
-        df = df.sort_index()
-        return df
-            
-    def setup(self, source, interval, aggregations=None, path=None):
-        self.interval = interval
-        self.aggregations = aggregations if not aggregations == None else []
+        for a in self.algo:
+            a.setup()
+            a.trader = self
 
-        self.broker.setup(self.watch, interval, self, self.main)
-        self.streamer.setup(self.watch, interval, self, self.main)
+        self.run_backtest()
 
-        self.fetch_interval = interval
+    def _setup(
+        self,
+        source: str,
+        interval: str,
+        aggregations: List,
+        path: str,
+        start,
+        end,
+        period,
+    ):
+        self._setup_params(interval, aggregations)
         self._setup_account()
+
         self.df = {}
 
         self.storage.limit_size = False
+
+        start = convert_input_to_datetime(start, self.timezone)
+        end = convert_input_to_datetime(end, self.timezone)
+        period = convert_input_to_timedelta(period)
+
+        if start is None:
+            if end is None:
+                start = "MAX" if period is None else "PERIOD"
+            else:
+                start = end - period
+        if end is None:
+            if start == "MAX" or start == "PERIOD" or period is None:
+                end = "MAX"
+            else:
+                end = start + period
+
         if source == "PICKLE":
             self.read_pickle_data()
         elif source == "CSV":
             self.read_csv_data(path)
         else:
             raise Exception(f"Invalid source {source}. Must be 'PICKLE' or 'CSV'")
-       
+
+        common_start = None
+        common_end = None
+        for s in self.interval:
+            for i in [self.interval[s]["interval"]] + self.interval[s]["aggregations"]:
+                df = self.storage.load(s, i, no_slice=True)
+                if common_start is None or df.index[0] > common_start:
+                    common_start = df.index[0]
+                if common_end is None or df.index[-1] < common_end:
+                    common_end = df.index[-1]
+
+        if start != "MAX" and start != "PERIOD" and start < common_start:
+            raise Exception(f"Not enough data is available for a start time of {start}")
+        if end != "MAX" and end > common_end:
+            raise Exception(
+                f"Not enough data is available for an end time of {end}: \nLast datapoint is {common_end}"
+            )
+
+        if start == "MAX":
+            start = common_start
+        elif start == "PERIOD":
+            start = common_end - period
+        if end == "MAX":
+            end = common_end
+
+        self.common_start = start
+        self.common_end = end
+
+        print(f"Common start: {start}, common end: {end}")
+
+        for s in self.interval:
+            for i in [self.interval[s]["interval"]] + self.interval[s]["aggregations"]:
+                df = self.storage.load(s, i, no_slice=True).copy()
+                df = df.loc[start:end]
+                self.storage.reset(s, i)
+                self.storage.store(s, i, df)
+
         conv = {
-            "1MIN": 1,
-            "5MIN": 5,
-            "15MIN": 15,
-            "30MIN": 30,
-            "1HR": 60,
-            "1DAY": 1440
+            Interval.MIN_1: 1,
+            Interval.MIN_5: 5,
+            Interval.MIN_15: 15,
+            Interval.MIN_30: 30,
+            Interval.HR_1: 60,
+            Interval.DAY_1: 1440,
         }
 
-        # TODO: Skip the following step if aggregated data already exists
-
         # Generate the "simulated aggregation" data
-        for sym in self.watch:
-            df = self.storage.load(sym, self.interval)
-            rows = len(df.index)
-            print(f"Formatting {sym} data...")
-            for agg in self.aggregations:
-                tmp_path = f"{path}/{sym}--{agg}.pickle"
+        for sym in self.interval:
+            interval = self.interval[sym]["interval"]
+            interval_txt = interval_enum_to_string(interval)
+            df = self.storage.load(sym, interval)
+            df_len = len(df.index)
+
+            debugger.debug(f"Formatting {sym} data...")
+            for agg in self.interval[sym]["aggregations"]:
+                agg_txt = interval_enum_to_string(agg)
+                # tmp_path = f"{path}/{sym}-{interval_txt}+{agg_txt}.pickle"
+                tmp_path = f"{path}/{sym}@{int(agg)-16}.pickle"
                 file = Path(tmp_path)
                 if file.is_file():
+                    data = self.storage.open(sym, int(agg) - 16)
+                    self.storage.store(sym, int(agg) - 16, data, save_pickle=False)
                     continue
-                print(f"Formatting {agg}...")
-                points = int(conv[agg]/conv[interval])
-                for i in tqdm(range(rows)):
-                    df_tmp = df.iloc[0:i+1]                    
-                    df_tmp = df_tmp.iloc[-points:] 
+                    # TODO: check if file is updated with latest data
+                debugger.debug(
+                    f"Formatting aggregation from {interval_txt} to {agg_txt}..."
+                )
+                points = int(conv[agg] / conv[interval])
+                for i in tqdm(range(df_len)):
+                    df_tmp = df.iloc[0 : i + 1]
+                    df_tmp = df_tmp.iloc[
+                        -points:
+                    ]  # Only get recent data, since aggregating the entire df will take too long
                     agg_df = aggregate_df(df_tmp, agg)
-                    self.storage.store(sym, '-'+agg, agg_df.iloc[[-1]], remove_duplicate=False)
-        print("Formatting complete")
+                    self.storage.store(
+                        sym, int(agg) - 16, agg_df.iloc[[-1]], remove_duplicate=False, save_pickle=False
+                    )
+        debugger.debug("Formatting complete")
+        for sym in self.interval:
+            for agg in self.interval[sym]["aggregations"]:
+                self.storage.store(sym, int(agg) - 16, self.storage.load(sym, int(agg) - 16, no_slice=True), remove_duplicate=False)
 
         # # Save the current state of the queue
         # for s in self.watch:
@@ -158,13 +204,19 @@ class BackTester(trader.Trader):
         #         self.load.append_entry(s, i, self.storage.load(s, i))
 
         # Move all data to a cached dataframe
-        for i in [self.interval] + self.aggregations:
-            i = i if i == self.interval else '-'+i
-            self.df[i] = {}
-            for s in self.watch:
-                df = self.storage.load(s, i, no_slice=True)
-                self.df[i][s] = df.copy() 
-        
+        for sym in self.interval:
+            self.df[sym] = {}
+            inter = self.interval[sym]["interval"]
+            interval_txt = interval_enum_to_string(inter)
+            df = self.storage.load(sym, inter, no_slice=True)
+            self.df[sym][inter] = df.copy()
+
+            for agg in self.interval[sym]["aggregations"]:
+                # agg_txt = interval_enum_to_string(agg)
+                # agg_txt = f"{interval_txt}+{agg_txt}"
+                df = self.storage.load(sym, int(agg) - 16, no_slice=True)
+                self.df[sym][int(agg) - 16] = df.copy()
+
         # Trim data so start and end dates match between assets and intervals
         # data_start = pytz.utc.localize(dt.datetime(1970, 1, 1))
         # data_end = pytz.utc.localize(dt.datetime.utcnow().replace(microsecond=0, second=0))
@@ -180,83 +232,138 @@ class BackTester(trader.Trader):
         # for i in [self.interval] + self.aggregations:
         #     for s in self.watch:
         #         self.df[i][s] = self.df[i][s].loc[data_start:data_end]
-            
+
         self.load_watch = True
 
-    def start(self, interval: str='5MIN', aggregations: List[Any]=[], source: str='PICKLE', path: str="./data", kill_switch: bool=False):
-        """Runs backtesting. 
+    def read_pickle_data(self):
+        """Function to read backtesting data from a local file.
 
-        The interface is very similar to the Trader class, with some additional parameters for specifying 
-        backtesting configurations.
-
-        :param str? interval: The interval to run the algorithm on. defaults to '5MIN'.
-        :param List[str]? aggregations: The aggregations to run. defaults to [].
-        :param str? source: The source of backtesting data. 
-            'FETCH' will pull the latest data using the broker (if specified). 
-            'CSV' will read data from a locally saved CSV file.   
-            'PICKLE' will read data from a locally saved pickle file, generated using the Trader class.
-            defaults to 'PICKLE'.
-        :param str? path: The path to the directory which backtesting data is stored. 
-            This parameter must be set accordingly if 'source' is set to 'CSV' or 'PICKLE'. defaults to './data'.
+        :interval: The interval of the data
+        :path: Path to the local data file
+        :date_format: The format of the data's timestamps
         """
+        for s in self.interval:
+            for i in [self.interval[s]["interval"]] + self.interval[s]["aggregations"]:
+                df = self.storage.open(s, i).dropna()
+                if df.empty or now() - df.index[-1] > dt.timedelta(days=1):
+                    df = self.streamer.fetch_price_history(s, i).dropna()
+                self.storage.store(s, i, df)
 
-        self.setup(source, interval, aggregations, path)
+    def read_csv_data(self, path: str, date_format: str = "%Y-%m-%d %H:%M:%S"):
+        """Function to read backtesting data from a local CSV file.
 
-        for a in self.algo:
-            a.setup()
-            a.trader = self
-            a.watch = self.watch
-            a.fetch_interval = self.fetch_interval
+        :interval: The interval of the data
+        :path: Path to the local data file
+        :date_format: The format of the data's timestamps
+        """
+        for s in self.interval:
+            for i in [self.interval[s]["interval"]] + self.interval[s]["aggregations"]:
+                i_txt = interval_enum_to_string(i)
+                df = self.read_csv(f"{path}/{s}-{i_txt}.csv").dropna()
+                if df.empty:
+                    df = self.streamer.fetch_price_history(s, i).dropna()
+                self.storage.store(s, i, df)
 
-        if kill_switch:
-            return 
-            
-        self.main(interval)
+    def read_csv(self, path: str) -> pd.DataFrame:
+        """Reads a CSV file and returns a Pandas DataFrame.
 
-    def main(self, interval):
-        info("Running test...")
+        :path: Path to the CSV file.
+        """
+        if not os.path.isfile(path):
+            return pd.DataFrame()
+        df = pd.read_csv(path)
+        df = df.set_index(["timestamp"])
+        if isinstance(df.index[0], str):
+            df.index = pd.to_datetime(df.index)
+        else:
+            df.index = pd.to_datetime(df.index, unit="s")
+        df = df[["open", "high", "low", "close", "volume"]].astype(float)
+        df = df.sort_index()
+        return df
+
+    def run_backtest(self):
 
         # import cProfile
         # pr = cProfile.Profile()
         # pr.enable()
-         # Reset them 
-        for i in [self.interval] + self.aggregations:
-            for s in self.watch:
+        # Reset them
+
+        for s in self.interval:
+            for i in [self.interval[s]["interval"]] + self.interval[s]["aggregations"]:
                 self.storage.reset(s, i)
-        
+
         self.storage.limit_size = True
-        
-        rows = len(self.df[interval][self.watch[0]].index)
-        for i in range(rows):
+
+        common_start = self.common_start
+        common_end = self.common_end
+
+        counter = {}
+        for s in self.interval:
+            inter = self.interval[s]["interval"]
+            start_index = list(self.df[s][inter].index).index(common_start)
+            self.interval[s]["start"] = start_index
+            counter[s] = 0
+
+        self.timestamp = common_start
+
+        while self.timestamp <= common_end:
+
             df_dict = {}
-            for s in self.watch:
-                df_dict[s] = self.df[interval][s].iloc[[i]]
-            # Add data to queue
-            self.timestamp = self.df[interval][self.watch[0]].index[i]
+            for sym in self.interval:
+                inter = self.interval[sym]["interval"]
+                if is_freq(self.timestamp, inter):
+                    # If data is not in the cache, skip it
+                    if self.timestamp in self.df[sym][inter].index:
+                        df_dict[sym] = self.df[sym][inter].loc[self.timestamp]
+
             update = self._update_order_queue()
             self._update_stats(df_dict, new=update, option_update=True)
-            for s in self.watch:
-                df = self.df[interval][s].iloc[[i]]
-                self.storage.store(s, interval, df, save_pickle=False)
-                # Add data to aggregation queue
-                for agg in self.aggregations:
-                    # Update the last datapoint
-                    df = self.df['-'+agg][s].iloc[[i]]
-                    self.storage.store(s, agg, df)
-        
+
+            for sym in self.interval:
+                inter = self.interval[sym]["interval"]
+                if is_freq(self.timestamp, inter):
+
+                    # If data is not in the cache, skip it
+                    if not self.timestamp in self.df[sym][inter].index:
+                        continue
+                    df = self.df[sym][inter].loc[[self.timestamp], :]
+                    self.storage.store(s, inter, df, save_pickle=False)
+                    # Add data to aggregation queue
+                    for agg in self.interval[sym]["aggregations"]:
+                        df = self.df[s][int(agg) - 16].iloc[
+                            [self.interval[sym]["start"] + counter[sym]], :
+                        ]
+                        self.storage.store(s, agg, df)
+                    counter[sym] += 1
+
+            new_algo = []
             for a in self.algo:
-                a.main()
- 
+                if not is_freq(self.timestamp, a.interval):
+                    new_algo.append(a)
+                    continue
+                try:
+                    a.main()
+                    new_algo.append(a)
+                except Exception as e:
+                    debugger.debug(
+                        f"Algorithm {a} failed, removing from algorithm list.\nException: {e}"
+                    )
+            if len(new_algo) == 0:
+                debugger.debug(f"No algorithms left, exiting")
+                break
+            self.algo = new_algo
+
+            self.timestamp += interval_to_timedelta(self.streamer.poll_interval)
+
         # pr.disable()
-        # import pstats 
+        # import pstats
         # st = pstats.Stats(pr)
         # st.sort_stats('cumtime')
         # st.print_stats(0.1)
         # st.dump_stats("stat.txt")
 
-        print(self.account)
+        debugger.debug(self.account)
 
- 
     def _queue_update(self, new_df: pd.DataFrame, time):
         pass
 
@@ -265,14 +372,11 @@ class BackTester(trader.Trader):
             "equity": 1000000.0,
             "cash": 1000000.0,
             "buying_power": 1000000.0,
-            "multiplier": 1
+            "multiplier": 1,
         }
-    
+
     def fetch_position(self, key):
         pass
 
     def fetch_account(self):
         pass
-
-  
-  

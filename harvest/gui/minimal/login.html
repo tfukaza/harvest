@@ -1,0 +1,33 @@
+<form>
+    <label for="username">Username</label><br>
+    <input type="text" id="username" name="username"><br>   
+    <label for="password">Password</label><br>
+    <input type="password" id="password" name="password"><br>
+    <input type="submit" value="Login">
+</form> 
+
+<script>
+    function handleLogin(event) {
+        event.preventDefault();
+        const form = new FormData(event.target);
+        const data = Object.fromEntries(form.entries());
+        console.log(data);
+        fetch('/api/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        }).then(response => {
+            if (response.redirected) {
+                window.location.href = response.url;
+            } else if (response.ok) {
+                window.location.href = '/';
+            }
+        })
+    }
+
+    const form = document.querySelector('form');
+    form.addEventListener('submit', handleLogin);
+
+</script>

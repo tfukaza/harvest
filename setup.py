@@ -1,5 +1,30 @@
 import subprocess
-from setuptools import Command, find_packages, setup
+from setuptools import Command, setup
+
+
+class LintCMD(Command):
+    user_options = [
+        (
+            "check=",
+            "c",
+            "if True check if files pass linting checks; don't actually lint",
+        )
+    ]
+
+    def initialize_options(self):
+        self.check = False
+
+    def finalize_options(self):
+        self.check = self.check == "True"
+
+    def run(self):
+        command = ["black", "harvest"]
+
+        if self.check:
+            command.append("--check")
+
+        exit(subprocess.run(command).returncode)
+
 
 class CoverageTestCMD(Command):
     user_options = []
@@ -11,40 +36,18 @@ class CoverageTestCMD(Command):
         pass
 
     def run(self):
-        subprocess.run(['coverage', 'run', '--source', 'harvest', '-m', 'unittest', 'discover', '-s', 'test'])
-        subprocess.run(['coverage', 'report'])
-        subprocess.run(['coverage', 'html'])
-        
+        a = subprocess.run(
+            ["coverage", "run", "-m", "unittest", "discover", "-s", "tests"]
+        ).returncode
+        b = subprocess.run(["coverage", "report"]).returncode
+        c = subprocess.run(["coverage", "html"]).returncode
+        exit(a + b + c)
+
 
 setup(
-    name='harvest',
-    packages=['harvest', 'harvest.trader', 'harvest.api', 'harvest.storage'],
-    version='0.1.0',
-    description='A framework providing a high-level interface for algorithmic trading.',
-    author='Harvest Team',
-    license='MIT',
     cmdclass={
-        'test': CoverageTestCMD,
+        "lint": LintCMD,
+        "test": CoverageTestCMD,
     },
-    install_requires=[
-        'numpy',
-        'pandas',
-        'finta',
-        'pyyaml',
-        'tqdm',
-        'pytz',
-        "yfinance",
-    ],
-    extras_require={
-        "AlpacaMarket": [
-            'alpaca-trade-api'
-        ],
-        "Robinhood": [
-            'pyotp',
-            'robin_stocks'
-        ],
-        "DB": [
-            "SQLAlchemy"
-        ]
-    }
+    include_package_data=True,
 )

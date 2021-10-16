@@ -1,8 +1,8 @@
+from numpy import ERR_CALL
 import pandas as pd
 import datetime as dt
 from threading import Lock
 from typing import Tuple
-from logging import debug
 import re
 
 from harvest.utils import *
@@ -17,81 +17,104 @@ as the gap between the last stock data for a day and the first stock data for
 the following day.
 """
 
+
 class BaseStorage:
     """
     A basic storage that is thread safe and stores data in memory.
     """
 
-    def __init__(self, N: int=200, limit_size: bool=True):
+    def __init__(self, queue_size: int = 200, limit_size: bool = True):
         """
-        Initialize a lock used to make this class thread safe since it is 
-        expected that multiple users will be reading and writing to this 
+        Initialize a lock used to make this class thread safe since it is
+        expected that multiple users will be reading and writing to this
         storage simultaneously.
         """
         self.storage_lock = Lock()
         self.storage = {}
-        self.N = N
+        self.queue_size = int(queue_size)
         self.limit_size = limit_size
 
-    def store(self, symbol: str, interval: str, data: pd.DataFrame, remove_duplicate=True) -> None:
+    def store(
+        self, symbol: str, interval: Interval, data: pd.DataFrame, remove_duplicate=True
+    ) -> None:
         """
         Stores the stock data in the storage dictionary.
         :symbol: a stock or crypto
         :interval: the interval between each data point, must be at least
              1 minute
-        :data: a pandas dataframe that has stock data and has a datetime 
+        :data: a pandas dataframe that has stock data and has a datetime
             index
         """
 
         if data.empty:
-            # Do not create an entry if there is no data because it will 
+            # Do not create an entry if there is no data because it will
             # cause the data_range function to error.
             return None
 
         # Removes the seconds and milliseconds
-        data.index = normalize_pandas_dt_index(data)
+        # data.index = normalize_pandas_dt_index(data)
 
         self.storage_lock.acquire()
 
         if symbol in self.storage:
-            # Handles if we already have stock data
+            # Handles if we already have data
             intervals = self.storage[symbol]
             if interval in intervals:
                 try:
                     # Handles if we have stock data for the given interval
-                    intervals[interval] = self._append(intervals[interval], data, remove_duplicate=remove_duplicate)
+                    intervals[interval] = self._append(
+                        intervals[interval], data, remove_duplicate=remove_duplicate
+                    )
+                    if self.limit_size:
+                        intervals[interval] = intervals[interval][-self.queue_size :]
                 except:
-                    raise Exception('Append Failure, case not found!')
+                    raise Exception("Append Failure, case not found!")
             else:
                 # Add the data as a new interval
                 intervals[interval] = data
         else:
+            if self.limit_size:
+                data = data[-self.queue_size :]
+            if len(data) < self.queue_size:
+                debugger.warning(
+                    f"Symbol {symbol}, interval {interval} initialized with only {len(data)} data points"
+                )
             # Just add the data into storage
-            self.storage[symbol] = {
-                interval: data
-            }
+            self.storage[symbol] = {interval: data}
 
         cur_len = len(self.storage[symbol][interval])
-        if self.limit_size and cur_len > self.N:
+        if self.limit_size and cur_len > self.queue_size:
             # If we have more than N data points, remove the oldest data
-            self.storage[symbol][interval] = self.storage[symbol][interval].iloc[-self.N:]
+            self.storage[symbol][interval] = self.storage[symbol][interval].iloc[
+                -self.queue_size :
+            ]
 
         self.storage_lock.release()
 
-    def aggregate(self, symbol: str, base: str, target: str, remove_duplicate: bool=True):
+    def aggregate(
+        self,
+        symbol: str,
+        base: Interval,
+        target: Interval,
+        remove_duplicate: bool = True,
+    ):
         """
         Aggregates the stock data from the interval specified in 'from' to 'to'.
 
         """
         self.storage_lock.acquire()
         data = self.storage[symbol][base]
-        self.storage[symbol][target] = self._append(self.storage[symbol][target], aggregate_df(data, target), remove_duplicate)
+        self.storage[symbol][target] = self._append(
+            self.storage[symbol][target], aggregate_df(data, target), remove_duplicate
+        )
         cur_len = len(self.storage[symbol][target])
-        if self.limit_size and cur_len > self.N:
-            self.storage[symbol][target] = self.storage[symbol][target].iloc[-self.N:]
+        if self.limit_size and cur_len > self.queue_size:
+            self.storage[symbol][target] = self.storage[symbol][target].iloc[
+                -self.queue_size :
+            ]
         self.storage_lock.release()
-    
-    def reset(self, symbol: str, interval: str):
+
+    def reset(self, symbol: str, interval: Interval):
         """
         Resets to an empty dataframe
         """
@@ -99,60 +122,74 @@ class BaseStorage:
         self.storage[symbol][interval] = pd.DataFrame()
         self.storage_lock.release()
 
-
-    def load(self, symbol: str, interval: str='', start: dt.datetime=None, end: dt.datetime=None, no_slice=False) -> pd.DataFrame:
+    def load(
+        self,
+        symbol: str,
+        interval: Interval = None,
+        start: dt.datetime = None,
+        end: dt.datetime = None,
+        no_slice=False,
+    ) -> pd.DataFrame:
         """
         Loads the stock data given the symbol and interval. May return only
-        a subset of the data if start and end are given and there is a gap 
+        a subset of the data if start and end are given and there is a gap
         between the last data point and the given end datetime.
 
         If the specified interval does not exist, it will attempt to generate it by
-        aggregating data. 
+        aggregating data.
         :symbol: a stock or crypto
         :interval: the interval between each data point, must be at least
              1 minute
-        :start: a datetime object 
+        :start: a datetime object
         """
         self.storage_lock.acquire()
 
         if symbol not in self.storage:
             self.storage_lock.release()
-            return None 
+            return None
 
         self.storage_lock.release()
 
-        if interval == '':
-            # If the interval is not given, return the data with the 
+        if interval is None:
+            # If the interval is not given, return the data with the
             # smallest interval that has data in the range.
-            intervals = [(interval, interval_to_timedelta(interval)) for interval in self.storage[symbol].keys()]
+            intervals = [
+                (interval, interval_to_timedelta(interval))
+                for interval in self.storage[symbol]
+            ]
             intervals.sort(key=lambda interval_timedelta: interval_timedelta[1])
             for interval_timedelta in intervals:
                 data = self.load(symbol, interval_timedelta[0], start, end)
-                if not data is None:
-                    return data 
+                if data is not None:
+                    return data
             return None
 
-        dt_interval = interval_to_timedelta(interval)
+        # dt_interval = interval_to_timedelta(interval)
 
-        self.storage_lock.acquire()
-        if interval not in self.storage[symbol]:
-            # If we don't have the given interval but we a smaller one,
-            # then aggregate the data
-            intervals = [(interval, interval_to_timedelta(interval)) for interval in self.storage[symbol].keys() if interval_to_timedelta(interval) < dt_interval] 
-            if len(intervals) == 0:
-                self.storage_lock.release()
-                return None
+        # self.storage_lock.acquire()
+        # if interval not in self.storage[symbol]:
+        #     # If we don't have the given interval but we a smaller one,
+        #     # then aggregate the data
+        #     print(self.storage[symbol])
+        #     intervals = [
+        #         (interval, interval_to_timedelta(interval))
+        #         for interval in self.storage[symbol]
+        #         if interval_to_timedelta(interval) < dt_interval
+        #     ]
+        #     if not intervals:
+        #         self.storage_lock.release()
+        #         return None
 
-            data = self.storage[symbol][intervals[-1][0]]
-            data = aggregate_df(data, interval)
-        else:
-            data = self.storage[symbol][interval]
-        self.storage_lock.release()
-    
+        #     data = self.storage[symbol][intervals[-1][0]]
+        #     data = aggregate_df(data, interval)
+        # else:
+        #     data = self.storage[symbol][interval]
+        # self.storage_lock.release()
+        data = self.storage[symbol][interval]
         if no_slice:
             return data
 
-        # If the start and end are not defined, then set them to the 
+        # If the start and end are not defined, then set them to the
         # beginning and end of the data.
         if start is None:
             start = data.index[0]
@@ -161,7 +198,7 @@ class BaseStorage:
 
         return data.loc[start:end]
 
-    def data_range(self, symbol: str, interval: str) -> Tuple[dt.datetime]:
+    def data_range(self, symbol: str, interval: Interval) -> Tuple[dt.datetime]:
         """
         Returns the oldest and latest datetime of a particular symbol.
         :symbol: a stock or crypto
@@ -173,16 +210,21 @@ class BaseStorage:
             return None, None
         return data.index[0], data.index[-1]
 
-    def _append(self, current_data: pd.DataFrame, new_data: pd.DataFrame, remove_duplicate: bool=True) -> pd.DataFrame:
+    def _append(
+        self,
+        current_data: pd.DataFrame,
+        new_data: pd.DataFrame,
+        remove_duplicate: bool = True,
+    ) -> pd.DataFrame:
         """
-        Appends the data as best it can with gaps in the data for weekends 
-        and time when no data is collected. 
-        :current_data: the current data that we have on the stock for 
+        Appends the data as best it can with gaps in the data for weekends
+        and time when no data is collected.
+        :current_data: the current data that we have on the stock for
             the interval
         :new_data: data coming from the the broker's API call
         """
 
         new_df = current_data.append(new_data)
         if remove_duplicate:
-            new_df = new_df[~new_df.index.duplicated(keep='last')].sort_index()
+            new_df = new_df[~new_df.index.duplicated(keep="last")].sort_index()
         return new_df

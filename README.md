@@ -7,11 +7,13 @@ Harvest is a Python based framework providing a simple and intuitive framework f
 [![codecov](https://codecov.io/gh/tfukaza/harvest/branch/main/graph/badge.svg?token=NQMXTBK2UO)](https://codecov.io/gh/tfukaza/harvest)
 ![run tests](https://github.com/tfukaza/harvest/actions/workflows/run-tests.yml/badge.svg)
 ![website](https://github.com/tfukaza/harvest/actions/workflows/build-website.yml/badge.svg)
-
+[![Code style: Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 ---
 
+Comments? Questions? Join our [discussion](https://github.com/tfukaza/harvest/discussions)
+
 **⚠️WARNING⚠️**
-Harvest is currently at **v0.1**. The program is unstable and cointains many bugs. Use with caution, and contributions are greatly appreciated. 
+Harvest is currently at **v0.1.1**. The program is unstable and cointains many bugs. Use with caution, and contributions are greatly appreciated. 
 - 🪲 [File a bug report](https://github.com/tfukaza/harvest/issues/new?assignees=&labels=bug&template=bug_report.md&title=%5B%F0%9F%AA%B0BUG%5D)
 - 💡 [Submit a feature suggestion](https://github.com/tfukaza/harvest/issues/new?assignees=&labels=enhancement%2C+question&template=feature-request.md&title=%5B%F0%9F%92%A1Feature+Request%5D)
 - 📝 [Request documentation](https://github.com/tfukaza/harvest/issues/new?assignees=&labels=documentation&template=documentation.md&title=%5B%F0%9F%93%9DDocumentation%5D)
@@ -23,7 +25,11 @@ from harvest.algo import *
 from harvest.trader import *
 from harvest.api import *
 
-class Watch(algo.BaseAlgo):
+class Watch(BaseAlgo):
+    def config(self):
+        self.watchlist = ["TWTR"]
+        self.interval = "5MIN"
+
     def main(self):
         sma_long = self.sma(period=50)
         sma_short = self.sma(period=20)
@@ -34,7 +40,6 @@ class Watch(algo.BaseAlgo):
 
 if __name__ == "__main__":
     t = tester.BackTester()
-    t.set_symbol('TWTR')
     t.set_algo(Watch())
     t.start()
 ```
@@ -52,25 +57,39 @@ With Harvest, the process of testing, simulating, and deploying your strategies 
 
 # Installation
 There are few prerequisites:
-- git
 - **Python 3.8+**
 - pip
 
-Harvest is still early in development, so you'll have to install it directly from this repo. 
+Once you have them, install via pip:
 ```bash
-pip install -e 'git+https://github.com/tfukaza/harvest.git#egg=harvest'
+pip install harvest-python
 ```
-Next, install the dependencies necessary for the brokerage of your choice. Currently, Harvest only supports Robinhood. 
+
+Next, install the dependencies necessary for the brokerage of your choice:
 ```bash
-pip install -e 'git+https://github.com/tfukaza/harvest.git#egg=harvest[Robinhood]'
+pip install harvest-python[BROKER]
 ```
+Replace `BROKER` with a brokerage/data source of your choice:
+- Robinhood
+- Alpaca 
+- Webull
+- Kraken
+- Polygon 
+- Yahoo
+
 Now you're all set!
 
 # Contributing
-Contributions are greatly appreciated. Check out the [CONTRIBUTING](CONTRIBUTING.md) document for details.
+Contributions are greatly appreciated. Check out the [CONTRIBUTING](CONTRIBUTING.md) document for details, and [ABOUT](ABOUT.md) for the long-term goals of this project. 
+
+Currently looking for...
+- Python devs to code the framework
+- Backend devs for the Flask backend
+- Frontend devs to make the web GUI based on Svelte
+- UX/UI designers for the web GUI
 
 # Disclaimer
-- Harvest is not officially associated with Robinhood LLC.  
-    - Robinhood was also not designed to be used for algo-trading. Excessive access to their API can result in your account getting locked. 
+- Harvest is not officially associated with Robinhood, Alpaca, WebBull, Kraken, Polygon, or Yahoo. 
+- Many of the brokers were also not designed to be used for algo-trading. Excessive access to their API can result in your account getting locked. 
 - Tutorials and documentation solely exist to provide technical references of the code. They are not recommendations of any specific securities or strategies. 
-- Use Harvest at your own responsibility. Developers of Harvest take no responsibility for any financial losses you incur by using Harvest.  
+- Use Harvest at your own responsibility. Developers of Harvest take no responsibility for any financial losses you incur by using Harvest. By using Harvest, you certify you understand that Harvest is a software in early development and may contain bugs and unexpected behaviors.

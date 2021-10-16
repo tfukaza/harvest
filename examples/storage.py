@@ -10,7 +10,8 @@ from harvest.storage import PickleStorage
 
 class Watch(BaseAlgo):
     def main(self):
-        print( self.get_asset_price() )
+        print(self.get_asset_price())
+
 
 if __name__ == "__main__":
 
@@ -22,10 +23,10 @@ if __name__ == "__main__":
 
     # Will create the given directory if it does not exist.
     # If no directory is provided, will use a directory called data.
-    storage = PickleStorage('./dir_where_data_is_saved')
+    storage = PickleStorage("./dir_where_data_is_saved")
 
     t = Trader(streamer, broker, storage)
-    t.set_symbol('AAPL')
+    t.set_symbol("AAPL")
     t.set_algo(Watch())
 
-    t.start('1MIN')
+    t.start("1MIN")
