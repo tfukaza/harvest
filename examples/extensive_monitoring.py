@@ -4,7 +4,7 @@ import datetime as dt
 
 # Harvest imports
 from harvest.algo import BaseAlgo
-from harvest.trader import Trader
+from harvest.trader import LiveTrader
 from harvest.api.alpaca import Alpaca
 from harvest.storage.csv_storage import CSVStorage
 
@@ -69,7 +69,7 @@ if __name__ == '__main__':
     # Our streamer and broker will be Alpaca. My secret keys are stored in `alpaca_secret.yaml`
     alpaca = Alpaca(path='accounts/alpaca_account.yaml', is_basic_account=True, paper_trader=True)
     em_algo = EMAlgo()
-    trader = Trader(streamer=alpaca, broker=alpaca, storage=csv_storage, debug=True)
+    trader = LiveTrader(streamer=alpaca, broker=alpaca, storage=csv_storage, debug=True)
 
     # Watch for Apple and Microsoft
     trader.set_symbol('AAPL')

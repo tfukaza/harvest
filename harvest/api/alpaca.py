@@ -1,6 +1,5 @@
 # Builtins
 import yaml
-import asyncio
 import threading
 import datetime as dt
 from typing import Any, Dict, List, Tuple
@@ -67,7 +66,6 @@ class Alpaca(StreamAPI):
         symbol = f"@{symbol}" if is_crypto(symbol) else symbol
         debugger.info(f"Got data for {symbol}")
         data = self._format_df(df, symbol)
-        print(data)
         self.trader_main({symbol: data})
 
     def setup(self, interval: Dict, trader=None, trader_main=None):
@@ -89,11 +87,6 @@ class Alpaca(StreamAPI):
         self.option_cache = {}
 
     def start(self):
-        threading.Thread(target=self.capture_data, daemon=True).start()
-
-    def capture_data(self):
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
         self.stream.run()
 
     def exit(self):
