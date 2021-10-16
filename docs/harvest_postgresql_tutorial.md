@@ -5,7 +5,7 @@
 ### Harvest
 
 ```bash
-pip install -e 'git+https://github.com/tfukaza/harvest.git#egg=harvest'
+pip install harvest-python
 ```
 
 ### SQLAlchemy

@@ -348,9 +348,16 @@ class LiveTrader:
         net_value = 0
         for p in self.stock_positions + self.crypto_positions:
             key = p["symbol"]
-            if key not in df_dict:
+            if key in df_dict:
+                price = df_dict[key][key]["close"]
+            elif key not in self.watchlist_global:
+                i = self.streamer.poll_interval
+                end = now()
+                start = end - interval_to_timedelta(i) * 2
+                price = self.streamer.fetch_price_history(key, i, start, end)
+                price = price[key]["close"][-1]
+            else:
                 continue
-            price = df_dict[key][key]["close"]
             p["current_price"] = price
             value = price * p["quantity"]
             p["market_value"] = value

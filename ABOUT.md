@@ -20,8 +20,3 @@ The following are the core values of this project you should keep in mind, espec
 - 🛠️ Modifiable: The code should be easy for developers to add new features and make modifications. 
 - 📜 Principle over performance: Sometimes you may have to choose between the performance of the code and following the principles. In such case, always choose the latter. 
 
-# v0.3 Goals
-- Improve the web interface.
-- Provide better documentation.
-- Improve framework interface.
-- Stability and performance improvement.

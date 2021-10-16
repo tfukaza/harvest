@@ -18,6 +18,7 @@ from harvest.api.paper import PaperBroker
 from harvest.storage import BaseLogger
 from harvest.utils import *
 
+
 class BackTester(trader.PaperTrader):
     """
     This class replaces several key functions to allow backtesting
@@ -29,7 +30,7 @@ class BackTester(trader.PaperTrader):
 
         self.streamer = YahooStreamer() if streamer is None else streamer
         self.broker = PaperBroker()
-        
+
         self.storage = PickleStorage(limit_size=False)  # local cache of historic price
         self._init_attributes()
 
@@ -98,10 +99,7 @@ class BackTester(trader.PaperTrader):
 
         if start is None:
             if end is None:
-                if period is None:
-                    start = "MAX"
-                else:
-                    start = "PERIOD"
+                start = "MAX" if period is None else "PERIOD"
             else:
                 start = end - period
         if end is None:
@@ -127,21 +125,20 @@ class BackTester(trader.PaperTrader):
                 if common_end is None or df.index[-1] < common_end:
                     common_end = df.index[-1]
 
-        if start == "PERIOD":
-            start = common_end - period
-
-        if start != "MAX" and start < common_start:
+        if start != "MAX" and start != "PERIOD" and start < common_start:
             raise Exception(f"Not enough data is available for a start time of {start}")
         if end != "MAX" and end > common_end:
             raise Exception(
                 f"Not enough data is available for an end time of {end}: \nLast datapoint is {common_end}"
             )
-        
+
         if start == "MAX":
             start = common_start
+        elif start == "PERIOD":
+            start = common_end - period
         if end == "MAX":
             end = common_end
-        
+
         self.common_start = start
         self.common_end = end
 
@@ -177,8 +174,8 @@ class BackTester(trader.PaperTrader):
                 tmp_path = f"{path}/{sym}@{int(agg)-16}.pickle"
                 file = Path(tmp_path)
                 if file.is_file():
-                    data = self.storage.open(sym, int(agg)-16)
-                    self.storage.store(sym, int(agg)-16, data, save_pickle=False)
+                    data = self.storage.open(sym, int(agg) - 16)
+                    self.storage.store(sym, int(agg) - 16, data, save_pickle=False)
                     continue
                     # TODO: check if file is updated with latest data
                 debugger.debug(
@@ -192,9 +189,21 @@ class BackTester(trader.PaperTrader):
                     ]  # Only get recent data, since aggregating the entire df will take too long
                     agg_df = aggregate_df(df_tmp, agg)
                     self.storage.store(
-                        sym, int(agg) - 16, agg_df.iloc[[-1]], remove_duplicate=False
+                        sym,
+                        int(agg) - 16,
+                        agg_df.iloc[[-1]],
+                        remove_duplicate=False,
+                        save_pickle=False,
                     )
         debugger.debug("Formatting complete")
+        for sym in self.interval:
+            for agg in self.interval[sym]["aggregations"]:
+                self.storage.store(
+                    sym,
+                    int(agg) - 16,
+                    self.storage.load(sym, int(agg) - 16, no_slice=True),
+                    remove_duplicate=False,
+                )
 
         # # Save the current state of the queue
         # for s in self.watch:

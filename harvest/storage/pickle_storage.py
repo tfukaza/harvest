@@ -36,7 +36,7 @@ class PickleStorage(BaseStorage):
         for file in files:
             symbol, interval = file.split("@")
             interval = interval.split(".")[0]
-            if interval[0] == '-':
+            if interval[0] == "-":
                 interval = int(interval[1:])
             else:
                 interval = interval_string_to_enum(interval)
@@ -69,10 +69,8 @@ class PickleStorage(BaseStorage):
             self.storage_lock.release()
 
     def open(self, symbol: str, interval: Interval):
-        if isinstance(interval, int):
-            interval = interval
-        else:
-            interval = interval_string_to_enum(interval)
+        if isinstance(interval, Interval):
+            interval = interval_enum_to_string(interval)
         name = self.save_dir + f"/{symbol}@{interval}.pickle"
         if isfile(name):
             return pd.read_pickle(name)
