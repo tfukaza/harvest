@@ -347,7 +347,7 @@ class LiveTrader:
             elif key not in self.watchlist_global:
                 i = self.streamer.poll_interval
                 end = now()
-                start = end - interval_to_timedelta(i)*2
+                start = end - interval_to_timedelta(i) * 2
                 price = self.streamer.fetch_price_history(key, i, start, end)
                 price = price[key]["close"][-1]
             else:

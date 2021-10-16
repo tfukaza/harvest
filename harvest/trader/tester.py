@@ -99,10 +99,7 @@ class BackTester(trader.PaperTrader):
 
         if start is None:
             if end is None:
-                if period is None:
-                    start = "MAX"
-                else:
-                    start = "PERIOD"
+                start = "MAX" if period is None else "PERIOD"
             else:
                 start = end - period
         if end is None:
@@ -128,10 +125,7 @@ class BackTester(trader.PaperTrader):
                 if common_end is None or df.index[-1] < common_end:
                     common_end = df.index[-1]
 
-        if start == "PERIOD":
-            start = common_end - period
-
-        if start != "MAX" and start < common_start:
+        if start != "MAX" and start != "PERIOD" and start < common_start:
             raise Exception(f"Not enough data is available for a start time of {start}")
         if end != "MAX" and end > common_end:
             raise Exception(
@@ -140,6 +134,8 @@ class BackTester(trader.PaperTrader):
 
         if start == "MAX":
             start = common_start
+        elif start == "PERIOD":
+            start = common_end - period
         if end == "MAX":
             end = common_end
 
