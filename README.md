@@ -1,29 +1,25 @@
-![Header](docs/banner.png)
-Harvest is a Python based framework providing a simple and intuitive framework for algorithmic trading. Visit Harvest's [**website**](https://tfukaza.github.io/harvest/) for details, tutorials, and documentation. 
+![Header](docs/banner.png)<br />
+Harvest is a Python framework providing a **simple** and **flexible** framework for algorithmic trading. Visit Harvest's [**website**](https://tfukaza.github.io/harvest/) for details, tutorials, and documentation. 
 
 <br />
 
 
 [![codecov](https://codecov.io/gh/tfukaza/harvest/branch/main/graph/badge.svg?token=NQMXTBK2UO)](https://codecov.io/gh/tfukaza/harvest)
 ![run tests](https://github.com/tfukaza/harvest/actions/workflows/run-tests.yml/badge.svg)
-![website](https://github.com/tfukaza/harvest/actions/workflows/build-website.yml/badge.svg)
 [![Code style: Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 ---
 
-Comments? Questions? Join our [discussion](https://github.com/tfukaza/harvest/discussions)
-
 **⚠️WARNING⚠️**
-Harvest is currently at **v0.1.1**. The program is unstable and cointains many bugs. Use with caution, and contributions are greatly appreciated. 
+Harvest is currently at **v0.3**. The program is unstable and contains many bugs. Use with caution, and contributions are greatly appreciated. 
 - 🪲 [File a bug report](https://github.com/tfukaza/harvest/issues/new?assignees=&labels=bug&template=bug_report.md&title=%5B%F0%9F%AA%B0BUG%5D)
 - 💡 [Submit a feature suggestion](https://github.com/tfukaza/harvest/issues/new?assignees=&labels=enhancement%2C+question&template=feature-request.md&title=%5B%F0%9F%92%A1Feature+Request%5D)
 - 📝 [Request documentation](https://github.com/tfukaza/harvest/issues/new?assignees=&labels=documentation&template=documentation.md&title=%5B%F0%9F%93%9DDocumentation%5D)
 
-# Example
-Below is a minimal example of a crossover strategy for `TWTR` implemented with Harvest, tested on historical stock prices.
+# See for yourself!
+Below is a minimal example of a crossover strategy for `TWTR` implemented with Harvest, paper trading.
 ```python
 from harvest.algo import *
 from harvest.trader import *
-from harvest.api import *
 
 class Watch(BaseAlgo):
     def config(self):
@@ -39,28 +35,16 @@ class Watch(BaseAlgo):
             self.sell()
 
 if __name__ == "__main__":
-    t = tester.BackTester()
-    t.set_algo(Watch())
-    t.start()
-```
-If you want to see how this algorithm performs in real life, just change one line to enable paper trading:
-```diff
-- t = tester.BackTester()
-+ t = trader.Trader()
-```
-Confident in your strategy? Deploy it using a broker of your choice (Currently only supports Robinhood). Again, you just need to change one line:
-```diff
-- t = trader.Trader()
-+ t = trader.Trader(robinhood.Robinhood())
+    trader = PaperTrader()
+    trader.set_algo(Watch())
+    trader.start()
 ```
 With Harvest, the process of testing, simulating, and deploying your strategies is a piece of cake 🍰
 
 # Installation
-There are few prerequisites:
-- **Python 3.8+**
-- pip
+The only requirement is to have **Python 3.9 or newer**.
 
-Once you have them, install via pip:
+Once you're ready, install via pip:
 ```bash
 pip install harvest-python
 ```
