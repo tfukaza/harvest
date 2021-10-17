@@ -132,11 +132,20 @@ class Alpaca(StreamAPI):
 
     @API._exception_handler
     def fetch_stock_positions(self):
+        def fmt(stock: Dict[str, Any]):
+            return {
+                "symbol": stock["symbol"],
+                "avg_price": stock["avg_entry_price"],
+                "quantity": stock["qty"],
+                "alpaca": stock
+            }
+
         return [
-            pos.__dict__["_raw"]
+            fmt(pos.__dict__["_raw"])
             for pos in self.api.list_positions()
             if pos.asset_class != "crypto"
         ]
+
 
     @API._exception_handler
     def fetch_option_positions(self):
@@ -151,8 +160,15 @@ class Alpaca(StreamAPI):
             )
             return []
 
+        def fmt(crypto: Dict[str, Any]):
+            return {
+                "symbol": "@" + crypto["symbol"],
+                "avg_price": crypto["avg_entry_price"],
+                "quantity": stock["qty"],
+                "alpaca": crypto
+            }
         return [
-            pos.__dict__["_raw"]
+            fmt(pos.__dict__["_raw"])
             for pos in self.api.list_positions()
             if pos.asset_class == "crypto"
         ]
@@ -163,11 +179,19 @@ class Alpaca(StreamAPI):
 
     @API._exception_handler
     def fetch_account(self):
-        return self.api.get_account().__dict__["_raw"]
+        account = self.api.get_account().__dict__["_raw"]
+        return {
+            "equity": account["equity"],
+            "cash": account["cash"],
+            "buying_power": account["buying_power"],
+            "multiplier": account["multiplier"],
+            "alpaca": account
+        }
 
     @API._exception_handler
     def fetch_stock_order_status(self, order_id: str):
-        return self.api.get_order(order_id).__dict__["_raw"]
+        order = self.api.get_order(order_id).__dict__["_raw"]
+        return self.format_order_status(order)
 
     @API._exception_handler
     def fetch_option_order_status(self, id):
@@ -177,11 +201,16 @@ class Alpaca(StreamAPI):
     def fetch_crypto_order_status(self, id):
         if self.basic:
             raise Exception("Alpaca basic accounts do not support crypto.")
-        return self.api.get_order(order_id).__dict__["_raw"]
+
+        order = self.api.get_order(order_id).__dict__["_raw"]
+        return self.format_order_status(order, is_stock=False)
 
     @API._exception_handler
     def fetch_order_queue(self):
-        return [pos.__dict__["_raw"] for pos in self.api.list_positions()]
+        return [
+            self.format_order_status(pos.__dict__["_raw"])
+            for pos in self.api.list_positions()
+        ]
 
     # --------------- Methods for Trading --------------- #
 
@@ -198,17 +227,24 @@ class Alpaca(StreamAPI):
             raise Exception("Alpaca basic accounts do not support crypto.")
 
         if is_crypto(symbol):
-            symbol = symbol[1:]
+            asset = symbol[1:]
 
-        return self.api.submit_order(
-            symbol,
+        order = self.api.submit_order(
+            asset,
             quantity,
             side=side,
             type="limit",
             limit_price=limit_price,
             time_in_force=in_force,
             extended_hours=extended,
-        )
+        ).__dict__["_raw"]
+
+        return {
+            "type": "CRYPTO" if is_crypto(symbol) else "STOCK",
+            "id": order["id"],
+            "symbol": symbol,
+            "alpaca": order
+        }
 
     def order_option_limit(
         self,
@@ -224,6 +260,20 @@ class Alpaca(StreamAPI):
         raise NotImplementedError("Alpaca does not support options.")
 
     # ------------- Helper methods ------------- #
+
+    def format_order_status(self, order: Dict[str, Any], is_stock: bool = True):
+        return {
+            "type": "STOCK" if is_stock else "CRYPTO",
+            "id": order["id"],
+            "symbol": ("" if is_stock else "@") +  order["symbol"],
+            "quantity": order["qty"],
+            "filled_quantity": order["filed_qty"],
+            "side": order["side"],
+            "time_in_force": order["time_in_force"],
+            "status": order["status"],
+            "alpaca": order
+        }
+
 
     def get_data_from_alpaca(
         self,
