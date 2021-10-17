@@ -1,5 +1,5 @@
 from harvest.algo import BaseAlgo
-from harvest.trader import Trader
+from harvest.trader import LiveTrader
 
 
 class Crossover(BaseAlgo):
@@ -20,6 +20,6 @@ class Crossover(BaseAlgo):
 
 
 if __name__ == "__main__":
-    t = Trader()
+    t = LiveTrader()
     t.set_algo(Crossover())
     t.start()
