@@ -44,10 +44,11 @@ class Alpaca(StreamAPI):
             data_feed=data_feed,
         )
         self.data_lock = threading.Lock()
-        self.data = {"stocks": {}, "cryptos": {}}
+        self.data = {}
 
     async def update_data(self, bar):
         # Update data with the latest bars
+        self.data_lock.aquire()
         bar = bar.__dict__["_raw"]
         symbol = bar["symbol"]
         df = pd.DataFrame(
@@ -65,8 +66,13 @@ class Alpaca(StreamAPI):
 
         symbol = f"@{symbol}" if is_crypto(symbol) else symbol
         debugger.info(f"Got data for {symbol}")
-        data = self._format_df(df, symbol)
-        self.trader_main({symbol: data})
+        df = self._format_df(df, symbol)
+        self.data[symbol] = df
+        if set(self.data.keys()) == set(self.watch_stock + self.watch_crypto):
+            data = self.data
+            self.data = {}
+            self.data_lock.release()
+            self.trader_main(data)
 
     def setup(self, interval: Dict, trader=None, trader_main=None):
         super().setup(interval, trader, trader_main)
