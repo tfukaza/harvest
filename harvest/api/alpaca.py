@@ -137,7 +137,7 @@ class Alpaca(StreamAPI):
                 "symbol": stock["symbol"],
                 "avg_price": stock["avg_entry_price"],
                 "quantity": stock["qty"],
-                "alpaca": stock
+                "alpaca": stock,
             }
 
         return [
@@ -145,7 +145,6 @@ class Alpaca(StreamAPI):
             for pos in self.api.list_positions()
             if pos.asset_class != "crypto"
         ]
-
 
     @API._exception_handler
     def fetch_option_positions(self):
@@ -165,8 +164,9 @@ class Alpaca(StreamAPI):
                 "symbol": "@" + crypto["symbol"],
                 "avg_price": crypto["avg_entry_price"],
                 "quantity": stock["qty"],
-                "alpaca": crypto
+                "alpaca": crypto,
             }
+
         return [
             fmt(pos.__dict__["_raw"])
             for pos in self.api.list_positions()
@@ -185,7 +185,7 @@ class Alpaca(StreamAPI):
             "cash": account["cash"],
             "buying_power": account["buying_power"],
             "multiplier": account["multiplier"],
-            "alpaca": account
+            "alpaca": account,
         }
 
     @API._exception_handler
@@ -243,7 +243,7 @@ class Alpaca(StreamAPI):
             "type": "CRYPTO" if is_crypto(symbol) else "STOCK",
             "id": order["id"],
             "symbol": symbol,
-            "alpaca": order
+            "alpaca": order,
         }
 
     def order_option_limit(
@@ -265,15 +265,14 @@ class Alpaca(StreamAPI):
         return {
             "type": "STOCK" if is_stock else "CRYPTO",
             "id": order["id"],
-            "symbol": ("" if is_stock else "@") +  order["symbol"],
+            "symbol": ("" if is_stock else "@") + order["symbol"],
             "quantity": order["qty"],
             "filled_quantity": order["filed_qty"],
             "side": order["side"],
             "time_in_force": order["time_in_force"],
             "status": order["status"],
-            "alpaca": order
+            "alpaca": order,
         }
-
 
     def get_data_from_alpaca(
         self,
@@ -335,7 +334,7 @@ class Alpaca(StreamAPI):
             inplace=True,
         )
         df.set_index("timestamp", inplace=True)
-        df.index = pd.DatetimeIndex(df.index, tz='utc')
+        df.index = pd.DatetimeIndex(df.index, tz="utc")
 
         df.columns = pd.MultiIndex.from_product([[symbol], df.columns])
 

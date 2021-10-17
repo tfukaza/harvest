@@ -100,7 +100,14 @@ class LiveTrader:
             f"Streamer: {type(self.streamer).__name__}\nBroker: {type(self.broker).__name__}\nStorage: {type(self.storage).__name__}"
         )
 
-    def start(self, interval="5MIN", aggregations=[], sync=True, server=False, all_history=True):
+    def start(
+        self,
+        interval="5MIN",
+        aggregations=[],
+        sync=True,
+        server=False,
+        all_history=True,
+    ):
         """Entry point to start the system.
 
         :param str? interval: The interval to run the algorithm. defaults to '5MIN'
