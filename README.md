@@ -73,7 +73,7 @@ Currently looking for...
 - UX/UI designers for the web GUI
 
 # Disclaimer
-- Harvest is not officially associated with Robinhood, Alpaca, WeBull, Kraken, Polygon, or Yahoo. 
+- Harvest is not officially associated with Robinhood, Alpaca, Webull, Kraken, Polygon, or Yahoo. 
 - Many of the brokers were also not designed to be used for algo-trading. Excessive access to their API can result in your account getting locked. 
 - Tutorials and documentation solely exist to provide technical references of the code. They are not recommendations of any specific securities or strategies. 
 - Use Harvest at your own responsibility. Developers of Harvest take no responsibility for any financial losses you incur by using Harvest. By using Harvest, you certify you understand that Harvest is a software in early development and may contain bugs and unexpected behaviors.
