@@ -1,6 +1,7 @@
 # Builtins
 import re
 import threading
+import traceback
 import sys
 from sys import exit
 from signal import signal, SIGINT
@@ -271,7 +272,7 @@ class LiveTrader:
 
         # Save the data locally
         for sym in df_dict:
-            print(sym)
+            print(df_dict[sym])
             self.storage.store(sym, self.interval[sym]["interval"], df_dict[sym])
 
         # Aggregate the data to other intervals
@@ -299,6 +300,9 @@ class LiveTrader:
                 debugger.warning(
                     f"Algorithm {a} failed, removing from algorithm list.\nException: {e}"
                 )
+
+                traceback.print_exc()
+
         self.algo = new_algo
 
         self.broker.exit()

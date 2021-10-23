@@ -38,9 +38,9 @@ class EMAlgo(BaseAlgo):
             for ticker_value in self.tickers.values():
                 ticker_value['ohlc'] = pd.DataFrame()
 
-        for ticker, ticker_value in self.tickers:
+        for ticker, ticker_value in self.tickers.items():
             current_price = self.get_asset_price(ticker)
-            current_ohlc = self.get_asset_ohlc(ticker)
+            current_ohlc = self.get_asset_candle_list(ticker)
             if ticker_value['initial_price'] is None:
                 ticker_value['initial_price'] = current_price
 
@@ -58,7 +58,7 @@ class EMAlgo(BaseAlgo):
         logging.info(f'{ticker} price change: ${delta_price}')
 
         # Update the OHLC data
-
+        print("ohlc", ohlc)
         # Update the OHLC graph
         mpf.plot(ohlc)
 

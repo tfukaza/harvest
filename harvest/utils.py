@@ -229,7 +229,7 @@ def datetime_utc_to_local(datetime: dt.datetime, timezone: ZoneInfo) -> dt.datet
 class Timestamp:
     def __init__(self, *args) -> None:
         if len(args) == 1:
-            timestamp = args[1]
+            timestamp = args[0]
             if isinstance(timestamp, str):
                 self.timestamp = str_to_datetime(timestamp)
             elif isinstance(timestamp, dt.datetime):

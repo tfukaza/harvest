@@ -48,7 +48,7 @@ class Alpaca(StreamAPI):
 
     async def update_data(self, bar):
         # Update data with the latest bars
-        self.data_lock.aquire()
+        self.data_lock.acquire()
         bar = bar.__dict__["_raw"]
         symbol = bar["symbol"]
         df = pd.DataFrame(
@@ -73,6 +73,8 @@ class Alpaca(StreamAPI):
             self.data = {}
             self.data_lock.release()
             self.trader_main(data)
+        else:
+            self.data_lock.release()
 
     def setup(self, interval: Dict, trader=None, trader_main=None):
         super().setup(interval, trader, trader_main)
@@ -141,8 +143,8 @@ class Alpaca(StreamAPI):
         def fmt(stock: Dict[str, Any]):
             return {
                 "symbol": stock["symbol"],
-                "avg_price": stock["avg_entry_price"],
-                "quantity": stock["qty"],
+                "avg_price": float(stock["avg_entry_price"]),
+                "quantity": float(stock["qty"]),
                 "alpaca": stock,
             }
 
@@ -168,8 +170,8 @@ class Alpaca(StreamAPI):
         def fmt(crypto: Dict[str, Any]):
             return {
                 "symbol": "@" + crypto["symbol"],
-                "avg_price": crypto["avg_entry_price"],
-                "quantity": stock["qty"],
+                "avg_price": float(crypto["avg_entry_price"]),
+                "quantity": float(stock["qty"]),
                 "alpaca": crypto,
             }
 
@@ -187,10 +189,10 @@ class Alpaca(StreamAPI):
     def fetch_account(self):
         account = self.api.get_account().__dict__["_raw"]
         return {
-            "equity": account["equity"],
-            "cash": account["cash"],
-            "buying_power": account["buying_power"],
-            "multiplier": account["multiplier"],
+            "equity": float(account["equity"]),
+            "cash": float(account["cash"]),
+            "buying_power": float(account["buying_power"]),
+            "multiplier": float(account["multiplier"]),
             "alpaca": account,
         }
 
@@ -215,7 +217,7 @@ class Alpaca(StreamAPI):
     def fetch_order_queue(self):
         return [
             self.format_order_status(pos.__dict__["_raw"])
-            for pos in self.api.list_positions()
+            for pos in self.api.list_orders()
         ]
 
     # --------------- Methods for Trading --------------- #
@@ -272,8 +274,8 @@ class Alpaca(StreamAPI):
             "type": "STOCK" if is_stock else "CRYPTO",
             "id": order["id"],
             "symbol": ("" if is_stock else "@") + order["symbol"],
-            "quantity": order["qty"],
-            "filled_quantity": order["filed_qty"],
+            "quantity": float(order["qty"]),
+            "filled_quantity": float(order["filed_qty"]),
             "side": order["side"],
             "time_in_force": order["time_in_force"],
             "status": order["status"],
@@ -339,8 +341,9 @@ class Alpaca(StreamAPI):
             },
             inplace=True,
         )
+
+        df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
         df.set_index("timestamp", inplace=True)
-        df.index = pd.DatetimeIndex(df.index, tz="utc")
 
         df.columns = pd.MultiIndex.from_product([[symbol], df.columns])
 
