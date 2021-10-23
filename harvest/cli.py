@@ -47,24 +47,6 @@ except ModuleNotFoundError as e:
 from harvest.trader import LiveTrader
 from harvest.algo import BaseAlgo
 
-parser = argparse.ArgumentParser(description="Harvest CLI")
-subparsers = parser.add_subparsers(dest="command")
-
-# Parser for starting harvest
-start_parser = subparsers.add_parser("start")
-start_parser.add_argument(
-    "-o", "--storage", default="memory", help="the way to store asset data"
-)
-start_parser.add_argument(
-    "-s", "--streamer", default="dummy", help="fetches asset data"
-)
-start_parser.add_argument(
-    "-b", "--broker", default="paper", help="buys and sells assets on your behalf"
-)
-start_parser.add_argument(
-    "algos", nargs="+", help="paths to algorithms you want to run"
-)
-
 storages = {
     "memory": BaseStorage,
     "csv": CSVStorage,
@@ -90,20 +72,39 @@ brokers = {
     "webull": Webull,
 }
 
+parser = argparse.ArgumentParser(description="Harvest CLI")
+subparsers = parser.add_subparsers(dest="command")
 
-def main(args: argparse.Namespace):
+# Parser for starting harvest
+start_parser = subparsers.add_parser("start")
+start_parser.add_argument(
+    "-o", "--storage", default="memory", help="the way to store asset data", choices=list(storages.keys())
+)
+start_parser.add_argument(
+    "-s", "--streamer", default="dummy", help="fetches asset data", choices=list(streamers.keys())
+)
+start_parser.add_argument(
+    "-b", "--broker", default="paper", help="buys and sells assets on your behalf", choices=list(brokers.keys())
+)
+start_parser.add_argument(
+    "algos", nargs="+", help="paths to algorithms you want to run"
+)
+
+
+def main():
     """
-    Entrypoint after the command line arguments are parsed. Calls subcommands based on which subparser was used.
+    Entrypoint which parses the command line arguments. Calls subcommands based on which subparser was used.
     :args: A Namespace object containing parsed user arguments.
     """
-    # Show help if no arguments are provided
-    if not args.command:
-        parser.print_help(sys.stderr)
-        sys.exit(1)
+    args = parser.parse_args()
 
     # Handles the start command
     if args.command == "start":
         start(args)
+    # Show help if case not found
+    else:
+        parser.print_help(sys.stderr)
+        sys.exit(1)
 
 
 def start(args: argparse.Namespace):
@@ -120,6 +121,7 @@ def start(args: argparse.Namespace):
         # get the file name without the `.py`
         module = os.path.basename(algo_path)[:-3]
         # load in the entire file
+        algo_path = os.path.realpath(algo_path)
         spec = importlib.util.spec_from_file_location(module, algo_path)
         algo = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(algo)
@@ -171,5 +173,4 @@ def _get_broker(broker):
 
 
 if __name__ == "__main__":
-    args = parser.parse_args()
-    main(args)
+    main()

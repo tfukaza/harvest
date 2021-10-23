@@ -87,7 +87,7 @@ class LiveTrader:
         self.logger = BaseLogger()
         self.server = Server(self)  # Initialize the web interface server
 
-        self.timezone = tzlocal.get_localzone()
+        self.timezone = tzlocal.get_localzone_name()
         debugger.debug(f"Timezone: {self.timezone}")
 
     def _setup_debugger(self, debug):
