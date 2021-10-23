@@ -1,7 +1,6 @@
 # Builtins
 import os
 import time
-from multiprocessing import Process
 import unittest
 
 from harvest import cli
@@ -19,24 +18,39 @@ class TestCLI(unittest.TestCase):
         for broker in cli.brokers.values():
             self.assertTrue(callable(broker))
 
+    def test_bad_storage(self):
+        try:
+            cli._get_storage("I don't exist")
+            self.assertTrue(False)
+        except ValueError:
+            self.assertTrue(True)
+
+    def test_bad_streamer(self):
+        try:
+            cli._get_streamer("I don't exist")
+            self.assertTrue(False)
+        except ValueError:
+            self.assertTrue(True)
+
+    def test_bad_broekrs(self):
+        try:
+            cli._get_broker("I don't exist")
+            self.assertTrue(False)
+        except ValueError:
+            self.assertTrue(True)
+
     def test_start_basic(self):
         crossover = os.path.dirname(os.path.realpath(__file__)) + "/../examples/crossover.py"
         args = cli.parser.parse_args(["start", "-o", "memory", "-s", "dummy", "-b", "paper", crossover])
-        print(args)
-        process = Process(target=cli.start, args=(args,))
-        process.start()
-        time.sleep(1)
-        process.kill()
+        cli.start(args, test=True)
         self.assertTrue(True)
 
     def test_start_complex(self):
         crossover = os.path.dirname(os.path.realpath(__file__)) + "/../examples/crossover.py"
         args = cli.parser.parse_args(["start", "-o", "pickle", "-s", "yahoo", "-b", "paper", crossover])
-        process = Process(target=cli.start, args=(args,))
-        process.start()
-        time.sleep(1)
-        process.kill()
+        cli.start(args, test=True)
         self.assertTrue(True)
+
 
 
 if __name__ == "__main__":

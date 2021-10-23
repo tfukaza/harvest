@@ -107,10 +107,11 @@ def main():
         sys.exit(1)
 
 
-def start(args: argparse.Namespace):
+def start(args: argparse.Namespace, test: bool=False):
     """
     Starts the Harvest LiveTrader with the given storage, streamer, broker, and algos specified.
     :args: A Namespace object containing parsed user arguments.
+    :test: True if we are testing so that we can exit this function cleanly.
     """
     storage = _get_storage(args.storage)
     streamer = _get_streamer(args.streamer)
@@ -130,7 +131,8 @@ def start(args: argparse.Namespace):
             if inspect.isclass(algo_cls) and issubclass(algo_cls, BaseAlgo):
                 trader.set_algo(algo_cls())
 
-    trader.start()
+    if not test:
+        trader.start()
 
 
 def _get_storage(storage: str):
