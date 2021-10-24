@@ -78,13 +78,25 @@ subparsers = parser.add_subparsers(dest="command")
 # Parser for starting harvest
 start_parser = subparsers.add_parser("start")
 start_parser.add_argument(
-    "-o", "--storage", default="memory", help="the way to store asset data", choices=list(storages.keys())
+    "-o",
+    "--storage",
+    default="memory",
+    help="the way to store asset data",
+    choices=list(storages.keys()),
 )
 start_parser.add_argument(
-    "-s", "--streamer", default="dummy", help="fetches asset data", choices=list(streamers.keys())
+    "-s",
+    "--streamer",
+    default="dummy",
+    help="fetches asset data",
+    choices=list(streamers.keys()),
 )
 start_parser.add_argument(
-    "-b", "--broker", default="paper", help="buys and sells assets on your behalf", choices=list(brokers.keys())
+    "-b",
+    "--broker",
+    default="paper",
+    help="buys and sells assets on your behalf",
+    choices=list(brokers.keys()),
 )
 start_parser.add_argument(
     "algos", nargs="+", help="paths to algorithms you want to run"
@@ -107,7 +119,7 @@ def main():
         sys.exit(1)
 
 
-def start(args: argparse.Namespace, test: bool=False):
+def start(args: argparse.Namespace, test: bool = False):
     """
     Starts the Harvest LiveTrader with the given storage, streamer, broker, and algos specified.
     :args: A Namespace object containing parsed user arguments.
