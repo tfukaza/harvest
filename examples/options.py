@@ -6,7 +6,7 @@ import datetime as dt
 
 """This algorithm trades options every 5 minutes.
 To keep things simple, the logic is very basic, with emphasis on
-introducing option-related functions.  
+introducing option-related functions.
 """
 
 
