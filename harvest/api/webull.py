@@ -267,6 +267,7 @@ class Webull(API):
                 float(ret["data"][0]["askList"][0]["price"])
                 + float(ret["data"][0]["bidList"][0]["price"])
             ) / 2
+
         return {
             "price": price,
             "ask": float(ret["data"][0]["askList"][0]["price"]),
@@ -329,7 +330,7 @@ class Webull(API):
 
             pos.append(
                 {
-                    "symbol": "@" + r["ticker"]["symbol"],
+                    "symbol": "@" + r["ticker"]["symbol"][:-3],
                     "avg_price": float(r["cost"]) / qty,
                     "quantity": qty,
                 }
@@ -377,13 +378,15 @@ class Webull(API):
     def fetch_stock_order_status(self, id):
         ret = self.api.get_history_orders(status="All")
         for r in ret:
-            if r["orderId"] == id:
+            if r["orders"][0]["orderId"] == id:
                 return {
                     "type": "STOCK",
-                    "id": r["orderId"],
-                    "symbol": r["ticker"]["symbol"],
-                    "quantity": r["totalQuantity"],
-                    "filled_quantity": r["filledQuantity"],
+                    "id": r["orders"][0]["orderId"],
+                    "symbol": r["orders"][0]["ticker"]["symbol"],
+                    "price": r.get("lmtPrice"),
+                    "avg_price": r.get("avgFilledPrice"),
+                    "quantity": r.get("totalQuantity"),
+                    "filled_quantity": r.get("filledQuantity"),
                     "side": r["action"],
                     "time_in_force": r["timeInForce"],
                     "status": r["status"].lower(),
@@ -397,12 +400,19 @@ class Webull(API):
                 return {
                     "type": "OPTION",
                     "id": r["orders"][0]["orderId"],
-                    "symbol": r["chain_symbol"],
+                    "symbol": self.data_to_occ(
+                        r["orders"][0]["symbol"],
+                        str_to_date(r["orders"][0]["optionExpireDate"]),
+                        r["orders"][0]["optionType"],
+                        float(r["orders"][0]["optionExercisePrice"]),
+                    ),
+                    "price": r.get("lmtPrice"),
+                    "avg_price": r.get("avgFilledPrice"),
                     "qty": r["quantity"],
-                    "filled_qty": r["processed_quantity"],
-                    "side": r["legs"][0]["side"],
-                    "time_in_force": r["time_in_force"],
-                    "status": r["state"].lower(),
+                    "filled_qty": r["filledQuantity"],
+                    "side": r["orders"][0]["optionType"],
+                    "time_in_force": r["timeInForce"],
+                    "status": r["status"].lower(),
                 }
 
     @API._exception_handler
@@ -412,7 +422,8 @@ class Webull(API):
             if r["orderId"] == id:
                 return {
                     "type": "CRYPTO",
-                    "id": r["id"],
+                    "id": r["orders"][0]["orderId"],
+                    "symbol": f"@{r['orders'][0]['ticker']['symbol'].replace('USD', '')}",
                     "qty": float(r["quantity"]),
                     "filled_qty": float(r["cumulative_quantity"]),
                     "filled_price": float(r["executions"][0]["effective_price"])
@@ -420,8 +431,8 @@ class Webull(API):
                     else 0,
                     "filled_cost": float(r["rounded_executed_notional"]),
                     "side": r["side"],
-                    "time_in_force": r["time_in_force"],
-                    "status": r["state"].lower(),
+                    "time_in_force": r["timeInForce"],
+                    "status": r["status"].lower(),
                 }
 
     @API._exception_handler
@@ -431,13 +442,15 @@ class Webull(API):
         for r in ret:
             queue.append(
                 {
-                    "type": "STOCK" if self.paper else r["assetType"],
+                    "type": "STOCK" if self.paper else r["assetType"].upper(),
+                    "id": r["orderId"],
                     "symbol": r["ticker"]["symbol"],
+                    "price": r.get("lmtPrice"),
+                    # " avg_price": r.get["orders"][0].get("avgFilledPrice"),
                     "quantity": r["totalQuantity"],
                     "filled_qty": r["filledQuantity"],
-                    "id": r["orderId"],
                     "time_in_force": r["timeInForce"],
-                    "status": r["status"],
+                    "status": r["status"].lower(),
                     "side": r["action"],
                 }
             )
@@ -454,8 +467,11 @@ class Webull(API):
         in_force: str = "gtc",
         extended: bool = False,
     ):
-        self.enter_live_trade_pin()
         ret = None
+        if not self.enter_live_trade_pin():
+            debugger.error("Error while setting trade pin.")
+            raise Exception("Error while setting trade pin.")
+
         try:
             if symbol[0] == "@":
                 symbol = symbol[1:]
@@ -465,7 +481,7 @@ class Webull(API):
                     price=limit_price,
                     action=side.upper(),
                     orderType="LMT",
-                    enforce=in_force,
+                    enforce=in_force.upper(),
                     entrust_type="QTY",
                     quant=quantity,
                     outsideRegularTradingHour=extended,
@@ -478,19 +494,15 @@ class Webull(API):
                     price=limit_price,
                     action=side.upper(),
                     orderType="LMT",
-                    enforce=in_force,
+                    enforce=in_force.upper(),
                     quant=quantity,
                     outsideRegularTradingHour=extended,
                 )
                 typ = "STOCK"
-            if not ret.get("orderId"):
+            if not ret.get("success"):
                 debugger.error(f"Error while placing order.\nReturned: {ret}")
                 raise Exception("Error while placing order.")
-            return {
-                "type": typ,
-                "id": ret["orderId"],
-                "symbol": symbol,
-            }
+            return {"type": typ, "id": ret["data"]["orderId"], "symbol": symbol}
         except Exception as e:
             debugger.error(
                 f"Error while placing order.\nReturned: {ret}", exc_info=True
@@ -510,9 +522,16 @@ class Webull(API):
     ):
         self.enter_live_trade_pin()
         ret = None
-        oc_id = self.__option_cache[sym][date][
-            self.__option_cache[sym][date].index == symbol
-        ].id[0]
+        sym = self.data_to_occ(symbol, exp_date, side, strike)
+        date = str_to_date(date_to_str(exp_date))
+        oc_id = (
+            self.__option_cache[symbol][date][
+                self.__option_cache[symbol][date].index == sym
+            ]
+            .id[0]
+            .item()
+        )
+
         if not isinstance(oc_id, int):
             debugger.error(
                 f"Error while placing order_option_limit. Can't find optionId."
@@ -525,21 +544,19 @@ class Webull(API):
                 stpPrice=None,
                 action=side.upper(),
                 orderType="LMT",
-                enforce=in_force,
+                enforce=in_force.upper(),
                 quant=quantity,
             )
 
-            if not ret or not ret.get("data"):
+            if not ret or not ret.get("orderId"):
                 debugger.error(f"Error while placing order.\nReturned: {ret}")
                 raise Exception("Error while placing order.")
-            return {
-                "type": "OPTION",
-                "id": ret["data"]["orderId"],
-                "symbol": symbol,
-            }
+            return {"type": "OPTION", "id": ret["orderId"], "symbol": symbol}
 
         except:
-            debugger.error("Error while placing order.\nReturned: {ret}", exc_info=True)
+            debugger.error(
+                f"Error while placing order.\nReturned: {ret}", exc_info=True
+            )
             raise Exception("Error while placing order")
 
     def _format_df(
