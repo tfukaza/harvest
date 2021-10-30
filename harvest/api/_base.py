@@ -66,6 +66,7 @@ class API:
         with open(path, "r") as stream:
             self.config = yaml.safe_load(stream)
 
+        self.run_count = 0
         self.timestamp = now()
 
     def create_secret(self, path: str):

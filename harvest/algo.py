@@ -235,6 +235,7 @@ class BaseAlgo:
         exp_dates = sorted(exp_dates)
 
         exp_date = exp_dates[0]
+        print(f"Exp date: {exp_date}\n")
         chain = self.get_option_chain(symbol, exp_date)
         if lower_strike is not None:
             chain = chain[chain["strike"] >= lower_strike]
@@ -279,6 +280,7 @@ class BaseAlgo:
         if symbol is None:
             symbol = self.watchlist[0]
         date = convert_input_to_datetime(date, self.trader.timezone)
+        print(f"Date: {date}\n")
         return self.trader.fetch_chain_data(symbol, date)
 
     def get_option_market_data(self, symbol: str):
@@ -589,7 +591,8 @@ class BaseAlgo:
             interval = self.interval
         if len(symbol) <= 6:
             df = self.trader.storage.load(symbol, interval).iloc[[-1]][symbol]
-            return df # pandas_timestamp_to_local(df, self.trader.timezone)
+            print(self.trader.storage.load(symbol, interval))
+            return pandas_timestamp_to_local(df, self.trader.timezone)
         debugger.warning("Candles not available for options")
         return None
 

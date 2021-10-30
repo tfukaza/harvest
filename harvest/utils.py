@@ -187,6 +187,8 @@ def convert_input_to_datetime(datetime, timezone: ZoneInfo):
     datetime = datetime.replace(tzinfo=timezone)
     datetime = datetime.astimezone(tz.utc)
 
+    return datetime
+
 
 def convert_input_to_timedelta(period):
     """Converts period into a timedelta object.
@@ -223,6 +225,7 @@ def datetime_utc_to_local(datetime: dt.datetime, timezone: ZoneInfo) -> dt.datet
     Converts a datetime object in UTC to local time, represented as a
     timezone naive datetime object.
     """
+    datetime = datetime.to_pydatetime()
     return datetime.astimezone(timezone).replace(tzinfo=None)
 
 

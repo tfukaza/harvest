@@ -34,7 +34,7 @@ class CSVStorage(BaseStorage):
 
         for file in files:
             debugger.debug(file)
-            file_search = re.search("^([\w]+)@([\w]+).csv$", file)
+            file_search = re.search("^(@?[\w]+)@([\w]+).csv$", file)
             symbol, interval = file_search.group(1), file_search.group(2)
             interval = interval_string_to_enum(interval)
             data = pd.read_csv(join(self.save_dir, file), index_col=0, parse_dates=True)

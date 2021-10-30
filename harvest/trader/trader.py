@@ -1,4 +1,5 @@
 # Builtins
+from logging import debug
 import re
 import threading
 import traceback
@@ -272,7 +273,6 @@ class LiveTrader:
 
         # Save the data locally
         for sym in df_dict:
-            print(df_dict[sym])
             self.storage.store(sym, self.interval[sym]["interval"], df_dict[sym])
 
         # Aggregate the data to other intervals
@@ -297,11 +297,13 @@ class LiveTrader:
                 a.main()
                 new_algo.append(a)
             except Exception as e:
-                debugger.warning(
-                    f"Algorithm {a} failed, removing from algorithm list.\nException: {e}"
-                )
+                debugger.warning(f"Algorithm {a} failed, removing from algorithm list.\n")
+                debugger.warning(f"Exception: {e}\n")
+                debugger.warning(f"Traceback: {traceback.format_exc()}\n")
 
-                traceback.print_exc()
+        if len(new_algo) <= 0:
+            debugger.critical("No algorithms to run")
+            exit()
 
         self.algo = new_algo
 
