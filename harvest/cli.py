@@ -103,6 +103,12 @@ start_parser.add_argument(
 )
 
 
+# Parser for visualing data
+visualize_parser = subparsers.add_parser("visualize")
+visualize_parser.add_argument(
+    "path", help="path to harvest generated data file"
+)
+
 def main():
     """
     Entrypoint which parses the command line arguments. Calls subcommands based on which subparser was used.
@@ -113,6 +119,8 @@ def main():
     # Handles the start command
     if args.command == "start":
         start(args)
+    elif args.command == "visualize":
+        visualize(args)
     # Show help if case not found
     else:
         parser.print_help(sys.stderr)
@@ -145,6 +153,41 @@ def start(args: argparse.Namespace, test: bool = False):
 
     if not test:
         trader.start()
+
+def visualize(args: argparse.Namespace):
+    import re
+    import pandas as pd
+    import mplfinance as mpf
+
+    if args.path.endswith(".csv"):
+        df = pd.read_csv(args.path)
+        df["timestamp"] = pd.to_datetime(df["timestamp"])
+        df.set_index("timestamp", inplace=True)
+    elif args.path.endswith(".pickle"):
+        df = pd.read_pickle(args.path)
+    else:
+        print("Invalid file extension, expecting .csv or .pickle.")
+        sys.exit(1)
+
+    if df.empty:
+        print(f"No data found in {args.path}.")
+
+    path = os.path.basename(args.path)
+    file_search = re.search("^(@?[\w]+)@([\w]+).(csv|pickle)$", path)
+    symbol, interval = file_search.group(1), file_search.group(2)
+    open_price = df.iloc[0]["open"]
+    close_price = df.iloc[-1]["close"]
+    high_price = df["high"].max()
+    low_price = df["low"].min()
+
+    print(f"{symbol} at {interval}")
+    print("open", open_price)
+    print("high", high_price)
+    print("low", low_price)
+    print("close", close_price)
+    print("price change", close_price - open_price)
+    mpf.plot(df, type="candle", volume=True, show_nontrading=True)
+
 
 
 def _get_storage(storage: str):
