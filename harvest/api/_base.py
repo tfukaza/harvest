@@ -62,10 +62,11 @@ class API:
         yml_file = Path(path)
         if not yml_file.is_file() and not self.create_secret(path):
             debugger.debug("Broker not initalized with account information.")
-            return
-        with open(path, "r") as stream:
-            self.config = yaml.safe_load(stream)
+        else:
+            with open(path, "r") as stream:
+                self.config = yaml.safe_load(stream)
 
+        self.run_count = 0
         self.timestamp = now()
 
     def create_secret(self, path: str):
@@ -516,7 +517,7 @@ class API:
         symbol: str,
         quantity: float,
         limit_price: float,
-        type: str,
+        option_type: str,
         exp_date: dt.datetime,
         strike: float,
         in_force: str = "gtc",
@@ -531,7 +532,7 @@ class API:
         :quantity:  quantity to sell or buy
         :exp_date:  expiration date
         :strike:    strike price
-        :type:      'call' or 'put'
+        :option_type:      'call' or 'put'
 
         :returns: A dictionary with the following keys and values:
             - type: 'OPTION'
