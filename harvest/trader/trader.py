@@ -285,7 +285,9 @@ class LiveTrader:
                 a.main()
                 new_algo.append(a)
             except Exception as e:
-                debugger.warning(f"Algorithm {a} failed, removing from algorithm list.\n")
+                debugger.warning(
+                    f"Algorithm {a} failed, removing from algorithm list.\n"
+                )
                 debugger.warning(f"Exception: {e}\n")
                 debugger.warning(f"Traceback: {traceback.format_exc()}\n")
 
