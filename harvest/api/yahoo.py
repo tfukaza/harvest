@@ -168,7 +168,10 @@ class YahooStreamer(API):
     def fetch_chain_info(self, symbol: str):
         return {
             "id": "n/a",
-            "exp_dates": [convert_input_to_datetime(s, self.trader.timezone) for s in self.watch_ticker[symbol].options],
+            "exp_dates": [
+                convert_input_to_datetime(s, self.trader.timezone)
+                for s in self.watch_ticker[symbol].options
+            ],
             "multiplier": 100,
         }
 

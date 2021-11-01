@@ -105,9 +105,8 @@ start_parser.add_argument(
 
 # Parser for visualing data
 visualize_parser = subparsers.add_parser("visualize")
-visualize_parser.add_argument(
-    "path", help="path to harvest generated data file"
-)
+visualize_parser.add_argument("path", help="path to harvest generated data file")
+
 
 def main():
     """
@@ -154,6 +153,7 @@ def start(args: argparse.Namespace, test: bool = False):
     if not test:
         trader.start()
 
+
 def visualize(args: argparse.Namespace):
     import re
     import pandas as pd
@@ -187,7 +187,6 @@ def visualize(args: argparse.Namespace):
     print("close", close_price)
     print("price change", close_price - open_price)
     mpf.plot(df, type="candle", volume=True, show_nontrading=True)
-
 
 
 def _get_storage(storage: str):

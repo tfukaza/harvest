@@ -285,14 +285,16 @@ class LiveTrader:
                 a.main()
                 new_algo.append(a)
             except Exception as e:
-                debugger.warning(f"Algorithm {a} failed, removing from algorithm list.\n")
+                debugger.warning(
+                    f"Algorithm {a} failed, removing from algorithm list.\n"
+                )
                 debugger.warning(f"Exception: {e}\n")
                 debugger.warning(f"Traceback: {traceback.format_exc()}\n")
-    
+
         if len(new_algo) <= 0:
             debugger.critical("No algorithms to run")
             exit()
-        
+
         self.algo = new_algo
 
         self.broker.exit()
