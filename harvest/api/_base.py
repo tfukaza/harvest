@@ -56,6 +56,8 @@ class API:
             None  # Allows broker to handle the case when runs without a trader
         )
 
+        self.run_count = 0
+
         if path is None:
             path = "./secret.yaml"
         # Check if file exists
