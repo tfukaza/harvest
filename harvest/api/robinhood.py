@@ -38,7 +38,7 @@ class Robinhood(API):
         self.login()
         debugger.debug("Logged into Robinhood...")
 
-    @API._run_once
+    #@API._run_once
     def setup(self, interval, trader=None, trader_main=None):
 
         super().setup(interval, trader, trader_main)

@@ -233,7 +233,7 @@ class API:
             self = args[0]
             if self.run_count == 0:
                 self.run_count += 1
-                return func
+                return func(args, kwargs)
             return None
 
         return wrapper
