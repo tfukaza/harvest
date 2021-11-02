@@ -441,6 +441,9 @@ class LiveTrader:
             list of Algo classes.
         """
         self.algo = algo if isinstance(algo, list) else [algo]
+    
+    def add_algo(self, algo):
+        self.algo.append(algo)
 
     def set_symbol(self, symbol):
         """Specifies the symbol(s) to watch.
