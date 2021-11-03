@@ -401,6 +401,20 @@ class LiveTrader:
         return ret
 
     def sell(self, symbol: str, quantity: int, in_force: str, extended: bool):
+        owned_qty = sum(
+            p["quantity"]
+            for p in self.stock_positions + self.crypto_positions
+            if p["symbol"] == symbol
+        )
+        owned_qty -= sum(
+            o["quantity"]
+            for o in self.order_queue
+            if o["symbol"] == symbol and o["side"] == "sell"
+        )
+        if quantity > owned_qty:
+            debugger.debug("SELL failed")
+            return None
+
         ret = self.broker.sell(symbol, quantity, in_force, extended)
         if ret is None:
             debugger.debug("SELL failed")
@@ -425,6 +439,20 @@ class LiveTrader:
         return ret
 
     def sell_option(self, symbol: str, quantity: int, in_force: str):
+        owned_qty = sum(
+            p["quantity"]
+            for p in self.option_positions
+            if p["occ_symbol"] == symbol
+        )
+        owned_qty -= sum(
+            o["quantity"]
+            for o in self.order_queue
+            if o["symbol"] == symbol and o["side"] == "sell"
+        )
+        if quantity > owned_qty:
+            debugger.debug("SELL failed: Quantity too high")
+            return None
+
         ret = self.broker.sell_option(symbol, quantity, in_force)
         if ret is None:
             raise Exception("SELL failed")

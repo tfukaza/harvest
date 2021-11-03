@@ -700,7 +700,14 @@ class BaseAlgo:
             - quantity
             - avg_price
         """
-        return self.trader.option_positions
+        return [
+            {
+                "occ_symbol": p["occ_symbol"],
+                "quantity": p["quantity"],
+                "avg_price": p["avg_price"]
+            }
+            for p in self.trader.option_positions
+        ]
 
     def get_watchlist(self) -> List:
         """Returns the current watchlist."""

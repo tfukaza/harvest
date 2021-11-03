@@ -104,14 +104,13 @@ start_parser.add_argument(
 # start_parser.add_argument(
 #     "algos", nargs="+", help="paths to algorithms you want to run"
 # )
-
 start_parser.add_argument(
     "-d",
     "--directory",
     default=".",
     help="directory where algorithms are located",
 )
-
+start_parser.add_argument("--debug", default=False, action=argparse.BooleanOptionalAction)
 
 def main():
     """
@@ -138,7 +137,8 @@ def start(args: argparse.Namespace, test: bool = False):
     storage = _get_storage(args.storage)
     streamer = _get_streamer(args.streamer)
     broker = _get_broker(args.broker)
-    trader = LiveTrader(streamer=streamer, broker=broker, storage=storage, debug=True)
+    debug = args.debug
+    trader = LiveTrader(streamer=streamer, broker=broker, storage=storage, debug=debug)
 
     # algos is a list of paths to files that have user defined algos
     directory = args.directory

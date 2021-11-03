@@ -121,38 +121,37 @@ class Robinhood(API):
 
         get_interval_fmt = ""
 
-        if interval == "15SEC":  # Not used
-            if not symbol[0] == "@":
+        if interval == Interval.SEC_15:  # Not used
+            if symbol[0] != "@":
                 raise Exception("15SEC interval is only allowed for crypto")
             get_interval_fmt = "15second"
-        elif interval == "1MIN":
-            if not symbol[0] == "@":
+        elif interval == Interval.MIN_1:
+            if symbol[0] != "@":
                 raise Exception("MIN interval is only allowed for crypto")
             get_interval_fmt = "15second"
-        elif interval == "5MIN":
+        elif interval == Interval.MIN_5:
             get_interval_fmt = "5minute"
-        elif interval == "15MIN":
+        elif interval == Interval.MIN_15:
             get_interval_fmt = "5minute"
-        elif interval == "30MIN":
+        elif interval == Interval.MIN_30:
             get_interval_fmt = "10minute"
-        elif interval == "1HR":
+        elif interval == Interval.HR_1:
             get_interval_fmt = "hour"
-        elif interval == "1DAY":
+        elif interval == Interval.DAY_1:
             get_interval_fmt = "day"
-
         else:
             return df
 
         delta = end - start
         delta = delta.total_seconds()
         delta = delta / 3600
-        if interval == "DAY" and delta < 24:
+        if interval == Interval.DAY_1 and delta < 24:
             return df
-        if delta < 1 or interval == "15SEC" or interval == "1MIN":
+        if delta < 1 and interval in [Interval.SEC_15, Interval.MIN_1]:
             span = "hour"
-        elif delta >= 1 and delta < 24 or interval in ["5MIN", "15MIN", "30MIN", "1HR"]:
+        elif delta < 24 or interval in [Interval.MIN_5, Interval.MIN_15, Interval.MIN_30, Interval.HR_1]:
             span = "day"
-        elif delta >= 24 and delta < 24 * 28:
+        elif delta < 24 * 28:
             span = "month"
         elif delta < 24 * 300:
             span = "year"
@@ -169,6 +168,7 @@ class Robinhood(API):
         df = pd.DataFrame.from_dict(ret)
         df = self._format_df(df, [symbol], interval)
         df = aggregate_df(df, interval)
+        
         return df
 
     @API._exception_handler

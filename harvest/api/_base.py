@@ -186,8 +186,11 @@ class API:
             if is_freq(self.timestamp, inter):
                 n = self.timestamp
                 latest = self.fetch_price_history(
-                    sym, inter, n - interval_to_timedelta(inter), n
+                    sym, inter, n - interval_to_timedelta(inter) * 2, n
                 )
+                debugger.debug(f"Price fetch returned: \n{latest}")
+                if latest is None or latest.empty:
+                    continue
                 df_dict[sym] = latest.iloc[-1]
 
         self.trader_main(df_dict)
