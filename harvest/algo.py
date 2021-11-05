@@ -98,7 +98,7 @@ class BaseAlgo:
         :param str? extended: Whether to trade in extended hours or not. defaults to False
         :returns: The following Python dictionary
 
-            - type: str, 'STOCK' or 'CRYPTO'
+            - type: str, 'STOCK', 'CRYPTO', or 'OPTION'
             - id: str, ID of order
             - symbol: str, symbol of asset
 
@@ -130,7 +130,7 @@ class BaseAlgo:
         :param str? extended:  Whether to trade in extended hours or not. defaults to False
         :returns: A dictionary with the following keys:
 
-            - type: str, 'STOCK' or 'CRYPTO'
+            - type: str, 'STOCK', 'CRYPTO', or 'OPTION'
             - id: str, ID of order
             - symbol: str, symbol of asset
 

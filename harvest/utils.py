@@ -105,6 +105,17 @@ def interval_to_timedelta(interval: Interval) -> dt.timedelta:
     params = {expanded_units[unit]: value}
     return dt.timedelta(**params)
 
+def symbol_type(symbol):
+    """Determines the type of the asset the symbol represents. 
+    This can be 'STOCK', 'CRYPTO', or 'OPTION'
+    """
+    if len(symbol) > 6:
+        return "OPTION"
+    elif symbol[0] == '@':
+        return "CRYPTO"
+    else:
+        return "STOCK"
+
 
 # =========== DataFrame utils ===========
 

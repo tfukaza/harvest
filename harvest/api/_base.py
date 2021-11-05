@@ -124,9 +124,6 @@ class API:
         If your brokerage provides a streaming API, you should override
         this method and configure it to use that API. In that case,
         make sure to set the callback function to self.main().
-
-        :kill_switch: A flag to indicate whether the algorithm should stop
-            after a single iteration. Usually used for testing.
         """
         cur_min = -1
         val, unit = expand_interval(self.poll_interval)
@@ -219,12 +216,12 @@ class API:
                     return func(*args, **kwargs)
                 except Exception as e:
                     self = args[0]
-                    debugger.error(f"Error: {e}")
+                    debugger.error(f'Error: {e}')
                     traceback.print_exc()
-                    debugger.error("Logging out and back in...")
+                    debugger.error('Logging out and back in...')
                     args[0].refresh_cred()
-                    tries = tries - 1
-                    debugger.error("Retrying...")
+                    tries -= 1
+                    debugger.error('Retrying...')
                     continue
 
         return wrapper
@@ -329,8 +326,8 @@ class API:
         Returns all current option positions
 
         :returns: A list of dictionaries with the following keys and values:
-            - symbol: Ticker symbol of the underlying stock
-            - occ_symbol: OCC symbol of the option
+            - symbol: OCC symbol of the option
+            - base_symbol: Ticker symbol of the underlying stock
             - avg_price: Average price the option was bought at
             - quantity: Quantity owned
             - multiplier: How many stocks each option represents
@@ -413,7 +410,7 @@ class API:
         :returns: A dictionary with the following keys and values:
             - type: 'OPTION'
             - id: ID of the order
-            - symbol: Ticker of underlying stock
+            - symbol: OCC symbol of option
             - quantity: Quantity ordered
             - filled_quantity: Quantity filled so far
             - side: 'buy' or 'sell'
@@ -460,7 +457,8 @@ class API:
                 - side: 'buy' or 'sell'
             For options:
                 - type: "OPTION",
-                - symbol: Symbol of stock
+                - symbol: OCC symbol of option
+                - base_symbol: 
                 - quantity: Quantity ordered
                 - filled_qty: Quantity filled
                 - id: ID of order
@@ -471,7 +469,7 @@ class API:
                     - side: 'buy' or 'sell'
             For crypto:
                 - type: "CRYPTO"
-                - symbol: Symbol of stock
+                - symbol: Symbol of crypto
                 - quantity: Quantity ordered
                 - filled_qty: Quantity filled
                 - id: ID of order
@@ -486,7 +484,7 @@ class API:
 
     # --------------- Methods for Trading --------------- #
 
-    def order_limit(
+    def order_stock_limit(
         self,
         side: str,
         symbol: str,
@@ -498,7 +496,7 @@ class API:
         """
         Places a limit order.
 
-        :symbol:    symbol of asset
+        :symbol:    symbol of stock
         :side:      'buy' or 'sell'
         :quantity:  quantity to buy or sell
         :limit_price:   limit price
@@ -506,7 +504,34 @@ class API:
         :extended:  'False' by default
 
         :returns: A dictionary with the following keys and values:
-            - type: 'STOCK' or 'CRYPTO'
+            - id: ID of order
+            - symbol: symbol of asset
+            Raises an exception if order fails.
+        """
+        raise NotImplementedError(
+            f"{type(self).__name__} does not support this broker method: `order_limit`."
+        )
+
+    def order_crypto_limit(
+        self,
+        side: str,
+        symbol: str,
+        quantity: float,
+        limit_price: float,
+        in_force: str = "gtc",
+        extended: bool = False,
+    ):
+        """
+        Places a limit order.
+
+        :symbol:    symbol of crypto
+        :side:      'buy' or 'sell'
+        :quantity:  quantity to buy or sell
+        :limit_price:   limit price
+        :in_force:  'gtc' by default
+        :extended:  'False' by default
+
+        :returns: A dictionary with the following keys and values:
             - id: ID of order
             - symbol: symbol of asset
             Raises an exception if order fails.
@@ -580,9 +605,10 @@ class API:
             )[symbol]["close"][-1]
         else:
             buy_power = self.trader.account["buying_power"]
-            price = self.trader.storage.load(symbol, self.interval[symbol]["interval"])[
-                symbol
-            ]["close"][-1]
+            if symbol_type(symbol) == "OPTION":
+                price = self.trader.streamer.fetch_option_market_data(symbol)["price"]
+            else:
+                price = self.trader.storage.load(symbol, self.interval[symbol]["interval"])[symbol]["close"][-1]
 
         limit_price = mark_up(price)
         total_price = limit_price * quantity
@@ -594,9 +620,29 @@ class API:
             return None
 
         debugger.debug(f"{type(self).__name__} ordered a buy of {quantity} {symbol}")
-        return self.order_limit(
-            "buy", symbol, quantity, limit_price, in_force, extended
-        )
+        typ = symbol_type(symbol)
+        if typ == "STOCK":
+            return self.order_stock_limit(
+                "buy", symbol, quantity, limit_price, in_force, extended
+            )
+        elif typ == "CRYPTO":
+            return self.order_crypto_limit(
+                "buy", symbol, quantity, limit_price, in_force, extended
+            )
+        elif typ == "OPTION":
+            _, exp_date, option_type, strike = self.occ_to_data(symbol)
+            return self.order_option_limit(
+                "buy",
+                symbol,
+                quantity,
+                limit_price,
+                option_type,
+                exp_date,
+                strike,
+                in_force,
+            )
+        else:
+            debugger.error(f"Invalid asset type for {symbol}")
 
     def sell(
         self,
@@ -614,7 +660,7 @@ class API:
 
         :returns: The result of order_limit(). Returns None if there is an issue with the parameters.
         """
-        if symbol == None:
+        if symbol is None:
             symbol = self.watch[0]
         if quantity <= 0.0:
             debugger.error(
@@ -623,23 +669,47 @@ class API:
             return None
 
         if self.trader is None:
-            price = self.streamer.fetch_price_history(
-                symbol,
-                self.interval[symbol]["interval"],
-                now() - dt.timedelta(days=7),
-                now(),
-            )[symbol]["close"][-1]
+            if len(symbol) > 6:
+                price = self.streamer.fetch_option_market_data(symbol)["price"]
+            else:
+                price = self.streamer.fetch_price_history(
+                    symbol,
+                    self.interval[symbol]["interval"],
+                    now() - dt.timedelta(days=7),
+                    now(),
+                )[symbol]["close"][-1]
+        elif len(symbol) > 6:
+            price = self.trader.streamer.fetch_option_market_data(symbol)["price"]
         else:
-            price = self.trader.storage.load(symbol, self.interval[symbol]["interval"])[
-                symbol
-            ]["close"][-1]
+            price = self.trader.storage.load(symbol, self.interval[symbol]["interval"])[symbol]["close"][-1]
 
         limit_price = mark_down(price)
 
         debugger.debug(f"{type(self).__name__} ordered a sell of {quantity} {symbol}")
-        return self.order_limit(
-            "sell", symbol, quantity, limit_price, in_force, extended
-        )
+
+        typ = symbol_type(symbol)
+        if typ == "STOCK":
+            return self.order_stock_limit(
+                "sell", symbol, quantity, limit_price, in_force, extended
+            )
+        elif typ == "CRYPTO":
+            return self.order_crypto_limit(
+                "sell", symbol, quantity, limit_price, in_force, extended
+            )
+        elif typ == "OPTION":
+            _, exp_date, option_type, strike = self.occ_to_data(symbol)
+            return self.order_option_limit(
+                "sell",
+                symbol,
+                quantity,
+                limit_price,
+                option_type,
+                exp_date,
+                strike,
+                in_force,
+            )
+        else:
+            debugger.error(f"Invalid asset type for {symbol}")
 
     def buy_option(self, symbol: str, quantity: int = 0, in_force: str = "gtc"):
         """
