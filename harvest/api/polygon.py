@@ -38,7 +38,7 @@ class PolygonStreamer(API):
         df_dict = {}
         combo = self.watch_stock + self.watch_crypto
         if self.basic and len(combo) > 5:
-            error(
+            debugger.error(
                 "Basic accounts only allow for 5 API calls per minute, trying to get data for more than 5 assets! Aborting."
             )
             return
@@ -48,7 +48,7 @@ class PolygonStreamer(API):
                 s, 1, "day", now() - dt.timedelta(days=1), now()
             )
             df_dict[s] = df
-            debuger.debug(df)
+            debugger.debug(df)
         self.trader_main(df_dict)
 
     # -------------- Streamer methods -------------- #
@@ -62,7 +62,7 @@ class PolygonStreamer(API):
         end: dt.datetime = None,
     ):
 
-        debug(f"Fetching {symbol} {interval} price history")
+        debugger.debug(f"Fetching {symbol} {interval} price history")
 
         if start is None:
             start = now() - dt.timedelta(days=365 * 2)
@@ -73,9 +73,7 @@ class PolygonStreamer(API):
             return pd.DataFrame()
 
         val, unit = expand_interval(interval)
-        df = self.get_data_from_polygon(symbol, val, unit, start, end)
-
-        return df
+        return self.get_data_from_polygon(symbol, val, unit, start, end)
 
     @API._exception_handler
     def fetch_chain_info(self, symbol: str):
@@ -112,7 +110,7 @@ class PolygonStreamer(API):
         df = df[["occ_symbol", "exp_date", "strike", "type"]]
         df.set_index("occ_symbol", inplace=True)
 
-        if not symbol in self.option_cache:
+        if symbol not in self.option_cache:
             self.option_cache[symbol] = {}
         self.option_cache[symbol][date] = df
 
@@ -123,10 +121,7 @@ class PolygonStreamer(API):
         occ_symbol = occ_symbol.replace(" ", "")
         symbol, date, typ, _ = self.occ_to_data(occ_symbol)
         chain = self.watch_ticker[symbol].option_chain(date_to_str(date))
-        if typ == "call":
-            chain = chain.calls
-        else:
-            chain = chain.puts
+        chain = chain.calls if typ == "call" else chain.puts
         df = chain[chain["contractSymbol"] == occ_symbol]
         debugger.debug(occ_symbol, df)
         return {
@@ -165,7 +160,7 @@ class PolygonStreamer(API):
         end: dt.datetime,
     ) -> pd.DataFrame:
         if self.basic and start < now() - dt.timedelta(days=365 * 2):
-            warning(
+            debugger.warning(
                 "Start time is over two years old! Only data from the past two years will be returned for basic accounts."
             )
 
@@ -198,7 +193,7 @@ class PolygonStreamer(API):
         if response["status"] != "ERROR":
             df = pd.DataFrame(response["results"])
         else:
-            error(f"Request error! Returning empty dataframe. \n {response}")
+            debugger.error(f"Request error! Returning empty dataframe. \n {response}")
             return pd.DataFrame()
 
         if crypto:

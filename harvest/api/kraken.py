@@ -15,15 +15,12 @@ from harvest.utils import *
 class Kraken(API):
 
     interval_list = [
-        "1MIN",
-        "5MIN",
-        "15MIN",
-        "30MIN",
-        "1HR",
-        "4HR",
-        "1DAY",
-        "7DAY",
-        "15DAY",
+        Interval.MIN_1,
+        Interval.MIN_5,
+        Interval.MIN_15,
+        Interval.MIN_30,
+        Interval.HR_1,
+        Interval.DAY_1
     ]
     crypto_ticker_to_kraken_names = {
         "BTC": "XXBT",
@@ -178,9 +175,7 @@ class Kraken(API):
                 f"Interval {interval} not in interval list. Possible options are: {self.interval_list}"
             )
         val, unit = expand_interval(interval)
-        df = self.get_data_from_kraken(symbol, val, unit, start, end)
-
-        return df
+        return self.get_data_from_kraken(symbol, val, unit, start, end)
 
     @API._exception_handler
     def fetch_chain_info(self, symbol: str):
@@ -241,7 +236,18 @@ class Kraken(API):
         open_orders = self.get_result(self.api.query_private("OpenOrders"))
         return open_orders["open"]
 
-    def order_limit(
+    def order_stock_limit(
+        self,
+        symbol: str,
+        quantity: float,
+        limit_price: float,
+        order_type: str,
+        time_in_force: str,
+        order_id: str = None,
+    ):
+        raise NotImplementedError("Kraken does not support stocks.")
+
+    def order_crypto_limit(
         self,
         side: str,
         symbol: str,
@@ -250,12 +256,10 @@ class Kraken(API):
         in_force: str = "gtc",
         extended: bool = False,
     ):
-        if is_crypto(symbol):
-            symbol = ticker_to_kraken(symbol)
-        else:
-            raise Exception("Kraken does not support stocks.")
+       
+        symbol = self.ticker_to_kraken(symbol)
 
-        order = self.get_result(
+        return self.get_result(
             self.api.query_private(
                 "AddOrder",
                 {
@@ -266,7 +270,6 @@ class Kraken(API):
                 },
             )
         )
-        return order
 
     def order_option_limit(
         self,
@@ -384,16 +387,16 @@ class Kraken(API):
         if not is_crypto(ticker):
             raise Exception("Kraken does not support stocks.")
 
-        if ticker[1:] in self.crypto_ticker_to_kraken_names:
-            # Currently Harvest supports trades for USD and not other currencies.
-            kraken_ticker = self.crypto_ticker_to_kraken_names.get(ticker[1:]) + "USD"
-            asset_pairs = self.get_result(self.api.query_public("AssetPairs")).keys()
-            if kraken_ticker in asset_pairs:
-                return kraken_ticker
-            else:
-                raise Exception(f"{kraken_ticker} is not a valid asset pair.")
-        else:
+        if ticker[1:] not in self.crypto_ticker_to_kraken_names:
             raise Exception(f"Kraken does not support ticker {ticker}.")
+
+        # Currently Harvest supports trades for USD and not other currencies.
+        kraken_ticker = self.crypto_ticker_to_kraken_names.get(ticker[1:]) + "USD"
+        asset_pairs = self.get_result(self.api.query_public("AssetPairs")).keys()
+        if kraken_ticker in asset_pairs:
+            return kraken_ticker
+        else:
+            raise Exception(f"{kraken_ticker} is not a valid asset pair.")
 
     def get_result(self, response: Dict[str, Any]):
         """Given a kraken response from an endpoint, either raise an error if an

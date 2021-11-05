@@ -193,7 +193,7 @@ class Alpaca(StreamAPI):
 
     # --------------- Methods for Trading --------------- #
 
-    def order_limit(
+    def order_stock_limit(
         self,
         side: str,
         symbol: str,
@@ -202,12 +202,31 @@ class Alpaca(StreamAPI):
         in_force: str = "gtc",
         extended: bool = False,
     ):
-        if self.basic and is_crypto(symbol):
+
+        return self.api.submit_order(
+            symbol,
+            quantity,
+            side=side,
+            type="limit",
+            limit_price=limit_price,
+            time_in_force=in_force,
+            extended_hours=extended,
+        )
+    
+    def order_option_limit(
+        self,
+        side: str,
+        symbol: str,
+        quantity: float,
+        limit_price: float,
+        in_force: str = "gtc",
+        extended: bool = False,
+    ):
+        if self.basic:
             raise Exception("Alpaca basic accounts do not support crypto.")
-
-        if is_crypto(symbol):
-            symbol = symbol[1:]
-
+        
+        symbol = symbol[1:]
+    
         return self.api.submit_order(
             symbol,
             quantity,

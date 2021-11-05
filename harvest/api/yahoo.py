@@ -199,7 +199,7 @@ class YahooStreamer(API):
         df = df[["occ_symbol", "exp_date", "strike", "type"]]
         df.set_index("occ_symbol", inplace=True)
 
-        if not symbol in self.option_cache:
+        if symbol not in self.option_cache:
             self.option_cache[symbol] = {}
         self.option_cache[symbol][date] = df
 
@@ -210,10 +210,7 @@ class YahooStreamer(API):
         occ_symbol = occ_symbol.replace(" ", "")
         symbol, date, typ, _ = self.occ_to_data(occ_symbol)
         chain = self.watch_ticker[symbol].option_chain(date_to_str(date))
-        if typ == "call":
-            chain = chain.calls
-        else:
-            chain = chain.puts
+        chain = chain.calls if typ == "call" else chain.puts
         df = chain[chain["contractSymbol"] == occ_symbol]
         debugger.debug(occ_symbol, df)
         return {
