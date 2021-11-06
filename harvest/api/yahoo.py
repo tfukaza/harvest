@@ -20,6 +20,7 @@ class YahooStreamer(API):
         Interval.MIN_30,
         Interval.HR_1,
     ]
+    exchange = "NASDAQ"
 
     def __init__(self, path=None):
         self.timestamp = now()
@@ -27,8 +28,6 @@ class YahooStreamer(API):
     def setup(self, interval: Dict, trader=None, trader_main=None):
         super().setup(interval, trader, trader_main)
 
-        # self.watch_stock = []
-        # self.watch_crypto = []
         self.watch_ticker = {}
 
         for s in interval:

@@ -18,6 +18,7 @@ from harvest.utils import *
 class Robinhood(API):
 
     interval_list = [Interval.SEC_15, Interval.MIN_5, Interval.HR_1, Interval.DAY_1]
+    exchange = "NASDAQ"
 
     def __init__(self, path=None):
         super().__init__(path)

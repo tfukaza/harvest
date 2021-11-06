@@ -401,13 +401,33 @@ class LiveTrader:
         return self.streamer.fetch_option_market_data(*args, **kwargs)
 
     def buy(self, symbol: str, quantity: int, in_force: str, extended: bool):
-        ret = self.broker.buy(symbol, quantity, in_force, extended)
+        # Check if user has enough buying power
+        buy_power = self.account["buying_power"]
+        if symbol_type(symbol) == "OPTION":
+            price = self.streamer.fetch_option_market_data(symbol)["price"]
+        else:
+            price = self.storage.load(
+                symbol, self.interval[symbol]["interval"]
+            )[symbol]["close"][-1]
+
+        limit_price = mark_up(price)
+        total_price = limit_price * quantity
+
+        if total_price >= buy_power:
+            debugger.error(
+                f"""Not enough buying power.\n Total price ({price} * {quantity} * 1.05 = {limit_price*quantity}) exceeds buying power {buy_power}.\n Reduce purchase quantity or increase buying power."""
+            )
+            return None
+        
+        # TODO? Perform other checks
+        ret = self.broker.buy(symbol, quantity, limit_price, in_force, extended)
+        
         if ret is None:
             debugger.debug("BUY failed")
             return None
         self.order_queue.append(ret)
         debugger.debug(f"BUY: {self.timestamp}, {symbol}, {quantity}")
-        debugger.debug(f"BUY order queue: {self.order_queue}")
+
         return ret
 
     def sell(self, symbol: str, quantity: int, in_force: str, extended: bool):
@@ -428,47 +448,55 @@ class LiveTrader:
         if quantity > owned_qty:
             debugger.debug("SELL failed")
             return None
+        
+        if symbol_type(symbol) == "OPTION":
+            price = self.trader.streamer.fetch_option_market_data(symbol)["price"]
+        else:
+            price = self.trader.storage.load(symbol, self.interval[symbol]["interval"])[
+                symbol
+            ]["close"][-1]
 
-        ret = self.broker.sell(symbol, quantity, in_force, extended)
+        limit_price = mark_down(price)
+
+        ret = self.broker.sell(symbol, quantity, limit_price, in_force, extended)
         if ret is None:
             debugger.debug("SELL failed")
             return None
         self.order_queue.append(ret)
         debugger.debug(f"SELL: {self.timestamp}, {symbol}, {quantity}")
-        debugger.debug(f"SELL order queue: {self.order_queue}")
         return ret
 
-    def buy_option(self, symbol: str, quantity: int, in_force: str):
-        ret = self.broker.buy_option(symbol, quantity, in_force)
-        if ret is None:
-            raise Exception("BUY failed")
-        self.order_queue.append(ret)
-        debugger.debug(f"BUY: {self.timestamp}, {symbol}, {quantity}")
-        debugger.debug(f"BUY order queue: {self.order_queue}")
-        self.logger.add_transaction(self.timestamp, "buy", "option", symbol, quantity)
-        return ret
+    # def buy_option(self, symbol: str, quantity: int, in_force: str):
+    #     ret = self.broker.buy_option(symbol, quantity, in_force)
+    #     if ret is None:
+    #         raise Exception("BUY failed")
+    #     self.order_queue.append(ret)
+    #     debugger.debug(f"BUY: {self.timestamp}, {symbol}, {quantity}")
+    #     debugger.debug(f"BUY order queue: {self.order_queue}")
+    #     self.logger.add_transaction(self.timestamp, "buy", "option", symbol, quantity)
+    #     return ret
 
-    def sell_option(self, symbol: str, quantity: int, in_force: str):
-        owned_qty = sum(
-            p["quantity"] for p in self.option_positions if p["symbol"] == symbol
-        )
-        owned_qty -= sum(
-            o["quantity"]
-            for o in self.order_queue
-            if o["symbol"] == symbol and o["side"] == "sell"
-        )
-        if quantity > owned_qty:
-            debugger.debug("SELL failed: Quantity too high")
-            return None
+    # def sell_option(self, symbol: str, quantity: int, in_force: str):
+    #     owned_qty = sum(
+    #         p["quantity"] for p in self.option_positions if p["symbol"] == symbol
+    #     )
+    #     owned_qty -= sum(
+    #         o["quantity"]
+    #         for o in self.order_queue
+    #         if o["symbol"] == symbol and o["side"] == "sell"
+    #     )
+    #     if quantity > owned_qty:
+    #         debugger.debug("SELL failed: Quantity too high")
+    #         return None
 
-        ret = self.broker.sell_option(symbol, quantity, in_force)
-        if ret is None:
-            raise Exception("SELL failed")
-        self.order_queue.append(ret)
-        debugger.debug(f"SELL: {self.timestamp}, {symbol}, {quantity}")
-        debugger.debug(f"SELL order queue: {self.order_queue}")
-        self.logger.add_transaction(self.timestamp, "sell", "option", symbol, quantity)
-        return ret
+    #     ret = self.broker.sell_option(symbol, quantity, in_force)
+    #     if ret is None:
+    #         raise Exception("SELL failed")
+    #     self.order_queue.append(ret)
+    #     debugger.debug(f"SELL: {self.timestamp}, {symbol}, {quantity}")
+    #     debugger.debug(f"SELL order queue: {self.order_queue}")
+    #     self.logger.add_transaction(self.timestamp, "sell", "option", symbol, quantity)
+    #     return ret
 
     def set_algo(self, algo):
         """Specifies the algorithm to use.
