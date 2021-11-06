@@ -98,7 +98,6 @@ class BaseAlgo:
         :param str? extended: Whether to trade in extended hours or not. defaults to False
         :returns: The following Python dictionary
 
-            - type: str, 'STOCK' or 'CRYPTO'
             - id: str, ID of order
             - symbol: str, symbol of asset
 
@@ -130,7 +129,6 @@ class BaseAlgo:
         :param str? extended:  Whether to trade in extended hours or not. defaults to False
         :returns: A dictionary with the following keys:
 
-            - type: str, 'STOCK' or 'CRYPTO'
             - id: str, ID of order
             - symbol: str, symbol of asset
 
@@ -191,13 +189,14 @@ class BaseAlgo:
         if symbol is None:
             symbol = self.watchlist[0]
             symbols = [
-                s["occ_symbol"]
+                s["symbol"]
                 for s in self.get_account_option_positions()
-                if s["symbol"] == symbol
+                if s["base_symbol"] == symbol
             ]
         else:
             symbols = [symbol]
         for s in symbols:
+            debugger.debug(f"Algo SELL OPTION: {s}")
             if quantity is None:
                 quantity = self.get_asset_quantity(s)
             return self.trader.sell_option(s, quantity, in_force)
@@ -503,7 +502,7 @@ class BaseAlgo:
                     return p["quantity"]
         else:
             for p in self.trader.option_positions:
-                if p["occ_symbol"] == symbol:
+                if p["symbol"] == symbol:
                     return p["quantity"]
         return 0
 
@@ -700,7 +699,15 @@ class BaseAlgo:
             - quantity
             - avg_price
         """
-        return self.trader.option_positions
+        return [
+            {
+                "symbol": p["symbol"],
+                "base_symbol": p["base_symbol"],
+                "quantity": p["quantity"],
+                "avg_price": p["avg_price"],
+            }
+            for p in self.trader.option_positions
+        ]
 
     def get_watchlist(self) -> List:
         """Returns the current watchlist."""

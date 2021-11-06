@@ -259,7 +259,6 @@ class Webull(API):
         if not ret.get("data"):
             debugger.error(f"Error in fetch_option_market_data.\nReturned: {ret}")
             raise Exception(f"Error in fetch_option_market_data.\nReturned: {ret}")
-            return
         try:
             price = float(ret["data"][0]["close"])
         except:
@@ -305,7 +304,7 @@ class Webull(API):
             )
             pos.append(
                 {
-                    "symbol": r["ticker"]["symbol"],
+                    "base_symbol": r["ticker"]["symbol"],
                     "avg_price": float(r["cost"])
                     / float(data["data"][0]["quoteMultiplier"]),
                     "quantity": float(r["position"]),
@@ -315,7 +314,7 @@ class Webull(API):
                     "type": data["data"][0]["direction"],
                 }
             )
-            pos[-1]["occ_symbol"] = data["data"][0]["symbol"]
+            pos[-1]["symbol"] = data["data"][0]["symbol"]
 
         return pos
 
@@ -458,7 +457,7 @@ class Webull(API):
 
     # Order functions are not wrapped in the exception handler to prevent duplicate
     # orders from being made.
-    def order_limit(
+    def order_stock_limit(
         self,
         side: str,
         symbol: str,
@@ -473,32 +472,54 @@ class Webull(API):
             raise Exception("Error while setting trade pin.")
 
         try:
-            if symbol[0] == "@":
-                symbol = symbol[1:]
-                ret = place_order_crypto(
-                    stock=symbol,
-                    tId=None,
-                    price=limit_price,
-                    action=side.upper(),
-                    orderType="LMT",
-                    enforce=in_force.upper(),
-                    entrust_type="QTY",
-                    quant=quantity,
-                    outsideRegularTradingHour=extended,
-                )
-                typ = "CRYPTO"
-            else:
-                ret = self.api.place_order(
-                    stock=symbol,
-                    tId=None,
-                    price=limit_price,
-                    action=side.upper(),
-                    orderType="LMT",
-                    enforce=in_force.upper(),
-                    quant=quantity,
-                    outsideRegularTradingHour=extended,
-                )
-                typ = "STOCK"
+            ret = self.api.place_order(
+                stock=symbol,
+                tId=None,
+                price=limit_price,
+                action=side.upper(),
+                orderType="LMT",
+                enforce=in_force.upper(),
+                quant=quantity,
+                outsideRegularTradingHour=extended,
+            )
+            typ = "STOCK"
+            if not ret.get("success"):
+                debugger.error(f"Error while placing order.\nReturned: {ret}")
+                raise Exception("Error while placing order.")
+            return {"type": typ, "id": ret["data"]["orderId"], "symbol": symbol}
+        except Exception as e:
+            debugger.error(
+                f"Error while placing order.\nReturned: {ret}", exc_info=True
+            )
+            raise Exception("Error while placing order.")
+
+    def order_crypto_limit(
+        self,
+        side: str,
+        symbol: str,
+        quantity: float,
+        limit_price: float,
+        in_force: str = "gtc",
+        extended: bool = False,
+    ):
+        ret = None
+        if not self.enter_live_trade_pin():
+            debugger.error("Error while setting trade pin.")
+            raise Exception("Error while setting trade pin.")
+
+        try:
+            ret = self.api.place_order_crypto(
+                stock=symbol,
+                tId=None,
+                price=limit_price,
+                action=side.upper(),
+                orderType="LMT",
+                enforce=in_force.upper(),
+                entrust_type="QTY",
+                quant=quantity,
+                outsideRegularTradingHour=extended,
+            )
+            typ = "CRYPTO"
             if not ret.get("success"):
                 debugger.error(f"Error while placing order.\nReturned: {ret}")
                 raise Exception("Error while placing order.")
@@ -534,7 +555,7 @@ class Webull(API):
 
         if not isinstance(oc_id, int):
             debugger.error(
-                f"Error while placing order_option_limit. Can't find optionId."
+                "Error while placing order_option_limit. Can't find optionId."
             )
             raise Exception("Error while placing order.")
         try:

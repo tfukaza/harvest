@@ -1,5 +1,6 @@
+# HARVEST_SKIP
 from harvest.algo import BaseAlgo
-from harvest.trader import Trader
+from harvest.trader import PaperTrader
 from harvest.api.robinhood import Robinhood
 from harvest.api.paper import PaperBroker
 
@@ -28,7 +29,7 @@ class Crypto(BaseAlgo):
 
 
 if __name__ == "__main__":
-    t = Trader(debug=True)
+    t = PaperTrader(debug=True)
     t.set_algo(Crypto())
 
     t.start()

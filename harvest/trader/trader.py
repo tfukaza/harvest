@@ -53,9 +53,9 @@ class LiveTrader:
         self._setup_debugger(debug)
 
     def _init_checks(self):
-        # Harvest only supports Python 3.8 or newer.
-        if sys.version_info[0] < 3 or sys.version_info[1] < 8:
-            raise Exception("Harvest requires Python 3.8 or above.")
+        # Harvest only supports Python 3.9 or newer.
+        if sys.version_info[0] < 3 or sys.version_info[1] < 9:
+            raise Exception("Harvest requires Python 3.9 or above.")
 
     def _set_streamer_broker(self, streamer, broker):
         """Sets the streamer and broker."""
@@ -63,7 +63,7 @@ class LiveTrader:
         self.streamer = YahooStreamer() if streamer is None else streamer
         # Broker must be specified
         if broker is None:
-            # TODO: Raise exception is specified class is streaming only
+            # TODO: Raise exception if specified class is streaming only
             if isinstance(self.streamer, YahooStreamer):
                 raise Exception("Broker must be specified")
             else:
@@ -120,11 +120,12 @@ class LiveTrader:
             for s in self.stock_positions:
                 self.watchlist_global.append(s["symbol"])
             for s in self.option_positions:
-                self.watchlist_global.append(s["symbol"])
+                self.watchlist_global.append(s["base_symbol"])
             for s in self.crypto_positions:
                 self.watchlist_global.append(s["symbol"])
             for s in self.order_queue:
-                self.watchlist_global.append(s["symbol"])
+                sym = s["base_symbol"] if s["type"] == "OPTION" else s["symbol"]
+                self.watchlist_global.append(sym)
 
         # Remove duplicates in watchlist
         self.watchlist_global = list(set(self.watchlist_global))
@@ -373,7 +374,7 @@ class LiveTrader:
         pos = self.broker.fetch_stock_positions()
         self.stock_positions = [p for p in pos if p["symbol"] in self.interval]
         pos = self.broker.fetch_option_positions()
-        self.option_positions = [p for p in pos if p["symbol"] in self.interval]
+        self.option_positions = [p for p in pos if p["base_symbol"] in self.interval]
         pos = self.broker.fetch_crypto_positions()
         self.crypto_positions = [p for p in pos if p["symbol"] in self.interval]
         ret = self.broker.fetch_account()
@@ -398,11 +399,29 @@ class LiveTrader:
         self.order_queue.append(ret)
         debugger.debug(f"BUY: {self.timestamp}, {symbol}, {quantity}")
         debugger.debug(f"BUY order queue: {self.order_queue}")
-        asset_type = "crypto" if is_crypto(symbol) else "stock"
+        asset_type = symbol_type(symbol)
         self.logger.add_transaction(self.timestamp, "buy", asset_type, symbol, quantity)
         return ret
 
     def sell(self, symbol: str, quantity: int, in_force: str, extended: bool):
+        # Check how many of the given asset we currently own
+        owned_qty = sum(
+            p["quantity"]
+            for p in self.stock_positions
+            + self.crypto_positions
+            + self.option_positions
+            if p["symbol"] == symbol
+        )
+        # Subtract any assets that are in the process of being sold.
+        owned_qty -= sum(
+            o["quantity"]
+            for o in self.order_queue
+            if o["symbol"] == symbol and o["side"] == "sell"
+        )
+        if quantity > owned_qty:
+            debugger.debug("SELL failed")
+            return None
+
         ret = self.broker.sell(symbol, quantity, in_force, extended)
         if ret is None:
             debugger.debug("SELL failed")
@@ -410,7 +429,7 @@ class LiveTrader:
         self.order_queue.append(ret)
         debugger.debug(f"SELL: {self.timestamp}, {symbol}, {quantity}")
         debugger.debug(f"SELL order queue: {self.order_queue}")
-        asset_type = "crypto" if is_crypto(symbol) else "stock"
+        asset_type = symbol_type(symbol)
         self.logger.add_transaction(
             self.timestamp, "sell", asset_type, symbol, quantity
         )
@@ -427,6 +446,18 @@ class LiveTrader:
         return ret
 
     def sell_option(self, symbol: str, quantity: int, in_force: str):
+        owned_qty = sum(
+            p["quantity"] for p in self.option_positions if p["symbol"] == symbol
+        )
+        owned_qty -= sum(
+            o["quantity"]
+            for o in self.order_queue
+            if o["symbol"] == symbol and o["side"] == "sell"
+        )
+        if quantity > owned_qty:
+            debugger.debug("SELL failed: Quantity too high")
+            return None
+
         ret = self.broker.sell_option(symbol, quantity, in_force)
         if ret is None:
             raise Exception("SELL failed")
@@ -443,6 +474,9 @@ class LiveTrader:
             list of Algo classes.
         """
         self.algo = algo if isinstance(algo, list) else [algo]
+
+    def add_algo(self, algo):
+        self.algo.append(algo)
 
     def set_symbol(self, symbol):
         """Specifies the symbol(s) to watch.

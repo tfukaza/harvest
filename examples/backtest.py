@@ -1,3 +1,4 @@
+# HARVEST_SKIP
 from harvest.algo import BaseAlgo
 from harvest.trader import BackTester
 

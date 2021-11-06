@@ -56,7 +56,7 @@ class TestTester(unittest.TestCase):
             def main(self):
                 print(self.get_datetime())
 
-        t = BackTester(DummyStreamer(), debug=False)
+        t = BackTester(DummyStreamer())
         t.set_symbol("A")
         t.set_algo(TestAlgo())
         t.start("1MIN", ["1DAY"], period="1DAY")
