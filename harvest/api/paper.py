@@ -299,12 +299,12 @@ class PaperBroker(API):
             "status": "open",
             "side": side,
         }
-    
+
         self.orders.append(data)
         self.id += 1
         ret = {"type": "STOCK", "id": data["id"], "symbol": data["symbol"]}
         return ret
-    
+
     def order_crypto_limit(
         self,
         side: str,
@@ -325,7 +325,7 @@ class PaperBroker(API):
             "status": "open",
             "side": side,
         }
-    
+
         self.orders.append(data)
         self.id += 1
         ret = {"type": "CRYPTO", "id": data["id"], "symbol": data["symbol"]}

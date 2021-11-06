@@ -4,6 +4,7 @@ This code monitors a given stock/crypto symbol.
 from harvest.algo import BaseAlgo
 from harvest.trader import PaperTrader
 
+
 class Watch(BaseAlgo):
     def config(self):
         self.watchlist = ["@BTC"]

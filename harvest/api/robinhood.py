@@ -39,7 +39,7 @@ class Robinhood(API):
         self.login()
         debugger.debug("Logged into Robinhood...")
 
-    #@API._run_once
+    # @API._run_once
     def setup(self, interval, trader=None, trader_main=None):
 
         super().setup(interval, trader, trader_main)
@@ -150,7 +150,12 @@ class Robinhood(API):
             return df
         if delta < 1 and interval in [Interval.SEC_15, Interval.MIN_1]:
             span = "hour"
-        elif delta < 24 or interval in [Interval.MIN_5, Interval.MIN_15, Interval.MIN_30, Interval.HR_1]:
+        elif delta < 24 or interval in [
+            Interval.MIN_5,
+            Interval.MIN_15,
+            Interval.MIN_30,
+            Interval.HR_1,
+        ]:
             span = "day"
         elif delta < 24 * 28:
             span = "month"
@@ -371,10 +376,10 @@ class Robinhood(API):
             "id": ret["id"],
             "quantity": float(ret["quantity"]),
             "filled_qty": float(ret["cumulative_quantity"]),
-           # "filled_price": float(ret["executions"][0]["effective_price"])
-           # if len(ret["executions"])
-           # else 0,
-           # "filled_cost": float(ret["rounded_executed_notional"]),
+            # "filled_price": float(ret["executions"][0]["effective_price"])
+            # if len(ret["executions"])
+            # else 0,
+            # "filled_cost": float(ret["rounded_executed_notional"]),
             "side": ret["side"],
             "time_in_force": ret["time_in_force"],
             "status": ret["state"],
@@ -404,10 +409,13 @@ class Robinhood(API):
         for r in ret:
             debugger.debug(r)
             legs = [{"id": l["id"], "side": l["side"]} for l in r["legs"]]
-            date = r['legs'][0]["expiration_date"]
+            date = r["legs"][0]["expiration_date"]
             date = dt.datetime.strptime(date, "%Y-%m-%d")
             s = self.data_to_occ(
-                r["chain_symbol"], date, r['legs'][0]["option_type"], float(r['legs'][0]["strike_price"])
+                r["chain_symbol"],
+                date,
+                r["legs"][0]["option_type"],
+                float(r["legs"][0]["strike_price"]),
             )
             queue.append(
                 {

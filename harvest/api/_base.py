@@ -216,12 +216,12 @@ class API:
                     return func(*args, **kwargs)
                 except Exception as e:
                     self = args[0]
-                    debugger.error(f'Error: {e}')
+                    debugger.error(f"Error: {e}")
                     traceback.print_exc()
-                    debugger.error('Logging out and back in...')
+                    debugger.error("Logging out and back in...")
                     args[0].refresh_cred()
                     tries -= 1
-                    debugger.error('Retrying...')
+                    debugger.error("Retrying...")
                     continue
 
         return wrapper
@@ -458,7 +458,7 @@ class API:
             For options:
                 - type: "OPTION",
                 - symbol: OCC symbol of option
-                - base_symbol: 
+                - base_symbol:
                 - quantity: Quantity ordered
                 - filled_qty: Quantity filled
                 - id: ID of order
@@ -608,7 +608,9 @@ class API:
             if symbol_type(symbol) == "OPTION":
                 price = self.trader.streamer.fetch_option_market_data(symbol)["price"]
             else:
-                price = self.trader.storage.load(symbol, self.interval[symbol]["interval"])[symbol]["close"][-1]
+                price = self.trader.storage.load(
+                    symbol, self.interval[symbol]["interval"]
+                )[symbol]["close"][-1]
 
         limit_price = mark_up(price)
         total_price = limit_price * quantity
@@ -681,7 +683,9 @@ class API:
         elif len(symbol) > 6:
             price = self.trader.streamer.fetch_option_market_data(symbol)["price"]
         else:
-            price = self.trader.storage.load(symbol, self.interval[symbol]["interval"])[symbol]["close"][-1]
+            price = self.trader.storage.load(symbol, self.interval[symbol]["interval"])[
+                symbol
+            ]["close"][-1]
 
         limit_price = mark_down(price)
 
@@ -813,14 +817,14 @@ Reduce purchase quantity or increase buying power."""
         debugger.debug(f"Converting {symbol} to data")
         try:
             sym = ""
-            symbol = symbol.replace(' ', '')
+            symbol = symbol.replace(" ", "")
             i = 0
             while symbol[i].isalpha():
-                i+=1
+                i += 1
             sym = symbol[0:i]
             symbol = symbol[i:]
             debugger.debug(f"{sym}, {symbol}")
-            
+
             date = dt.datetime.strptime(symbol[0:6], "%y%m%d")
             debugger.debug(f"{date}, {symbol}")
             option_type = "call" if symbol[6] == "C" else "put"
@@ -830,7 +834,7 @@ Reduce purchase quantity or increase buying power."""
             return sym, date, option_type, price
         except Exception as e:
             debugger.error(f"Error parsing OCC symbol: {original_symbol}, {e}")
-            #return None, None, None, None
+            # return None, None, None, None
             raise Exception(f"Error parsing OCC symbol: {original_symbol}, {e}")
 
     def current_timestamp(self):

@@ -286,14 +286,16 @@ class LiveTrader:
                 a.main()
                 new_algo.append(a)
             except Exception as e:
-                debugger.warning(f"Algorithm {a} failed, removing from algorithm list.\n")
+                debugger.warning(
+                    f"Algorithm {a} failed, removing from algorithm list.\n"
+                )
                 debugger.warning(f"Exception: {e}\n")
                 debugger.warning(f"Traceback: {traceback.format_exc()}\n")
-    
+
         if len(new_algo) <= 0:
             debugger.critical("No algorithms to run")
             exit()
-        
+
         self.algo = new_algo
 
         self.broker.exit()
@@ -405,7 +407,9 @@ class LiveTrader:
         # Check how many of the given asset we currently own
         owned_qty = sum(
             p["quantity"]
-            for p in self.stock_positions + self.crypto_positions + self.option_positions
+            for p in self.stock_positions
+            + self.crypto_positions
+            + self.option_positions
             if p["symbol"] == symbol
         )
         # Subtract any assets that are in the process of being sold.
@@ -443,9 +447,7 @@ class LiveTrader:
 
     def sell_option(self, symbol: str, quantity: int, in_force: str):
         owned_qty = sum(
-            p["quantity"]
-            for p in self.option_positions
-            if p["symbol"] == symbol
+            p["quantity"] for p in self.option_positions if p["symbol"] == symbol
         )
         owned_qty -= sum(
             o["quantity"]
@@ -472,7 +474,7 @@ class LiveTrader:
             list of Algo classes.
         """
         self.algo = algo if isinstance(algo, list) else [algo]
-    
+
     def add_algo(self, algo):
         self.algo.append(algo)
 

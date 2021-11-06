@@ -492,7 +492,7 @@ class Webull(API):
                 f"Error while placing order.\nReturned: {ret}", exc_info=True
             )
             raise Exception("Error while placing order.")
-    
+
     def order_crypto_limit(
         self,
         side: str,
@@ -509,15 +509,15 @@ class Webull(API):
 
         try:
             ret = self.api.place_order_crypto(
-                    stock=symbol,
-                    tId=None,
-                    price=limit_price,
-                    action=side.upper(),
-                    orderType="LMT",
-                    enforce=in_force.upper(),
-                    entrust_type="QTY",
-                    quant=quantity,
-                    outsideRegularTradingHour=extended,
+                stock=symbol,
+                tId=None,
+                price=limit_price,
+                action=side.upper(),
+                orderType="LMT",
+                enforce=in_force.upper(),
+                entrust_type="QTY",
+                quant=quantity,
+                outsideRegularTradingHour=extended,
             )
             typ = "CRYPTO"
             if not ret.get("success"):
@@ -554,7 +554,9 @@ class Webull(API):
         )
 
         if not isinstance(oc_id, int):
-            debugger.error("Error while placing order_option_limit. Can't find optionId.")
+            debugger.error(
+                "Error while placing order_option_limit. Can't find optionId."
+            )
             raise Exception("Error while placing order.")
         try:
             ret = self.api.place_order_option(

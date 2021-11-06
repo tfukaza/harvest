@@ -103,7 +103,12 @@ class DummyStreamer(API):
     ) -> pd.DataFrame:
 
         if start is None:
-            if interval in [Interval.MIN_1, Interval.MIN_5, Interval.MIN_15, Interval.MIN_30]:
+            if interval in [
+                Interval.MIN_1,
+                Interval.MIN_5,
+                Interval.MIN_15,
+                Interval.MIN_30,
+            ]:
                 start = self.now - dt.timedelta(days=2)
             elif interval == Interval.HR_1:
                 start = self.now - dt.timedelta(days=14)

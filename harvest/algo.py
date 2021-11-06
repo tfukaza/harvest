@@ -704,7 +704,7 @@ class BaseAlgo:
                 "symbol": p["symbol"],
                 "base_symbol": p["base_symbol"],
                 "quantity": p["quantity"],
-                "avg_price": p["avg_price"]
+                "avg_price": p["avg_price"],
             }
             for p in self.trader.option_positions
         ]

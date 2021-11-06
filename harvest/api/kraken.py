@@ -20,7 +20,7 @@ class Kraken(API):
         Interval.MIN_15,
         Interval.MIN_30,
         Interval.HR_1,
-        Interval.DAY_1
+        Interval.DAY_1,
     ]
     crypto_ticker_to_kraken_names = {
         "BTC": "XXBT",
@@ -256,7 +256,7 @@ class Kraken(API):
         in_force: str = "gtc",
         extended: bool = False,
     ):
-       
+
         symbol = self.ticker_to_kraken(symbol)
 
         return self.get_result(

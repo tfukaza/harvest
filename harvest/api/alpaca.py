@@ -212,7 +212,7 @@ class Alpaca(StreamAPI):
             time_in_force=in_force,
             extended_hours=extended,
         )
-    
+
     def order_option_limit(
         self,
         side: str,
@@ -224,9 +224,9 @@ class Alpaca(StreamAPI):
     ):
         if self.basic:
             raise Exception("Alpaca basic accounts do not support crypto.")
-        
+
         symbol = symbol[1:]
-    
+
         return self.api.submit_order(
             symbol,
             quantity,

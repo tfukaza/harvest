@@ -110,7 +110,10 @@ start_parser.add_argument(
     default=".",
     help="directory where algorithms are located",
 )
-start_parser.add_argument("--debug", default=False, action=argparse.BooleanOptionalAction)
+start_parser.add_argument(
+    "--debug", default=False, action=argparse.BooleanOptionalAction
+)
+
 
 def main():
     """
@@ -146,7 +149,7 @@ def start(args: argparse.Namespace, test: bool = False):
     files = [fi for fi in listdir(directory) if isfile(join(directory, fi))]
     print(f"Found files {files}")
     for f in files:
-        names = f.split('.')
+        names = f.split(".")
         if len(names) <= 1 or names[-1] != "py":
             continue
         name = "".join(names[:-1])
@@ -156,7 +159,7 @@ def start(args: argparse.Namespace, test: bool = False):
             if firstline.find("HARVEST_SKIP") != -1:
                 print(f"Skipping {f}")
                 continue
-        
+
         # load in the entire file
         algo_path = os.path.realpath(join(directory, f))
         spec = importlib.util.spec_from_file_location(name, algo_path)

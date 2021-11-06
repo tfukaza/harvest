@@ -105,13 +105,14 @@ def interval_to_timedelta(interval: Interval) -> dt.timedelta:
     params = {expanded_units[unit]: value}
     return dt.timedelta(**params)
 
+
 def symbol_type(symbol):
-    """Determines the type of the asset the symbol represents. 
+    """Determines the type of the asset the symbol represents.
     This can be 'STOCK', 'CRYPTO', or 'OPTION'
     """
     if len(symbol) > 6:
         return "OPTION"
-    elif symbol[0] == '@':
+    elif symbol[0] == "@":
         return "CRYPTO"
     else:
         return "STOCK"
@@ -230,9 +231,10 @@ def pandas_timestamp_to_local(df: pd.DataFrame, timezone: ZoneInfo) -> pd.DataFr
     df.index = df.index.map(lambda x: datetime_utc_to_local(x, timezone))
     return df
 
+
 def pandas_datetime_to_utc(df: pd.DataFrame, timezone: ZoneInfo) -> pd.DataFrame:
     """
-    Converts timezone naive datetime index of dataframes to a timezone aware datetime index 
+    Converts timezone naive datetime index of dataframes to a timezone aware datetime index
     adjusted to UTC timezone.
     """
     df.index = df.index.map(lambda x: x.replace(tzinfo=timezone).astimezone(tz.utc))
