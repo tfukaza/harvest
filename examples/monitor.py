@@ -2,9 +2,7 @@
 This code monitors a given stock/crypto symbol.
 """
 from harvest.algo import BaseAlgo
-from harvest.trader import Trader
-from harvest.api.robinhood import Robinhood
-
+from harvest.trader import PaperTrader
 
 class Watch(BaseAlgo):
     def config(self):
@@ -16,7 +14,7 @@ class Watch(BaseAlgo):
 
 
 if __name__ == "__main__":
-    t = Trader(Robinhood())
+    t = PaperTrader()
     t.set_algo(Watch())
 
     t.start()

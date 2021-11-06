@@ -150,6 +150,12 @@ def start(args: argparse.Namespace, test: bool = False):
         if len(names) <= 1 or names[-1] != "py":
             continue
         name = "".join(names[:-1])
+
+        with open(join(directory, f), "r") as algo_file:
+            firstline = algo_file.readline()
+            if firstline.find("HARVEST_SKIP") != -1:
+                print(f"Skipping {f}")
+                continue
         
         # load in the entire file
         algo_path = os.path.realpath(join(directory, f))

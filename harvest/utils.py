@@ -5,7 +5,7 @@ import time
 import random
 import logging
 import datetime as dt
-from datetime import timezone as tz
+from datetime import datetime, timezone as tz
 from enum import IntEnum, auto
 from zoneinfo import ZoneInfo
 
@@ -230,13 +230,22 @@ def pandas_timestamp_to_local(df: pd.DataFrame, timezone: ZoneInfo) -> pd.DataFr
     df.index = df.index.map(lambda x: datetime_utc_to_local(x, timezone))
     return df
 
+def pandas_datetime_to_utc(df: pd.DataFrame, timezone: ZoneInfo) -> pd.DataFrame:
+    """
+    Converts timezone naive datetime index of dataframes to a timezone aware datetime index 
+    adjusted to UTC timezone.
+    """
+    df.index = df.index.map(lambda x: x.replace(tzinfo=timezone).astimezone(tz.utc))
+    return df
 
-def datetime_utc_to_local(datetime: dt.datetime, timezone: ZoneInfo) -> dt.datetime:
+
+def datetime_utc_to_local(date_time: dt.datetime, timezone: ZoneInfo) -> dt.datetime:
     """
     Converts a datetime object in UTC to local time, represented as a
     timezone naive datetime object.
     """
-    return datetime.astimezone(timezone).replace(tzinfo=None)
+    new_tz = date_time.astimezone(timezone)
+    return new_tz.replace(tzinfo=None)
 
 
 class Timestamp:
