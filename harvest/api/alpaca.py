@@ -174,8 +174,8 @@ class Alpaca(StreamAPI):
         return self.api.get_account().__dict__["_raw"]
 
     @API._exception_handler
-    def fetch_stock_order_status(self, order_id: str):
-        return self.api.get_order(order_id).__dict__["_raw"]
+    def fetch_stock_order_status(self, id: str):
+        return self.api.get_order(id).__dict__["_raw"]
 
     @API._exception_handler
     def fetch_option_order_status(self, id):
@@ -185,7 +185,7 @@ class Alpaca(StreamAPI):
     def fetch_crypto_order_status(self, id):
         if self.basic:
             raise Exception("Alpaca basic accounts do not support crypto.")
-        return self.api.get_order(order_id).__dict__["_raw"]
+        return self.api.get_order(id).__dict__["_raw"]
 
     @API._exception_handler
     def fetch_order_queue(self):

@@ -316,7 +316,7 @@ class LiveTrader:
             elif order["type"] == "CRYPTO":
                 stat = self.broker.fetch_crypto_order_status(order["id"])
             debugger.debug(f"Updating status of order {order['id']}")
-            self.order_queue[i] = stat
+            self.order_queue[i].update(stat)
 
         debugger.debug(f"Updated order queue: {self.order_queue}")
         new_order = []
@@ -324,6 +324,15 @@ class LiveTrader:
         for order in self.order_queue:
             if order["status"] == "filled":
                 order_filled = True
+                debugger.debug(f"Order {order['id']} filled at {order['filled_time']}")
+                self.storage.store_transaction(
+                    order["filled_time"],
+                    "N/A",
+                    order["symbol"],
+                    order["side"],
+                    order["quantity"],
+                    order["filled_price"]
+                )
             else:
                 new_order.append(order)
         self.order_queue = new_order
@@ -399,8 +408,6 @@ class LiveTrader:
         self.order_queue.append(ret)
         debugger.debug(f"BUY: {self.timestamp}, {symbol}, {quantity}")
         debugger.debug(f"BUY order queue: {self.order_queue}")
-        asset_type = symbol_type(symbol)
-        self.logger.add_transaction(self.timestamp, "buy", asset_type, symbol, quantity)
         return ret
 
     def sell(self, symbol: str, quantity: int, in_force: str, extended: bool):
@@ -429,10 +436,6 @@ class LiveTrader:
         self.order_queue.append(ret)
         debugger.debug(f"SELL: {self.timestamp}, {symbol}, {quantity}")
         debugger.debug(f"SELL order queue: {self.order_queue}")
-        asset_type = symbol_type(symbol)
-        self.logger.add_transaction(
-            self.timestamp, "sell", asset_type, symbol, quantity
-        )
         return ret
 
     def buy_option(self, symbol: str, quantity: int, in_force: str):

@@ -176,7 +176,7 @@ def start(args: argparse.Namespace, test: bool = False):
         # iterate though the variables and if a variable is a subclass of BaseAlgo instantiate it and added to the trader
         for algo_cls in inspect.getmembers(algo):
             k, v = algo_cls[0], algo_cls[1]
-            if inspect.isclass(v) and v != BaseAlgo:
+            if inspect.isclass(v) and v != BaseAlgo and issubclass(v, BaseAlgo):
                 print(f"Found algo {k} in {f}, adding to trader")
                 trader.add_algo(v())
 

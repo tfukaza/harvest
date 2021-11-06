@@ -160,6 +160,8 @@ class PaperBroker(API):
                     self.orders.remove(ret)
                     ret = ret_1
                     ret["status"] = "filled"
+                    ret["filled_time"] = self.trader.timestamp
+                    ret["filled_price"] = price
             else:
                 if pos is None:
                     raise Exception(f"Cannot sell {sym}, is not owned")
@@ -176,6 +178,8 @@ class PaperBroker(API):
                 self.orders.remove(ret)
                 ret = ret_1
                 ret["status"] = "filled"
+                ret["filled_time"] = self.trader.timestamp
+                ret["filled_price"] = price
 
             self.equity = self._calc_equity()
 
@@ -239,6 +243,8 @@ class PaperBroker(API):
                     self.cash -= actual_price
                     self.buying_power -= actual_price
                     ret["status"] = "filled"
+                    ret["filled_time"] = self.trader.timestamp
+                    ret["filled_price"] = price
                     debugger.debug(f"After BUY: {self.buying_power}")
                     ret_1 = ret.copy()
                     self.orders.remove(ret)
@@ -259,6 +265,8 @@ class PaperBroker(API):
                 if pos["quantity"] < 1e-8:
                     self.options.remove(pos)
                 ret["status"] = "filled"
+                ret["filled_time"] = self.trader.timestamp
+                ret["filled_price"] = price
                 ret_1 = ret.copy()
                 self.orders.remove(ret)
                 ret = ret_1
@@ -316,7 +324,7 @@ class PaperBroker(API):
     ):
         data = {
             "type": "CRYPTO",
-            "symbol": symbol,
+            "symbol": '@'+symbol,
             "quantity": quantity,
             "filled_qty": quantity,
             "limit_price": limit_price,

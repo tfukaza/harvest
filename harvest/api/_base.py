@@ -397,6 +397,8 @@ class API:
             - side: 'buy' or 'sell'
             - time_in_force: Time the order is in force
             - status: Status of the order
+            - filled_time: Time the order was filled
+            - filled_price: Price the order was filled at
         """
         raise NotImplementedError(
             f"{type(self).__name__} does not support this broker method: `fetch_stock_order_status`."
@@ -417,6 +419,8 @@ class API:
             - side: 'buy' or 'sell'
             - time_in_force: Time the order is in force
             - status: Status of the order
+            - filled_time: Time the order was filled
+            - filled_price: Price the order was filled at
         """
         raise NotImplementedError(
             f"{type(self).__name__} does not support this broker method: `fetch_option_order_status`."
@@ -437,6 +441,8 @@ class API:
             - side: 'buy' or 'sell'
             - time_in_force: Time the order is in force
             - status: Status of the order
+            - filled_time: Time the order was filled
+            - filled_price: Price the order was filled at
         """
         raise NotImplementedError(
             f"{type(self).__name__} does not support this broker method: `fetch_crypto_order_status`."
@@ -447,36 +453,34 @@ class API:
         Returns all current pending orders
 
         returns: A list of dictionaries with the following keys and values:
-            For stocks:
-                - type: "STOCK"
-                - symbol: Symbol of stock
+            For stocks and crypto:
+                - type: "STOCK" or "CRYPTO"
+                - symbol: Symbol of asset
                 - quantity: Quantity ordered
                 - filled_qty: Quantity filled
                 - id: ID of order
                 - time_in_force: Time in force
                 - status: Status of the order
                 - side: 'buy' or 'sell'
+                - filled_time: Time the order was filled
+                - filled_price: Price the order was filled at
             For options:
                 - type: "OPTION",
                 - symbol: OCC symbol of option
                 - base_symbol:
                 - quantity: Quantity ordered
                 - filled_qty: Quantity filled
+                - filled_time: Time the order was filled
+                - filled_price: Price the order was filled at
                 - id: ID of order
                 - time_in_force: Time in force
                 - status: Status of the order
                 - legs: A list of dictionaries with keys:
                     - id: id of leg
                     - side: 'buy' or 'sell'
-            For crypto:
-                - type: "CRYPTO"
-                - symbol: Symbol of crypto
-                - quantity: Quantity ordered
-                - filled_qty: Quantity filled
-                - id: ID of order
-                - time_in_force: Time in force
-                - status: Status of the order
-                - side: 'buy' or 'sell'
+                    Harvest does not support buying multiple options in a single transaction,
+                    so legs will always have a length of 1.
+
         """
         debugger.error(
             f"{type(self).__name__} does not support this broker method: `fetch_order_queue`. Returning an empty list."
@@ -630,7 +634,7 @@ class API:
             )
         elif typ == "CRYPTO":
             return self.order_crypto_limit(
-                "buy", symbol, quantity, limit_price, in_force, extended
+                "buy", symbol[1:], quantity, limit_price, in_force, extended
             )
         elif typ == "OPTION":
             sym, exp_date, option_type, strike = self.occ_to_data(symbol)
@@ -699,7 +703,7 @@ class API:
             )
         elif typ == "CRYPTO":
             return self.order_crypto_limit(
-                "sell", symbol, quantity, limit_price, in_force, extended
+                "sell", symbol[1:], quantity, limit_price, in_force, extended
             )
         elif typ == "OPTION":
             sym, exp_date, option_type, strike = self.occ_to_data(symbol)
@@ -743,10 +747,9 @@ class API:
 
         if total_price >= buy_power:
             debugger.warning(
-                f"""
-Not enough buying power 🏦.\n
-Total price ({price} * {quantity} * 1.05 = {limit_price*quantity}) exceeds buying power {buy_power}.\n
-Reduce purchase quantity or increase buying power."""
+                "Not enough buying power.\n" + 
+                f"Total price ({price} * {quantity} * 1.05 = {limit_price*quantity}) exceeds buying power {buy_power}.\n" + 
+                "Reduce purchase quantity or increase buying power."
             )
 
         sym, date, option_type, strike = self.occ_to_data(symbol)
