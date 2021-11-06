@@ -189,13 +189,14 @@ class BaseAlgo:
         if symbol is None:
             symbol = self.watchlist[0]
             symbols = [
-                s["occ_symbol"]
+                s["symbol"]
                 for s in self.get_account_option_positions()
-                if s["symbol"] == symbol
+                if s["base_symbol"] == symbol
             ]
         else:
             symbols = [symbol]
         for s in symbols:
+            debugger.debug(f"Algo SELL OPTION: {s}")
             if quantity is None:
                 quantity = self.get_asset_quantity(s)
             return self.trader.sell_option(s, quantity, in_force)
@@ -501,7 +502,7 @@ class BaseAlgo:
                     return p["quantity"]
         else:
             for p in self.trader.option_positions:
-                if p["occ_symbol"] == symbol:
+                if p["symbol"] == symbol:
                     return p["quantity"]
         return 0
 
@@ -700,7 +701,8 @@ class BaseAlgo:
         """
         return [
             {
-                "occ_symbol": p["occ_symbol"],
+                "symbol": p["symbol"],
+                "base_symbol": p["base_symbol"],
                 "quantity": p["quantity"],
                 "avg_price": p["avg_price"]
             }

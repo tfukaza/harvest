@@ -372,7 +372,7 @@ class LiveTrader:
         pos = self.broker.fetch_stock_positions()
         self.stock_positions = [p for p in pos if p["symbol"] in self.interval]
         pos = self.broker.fetch_option_positions()
-        self.option_positions = [p for p in pos if p["symbol"] in self.interval]
+        self.option_positions = [p for p in pos if p["base_symbol"] in self.interval]
         pos = self.broker.fetch_crypto_positions()
         self.crypto_positions = [p for p in pos if p["symbol"] in self.interval]
         ret = self.broker.fetch_account()
@@ -445,7 +445,7 @@ class LiveTrader:
         owned_qty = sum(
             p["quantity"]
             for p in self.option_positions
-            if p["occ_symbol"] == symbol
+            if p["symbol"] == symbol
         )
         owned_qty -= sum(
             o["quantity"]

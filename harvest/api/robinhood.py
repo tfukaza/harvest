@@ -469,6 +469,7 @@ class Robinhood(API):
                     limitPrice=limit_price,
                 )
             return {
+                "type": "STOCK",
                 "id": ret["id"],
                 "symbol": symbol,
             }
@@ -502,6 +503,7 @@ class Robinhood(API):
                     limitPrice=limit_price,
                 )
             return {
+                "type": "CRYPTO",
                 "id": ret["id"],
                 "symbol": symbol,
             }

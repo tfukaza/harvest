@@ -630,10 +630,10 @@ class API:
                 "buy", symbol, quantity, limit_price, in_force, extended
             )
         elif typ == "OPTION":
-            _, exp_date, option_type, strike = self.occ_to_data(symbol)
+            sym, exp_date, option_type, strike = self.occ_to_data(symbol)
             return self.order_option_limit(
                 "buy",
-                symbol,
+                sym,
                 quantity,
                 limit_price,
                 option_type,
@@ -697,10 +697,10 @@ class API:
                 "sell", symbol, quantity, limit_price, in_force, extended
             )
         elif typ == "OPTION":
-            _, exp_date, option_type, strike = self.occ_to_data(symbol)
+            sym, exp_date, option_type, strike = self.occ_to_data(symbol)
             return self.order_option_limit(
                 "sell",
-                symbol,
+                sym,
                 quantity,
                 limit_price,
                 option_type,
@@ -778,6 +778,7 @@ Reduce purchase quantity or increase buying power."""
 
         limit_price = mark_down(price)
 
+        debugger.debug(f"{type(self).__name__} ordered a sell of {quantity} {symbol}")
         sym, date, option_type, strike = self.occ_to_data(symbol)
         return self.order_option_limit(
             "sell",
@@ -808,15 +809,29 @@ Reduce purchase quantity or increase buying power."""
         return occ
 
     def occ_to_data(self, symbol: str):
-        sym = ""
-        while symbol[0].isalpha():
-            sym = sym + symbol[0]
-            symbol = symbol[1:]
-        symbol = symbol.replace(" ", "")
-        date = dt.datetime.strptime(symbol[0:6], "%y%m%d")
-        option_type = "call" if symbol[6] == "C" else "put"
-        price = float(symbol[7:]) / 1000
-        return sym, date, option_type, price
+        original_symbol = symbol
+        debugger.debug(f"Converting {symbol} to data")
+        try:
+            sym = ""
+            symbol = symbol.replace(' ', '')
+            i = 0
+            while symbol[i].isalpha():
+                i+=1
+            sym = symbol[0:i]
+            symbol = symbol[i:]
+            debugger.debug(f"{sym}, {symbol}")
+            
+            date = dt.datetime.strptime(symbol[0:6], "%y%m%d")
+            debugger.debug(f"{date}, {symbol}")
+            option_type = "call" if symbol[6] == "C" else "put"
+            debugger.debug(f"{option_type}, {symbol}")
+            price = float(symbol[7:]) / 1000
+            debugger.debug(f"{price}, {symbol}")
+            return sym, date, option_type, price
+        except Exception as e:
+            debugger.error(f"Error parsing OCC symbol: {original_symbol}, {e}")
+            #return None, None, None, None
+            raise Exception(f"Error parsing OCC symbol: {original_symbol}, {e}")
 
     def current_timestamp(self):
         return self.timestamp

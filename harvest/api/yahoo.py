@@ -166,9 +166,10 @@ class YahooStreamer(API):
 
     @API._exception_handler
     def fetch_chain_info(self, symbol: str):
+        option_list = self.watch_ticker[symbol].options
         return {
             "id": "n/a",
-            "exp_dates": [convert_input_to_datetime(s, self.trader.timezone) for s in self.watch_ticker[symbol].options],
+            "exp_dates": [convert_input_to_datetime(s, self.trader.timezone) for s in option_list],
             "multiplier": 100,
         }
 

@@ -216,7 +216,7 @@ class PaperBroker(API):
                     )
                 else:
                     # If asset already exists, buy more. If not, add a new entry
-                    if pos == None:
+                    if pos is None:
                         sym, date, option_type, strike = self.occ_to_data(occ_sym)
                         self.options.append(
                             {
@@ -244,7 +244,7 @@ class PaperBroker(API):
                     self.orders.remove(ret)
                     ret = ret_1
             else:
-                if pos == None:
+                if pos is None:
                     raise Exception(f"Cannot sell {sym}, is not owned")
                 pos["quantity"] = pos["quantity"] - qty
                 debugger.debug(f"current:{self.buying_power}")
@@ -266,7 +266,7 @@ class PaperBroker(API):
             self.equity = self._calc_equity()
 
         debugger.debug(f"Returning status: {ret}")
-        debugger.debug(f"Positions:\n{self.stocks}\n=========\n{self.cryptos}")
+        debugger.debug(f"Positions:\n{self.stocks}\n{self.options}\n{self.cryptos}")
         debugger.debug(f"Equity:{self._calc_equity()}")
 
         return ret
@@ -302,7 +302,7 @@ class PaperBroker(API):
     
         self.orders.append(data)
         self.id += 1
-        ret = {"id": data["id"], "symbol": data["symbol"]}
+        ret = {"type": "STOCK", "id": data["id"], "symbol": data["symbol"]}
         return ret
     
     def order_crypto_limit(
@@ -328,7 +328,7 @@ class PaperBroker(API):
     
         self.orders.append(data)
         self.id += 1
-        ret = {"id": data["id"], "symbol": data["symbol"]}
+        ret = {"type": "CRYPTO", "id": data["id"], "symbol": data["symbol"]}
         return ret
 
     def order_option_limit(
@@ -345,7 +345,7 @@ class PaperBroker(API):
 
         data = {
             "type": "OPTION",
-            "base_symbol": symbol,
+            "symbol": self.data_to_occ(symbol, exp_date, type, strike),
             "quantity": quantity,
             "filled_qty": 0,
             "id": self.id,
@@ -353,12 +353,12 @@ class PaperBroker(API):
             "status": "open",
             "side": side,
             "limit_price": limit_price,
-            "symbol": self.data_to_occ(symbol, exp_date, type, strike),
+            "base_symbol": symbol,
         }
 
         self.orders.append(data)
         self.id += 1
-        return {"id": data["id"], "symbol": data["symbol"]}
+        return {"type": "OPTION", "id": data["id"], "symbol": data["symbol"]}
 
     # ------------- Helper methods ------------- #
 

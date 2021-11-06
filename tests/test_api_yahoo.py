@@ -4,6 +4,7 @@ import unittest
 import datetime as dt
 
 from harvest.api.yahoo import YahooStreamer
+from harvest.trader.trader import PaperTrader
 from harvest.utils import *
 
 
@@ -57,16 +58,18 @@ class TestYahooStreamer(unittest.TestCase):
         yh.main()
 
     def test_chain_info(self):
+        t = PaperTrader()
         yh = YahooStreamer()
         interval = {"LMND": {"interval": Interval.MIN_1, "aggregations": []}}
-        yh.setup(interval, None, None)
+        yh.setup(interval, t, None)
         info = yh.fetch_chain_info("LMND")
         self.assertGreater(len(info["exp_dates"]), 0)
 
     def test_chain_data(self):
+        t = PaperTrader()
         yh = YahooStreamer()
         interval = {"LMND": {"interval": Interval.MIN_1, "aggregations": []}}
-        yh.setup(interval, None, None)
+        yh.setup(interval, t, None)
         dates = yh.fetch_chain_info("LMND")["exp_dates"]
         data = yh.fetch_chain_data("LMND", dates[0])
         self.assertGreater(len(data), 0)

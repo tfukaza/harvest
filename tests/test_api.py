@@ -7,6 +7,7 @@ import os
 
 import pandas as pd
 
+from harvest.algo import BaseAlgo
 from harvest.api._base import StreamAPI
 from harvest.api.dummy import DummyStreamer
 from harvest.trader import PaperTrader
@@ -76,6 +77,7 @@ class TestAPI(unittest.TestCase):
         stream.fetch_price_history = lambda x, y: pd.DataFrame()
         stream.fetch_account = lambda: {"cash": 100, "equity": 100}
         t = PaperTrader(stream)
+        t.set_algo(BaseAlgo())
         stream.trader = t
         stream.trader_main = t.main
         t.set_symbol(["A", "B"])
