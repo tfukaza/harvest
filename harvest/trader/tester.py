@@ -120,6 +120,7 @@ class BackTester(trader.PaperTrader):
         for s in self.interval:
             for i in [self.interval[s]["interval"]] + self.interval[s]["aggregations"]:
                 df = self.storage.load(s, i, no_slice=True)
+                df = pandas_datetime_to_utc(df, self.timezone)
                 if common_start is None or df.index[0] > common_start:
                     common_start = df.index[0]
                 if common_end is None or df.index[-1] < common_end:
@@ -198,10 +199,12 @@ class BackTester(trader.PaperTrader):
         debugger.debug("Formatting complete")
         for sym in self.interval:
             for agg in self.interval[sym]["aggregations"]:
+                data = self.storage.load(sym, int(agg) - 16, no_slice=True)
+                data = pandas_datetime_to_utc(data, self.timezone)
                 self.storage.store(
                     sym,
                     int(agg) - 16,
-                    self.storage.load(sym, int(agg) - 16, no_slice=True),
+                    data,
                     remove_duplicate=False,
                 )
 
@@ -313,10 +316,10 @@ class BackTester(trader.PaperTrader):
             self.interval[s]["start"] = start_index
             counter[s] = 0
 
-        self.timestamp = common_start
+        self.timestamp = common_start.to_pydatetime()
+        print(f"Starting backtest from {common_start}")
 
         while self.timestamp <= common_end:
-
             df_dict = {}
             for sym in self.interval:
                 inter = self.interval[sym]["interval"]
@@ -327,7 +330,6 @@ class BackTester(trader.PaperTrader):
 
             update = self._update_order_queue()
             self._update_stats(df_dict, new=update, option_update=True)
-
             for sym in self.interval:
                 inter = self.interval[sym]["interval"]
                 if is_freq(self.timestamp, inter):
@@ -344,7 +346,6 @@ class BackTester(trader.PaperTrader):
                         ]
                         self.storage.store(s, agg, df)
                     counter[sym] += 1
-
             new_algo = []
             for a in self.algo:
                 if not is_freq(self.timestamp, a.interval):

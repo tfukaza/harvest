@@ -103,9 +103,14 @@ class DummyStreamer(API):
     ) -> pd.DataFrame:
 
         if start is None:
-            if interval in ["1MIN", "5MIN", "15MIN", "30MIN"]:
+            if interval in [
+                Interval.MIN_1,
+                Interval.MIN_5,
+                Interval.MIN_15,
+                Interval.MIN_30,
+            ]:
                 start = self.now - dt.timedelta(days=2)
-            elif interval == "1HR":
+            elif interval == Interval.HR_1:
                 start = self.now - dt.timedelta(days=14)
             else:
                 start = self.now - dt.timedelta(days=365)
@@ -256,7 +261,8 @@ class DummyStreamer(API):
     # --------------- Methods for Trading --------------- #
 
     # Not implemented functions:
-    #   order_limit
+    #   order_stock_limit
+    #   order_crypto_limit
     #   order_option_limit
 
     # ------------- Helper methods ------------- #

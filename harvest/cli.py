@@ -4,6 +4,9 @@ import inspect
 import argparse
 import importlib.util
 
+from os import listdir
+from os.path import isfile, join
+
 # Lambda functions cannot raise exceptions so using higher order functions.
 def _raise(e):
     def raise_helper():
@@ -87,7 +90,7 @@ start_parser.add_argument(
 start_parser.add_argument(
     "-s",
     "--streamer",
-    default="dummy",
+    default="yahoo",
     help="fetches asset data",
     choices=list(streamers.keys()),
 )
@@ -98,10 +101,25 @@ start_parser.add_argument(
     help="buys and sells assets on your behalf",
     choices=list(brokers.keys()),
 )
+# start_parser.add_argument(
+#     "algos", nargs="+", help="paths to algorithms you want to run"
+# )
 start_parser.add_argument(
-    "algos", nargs="+", help="paths to algorithms you want to run"
+    "-d",
+    "--directory",
+    default=".",
+    help="directory where algorithms are located",
+)
+start_parser.add_argument(
+    "--debug", default=False, action=argparse.BooleanOptionalAction
 )
 
+
+# Parser for visualing data
+visualize_parser = subparsers.add_parser("visualize")
+visualize_parser.add_argument(
+    "path", help="path to harvest generated data file"
+)
 
 def main():
     """
@@ -113,6 +131,8 @@ def main():
     # Handles the start command
     if args.command == "start":
         start(args)
+    elif args.command == "visualize":
+        visualize(args)
     # Show help if case not found
     else:
         parser.print_help(sys.stderr)
@@ -128,23 +148,75 @@ def start(args: argparse.Namespace, test: bool = False):
     storage = _get_storage(args.storage)
     streamer = _get_streamer(args.streamer)
     broker = _get_broker(args.broker)
-    trader = LiveTrader(streamer=streamer, broker=broker, storage=storage)
+    debug = args.debug
+    trader = LiveTrader(streamer=streamer, broker=broker, storage=storage, debug=debug)
+
     # algos is a list of paths to files that have user defined algos
-    for algo_path in args.algos:
-        # get the file name without the `.py`
-        module = os.path.basename(algo_path)[:-3]
+    directory = args.directory
+    print(f"Searching directory {directory}")
+    files = [fi for fi in listdir(directory) if isfile(join(directory, fi))]
+    print(f"Found files {files}")
+    for f in files:
+        names = f.split(".")
+        if len(names) <= 1 or names[-1] != "py":
+            continue
+        name = "".join(names[:-1])
+
+        with open(join(directory, f), "r") as algo_file:
+            firstline = algo_file.readline()
+            if firstline.find("HARVEST_SKIP") != -1:
+                print(f"Skipping {f}")
+                continue
+
         # load in the entire file
-        algo_path = os.path.realpath(algo_path)
-        spec = importlib.util.spec_from_file_location(module, algo_path)
+        algo_path = os.path.realpath(join(directory, f))
+        spec = importlib.util.spec_from_file_location(name, algo_path)
         algo = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(algo)
         # iterate though the variables and if a variable is a subclass of BaseAlgo instantiate it and added to the trader
-        for algo_cls in dir(algo):
-            if inspect.isclass(algo_cls) and issubclass(algo_cls, BaseAlgo):
-                trader.set_algo(algo_cls())
+        for algo_cls in inspect.getmembers(algo):
+            k, v = algo_cls[0], algo_cls[1]
+            if inspect.isclass(v) and v != BaseAlgo and issubclass(v, BaseAlgo):
+                print(f"Found algo {k} in {f}, adding to trader")
+                trader.add_algo(v())
 
     if not test:
         trader.start()
+
+def visualize(args: argparse.Namespace):
+    import re
+    import pandas as pd
+    import mplfinance as mpf
+
+    if args.path.endswith(".csv"):
+        df = pd.read_csv(args.path)
+        df["timestamp"] = pd.to_datetime(df["timestamp"])
+        df.set_index("timestamp", inplace=True)
+    elif args.path.endswith(".pickle"):
+        df = pd.read_pickle(args.path)
+    else:
+        print("Invalid file extension, expecting .csv or .pickle.")
+        sys.exit(1)
+
+    if df.empty:
+        print(f"No data found in {args.path}.")
+
+    path = os.path.basename(args.path)
+    file_search = re.search("^(@?[\w]+)@([\w]+).(csv|pickle)$", path)
+    symbol, interval = file_search.group(1), file_search.group(2)
+    open_price = df.iloc[0]["open"]
+    close_price = df.iloc[-1]["close"]
+    high_price = df["high"].max()
+    low_price = df["low"].min()
+
+    print(f"{symbol} at {interval}")
+    print("open", open_price)
+    print("high", high_price)
+    print("low", low_price)
+    print("close", close_price)
+    print("price change", close_price - open_price)
+    mpf.plot(df, type="candle", volume=True, show_nontrading=True)
+
 
 
 def _get_storage(storage: str):

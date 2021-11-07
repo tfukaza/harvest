@@ -88,7 +88,7 @@ class PaperBroker(API):
 
     def update_option_positions(self, positions) -> List[Dict[str, Any]]:
         for r in self.options:
-            occ_sym = r["occ_symbol"]
+            occ_sym = r["symbol"]
 
             if self.trader is None:
                 price = self.fetch_option_market_data(occ_sym)["price"]
@@ -128,11 +128,7 @@ class PaperBroker(API):
         original_price = price * qty
         # If order is open, simulate asset buy/sell if possible
         if ret["status"] == "open":
-            if is_crypto(ret["symbol"]):
-                lst = self.cryptos
-            else:
-                lst = self.stocks
-
+            lst = self.cryptos if is_crypto(ret["symbol"]) else self.stocks
             pos = next((r for r in lst if r["symbol"] == sym), None)
             if ret["side"] == "buy":
                 # Check to see if user has enough funds to buy the stock
@@ -143,7 +139,6 @@ class PaperBroker(API):
                     debugger.error(
                         f"""Not enough buying power.\n Total price ({actual_price}) exceeds buying power {self.buying_power}.\n Reduce purchase quantity or increase buying power."""
                     )
-                # Check to see the price does not exceed the limit price
                 elif ret["limit_price"] < price:
                     limit_price = ret["limit_price"]
                     debugger.info(
@@ -151,7 +146,7 @@ class PaperBroker(API):
                     )
                 else:
                     # If asset already exists, buy more. If not, add a new entry
-                    if pos == None:
+                    if pos is None:
                         lst.append({"symbol": sym, "avg_price": price, "quantity": qty})
                     else:
                         pos["avg_price"] = (
@@ -165,8 +160,10 @@ class PaperBroker(API):
                     self.orders.remove(ret)
                     ret = ret_1
                     ret["status"] = "filled"
+                    ret["filled_time"] = self.trader.timestamp
+                    ret["filled_price"] = price
             else:
-                if pos == None:
+                if pos is None:
                     raise Exception(f"Cannot sell {sym}, is not owned")
 
                 pos["quantity"] = pos["quantity"] - qty
@@ -181,6 +178,8 @@ class PaperBroker(API):
                 self.orders.remove(ret)
                 ret = ret_1
                 ret["status"] = "filled"
+                ret["filled_time"] = self.trader.timestamp
+                ret["filled_price"] = price
 
             self.equity = self._calc_equity()
 
@@ -192,8 +191,8 @@ class PaperBroker(API):
 
     def fetch_option_order_status(self, id: int) -> Dict[str, Any]:
         ret = next(r for r in self.orders if r["id"] == id)
-        sym = ret["symbol"]
-        occ_sym = ret["occ_symbol"]
+        sym = ret["base_symbol"]
+        occ_sym = ret["symbol"]
 
         if self.trader is None:
             price = self.streamer.fetch_option_market_data(occ_sym)["price"]
@@ -204,7 +203,7 @@ class PaperBroker(API):
         original_price = price * qty
         # If order has been opened, simulate asset buy/sell
         if ret["status"] == "open":
-            pos = next((r for r in self.options if r["occ_symbol"] == occ_sym), None)
+            pos = next((r for r in self.options if r["symbol"] == occ_sym), None)
             if ret["side"] == "buy":
                 # Check to see if user has enough funds to buy the stock
                 actual_price = self.apply_commission(
@@ -221,12 +220,12 @@ class PaperBroker(API):
                     )
                 else:
                     # If asset already exists, buy more. If not, add a new entry
-                    if pos == None:
+                    if pos is None:
                         sym, date, option_type, strike = self.occ_to_data(occ_sym)
                         self.options.append(
                             {
-                                "symbol": sym,
-                                "occ_symbol": ret["occ_symbol"],
+                                "base_symbol": sym,
+                                "symbol": ret["symbol"],
                                 "avg_price": price,
                                 "quantity": ret["quantity"],
                                 "multiplier": 100,
@@ -244,12 +243,14 @@ class PaperBroker(API):
                     self.cash -= actual_price
                     self.buying_power -= actual_price
                     ret["status"] = "filled"
+                    ret["filled_time"] = self.trader.timestamp
+                    ret["filled_price"] = price
                     debugger.debug(f"After BUY: {self.buying_power}")
                     ret_1 = ret.copy()
                     self.orders.remove(ret)
                     ret = ret_1
             else:
-                if pos == None:
+                if pos is None:
                     raise Exception(f"Cannot sell {sym}, is not owned")
                 pos["quantity"] = pos["quantity"] - qty
                 debugger.debug(f"current:{self.buying_power}")
@@ -264,6 +265,8 @@ class PaperBroker(API):
                 if pos["quantity"] < 1e-8:
                     self.options.remove(pos)
                 ret["status"] = "filled"
+                ret["filled_time"] = self.trader.timestamp
+                ret["filled_price"] = price
                 ret_1 = ret.copy()
                 self.orders.remove(ret)
                 ret = ret_1
@@ -271,7 +274,7 @@ class PaperBroker(API):
             self.equity = self._calc_equity()
 
         debugger.debug(f"Returning status: {ret}")
-        debugger.debug(f"Positions:\n{self.stocks}\n=========\n{self.cryptos}")
+        debugger.debug(f"Positions:\n{self.stocks}\n{self.options}\n{self.cryptos}")
         debugger.debug(f"Equity:{self._calc_equity()}")
 
         return ret
@@ -284,7 +287,7 @@ class PaperBroker(API):
 
     # --------------- Methods for Trading --------------- #
 
-    def order_limit(
+    def order_stock_limit(
         self,
         side: str,
         symbol: str,
@@ -293,35 +296,47 @@ class PaperBroker(API):
         in_force: str = "gtc",
         extended: bool = False,
     ):
-
-        if not is_crypto(symbol):
-            data = {
-                "type": "STOCK",
-                "symbol": symbol,
-                "quantity": quantity,
-                "filled_qty": quantity,
-                "limit_price": limit_price,
-                "id": self.id,
-                "time_in_force": in_force,
-                "status": "open",
-                "side": side,
-            }
-        else:
-            data = {
-                "type": "CRYPTO",
-                "symbol": symbol,
-                "quantity": quantity,
-                "filled_qty": quantity,
-                "limit_price": limit_price,
-                "id": self.id,
-                "time_in_force": in_force,
-                "status": "open",
-                "side": side,
-            }
+        data = {
+            "type": "STOCK",
+            "symbol": symbol,
+            "quantity": quantity,
+            "filled_qty": quantity,
+            "limit_price": limit_price,
+            "id": self.id,
+            "time_in_force": in_force,
+            "status": "open",
+            "side": side,
+        }
 
         self.orders.append(data)
         self.id += 1
-        ret = {"type": data["type"], "id": data["id"], "symbol": data["symbol"]}
+        ret = {"type": "STOCK", "id": data["id"], "symbol": data["symbol"]}
+        return ret
+
+    def order_crypto_limit(
+        self,
+        side: str,
+        symbol: str,
+        quantity: float,
+        limit_price: float,
+        in_force: str = "gtc",
+        extended: bool = False,
+    ):
+        data = {
+            "type": "CRYPTO",
+            "symbol": '@'+symbol,
+            "quantity": quantity,
+            "filled_qty": quantity,
+            "limit_price": limit_price,
+            "id": self.id,
+            "time_in_force": in_force,
+            "status": "open",
+            "side": side,
+        }
+
+        self.orders.append(data)
+        self.id += 1
+        ret = {"type": "CRYPTO", "id": data["id"], "symbol": data["symbol"]}
         return ret
 
     def order_option_limit(
@@ -338,7 +353,7 @@ class PaperBroker(API):
 
         data = {
             "type": "OPTION",
-            "symbol": symbol,
+            "symbol": self.data_to_occ(symbol, exp_date, type, strike),
             "quantity": quantity,
             "filled_qty": 0,
             "id": self.id,
@@ -346,13 +361,12 @@ class PaperBroker(API):
             "status": "open",
             "side": side,
             "limit_price": limit_price,
-            "occ_symbol": self.data_to_occ(symbol, exp_date, type, strike),
+            "base_symbol": symbol,
         }
 
         self.orders.append(data)
         self.id += 1
-        ret = {"type": data["type"], "id": data["id"], "symbol": data["symbol"]}
-        return ret
+        return {"type": "OPTION", "id": data["id"], "symbol": data["symbol"]}
 
     # ------------- Helper methods ------------- #
 

@@ -197,9 +197,8 @@ class Alpaca(StreamAPI):
         }
 
     @API._exception_handler
-    def fetch_stock_order_status(self, order_id: str):
-        order = self.api.get_order(order_id).__dict__["_raw"]
-        return self.format_order_status(order)
+    def fetch_stock_order_status(self, id: str):
+        return self.api.get_order(id).__dict__["_raw"]
 
     @API._exception_handler
     def fetch_option_order_status(self, id):
@@ -209,9 +208,7 @@ class Alpaca(StreamAPI):
     def fetch_crypto_order_status(self, id):
         if self.basic:
             raise Exception("Alpaca basic accounts do not support crypto.")
-
-        order = self.api.get_order(order_id).__dict__["_raw"]
-        return self.format_order_status(order, is_stock=False)
+        return self.api.get_order(id).__dict__["_raw"]
 
     @API._exception_handler
     def fetch_order_queue(self):
@@ -222,7 +219,7 @@ class Alpaca(StreamAPI):
 
     # --------------- Methods for Trading --------------- #
 
-    def order_limit(
+    def order_stock_limit(
         self,
         side: str,
         symbol: str,
@@ -231,11 +228,30 @@ class Alpaca(StreamAPI):
         in_force: str = "gtc",
         extended: bool = False,
     ):
-        if self.basic and is_crypto(symbol):
+
+        return self.api.submit_order(
+            symbol,
+            quantity,
+            side=side,
+            type="limit",
+            limit_price=limit_price,
+            time_in_force=in_force,
+            extended_hours=extended,
+        )
+
+    def order_crypto_limit(
+        self,
+        side: str,
+        symbol: str,
+        quantity: float,
+        limit_price: float,
+        in_force: str = "gtc",
+        extended: bool = False,
+    ):
+        if self.basic:
             raise Exception("Alpaca basic accounts do not support crypto.")
 
-        if is_crypto(symbol):
-            asset = symbol[1:]
+        symbol = symbol[1:]
 
         order = self.api.submit_order(
             asset,
