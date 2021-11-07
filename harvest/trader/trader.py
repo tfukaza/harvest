@@ -184,6 +184,10 @@ class LiveTrader:
         debugger.debug(f"Updated option positions:\n{self.option_positions}")
 
     def _setup_params(self, interval, aggregations):
+        """
+        Sets up configuration parameters for the Trader, notably
+        the 'interval' attribute.
+        """
         interval = interval_string_to_enum(interval)
         aggregations = [interval_string_to_enum(a) for a in aggregations]
         self.interval = {}
@@ -243,6 +247,8 @@ class LiveTrader:
         For testing, it should manually be specified
         """
         ret = self.broker.fetch_account()
+        if ret is None:
+            raise Exception("Failed to load account info from broker.")
         self.account = ret
 
     def _storage_init(self):
@@ -254,8 +260,13 @@ class LiveTrader:
             ]:
                 df = self.streamer.fetch_price_history(sym, inter)
                 self.storage.store(sym, inter, df)
+    
+    # ================== Functions for main routine =====================
 
     def main(self, df_dict):
+        """
+        Main loop of the Trader.
+        """
         self.timestamp = self.streamer.timestamp
         # Periodically refresh access tokens
         if self.timestamp.hour % 12 == 0 and self.timestamp.minute == 0:
@@ -273,7 +284,7 @@ class LiveTrader:
         # If an order was processed, fetch the latest position info.
         # Otherwise, calculate current positions locally
         update = self._update_order_queue()
-        self._update_stats(
+        self._update_position_cache(
             df_dict, new=update, option_update=len(self.option_positions) > 0
         )
 
@@ -322,9 +333,10 @@ class LiveTrader:
         new_order = []
         order_filled = False
         for order in self.order_queue:
+            # TODO: handle cancelled orders
             if order["status"] == "filled":
                 order_filled = True
-                debugger.debug(f"Order {order['id']} filled at {order['filled_time']}")
+                debugger.debug(f"Order {order['id']} filled at {order['filled_time']} at {order['filled_price']}")
                 self.storage.store_transaction(
                     order["filled_time"],
                     "N/A",
@@ -340,14 +352,14 @@ class LiveTrader:
         # if an order was processed, update the positions and account info
         return order_filled
 
-    def _update_stats(self, df_dict, new=False, option_update=False):
+    def _update_position_cache(self, df_dict, new=False, option_update=False):
         """Update local cache of stocks, options, and crypto positions"""
         # Update entries in local cache
         # API should also be called if load_watch is false, as there is a high chance
         # that data in local cache are not representative of the entire portfolio,
         # meaning total equity cannot be calculated locally
         if new:
-            self._update_positions()
+            self._fetch_account_data()
         if option_update:
             self.broker.update_option_positions(self.option_positions)
 
@@ -379,7 +391,7 @@ class LiveTrader:
         equity = net_value + self.account["cash"]
         self.account["equity"] = equity
 
-    def _update_positions(self):
+    def _fetch_account_data(self):
         pos = self.broker.fetch_stock_positions()
         self.stock_positions = [p for p in pos if p["symbol"] in self.interval]
         pos = self.broker.fetch_option_positions()
