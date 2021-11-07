@@ -56,7 +56,7 @@ class Webull(API):
         debugger.debug(f"Logged-in?: {self.api.is_logged_in()}, Paper: {self.paper}")
 
     def refresh_cred(self):
-        debugger.debug("Refreshing creds for Webull...")
+        super().refresh_cred()
         # self.api.logout()
         self.api.refresh_login(save_token=True)
         # self.login()

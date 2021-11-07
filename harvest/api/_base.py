@@ -83,7 +83,7 @@ class API:
         Most API endpoints, for security reasons, require a refresh of the access token
         every now and then. This method should perform a refresh of the access token.
         """
-        pass
+        debugger.info(f"Refreshing credentials for {type(self).__name__}.")
 
     def setup(self, interval: Dict, trader=None, trader_main=None) -> None:
         """

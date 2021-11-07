@@ -21,7 +21,7 @@ Methods that perform an action should follow this naming convention:
 
 Algo class is the main interface between users and the program, so
 remember the following guidelines for handling inputs and outputs:
--   Date inputs can be a string, a naive DateTime object, or a Timestamp object. 
+-   Date inputs can be a string, a naive DateTime object, or a Timestamp object.
     These must be converted to UTC timezone DateTime objects using convert_input_to_datetime()
     before being passed onto other parts of the code. The same applies for timedelta inputs.
 -   Conversely, date outputs must be converted to a naive DateTime object set to the user's timezone.
@@ -610,6 +610,7 @@ class BaseAlgo:
             interval = self.interval
         if len(symbol) <= 6:
             df = self.trader.storage.load(symbol, interval).iloc[[-1]][symbol]
+            print(self.trader.storage.load(symbol, interval))
             return pandas_timestamp_to_local(df, self.trader.timezone)
         debugger.warning("Candles not available for options")
         return None

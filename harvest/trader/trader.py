@@ -2,11 +2,12 @@
 from logging import debug
 import re
 import threading
+import traceback
 import sys
 from sys import exit
 from signal import signal, SIGINT
 import time
-import traceback
+import datetime as dt
 
 # External libraries
 import tzlocal
@@ -45,11 +46,13 @@ class LiveTrader:
         self._init_checks()
 
         self._set_streamer_broker(streamer, broker)
+        # Initialize the storage
         self.storage = (
             BaseStorage() if storage is None else storage
-        )  # Initialize the storage
-        self._init_attributes()
+        )  
+        self.storage.setup(self)
 
+        self._init_attributes()
         self._setup_debugger(debug)
 
     def _init_checks(self):
@@ -101,7 +104,14 @@ class LiveTrader:
             f"Streamer: {type(self.streamer).__name__}\nBroker: {type(self.broker).__name__}\nStorage: {type(self.storage).__name__}"
         )
 
-    def start(self, interval="5MIN", aggregations=[], sync=True, server=False):
+    def start(
+        self,
+        interval="5MIN",
+        aggregations=[],
+        sync=True,
+        server=False,
+        all_history=True,
+    ):
         """Entry point to start the system.
 
         :param str? interval: The interval to run the algorithm. defaults to '5MIN'
@@ -109,8 +119,7 @@ class LiveTrader:
             For example, if this is set to ['5MIN', '30MIN'], and interval is '1MIN', the algorithm will have access to
             5MIN, 30MIN aggregated data in addition to 1MIN data. defaults to None
         :param bool? sync: If true, the system will sync with the broker and fetch current positions and pending orders. defaults to true.
-        :kill_switch: If true, kills the infinite loop in streamer. Primarily used for testing. defaults to False.
-
+        :param bool? all_history: If true, gets all history for all the given assets and if false only get data in the past three days.
         """
         debugger.debug("Setting up Harvest...")
 
@@ -139,6 +148,7 @@ class LiveTrader:
 
         # Initialize the account
         self._setup_account()
+        self.storage.init_performace_data(self.account["equity"])
 
         self.broker.setup(self.interval, self, self.main)
         if self.broker != self.streamer:
@@ -147,7 +157,7 @@ class LiveTrader:
             self.streamer.setup(self.interval, self, self.main)
 
         # Initialize the storage
-        self._storage_init()
+        self._storage_init(all_history)
 
         for a in self.algo:
             a.trader = self
@@ -251,14 +261,18 @@ class LiveTrader:
             raise Exception("Failed to load account info from broker.")
         self.account = ret
 
-    def _storage_init(self):
-        """Initializes the storage."""
+    def _storage_init(self, all_history: bool):
+        """
+        Initializes the storage.
+        :all_history: bool :
+        """
 
         for sym in self.interval:
             for inter in [self.interval[sym]["interval"]] + self.interval[sym][
                 "aggregations"
             ]:
-                df = self.streamer.fetch_price_history(sym, inter)
+                start = None if all_history else now() - dt.timedelta(days=3)
+                df = self.streamer.fetch_price_history(sym, inter, start)
                 self.storage.store(sym, inter, df)
     
     # ================== Functions for main routine =====================
@@ -271,6 +285,8 @@ class LiveTrader:
         # Periodically refresh access tokens
         if self.timestamp.hour % 12 == 0 and self.timestamp.minute == 0:
             self.streamer.refresh_cred()
+        
+        self.storage.add_performance_data(self.account["equity"])
 
         # Save the data locally
         for sym in df_dict:
@@ -294,6 +310,7 @@ class LiveTrader:
                 new_algo.append(a)
                 continue
             try:
+                debugger.info(f"Running algo: {a}")
                 a.main()
                 new_algo.append(a)
             except Exception as e:
@@ -427,7 +444,9 @@ class LiveTrader:
 
         if total_price >= buy_power:
             debugger.error(
-                f"""Not enough buying power.\n Total price ({price} * {quantity} * 1.05 = {limit_price*quantity}) exceeds buying power {buy_power}.\n Reduce purchase quantity or increase buying power."""
+                "Not enough buying power.\n" + 
+                f"Total price ({price} * {quantity} * 1.05 = {limit_price*quantity}) exceeds buying power {buy_power}." + 
+                "Reduce purchase quantity or increase buying power."
             )
             return None
         

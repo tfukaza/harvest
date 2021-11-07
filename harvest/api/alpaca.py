@@ -1,6 +1,5 @@
 # Builtins
 import yaml
-import asyncio
 import threading
 import datetime as dt
 from typing import Any, Dict, List, Tuple
@@ -45,11 +44,11 @@ class Alpaca(StreamAPI):
             data_feed=data_feed,
         )
         self.data_lock = threading.Lock()
-        self.data = {"stocks": {}, "cryptos": {}}
+        self.data = {}
 
     async def update_data(self, bar):
         # Update data with the latest bars
-        # self.data_lock.acquire()
+        self.data_lock.acquire()
         bar = bar.__dict__["_raw"]
         symbol = bar["symbol"]
         df = pd.DataFrame(
@@ -64,10 +63,18 @@ class Alpaca(StreamAPI):
                 }
             ]
         )
-        if is_crypto(symbol):
-            self.main(self._format_df(df, symbol))
+
+        symbol = f"@{symbol}" if is_crypto(symbol) else symbol
+        debugger.info(f"Got data for {symbol}")
+        df = self._format_df(df, symbol)
+        self.data[symbol] = df
+        if set(self.data.keys()) == set(self.watch_stock + self.watch_crypto):
+            data = self.data
+            self.data = {}
+            self.data_lock.release()
+            self.trader_main(data)
         else:
-            self.main(self._format_df(df, f"@{symbol}"))
+            self.data_lock.release()
 
     def setup(self, interval: Dict, trader=None, trader_main=None):
         super().setup(interval, trader, trader_main)
@@ -88,11 +95,6 @@ class Alpaca(StreamAPI):
         self.option_cache = {}
 
     def start(self):
-        threading.Thread(target=self.capture_data, daemon=True).start()
-
-    def capture_data(self):
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
         self.stream.run()
 
     def exit(self):
@@ -104,7 +106,7 @@ class Alpaca(StreamAPI):
     def fetch_price_history(
         self,
         symbol: str,
-        interval: str,
+        interval: Interval,
         start: dt.datetime = None,
         end: dt.datetime = None,
     ):
@@ -119,9 +121,7 @@ class Alpaca(StreamAPI):
         if start >= end:
             return pd.DataFrame()
 
-        val, unit = expand_interval(interval)
-        df = self.get_data_from_alpaca(symbol, val, unit, start, end)
-
+        df = self.get_data_from_alpaca(symbol, interval, start, end)
         return df
 
     @API._exception_handler
@@ -140,8 +140,16 @@ class Alpaca(StreamAPI):
 
     @API._exception_handler
     def fetch_stock_positions(self):
+        def fmt(stock: Dict[str, Any]):
+            return {
+                "symbol": stock["symbol"],
+                "avg_price": float(stock["avg_entry_price"]),
+                "quantity": float(stock["qty"]),
+                "alpaca": stock,
+            }
+
         return [
-            pos.__dict__["_raw"]
+            fmt(pos.__dict__["_raw"])
             for pos in self.api.list_positions()
             if pos.asset_class != "crypto"
         ]
@@ -159,8 +167,16 @@ class Alpaca(StreamAPI):
             )
             return []
 
+        def fmt(crypto: Dict[str, Any]):
+            return {
+                "symbol": "@" + crypto["symbol"],
+                "avg_price": float(crypto["avg_entry_price"]),
+                "quantity": float(stock["qty"]),
+                "alpaca": crypto,
+            }
+
         return [
-            pos.__dict__["_raw"]
+            fmt(pos.__dict__["_raw"])
             for pos in self.api.list_positions()
             if pos.asset_class == "crypto"
         ]
@@ -171,7 +187,14 @@ class Alpaca(StreamAPI):
 
     @API._exception_handler
     def fetch_account(self):
-        return self.api.get_account().__dict__["_raw"]
+        account = self.api.get_account().__dict__["_raw"]
+        return {
+            "equity": float(account["equity"]),
+            "cash": float(account["cash"]),
+            "buying_power": float(account["buying_power"]),
+            "multiplier": float(account["multiplier"]),
+            "alpaca": account,
+        }
 
     @API._exception_handler
     def fetch_stock_order_status(self, id: str):
@@ -189,7 +212,10 @@ class Alpaca(StreamAPI):
 
     @API._exception_handler
     def fetch_order_queue(self):
-        return [pos.__dict__["_raw"] for pos in self.api.list_positions()]
+        return [
+            self.format_order_status(pos.__dict__["_raw"])
+            for pos in self.api.list_orders()
+        ]
 
     # --------------- Methods for Trading --------------- #
 
@@ -213,7 +239,7 @@ class Alpaca(StreamAPI):
             extended_hours=extended,
         )
 
-    def order_option_limit(
+    def order_crypto_limit(
         self,
         side: str,
         symbol: str,
@@ -227,15 +253,22 @@ class Alpaca(StreamAPI):
 
         symbol = symbol[1:]
 
-        return self.api.submit_order(
-            symbol,
+        order = self.api.submit_order(
+            asset,
             quantity,
             side=side,
             type="limit",
             limit_price=limit_price,
             time_in_force=in_force,
             extended_hours=extended,
-        )
+        ).__dict__["_raw"]
+
+        return {
+            "type": "CRYPTO" if is_crypto(symbol) else "STOCK",
+            "id": order["id"],
+            "symbol": symbol,
+            "alpaca": order,
+        }
 
     def order_option_limit(
         self,
@@ -252,11 +285,23 @@ class Alpaca(StreamAPI):
 
     # ------------- Helper methods ------------- #
 
+    def format_order_status(self, order: Dict[str, Any], is_stock: bool = True):
+        return {
+            "type": "STOCK" if is_stock else "CRYPTO",
+            "id": order["id"],
+            "symbol": ("" if is_stock else "@") + order["symbol"],
+            "quantity": float(order["qty"]),
+            "filled_quantity": float(order["filed_qty"]),
+            "side": order["side"],
+            "time_in_force": order["time_in_force"],
+            "status": order["status"],
+            "alpaca": order,
+        }
+
     def get_data_from_alpaca(
         self,
         symbol: str,
-        multipler: int,
-        timespan: str,
+        interval: Interval,
         start: dt.datetime,
         end: dt.datetime,
     ) -> pd.DataFrame:
@@ -266,11 +311,20 @@ class Alpaca(StreamAPI):
             )
             return pd.DataFrame()
 
-        if self.basic and start < now() - dt.timedelta(days=365 * 5):
+        current_time = now()
+        if self.basic and start < current_time - dt.timedelta(days=365 * 5):
             debugger.warning(
                 "Start time is over five years old! Only data from the past five years will be returned for basic accounts."
             )
+            start = current_time - dt.timedelta(days=365 * 5)
 
+        if self.basic and end >= current_time - dt.timedelta(minutes=15):
+            debugger.warning(
+                "End time is less than 15 minutes old! Only data over 15 minutes old will be returned for basic accounts."
+            )
+            end = current_time - dt.timedelta(minutes=15)
+
+        timespan = expand_interval(interval)[1]
         if timespan == "MIN":
             timespan = "1Min"
         elif timespan == "HR":
@@ -278,8 +332,8 @@ class Alpaca(StreamAPI):
         elif timespan == "DAY":
             timespan = "1Day"
 
-        start_str = start.strftime("%Y-%m-%d")
-        end_str = end.strftime("%Y-%m-%d")
+        start_str = start.isoformat()
+        end_str = end.isoformat()
 
         temp_symbol = symbol[1:] if is_crypto(symbol) else symbol
         bars = self.api.get_bars(
@@ -287,8 +341,7 @@ class Alpaca(StreamAPI):
         )
         df = pd.DataFrame((bar.__dict__["_raw"] for bar in bars))
         df = self._format_df(df, symbol)
-        df = aggregate_df(df, f"{multipler}{timespan}")
-        df = df.loc[start:end]
+        df = aggregate_df(df, interval)
         return df
 
     def _format_df(self, df: pd.DataFrame, symbol: str):
@@ -304,8 +357,9 @@ class Alpaca(StreamAPI):
             },
             inplace=True,
         )
+
+        df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
         df.set_index("timestamp", inplace=True)
-        df.index = pd.DatetimeIndex(df.index)
 
         df.columns = pd.MultiIndex.from_product([[symbol], df.columns])
 

@@ -14,22 +14,25 @@ from harvest.utils import *
 
 
 class PolygonStreamer(API):
+
+    interval_list = [Interval.MIN_1, Interval.MIN_5, Interval.HR_1, Interval.DAY_1]
+
     def __init__(self, path: str = None, is_basic_account: bool = False):
         super().__init__(path)
         self.basic = is_basic_account
 
-    def setup(self, watch: List[str], interval: str, trader=None, trader_main=None):
+    def setup(self, interval, trader=None, trader_main=None):
         self.watch_stock = []
         self.watch_crypto = []
 
-        for s in watch:
-            if is_crypto(s):
-                self.watch_crypto.append(s)
+        for sym in interval:
+            if is_crypto(sym):
+                self.watch_crypto.append(sym)
             else:
-                self.watch_stock.append(s)
+                self.watch_stock.append(sym)
 
         self.option_cache = {}
-        super().setup(watch, interval, interval, trader, trader_main)
+        super().setup(interval, trader, trader_main)
 
     def exit(self):
         self.option_cache = {}
@@ -44,9 +47,7 @@ class PolygonStreamer(API):
             return
 
         for s in combo:
-            df = self.get_data_from_polygon(
-                s, 1, "day", now() - dt.timedelta(days=1), now()
-            )
+            df = self.fetch_price_history(s, Interval.MIN_1, now() - dt.timedelta(days=1), now()).iloc[-1]
             df_dict[s] = df
             debugger.debug(df)
         self.trader_main(df_dict)
@@ -176,30 +177,30 @@ class PolygonStreamer(API):
 
         crypto = False
         if is_crypto(symbol):
-            symbol = "X:" + symbol[1:] + "-USD"
+            temp_symbol = "X:" + symbol[1:] + "USD"
             crypto = True
 
-        request_form = "https://api.polygon.io/v2/aggs/ticker/{symbol}/range/{multiplier}/{timespan}/{start}/{end}?adjusted=true&sort=asc&apiKey={api_key}"
+        request_form = "https://api.polygon.io/v2/aggs/ticker/{symbol}/range/{multiplier}/{timespan}/{start}/{end}?adjusted=true&sort=desc&apiKey={api_key}"
         request = request_form.format(
-            symbol=symbol,
+            symbol=temp_symbol if crypto else symbol,
             multiplier=multipler,
             timespan=timespan,
             start=start_str,
             end=end_str,
             api_key=self.config["api_key"],
         )
+
         response = json.load(urllib.request.urlopen(request))
 
         if response["status"] != "ERROR":
-            df = pd.DataFrame(response["results"])
+            df = pd.DataFrame(response["results"]).iloc[::-1]
         else:
             debugger.error(f"Request error! Returning empty dataframe. \n {response}")
             return pd.DataFrame()
 
-        if crypto:
-            symbol = "@" + symbol[2:-4]
         df = self._format_df(df, symbol)
         df = df.loc[start:end]
+
         return df
 
     def _format_df(self, df: pd.DataFrame, symbol: str):
@@ -214,13 +215,8 @@ class PolygonStreamer(API):
             }
         )
         df = df[["timestamp", "open", "high", "low", "close", "volume"]].astype(float)
-        df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
-        # Timestamps are in US/Eastern and then converted UTC
-        df.index = pd.DatetimeIndex(
-            df["timestamp"], tz=pytz.timezone("US/Eastern")
-        ).tz_convert(tz=pytz.utc)
+        df.index = pd.to_datetime(df["timestamp"], unit="ms", utc=True)
         df.drop(columns=["timestamp"], inplace=True)
-
         df.columns = pd.MultiIndex.from_product([[symbol], df.columns])
 
         return df.dropna()
