@@ -514,22 +514,17 @@ class BaseAlgo:
     def get_asset_quantity(self, symbol: str = None) -> float:
         """Returns the quantity owned of a specified asset.
 
+        Assets that are currently pending to be sold are not counted.
+
         :param str? symbol:  Symbol of asset. defaults to first symbol in watchlist
         :returns: Quantity of asset as float. 0 if quantity is not owned.
         :raises:
         """
         if symbol is None:
             symbol = self.watchlist[0]
-        if len(symbol) <= 6:
-            search = self.trader.stock_positions + self.trader.crypto_positions
-            for p in search:
-                if p["symbol"] == symbol:
-                    return p["quantity"]
-        else:
-            for p in self.trader.option_positions:
-                if p["symbol"] == symbol:
-                    return p["quantity"]
-        return 0
+        
+        return self.trader.get_asset_quantity(symbol, exclude_pending_sell=True)
+
 
     def get_asset_cost(self, symbol: str = None) -> float:
         """Returns the average cost of a specified asset.

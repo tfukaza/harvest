@@ -432,21 +432,9 @@ class LiveTrader:
 
     def sell(self, symbol: str, quantity: int, in_force: str, extended: bool):
         # Check how many of the given asset we currently own
-        owned_qty = sum(
-            p["quantity"]
-            for p in self.stock_positions
-            + self.crypto_positions
-            + self.option_positions
-            if p["symbol"] == symbol
-        )
-        # Subtract any assets that are in the process of being sold.
-        owned_qty -= sum(
-            o["quantity"]
-            for o in self.order_queue
-            if o["symbol"] == symbol and o["side"] == "sell"
-        )
+        owned_qty = self.get_asset_quantity(symbol, exclude_pending_sell=True)
         if quantity > owned_qty:
-            debugger.debug("SELL failed")
+            debugger.debug("SELL failed: More quantities are being sold than currently owned.")
             return None
         
         if symbol_type(symbol) == "OPTION":
@@ -465,6 +453,55 @@ class LiveTrader:
         self.order_queue.append(ret)
         debugger.debug(f"SELL: {self.timestamp}, {symbol}, {quantity}")
         return ret
+    
+    # ================ Helper Functions ======================
+    def get_asset_quantity(
+        self, symbol: str = None, 
+        include_pending_buy = False,
+        exclude_pending_sell = False ) -> float:
+        """Returns the quantity owned of a specified asset.
+
+        :param str? symbol:  Symbol of asset. defaults to first symbol in watchlist
+        :returns: Quantity of asset as float. 0 if quantity is not owned.
+        :raises:
+        """
+        if symbol is None:
+            symbol = self.watchlist_global[0]
+    
+        if typ := symbol_type(symbol) == "OPTION":
+            owned_qty = sum(
+                p["quantity"]
+                for p in self.option_positions
+                if p["symbol"] == symbol
+            )
+        elif typ == "CRYPTO":
+            owned_qty = sum(
+                p["quantity"]
+                for p in self.crypto_positions
+                if p["symbol"] == symbol
+            )
+        else:
+            owned_qty = sum(
+                p["quantity"]
+                for p in self.stock_positions
+                if p["symbol"] == symbol
+            )
+        
+        if include_pending_buy:
+            owned_qty += sum(
+                o["quantity"]
+                for o in self.order_queue
+                if o["symbol"] == symbol and o["side"] == "buy"
+            )
+        
+        if exclude_pending_sell:
+            owned_qty -= sum(
+                o["quantity"]
+                for o in self.order_queue
+                if o["symbol"] == symbol and o["side"] == "sell"
+            )
+        
+        return owned_qty
 
     # def buy_option(self, symbol: str, quantity: int, in_force: str):
     #     ret = self.broker.buy_option(symbol, quantity, in_force)
