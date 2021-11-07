@@ -18,6 +18,7 @@ from harvest.utils import *
 class Robinhood(API):
 
     interval_list = [Interval.SEC_15, Interval.MIN_5, Interval.HR_1, Interval.DAY_1]
+    exchange = "NASDAQ"
 
     def __init__(self, path=None):
         super().__init__(path)
@@ -341,6 +342,15 @@ class Robinhood(API):
     @API._exception_handler
     def fetch_stock_order_status(self, id):
         ret = rh.get_stock_order_info(id)
+        # Check if any of the orders were executed
+        executions = ret["executions"]
+        if len(executions) > 0:
+            filled_time = self._rh_datestr_to_datetime(executions[0]["timestamp"])
+            filled_time = filled_time.replace(tzinfo=pytz.utc)
+            filled_price = float(executions[0]["effective_price"])
+        else:
+            filled_time = None
+            filled_price = None
         return {
             "type": "STOCK",
             "id": ret["id"],
@@ -350,12 +360,23 @@ class Robinhood(API):
             "side": ret["side"],
             "time_in_force": ret["time_in_force"],
             "status": ret["status"],
+            "filled_time": filled_time,
+            "filled_price": filled_price,
         }
 
     @API._exception_handler
     def fetch_option_order_status(self, id):
         ret = rh.get_option_order_info(id)
         debugger.debug(ret)
+        # Check if any of the orders were executed
+        executions = ret["legs"][0]["executions"]
+        if len(executions) > 0:
+            filled_time = self._rh_datestr_to_datetime(executions[0]["timestamp"])
+            filled_time = filled_time.replace(tzinfo=pytz.utc)
+            filled_price = float(executions[0]["effective_price"])
+        else:
+            filled_time = None
+            filled_price = None
         return {
             "type": "OPTION",
             "id": ret["id"],
@@ -365,24 +386,35 @@ class Robinhood(API):
             "side": ret["legs"][0]["side"],
             "time_in_force": ret["time_in_force"],
             "status": ret["state"],
+            "filled_time": filled_time,
+            "filled_price": filled_price
         }
 
     @API._exception_handler
     def fetch_crypto_order_status(self, id):
         ret = rh.get_crypto_order_info(id)
         debugger.debug(ret)
+        # Check if any of the orders were executed
+        executions = ret["executions"]
+        if len(executions) > 0:
+            filled_time = self._rh_datestr_to_datetime(executions[0]["timestamp"])
+            filled_time = filled_time.replace(tzinfo=pytz.utc)
+            filled_price = float(executions[0]["effective_price"])
+        else:
+            filled_time = None
+            filled_price = None
+
         return {
             "type": "CRYPTO",
             "id": ret["id"],
+            "symbol": ret["symbol"],
             "quantity": float(ret["quantity"]),
             "filled_qty": float(ret["cumulative_quantity"]),
-            # "filled_price": float(ret["executions"][0]["effective_price"])
-            # if len(ret["executions"])
-            # else 0,
-            # "filled_cost": float(ret["rounded_executed_notional"]),
             "side": ret["side"],
             "time_in_force": ret["time_in_force"],
             "status": ret["state"],
+            "filled_time": filled_time,
+            "filled_price": filled_price,
         }
 
     @API._exception_handler
@@ -390,7 +422,6 @@ class Robinhood(API):
         queue = []
         ret = rh.get_all_open_stock_orders()
         for r in ret:
-            # print(r)
             sym = rh.get_symbol_by_url(r["instrument"])
             queue.append(
                 {
@@ -402,6 +433,8 @@ class Robinhood(API):
                     "time_in_force": r["time_in_force"],
                     "status": r["state"],
                     "side": r["side"],
+                    "filled_time": None,
+                    "filled_price": None,
                 }
             )
 
@@ -428,6 +461,8 @@ class Robinhood(API):
                     "time_in_force": r["time_in_force"],
                     "status": r["state"],
                     "legs": legs,
+                    "filled_time": None,
+                    "filled_price": None,
                 }
             )
         ret = rh.get_all_open_crypto_orders()
@@ -443,6 +478,8 @@ class Robinhood(API):
                     "time_in_force": r["time_in_force"],
                     "status": r["state"],
                     "side": r["side"],
+                    "filled_time": None,
+                    "filled_price": None,
                 }
             )
         return queue
@@ -497,14 +534,14 @@ class Robinhood(API):
         ret = None
         try:
             if side == "buy":
-                ret = rh.order_buy_limit(
+                ret = rh.order_buy_crypto_limit(
                     symbol=symbol,
                     quantity=quantity,
                     timeInForce=in_force,
                     limitPrice=limit_price,
                 )
             else:
-                ret = rh.order_sell_limit(
+                ret = rh.order_sell_crypto_limit(
                     symbol=symbol,
                     quantity=quantity,
                     timeInForce=in_force,
@@ -513,7 +550,7 @@ class Robinhood(API):
             return {
                 "type": "CRYPTO",
                 "id": ret["id"],
-                "symbol": symbol,
+                "symbol": '@'+ symbol,
             }
         except:
             debugger.error("Error while placing order.\nReturned: {ret}", exc_info=True)
@@ -592,6 +629,10 @@ class Robinhood(API):
         df.columns = pd.MultiIndex.from_product([watch, df.columns])
 
         return df.dropna()
+    
+    def _rh_datestr_to_datetime(self, date_str: str):
+        date_str = date_str[:-3]+date_str[-2:]
+        return dt.datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%S.%f%z")
 
     def create_secret(self, path):
         import harvest.wizard as wizard

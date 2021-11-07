@@ -22,8 +22,7 @@ class API:
 
     Attributes
     :interval_list: A list of supported intervals.
-    :fetch_interval: A string indicating the interval the broker fetches the latest asset data.
-        This should be initialized in setup_run (see below).
+    :exchange: The market the API trades on. Ignored if the API is not a broker. 
     """
 
     interval_list = [
@@ -34,6 +33,8 @@ class API:
         Interval.HR_1,
         Interval.DAY_1,
     ]
+
+    exchange = ""
 
     def __init__(self, path: str = None):
         """
@@ -305,6 +306,19 @@ class API:
         raise NotImplementedError(
             f"{type(self).__name__} does not support this streamer method: `fetch_option_market_data`."
         )
+    
+    def fetch_market_hours(self, date: datetime.date):
+        """
+        Returns the market hours for a given day. 
+        Hours are based on the exchange specified in the class's 'exchange' attribute.
+
+        :returns: A dictionary with the following keys and values:
+            - open: Time the market opens in UTC timezone.
+            - close: Time the market closes in UTC timezone.
+        """
+        raise NotImplementedError(
+            f"{type(self).__name__} does not support this broker method: `fetch_market_hours`."
+        )
 
     # ------------- Broker methods ------------- #
 
@@ -397,6 +411,8 @@ class API:
             - side: 'buy' or 'sell'
             - time_in_force: Time the order is in force
             - status: Status of the order
+            - filled_time: Time the order was filled
+            - filled_price: Price the order was filled at
         """
         raise NotImplementedError(
             f"{type(self).__name__} does not support this broker method: `fetch_stock_order_status`."
@@ -417,6 +433,8 @@ class API:
             - side: 'buy' or 'sell'
             - time_in_force: Time the order is in force
             - status: Status of the order
+            - filled_time: Time the order was filled
+            - filled_price: Price the order was filled at
         """
         raise NotImplementedError(
             f"{type(self).__name__} does not support this broker method: `fetch_option_order_status`."
@@ -437,6 +455,8 @@ class API:
             - side: 'buy' or 'sell'
             - time_in_force: Time the order is in force
             - status: Status of the order
+            - filled_time: Time the order was filled
+            - filled_price: Price the order was filled at
         """
         raise NotImplementedError(
             f"{type(self).__name__} does not support this broker method: `fetch_crypto_order_status`."
@@ -447,36 +467,34 @@ class API:
         Returns all current pending orders
 
         returns: A list of dictionaries with the following keys and values:
-            For stocks:
-                - type: "STOCK"
-                - symbol: Symbol of stock
+            For stocks and crypto:
+                - type: "STOCK" or "CRYPTO"
+                - symbol: Symbol of asset
                 - quantity: Quantity ordered
                 - filled_qty: Quantity filled
                 - id: ID of order
                 - time_in_force: Time in force
                 - status: Status of the order
                 - side: 'buy' or 'sell'
+                - filled_time: Time the order was filled
+                - filled_price: Price the order was filled at
             For options:
                 - type: "OPTION",
                 - symbol: OCC symbol of option
                 - base_symbol:
                 - quantity: Quantity ordered
                 - filled_qty: Quantity filled
+                - filled_time: Time the order was filled
+                - filled_price: Price the order was filled at
                 - id: ID of order
                 - time_in_force: Time in force
                 - status: Status of the order
                 - legs: A list of dictionaries with keys:
                     - id: id of leg
                     - side: 'buy' or 'sell'
-            For crypto:
-                - type: "CRYPTO"
-                - symbol: Symbol of crypto
-                - quantity: Quantity ordered
-                - filled_qty: Quantity filled
-                - id: ID of order
-                - time_in_force: Time in force
-                - status: Status of the order
-                - side: 'buy' or 'sell'
+                    Harvest does not support buying multiple options in a single transaction,
+                    so legs will always have a length of 1.
+
         """
         debugger.error(
             f"{type(self).__name__} does not support this broker method: `fetch_order_queue`. Returning an empty list."
@@ -578,49 +596,19 @@ class API:
     # These do not need to be re-implemented in a subclass
 
     def buy(
-        self, symbol: str, quantity: int, in_force: str = "gtc", extended: bool = False
+        self, symbol: str, quantity: int, limit_price: float, in_force: str = "gtc", extended: bool = False
     ):
         """
         Buys the specified asset.
 
         :symbol:    Symbol of the asset to buy
         :quantity:  Quantity of asset to buy
+        :limit_price:   Limit price to buy at
         :in_force:  Duration the order is in force
         :extended:  Whether to trade in extended hours or not.
 
         :returns: The result of order_limit(). Returns None if there is an issue with the parameters.
         """
-        if quantity <= 0.0:
-            debugger.error(
-                f"Quantity cannot be less than or equal to 0: was given {quantity}"
-            )
-            return None
-        if self.trader is None:
-            buy_power = self.fetch_account()["buying_power"]
-            # If there is no trader, streamer must be manually set
-            price = self.streamer.fetch_price_history(
-                symbol,
-                self.interval[symbol]["interval"],
-                now() - dt.timedelta(days=7),
-                now(),
-            )[symbol]["close"][-1]
-        else:
-            buy_power = self.trader.account["buying_power"]
-            if symbol_type(symbol) == "OPTION":
-                price = self.trader.streamer.fetch_option_market_data(symbol)["price"]
-            else:
-                price = self.trader.storage.load(
-                    symbol, self.interval[symbol]["interval"]
-                )[symbol]["close"][-1]
-
-        limit_price = mark_up(price)
-        total_price = limit_price * quantity
-
-        if total_price >= buy_power:
-            debugger.error(
-                f"""Not enough buying power.\n Total price ({price} * {quantity} * 1.05 = {limit_price*quantity}) exceeds buying power {buy_power}.\n Reduce purchase quantity or increase buying power."""
-            )
-            return None
 
         debugger.debug(f"{type(self).__name__} ordered a buy of {quantity} {symbol}")
         typ = symbol_type(symbol)
@@ -630,7 +618,7 @@ class API:
             )
         elif typ == "CRYPTO":
             return self.order_crypto_limit(
-                "buy", symbol, quantity, limit_price, in_force, extended
+                "buy", symbol[1:], quantity, limit_price, in_force, extended
             )
         elif typ == "OPTION":
             sym, exp_date, option_type, strike = self.occ_to_data(symbol)
@@ -651,6 +639,7 @@ class API:
         self,
         symbol: str = None,
         quantity: int = 0,
+        limit_price: float = 0.0,
         in_force: str = "gtc",
         extended: bool = False,
     ):
@@ -658,38 +647,13 @@ class API:
 
         :symbol:    Symbol of the asset to buy
         :quantity:  Quantity of asset to buy
+        :limit_price:   Limit price to buy at
         :in_force:  Duration the order is in force
         :extended:  Whether to trade in extended hours or not.
 
         :returns: The result of order_limit(). Returns None if there is an issue with the parameters.
         """
-        if symbol is None:
-            symbol = self.watch[0]
-        if quantity <= 0.0:
-            debugger.error(
-                f"Quantity cannot be less than or equal to 0: was given {quantity}"
-            )
-            return None
-
-        if self.trader is None:
-            if len(symbol) > 6:
-                price = self.streamer.fetch_option_market_data(symbol)["price"]
-            else:
-                price = self.streamer.fetch_price_history(
-                    symbol,
-                    self.interval[symbol]["interval"],
-                    now() - dt.timedelta(days=7),
-                    now(),
-                )[symbol]["close"][-1]
-        elif len(symbol) > 6:
-            price = self.trader.streamer.fetch_option_market_data(symbol)["price"]
-        else:
-            price = self.trader.storage.load(symbol, self.interval[symbol]["interval"])[
-                symbol
-            ]["close"][-1]
-
-        limit_price = mark_down(price)
-
+    
         debugger.debug(f"{type(self).__name__} ordered a sell of {quantity} {symbol}")
 
         typ = symbol_type(symbol)
@@ -699,7 +663,7 @@ class API:
             )
         elif typ == "CRYPTO":
             return self.order_crypto_limit(
-                "sell", symbol, quantity, limit_price, in_force, extended
+                "sell", symbol[1:], quantity, limit_price, in_force, extended
             )
         elif typ == "OPTION":
             sym, exp_date, option_type, strike = self.occ_to_data(symbol)
@@ -716,85 +680,84 @@ class API:
         else:
             debugger.error(f"Invalid asset type for {symbol}")
 
-    def buy_option(self, symbol: str, quantity: int = 0, in_force: str = "gtc"):
-        """
-        Buys the specified option.
+    # def buy_option(self, symbol: str, quantity: int = 0, in_force: str = "gtc"):
+    #     """
+    #     Buys the specified option.
 
-        :symbol:    Symbol of the asset to buy, in OCC format.
-        :quantity:  Quantity of asset to buy
-        :in_force:  Duration the order is in force
+    #     :symbol:    Symbol of the asset to buy, in OCC format.
+    #     :quantity:  Quantity of asset to buy
+    #     :in_force:  Duration the order is in force
 
-        :returns: The result of order_option_limit(). Returns None if there is an issue with the parameters.
-        """
-        if quantity <= 0.0:
-            debugger.error(
-                f"Quantity cannot be less than or equal to 0: was given {quantity}"
-            )
-            return None
-        if self.trader is None:
-            buy_power = self.fetch_account()["buying_power"]
-            price = self.streamer.fetch_option_market_data(symbol)["price"]
-        else:
-            buy_power = self.trader.account["buying_power"]
-            price = self.trader.streamer.fetch_option_market_data(symbol)["price"]
+    #     :returns: The result of order_option_limit(). Returns None if there is an issue with the parameters.
+    #     """
+    #     if quantity <= 0.0:
+    #         debugger.error(
+    #             f"Quantity cannot be less than or equal to 0: was given {quantity}"
+    #         )
+    #         return None
+    #     if self.trader is None:
+    #         buy_power = self.fetch_account()["buying_power"]
+    #         price = self.streamer.fetch_option_market_data(symbol)["price"]
+    #     else:
+    #         buy_power = self.trader.account["buying_power"]
+    #         price = self.trader.streamer.fetch_option_market_data(symbol)["price"]
 
-        limit_price = mark_up(price)
-        total_price = limit_price * quantity
+    #     limit_price = mark_up(price)
+    #     total_price = limit_price * quantity
 
-        if total_price >= buy_power:
-            debugger.warning(
-                f"""
-Not enough buying power 🏦.\n
-Total price ({price} * {quantity} * 1.05 = {limit_price*quantity}) exceeds buying power {buy_power}.\n
-Reduce purchase quantity or increase buying power."""
-            )
+    #     if total_price >= buy_power:
+    #         debugger.warning(
+    #             "Not enough buying power.\n" + 
+    #             f"Total price ({price} * {quantity} * 1.05 = {limit_price*quantity}) exceeds buying power {buy_power}.\n" + 
+    #             "Reduce purchase quantity or increase buying power."
+    #         )
 
-        sym, date, option_type, strike = self.occ_to_data(symbol)
-        return self.order_option_limit(
-            "buy",
-            sym,
-            quantity,
-            limit_price,
-            option_type,
-            date,
-            strike,
-            in_force=in_force,
-        )
+    #     sym, date, option_type, strike = self.occ_to_data(symbol)
+    #     return self.order_option_limit(
+    #         "buy",
+    #         sym,
+    #         quantity,
+    #         limit_price,
+    #         option_type,
+    #         date,
+    #         strike,
+    #         in_force=in_force,
+    #     )
 
-    def sell_option(self, symbol: str, quantity: int = 0, in_force: str = "gtc"):
-        """
-        Sells the specified option.
+    # def sell_option(self, symbol: str, quantity: int = 0, in_force: str = "gtc"):
+    #     """
+    #     Sells the specified option.
 
-        :symbol:    Symbol of the asset to buy, in OCC format.
-        :quantity:  Quantity of asset to buy
-        :in_force:  Duration the order is in force
+    #     :symbol:    Symbol of the asset to buy, in OCC format.
+    #     :quantity:  Quantity of asset to buy
+    #     :in_force:  Duration the order is in force
 
-        :returns: The result of order_option_limit(). Returns None if there is an issue with the parameters.
-        """
-        if quantity <= 0.0:
-            debugger.error(
-                f"Quantity cannot be less than or equal to 0: was given {quantity}"
-            )
-            return None
-        if self.trader is None:
-            price = self.streamer.fetch_option_market_data(symbol)["price"]
-        else:
-            price = self.trader.streamer.fetch_option_market_data(symbol)["price"]
+    #     :returns: The result of order_option_limit(). Returns None if there is an issue with the parameters.
+    #     """
+    #     if quantity <= 0.0:
+    #         debugger.error(
+    #             f"Quantity cannot be less than or equal to 0: was given {quantity}"
+    #         )
+    #         return None
+    #     if self.trader is None:
+    #         price = self.streamer.fetch_option_market_data(symbol)["price"]
+    #     else:
+    #         price = self.trader.streamer.fetch_option_market_data(symbol)["price"]
 
-        limit_price = mark_down(price)
+    #     limit_price = mark_down(price)
 
-        debugger.debug(f"{type(self).__name__} ordered a sell of {quantity} {symbol}")
-        sym, date, option_type, strike = self.occ_to_data(symbol)
-        return self.order_option_limit(
-            "sell",
-            sym,
-            quantity,
-            limit_price,
-            option_type,
-            date,
-            strike,
-            in_force=in_force,
-        )
+    #     debugger.debug(f"{type(self).__name__} ordered a sell of {quantity} {symbol}")
+    #     sym, date, option_type, strike = self.occ_to_data(symbol)
+    #     return self.order_option_limit(
+    #         "sell",
+    #         sym,
+    #         quantity,
+    #         limit_price,
+    #         option_type,
+    #         date,
+    #         strike,
+    #         in_force=in_force,
+    #     )
 
     # -------------- Helper methods -------------- #
 
