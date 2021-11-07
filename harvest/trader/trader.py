@@ -46,11 +46,13 @@ class LiveTrader:
         self._init_checks()
 
         self._set_streamer_broker(streamer, broker)
+        # Initialize the storage
         self.storage = (
             BaseStorage() if storage is None else storage
-        )  # Initialize the storage
-        self._init_attributes()
+        )  
+        self.storage.setup(self)
 
+        self._init_attributes()
         self._setup_debugger(debug)
 
     def _init_checks(self):
@@ -146,6 +148,7 @@ class LiveTrader:
 
         # Initialize the account
         self._setup_account()
+        self.storage.init_performace_data(self.account["equity"])
 
         self.broker.setup(self.interval, self, self.main)
         if self.broker != self.streamer:
@@ -282,6 +285,8 @@ class LiveTrader:
         # Periodically refresh access tokens
         if self.timestamp.hour % 12 == 0 and self.timestamp.minute == 0:
             self.streamer.refresh_cred()
+        
+        self.storage.add_performance_data(self.account["equity"])
 
         # Save the data locally
         for sym in df_dict:
@@ -439,7 +444,9 @@ class LiveTrader:
 
         if total_price >= buy_power:
             debugger.error(
-                f"""Not enough buying power.\n Total price ({price} * {quantity} * 1.05 = {limit_price*quantity}) exceeds buying power {buy_power}.\n Reduce purchase quantity or increase buying power."""
+                "Not enough buying power.\n" + 
+                f"Total price ({price} * {quantity} * 1.05 = {limit_price*quantity}) exceeds buying power {buy_power}." + 
+                "Reduce purchase quantity or increase buying power."
             )
             return None
         

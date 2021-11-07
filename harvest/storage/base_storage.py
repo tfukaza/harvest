@@ -28,6 +28,16 @@ All implementations of Storage class must store the following data:
     - Side: Buy or sell
     - Quantity: Number of shares
     - Price: Price per share
+- Performance History: Database of account equity history,
+    for the following intervals:
+    - 1 day
+    - 1 week
+    - 1 month
+    - 3 months
+    - 1 year, at 1 day intervals
+    - all time, at variable intervals
+    As for 'all time', the interval will be adjusted as the 
+    duration increases.
 
 The exact implementation of these databases is up to the classes that inherit from BaseStorage,
 as long as they implement the API properly.
@@ -38,12 +48,23 @@ class BaseStorage:
     A basic storage that is thread safe and stores data in memory.
     """
 
+    performance_history_intervals = [
+        ("1DAY", 1),
+        ("1WEEK", 7),
+        ("1MONTH", 30),
+        ("3MONTH", 90),
+        ("1YEAR", 365),
+        ("ALL", None),
+    ]
+
     def __init__(
             self, 
             price_storage_size: int = 200, 
             price_storage_limit: bool = True,
             transaction_storage_size: int = 200,
-            transaction_storage_limit: bool = True
+            transaction_storage_limit: bool = True,
+            performance_storage_size: int = 200,
+            performance_storage_limit: bool = True,
         ):
         """
         queue_size: The maximum number of data points to store for asset price history. 
@@ -58,6 +79,8 @@ class BaseStorage:
         self.price_storage_limit = price_storage_limit
         self.transaction_storage_size = transaction_storage_size
         self.transaction_storage_limit = transaction_storage_limit
+        self.performance_storage_size = performance_storage_size
+        self.performance_storage_limit = performance_storage_limit
 
         # BaseStorage uses a python dictionary to store the data,
         # where key is asset symbol and value is a pandas dataframe.
@@ -66,6 +89,20 @@ class BaseStorage:
         self.storage_transaction = pd.DataFrame(
             columns=["timestamp", "algorithm_name", "symbol", "side", "quantity", "price"]
         )
+
+        self.storage_performance = {}
+        for interval, _ in self.performance_history_intervals:
+            self.storage_performance[interval] = pd.DataFrame(
+                columns=["equity"], index=[]
+            )
+    
+    def setup(self, trader):
+        """
+        Sets up the storage 
+        """
+        self.trader = trader
+
+
 
     def store(
         self, symbol: str, interval: Interval, data: pd.DataFrame, remove_duplicate=True
@@ -188,30 +225,6 @@ class BaseStorage:
             [timestamp, algorithm_name, symbol, side, quantity, price],
             ignore_index=True
         )
-    
-
-    def aggregate(
-        self,
-        symbol: str,
-        base: Interval,
-        target: Interval,
-        remove_duplicate: bool = True,
-    ):
-        """
-        Aggregates the stock data from the interval specified in 'from' to 'to'.
-        """
-        self.storage_lock.acquire()
-        data = self.storage_price[symbol][base]
-        self.storage_price[symbol][target] = self._append(
-            self.storage_price[symbol][target], aggregate_df(data, target), remove_duplicate
-        )
-        cur_len = len(self.storage_price[symbol][target])
-        if self.price_storage_limit and cur_len > self.price_storage_size:
-            self.storage_price[symbol][target] = self.storage_price[symbol][target].iloc[
-                -self.price_storage_size :
-            ]
-        self.storage_lock.release()
-
 
     def reset(self, symbol: str, interval: Interval):
         """
@@ -240,3 +253,80 @@ class BaseStorage:
         if remove_duplicate:
             new_df = new_df[~new_df.index.duplicated(keep="last")].sort_index()
         return new_df
+
+    def aggregate(
+        self,
+        symbol: str,
+        base: Interval,
+        target: Interval,
+        remove_duplicate: bool = True,
+    ):
+        """
+        Aggregates the stock data from the interval specified in 'from' to 'to'.
+        """
+        self.storage_lock.acquire()
+        data = self.storage_price[symbol][base]
+        self.storage_price[symbol][target] = self._append(
+            self.storage_price[symbol][target], aggregate_df(data, target), remove_duplicate
+        )
+        cur_len = len(self.storage_price[symbol][target])
+        if self.price_storage_limit and cur_len > self.price_storage_size:
+            self.storage_price[symbol][target] = self.storage_price[symbol][target].iloc[
+                -self.price_storage_size :
+            ]
+        self.storage_lock.release()
+
+    def init_performace_data(self, equity: float):
+        for interval, days in self.performance_history_intervals:
+            self.storage_performance[interval] = pd.DataFrame(
+                {'equity': [equity]}, index=[self.trader.timestamp]
+            )
+
+    def add_performance_data(self, equity: float):
+        """
+        Adds the performance data to the storage.
+
+        This function is called every time main() is called in trader.
+        It takes the current equity and adds it to each interval.
+
+
+        :param equity: Current equity of the account. 
+        """
+        cur_timestamp = self.trader.timestamp
+
+        # Performance history range up until '3 MONTHS' have the
+        # same interval as the polling interval of the trader.  
+        for interval, days in self.performance_history_intervals[0:3]:
+            df = self.storage_performance[interval]
+            cutoff = cur_timestamp - dt.timedelta(days=days)
+            if df.index[0] < cutoff:
+                df = df.loc[df.index >= cutoff]
+            df = df.append(pd.DataFrame({"equity": [equity]}, index=[cur_timestamp]))
+            self.storage_performance[interval] = df
+
+        # Performance history intervals after '3 MONTHS' are populated
+        # only for each day.
+        for interval, days in self.performance_history_intervals[3:5]:
+            df = self.storage_performance[interval]
+            if df.index[-1].date() == cur_timestamp.date():
+                df = df.iloc[:-1] 
+                df = df.append(pd.DataFrame({"equity": [equity]}, index=[cur_timestamp]))
+            else:
+                df = df.append(pd.DataFrame({"equity": [equity]}, index=[cur_timestamp]))
+                cutoff = cur_timestamp - dt.timedelta(days=days)
+                if df.index[0] < cutoff:
+                    df = df.loc[df.index >= cutoff]
+            self.storage_performance[interval] = df
+        
+        df = self.storage_performance["ALL"]
+        if df.index[-1].date() == cur_timestamp.date():
+            df = df.iloc[:-1] 
+        df = df.append(pd.DataFrame({"equity": [equity]}, index=[cur_timestamp]))
+        self.storage_performance["ALL"] = df
+
+        debugger.debug("Performance data added")
+        for k in self.storage_performance:
+            debugger.debug(f"{k}:\n {self.storage_performance[k]}")
+        
+
+
