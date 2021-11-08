@@ -22,7 +22,7 @@ class Kraken(API):
     ]
 
     crypto_ticker_to_kraken_names = {
-        "BTC": "XXBT",
+        "BTC": "XXBTZ",
         "ETH": "XETH",
         "ADA": "ADA",
         "USDT": "USDT",
@@ -123,7 +123,7 @@ class Kraken(API):
         self.watch_crypto = []
         for sym in interval:
             if is_crypto(sym):
-                self.watch_crypto.append(interval[sym]["interval"])
+                self.watch_crypto.append(sym)
             else:
                 debugger.warning(f"Kraken does not support stocks. Ignoring {sym}.")
 
@@ -143,8 +143,8 @@ class Kraken(API):
         dfs = {}
         for symbol in self.watch_crypto:
             dfs[symbol] = self.fetch_price_history(
-                symbol, self.interval, now() - dt.timedelta(days=7), now()
-            ).iloc[[0]]
+                symbol, self.interval[symbol]["interval"], now() - dt.timedelta(days=7), now()
+            ).iloc[[-1]]
         return dfs
 
     # -------------- Streamer methods -------------- #
@@ -394,7 +394,7 @@ class Kraken(API):
 
         if ticker[1:] in self.crypto_ticker_to_kraken_names:
             # Currently Harvest supports trades for USD and not other currencies.
-            kraken_ticker = self.crypto_ticker_to_kraken_names.get(ticker[1:]) + "ZUSD"
+            kraken_ticker = self.crypto_ticker_to_kraken_names.get(ticker[1:]) + "USD"
             asset_pairs = self.get_result(self.api.query_public("AssetPairs")).keys()
             if kraken_ticker in asset_pairs:
                 return kraken_ticker
@@ -407,7 +407,6 @@ class Kraken(API):
         """Given a kraken response from an endpoint, either raise an error if an
         error exists or return the data in the results key.
         """
-        print(response)
         if len(response["error"]) > 0:
             raise Exception("\n".join(response["error"]))
         return response.get("result", None)

@@ -63,7 +63,7 @@ class PickleStorage(BaseStorage):
 
         if not data.empty and save_pickle:
             self.storage_lock.acquire()
-            self.storage[symbol][interval].to_pickle(
+            self.storage_price[symbol][interval].to_pickle(
                 self.save_dir + f"/{symbol}@{interval_enum_to_string(interval)}.pickle"
             )
             self.storage_lock.release()

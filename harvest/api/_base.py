@@ -212,19 +212,20 @@ class API:
         """
 
         def wrapper(*args, **kwargs):
-            tries = 3
-            while tries > 0:
-                try:
-                    return func(*args, **kwargs)
-                except Exception as e:
-                    self = args[0]
-                    debugger.error(f"Error: {e}")
-                    traceback.print_exc()
-                    debugger.error("Logging out and back in...")
-                    args[0].refresh_cred()
-                    tries -= 1
-                    debugger.error("Retrying...")
-                    continue
+            return func(*args, **kwargs)
+            # tries = 3
+            # while tries > 0:
+            #     try:
+            #         return func(*args, **kwargs)
+            #     except Exception as e:
+            #         self = args[0]
+            #         debugger.error(f"Error: {e}")
+            #         traceback.print_exc()
+            #         debugger.error("Logging out and back in...")
+            #         args[0].refresh_cred()
+            #         tries -= 1
+            #         debugger.error("Retrying...")
+            #         continue
 
         return wrapper
 
