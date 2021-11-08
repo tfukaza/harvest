@@ -19,7 +19,6 @@ from harvest.api.yahoo import YahooStreamer
 from harvest.api.dummy import DummyStreamer
 from harvest.api.paper import PaperBroker
 from harvest.storage import BaseStorage
-from harvest.storage import BaseLogger
 from harvest.server import Server
 
 
@@ -89,7 +88,6 @@ class LiveTrader:
         self.crypto_positions = []  # Local cache of current crypto positions.
         self.order_queue = []  # Queue of unfilled orders.
 
-        self.logger = BaseLogger()
         self.server = Server(self)  # Initialize the web interface server
 
         self.timezone = tzlocal.get_localzone()
