@@ -14,12 +14,7 @@ from harvest.utils import *
 
 class Kraken(API):
 
-    interval_list = [
-        Interval.MIN_1,
-        Interval.MIN_5,
-        Interval.HR_1,
-        Interval.DAY_1
-    ]
+    interval_list = [Interval.MIN_1, Interval.MIN_5, Interval.HR_1, Interval.DAY_1]
 
     crypto_ticker_to_kraken_names = {
         "BTC": "XXBTZ",
@@ -112,7 +107,9 @@ class Kraken(API):
         "OXT": "OXT",
     }
 
-    kraken_names_to_crypto_ticker = {v: k for k, v in crypto_ticker_to_kraken_names.items()}
+    kraken_names_to_crypto_ticker = {
+        v: k for k, v in crypto_ticker_to_kraken_names.items()
+    }
 
     def __init__(self, path: str = None):
         super().__init__(path)
@@ -143,7 +140,10 @@ class Kraken(API):
         dfs = {}
         for symbol in self.watch_crypto:
             dfs[symbol] = self.fetch_price_history(
-                symbol, self.interval[symbol]["interval"], now() - dt.timedelta(days=7), now()
+                symbol,
+                self.interval[symbol]["interval"],
+                now() - dt.timedelta(days=7),
+                now(),
             ).iloc[[-1]]
         return dfs
 
@@ -205,6 +205,7 @@ class Kraken(API):
     @API._exception_handler
     def fetch_crypto_positions(self):
         positions = self.get_result(self.api.query_private("OpenPositions"))
+
         def fmt(crypto: Dict[str, Any]):
             # Remove the currency
             symbol = crypto["pair"][:-4]
@@ -214,14 +215,10 @@ class Kraken(API):
                 "symbol": "@" + symbol,
                 "avg_price": float(crypto["cost"]) / float(crypto["vol"]),
                 "quantity": float(crypto["vol"]),
-                "kraken": crypto
+                "kraken": crypto,
             }
 
-        return [
-            fmt(pos)
-            for pos in positions
-        ]
-
+        return [fmt(pos) for pos in positions]
 
     def update_option_positions(self, positions: List[Any]):
         debugger.error("Kraken does not support options. Doing nothing.")
@@ -240,7 +237,7 @@ class Kraken(API):
             "cash": cash,
             "buying_power": equity + cash,
             "multiplier": 1,
-            "kraken": account
+            "kraken": account,
         }
 
     def fetch_stock_order_status(self, order_id: str):
@@ -262,7 +259,7 @@ class Kraken(API):
             "side": crypto["descr"]["type"],
             "time_in_force": None,
             "status": crypto["status"],
-            "kraken": crypto
+            "kraken": crypto,
         }
 
     # --------------- Methods for Trading --------------- #
@@ -283,12 +280,10 @@ class Kraken(API):
                 "side": crypto["descr"]["type"],
                 "time_in_force": None,
                 "status": crypto["status"],
-                "kraken": crypto
+                "kraken": crypto,
             }
 
-        return [
-            fmt(order) for order in open_orders
-        ]
+        return [fmt(order) for order in open_orders]
 
     def order_limit(
         self,
@@ -320,7 +315,7 @@ class Kraken(API):
             "type": "CRYPTO",
             "id": order["txid"],
             "symbol": symbol,
-            "kraken": order
+            "kraken": order,
         }
 
     def order_option_limit(

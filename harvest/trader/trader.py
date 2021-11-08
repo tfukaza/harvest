@@ -46,9 +46,7 @@ class LiveTrader:
 
         self._set_streamer_broker(streamer, broker)
         # Initialize the storage
-        self.storage = (
-            BaseStorage() if storage is None else storage
-        )  
+        self.storage = BaseStorage() if storage is None else storage
         self.storage.setup(self)
 
         self._init_attributes()
@@ -272,7 +270,7 @@ class LiveTrader:
                 start = None if all_history else now() - dt.timedelta(days=3)
                 df = self.streamer.fetch_price_history(sym, inter, start)
                 self.storage.store(sym, inter, df)
-    
+
     # ================== Functions for main routine =====================
 
     def main(self, df_dict):
@@ -283,7 +281,7 @@ class LiveTrader:
         # Periodically refresh access tokens
         if self.timestamp.hour % 12 == 0 and self.timestamp.minute == 0:
             self.streamer.refresh_cred()
-        
+
         self.storage.add_performance_data(self.account["equity"])
 
         # Save the data locally
@@ -351,14 +349,16 @@ class LiveTrader:
             # TODO: handle cancelled orders
             if order["status"] == "filled":
                 order_filled = True
-                debugger.debug(f"Order {order['id']} filled at {order['filled_time']} at {order['filled_price']}")
+                debugger.debug(
+                    f"Order {order['id']} filled at {order['filled_time']} at {order['filled_price']}"
+                )
                 self.storage.store_transaction(
                     order["filled_time"],
                     "N/A",
                     order["symbol"],
                     order["side"],
                     order["quantity"],
-                    order["filled_price"]
+                    order["filled_price"],
                 )
             else:
                 new_order.append(order)
@@ -433,24 +433,24 @@ class LiveTrader:
         if symbol_type(symbol) == "OPTION":
             price = self.streamer.fetch_option_market_data(symbol)["price"]
         else:
-            price = self.storage.load(
-                symbol, self.interval[symbol]["interval"]
-            )[symbol]["close"][-1]
+            price = self.storage.load(symbol, self.interval[symbol]["interval"])[
+                symbol
+            ]["close"][-1]
 
         limit_price = mark_up(price)
         total_price = limit_price * quantity
 
         if total_price >= buy_power:
             debugger.error(
-                "Not enough buying power.\n" + 
-                f"Total price ({price} * {quantity} * 1.05 = {limit_price*quantity}) exceeds buying power {buy_power}." + 
-                "Reduce purchase quantity or increase buying power."
+                "Not enough buying power.\n"
+                + f"Total price ({price} * {quantity} * 1.05 = {limit_price*quantity}) exceeds buying power {buy_power}."
+                + "Reduce purchase quantity or increase buying power."
             )
             return None
-        
+
         # TODO? Perform other checks
         ret = self.broker.buy(symbol, quantity, limit_price, in_force, extended)
-        
+
         if ret is None:
             debugger.debug("BUY failed")
             return None
@@ -463,9 +463,11 @@ class LiveTrader:
         # Check how many of the given asset we currently own
         owned_qty = self.get_asset_quantity(symbol, exclude_pending_sell=True)
         if quantity > owned_qty:
-            debugger.debug("SELL failed: More quantities are being sold than currently owned.")
+            debugger.debug(
+                "SELL failed: More quantities are being sold than currently owned."
+            )
             return None
-        
+
         if symbol_type(symbol) == "OPTION":
             price = self.trader.streamer.fetch_option_market_data(symbol)["price"]
         else:
@@ -482,12 +484,11 @@ class LiveTrader:
         self.order_queue.append(ret)
         debugger.debug(f"SELL: {self.timestamp}, {symbol}, {quantity}")
         return ret
-    
+
     # ================ Helper Functions ======================
     def get_asset_quantity(
-        self, symbol: str = None, 
-        include_pending_buy = False,
-        exclude_pending_sell = False ) -> float:
+        self, symbol: str = None, include_pending_buy=False, exclude_pending_sell=False
+    ) -> float:
         """Returns the quantity owned of a specified asset.
 
         :param str? symbol:  Symbol of asset. defaults to first symbol in watchlist
@@ -496,40 +497,34 @@ class LiveTrader:
         """
         if symbol is None:
             symbol = self.watchlist_global[0]
-    
+
         if typ := symbol_type(symbol) == "OPTION":
             owned_qty = sum(
-                p["quantity"]
-                for p in self.option_positions
-                if p["symbol"] == symbol
+                p["quantity"] for p in self.option_positions if p["symbol"] == symbol
             )
         elif typ == "CRYPTO":
             owned_qty = sum(
-                p["quantity"]
-                for p in self.crypto_positions
-                if p["symbol"] == symbol
+                p["quantity"] for p in self.crypto_positions if p["symbol"] == symbol
             )
         else:
             owned_qty = sum(
-                p["quantity"]
-                for p in self.stock_positions
-                if p["symbol"] == symbol
+                p["quantity"] for p in self.stock_positions if p["symbol"] == symbol
             )
-        
+
         if include_pending_buy:
             owned_qty += sum(
                 o["quantity"]
                 for o in self.order_queue
                 if o["symbol"] == symbol and o["side"] == "buy"
             )
-        
+
         if exclude_pending_sell:
             owned_qty -= sum(
                 o["quantity"]
                 for o in self.order_queue
                 if o["symbol"] == symbol and o["side"] == "sell"
             )
-        
+
         return owned_qty
 
     # def buy_option(self, symbol: str, quantity: int, in_force: str):

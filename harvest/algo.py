@@ -141,7 +141,7 @@ class BaseAlgo:
 
         debugger.debug(f"Algo SELL: {symbol}, {quantity}")
         return self.trader.sell(symbol, quantity, in_force, extended)
-    
+
     def sell_all_options(self, symbol: str = None, in_force: str = "gtc"):
         """Sells all options of a stock
 
@@ -164,7 +164,7 @@ class BaseAlgo:
             debugger.debug(f"Algo SELL OPTION: {s}")
             quantity = self.get_asset_quantity(s)
             ret.append(self.trader.sell_option(s, quantity, in_force))
-        
+
         return ret
 
     # def buy_option(self, symbol: str, quantity: int = None, in_force: str = "gtc"):
@@ -522,9 +522,8 @@ class BaseAlgo:
         """
         if symbol is None:
             symbol = self.watchlist[0]
-        
-        return self.trader.get_asset_quantity(symbol, exclude_pending_sell=True)
 
+        return self.trader.get_asset_quantity(symbol, exclude_pending_sell=True)
 
     def get_asset_cost(self, symbol: str = None) -> float:
         """Returns the average cost of a specified asset.

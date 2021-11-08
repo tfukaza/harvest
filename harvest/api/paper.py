@@ -324,7 +324,7 @@ class PaperBroker(API):
     ):
         data = {
             "type": "CRYPTO",
-            "symbol": '@'+symbol,
+            "symbol": "@" + symbol,
             "quantity": quantity,
             "filled_qty": quantity,
             "limit_price": limit_price,

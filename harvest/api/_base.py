@@ -22,7 +22,7 @@ class API:
 
     Attributes
     :interval_list: A list of supported intervals.
-    :exchange: The market the API trades on. Ignored if the API is not a broker. 
+    :exchange: The market the API trades on. Ignored if the API is not a broker.
     """
 
     interval_list = [
@@ -307,10 +307,10 @@ class API:
         raise NotImplementedError(
             f"{type(self).__name__} does not support this streamer method: `fetch_option_market_data`."
         )
-    
+
     def fetch_market_hours(self, date: datetime.date):
         """
-        Returns the market hours for a given day. 
+        Returns the market hours for a given day.
         Hours are based on the exchange specified in the class's 'exchange' attribute.
 
         :returns: A dictionary with the following keys and values:
@@ -597,7 +597,12 @@ class API:
     # These do not need to be re-implemented in a subclass
 
     def buy(
-        self, symbol: str, quantity: int, limit_price: float, in_force: str = "gtc", extended: bool = False
+        self,
+        symbol: str,
+        quantity: int,
+        limit_price: float,
+        in_force: str = "gtc",
+        extended: bool = False,
     ):
         """
         Buys the specified asset.
@@ -654,7 +659,7 @@ class API:
 
         :returns: The result of order_limit(). Returns None if there is an issue with the parameters.
         """
-    
+
         debugger.debug(f"{type(self).__name__} ordered a sell of {quantity} {symbol}")
 
         typ = symbol_type(symbol)
@@ -708,8 +713,8 @@ class API:
 
     #     if total_price >= buy_power:
     #         debugger.warning(
-    #             "Not enough buying power.\n" + 
-    #             f"Total price ({price} * {quantity} * 1.05 = {limit_price*quantity}) exceeds buying power {buy_power}.\n" + 
+    #             "Not enough buying power.\n" +
+    #             f"Total price ({price} * {quantity} * 1.05 = {limit_price*quantity}) exceeds buying power {buy_power}.\n" +
     #             "Reduce purchase quantity or increase buying power."
     #         )
 
