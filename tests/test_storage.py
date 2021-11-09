@@ -11,7 +11,7 @@ from harvest.utils import *
 class TestBaseStorage(unittest.TestCase):
     def test_create_storage(self):
         storage = BaseStorage()
-        self.assertEqual(storage.storage, {})
+        self.assertEqual(storage.storage_price, {})
 
     def test_simple_store(self):
         storage = BaseStorage()
@@ -19,8 +19,8 @@ class TestBaseStorage(unittest.TestCase):
         storage.store("A", Interval.MIN_1, data.copy(True))
 
         self.assertTrue(not pd.isna(data.iloc[0]["A"]["low"]))
-        self.assertEqual(list(storage.storage.keys()), ["A"])
-        self.assertEqual(list(storage.storage["A"].keys()), [Interval.MIN_1])
+        self.assertEqual(list(storage.storage_price.keys()), ["A"])
+        self.assertEqual(list(storage.storage_price["A"].keys()), [Interval.MIN_1])
 
     def test_simple_load(self):
         storage = BaseStorage()

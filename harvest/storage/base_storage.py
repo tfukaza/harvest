@@ -141,6 +141,7 @@ class BaseStorage:
                             -self.price_storage_size :
                         ]
                 except:
+                    self.storage_lock.release()
                     raise Exception("Append Failure, case not found!")
             else:
                 # Add the data as a new interval
@@ -197,7 +198,9 @@ class BaseStorage:
             ]
             intervals.sort(key=lambda interval_timedelta: interval_timedelta[1])
             for interval_timedelta in intervals:
+                self.storage_lock.release()
                 data = self.load(symbol, interval_timedelta[0], start, end)
+                self.storage_lock.acquire()
                 if data is not None:
                     self.storage_lock.release()
                     return data
@@ -217,6 +220,7 @@ class BaseStorage:
         if end is None:
             end = data.index[-1]
 
+        self.storage_lock.release()
         return data.loc[start:end]
 
     def store_transaction(
