@@ -101,9 +101,8 @@ start_parser.add_argument(
     help="buys and sells assets on your behalf",
     choices=list(brokers.keys()),
 )
-# start_parser.add_argument(
-#     "algos", nargs="+", help="paths to algorithms you want to run"
-# )
+
+# Directory with algos that you want to run, default is the current working directory.
 start_parser.add_argument(
     "-d",
     "--directory",
@@ -150,29 +149,32 @@ def start(args: argparse.Namespace, test: bool = False):
     debug = args.debug
     trader = LiveTrader(streamer=streamer, broker=broker, storage=storage, debug=debug)
 
-    # algos is a list of paths to files that have user defined algos
+    # Get the directories.
     directory = args.directory
     print(f"Searching directory {directory}")
     files = [fi for fi in listdir(directory) if isfile(join(directory, fi))]
     print(f"Found files {files}")
+    # For each file in the directory...
     for f in files:
         names = f.split(".")
+        # Filter out non-python files.
         if len(names) <= 1 or names[-1] != "py":
             continue
         name = "".join(names[:-1])
 
+        # ...open it...
         with open(join(directory, f), "r") as algo_file:
             firstline = algo_file.readline()
             if firstline.find("HARVEST_SKIP") != -1:
                 print(f"Skipping {f}")
                 continue
 
-        # load in the entire file
+        # ...load in the entire file and add the algo to the trader.
         algo_path = os.path.realpath(join(directory, f))
         spec = importlib.util.spec_from_file_location(name, algo_path)
         algo = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(algo)
-        # iterate though the variables and if a variable is a subclass of BaseAlgo instantiate it and added to the trader
+        # Iterate though the variables and if a variable is a subclass of BaseAlgo instantiate it and added to the trader.
         for algo_cls in inspect.getmembers(algo):
             k, v = algo_cls[0], algo_cls[1]
             if inspect.isclass(v) and v != BaseAlgo and issubclass(v, BaseAlgo):
@@ -184,10 +186,15 @@ def start(args: argparse.Namespace, test: bool = False):
 
 
 def visualize(args: argparse.Namespace):
+    """
+    Read a csv or pickle file created by Harvest with ohlc data and graph the data.
+    :args: A Namespace object containing parsed user arguments.
+    """
     import re
     import pandas as pd
     import mplfinance as mpf
 
+    # Open the file using the appropriate parser.
     if args.path.endswith(".csv"):
         df = pd.read_csv(args.path)
         df["timestamp"] = pd.to_datetime(df["timestamp"])
@@ -200,22 +207,29 @@ def visualize(args: argparse.Namespace):
 
     if df.empty:
         print(f"No data found in {args.path}.")
+        sys.exit(2)
 
     path = os.path.basename(args.path)
+    # File names are asset {ticker name}@{interval}.{file format} 
     file_search = re.search("^(@?[\w]+)@([\w]+).(csv|pickle)$", path)
     symbol, interval = file_search.group(1), file_search.group(2)
     open_price = df.iloc[0]["open"]
     close_price = df.iloc[-1]["close"]
     high_price = df["high"].max()
     low_price = df["low"].min()
+    price_delta = close_price - open_price
+    price_delta_precent = 100 % (price_delta / open_price)
+    volume = df["volume"].sum()
 
     print(f"{symbol} at {interval}")
-    print("open", open_price)
-    print("high", high_price)
-    print("low", low_price)
-    print("close", close_price)
-    print("price change", close_price - open_price)
-    mpf.plot(df, type="candle", volume=True, show_nontrading=True)
+    print(f"open\t{open_price}")
+    print(f"high\t{high_price}")
+    print(f"low\t{low_price}")
+    print(f"close\t{close_price}")
+    print(f"price change\t{price_delta}")
+    print(f"price change percentage\t{price_delta_precent}%")
+    print(f"volume\t{volume}")
+    mpf.plot(df, type="candle", style="charles", volume=True, show_nontrading=True, title=path)
 
 
 def _get_storage(storage: str):

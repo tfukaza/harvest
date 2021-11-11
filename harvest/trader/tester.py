@@ -66,8 +66,8 @@ class BackTester(trader.PaperTrader):
             a.config()
 
         self._setup(source, interval, aggregations, path, start, end, period)
-        self.broker.setup(self.interval, self, self.main)
-        self.streamer.setup(self.interval, self, self.main)
+        self.broker.setup(self.interval, self.main)
+        self.streamer.setup(self.interval, self.main)
 
         for a in self.algo:
             a.setup()
