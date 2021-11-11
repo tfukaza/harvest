@@ -68,8 +68,8 @@ class Webull(API):
             return
         return self.api.get_trade_token(self.config["wb_trade_pin"])
 
-    def setup(self, interval: Dict, trader=None, trader_main=None):
-        super().setup(interval, trader, trader_main)
+    def setup(self, interval: Dict, trader_main=None):
+        super().setup(interval, trader_main)
         self.watch_stock = []
         self.watch_crypto = []
         self.watch_crypto_fmt = []

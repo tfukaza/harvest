@@ -64,8 +64,8 @@ class PaperBroker(API):
                 for crypto in account["cryptos"]:
                     self.cryptos.append(crypto)
 
-    def setup(self, interval, trader=None, trader_main=None):
-        super().setup(interval, trader, trader_main)
+    def setup(self, interval, trader_main=None):
+        super().setup(interval, trader_main)
 
     # -------------- Streamer methods -------------- #
 

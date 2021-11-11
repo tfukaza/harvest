@@ -53,11 +53,6 @@ class API:
         :path: path to the YAML file containing credentials to communicate with the API.
             If not specified, defaults to './secret.yaml'
         """
-        self.trader = (
-            None  # Allows broker to handle the case when runs without a trader
-        )
-
-        self.run_count = 0
 
         if path is None:
             path = "./secret.yaml"
@@ -69,7 +64,6 @@ class API:
             with open(path, "r") as stream:
                 self.config = yaml.safe_load(stream)
 
-        self.run_count = 0
         self.timestamp = now()
 
     def create_secret(self, path: str):
@@ -85,14 +79,15 @@ class API:
         """
         debugger.info(f"Refreshing credentials for {type(self).__name__}.")
 
-    def setup(self, interval: Dict, trader=None, trader_main=None) -> None:
+    def setup(self, interval: Dict, trader_main=None) -> None:
         """
         This function is called right before the algorithm begins,
         and initializes several runtime parameters like
         the symbols to watch and what interval data is needed.
+
+        :trader_main: A callback function to the trader which will pass the data to the algorithms.
         """
 
-        self.trader = trader
         self.trader_main = trader_main
 
         min_interval = None
@@ -187,7 +182,7 @@ class API:
                 latest = self.fetch_price_history(
                     sym, inter, n - interval_to_timedelta(inter) * 2, n
                 )
-                debugger.debug(f"Price fetch returned: \n{latest}")
+                debugger.debug(f"{sym} price fetch returned: {latest}")
                 if latest is None or latest.empty:
                     continue
                 df_dict[sym] = latest.iloc[-1]
@@ -229,13 +224,18 @@ class API:
         return wrapper
 
     def _run_once(func):
-        """ """
+        """ 
+        Wrapper to only allows wrapped functions to be run once.
 
+        :func: Function to wrap.
+        :returns: The return of the inputted function if it has not been run before and None otherwise. 
+        """
+
+        ran = False
         def wrapper(*args, **kwargs):
-            self = args[0]
-            if self.run_count == 0:
-                self.run_count += 1
-                return func(args, kwargs)
+            if not ran:
+                ran = True
+                return func(*args, **kwargs)
             return None
 
         return wrapper
@@ -248,10 +248,11 @@ class API:
         interval: Interval,
         start: dt.datetime = None,
         end: dt.datetime = None,
-    ):
+    ) -> pd.DataFrame:
         """
         Fetches historical price data for the specified asset and period
-        using the API.
+        using the API. The first row is the earliest entry and the last 
+        row is the latest entry.
 
         :param symbol: The stock/crypto to get data for.
         :param interval: The interval of requested historical data.
@@ -822,8 +823,8 @@ class StreamAPI(API):
         self.block_queue = {}
         self.first = True
 
-    def setup(self, interval: Dict, trader=None, trader_main=None) -> None:
-        super().setup(interval, trader, trader_main)
+    def setup(self, interval: Dict, trader_main=None) -> None:
+        super().setup(interval, trader_main)
         self.blocker = {}
 
     def start(self):
@@ -866,7 +867,7 @@ class StreamAPI(API):
 
         # If there are data that has not been received, start a timer
         if self.first:
-            timer = threading.Thread(target=self.timeout, daemon=True)
+            timer = threading.Thread(self.timeout, daemon=True)
             timer.start()
             self.all_recv = False
             self.first = False
@@ -883,14 +884,17 @@ class StreamAPI(API):
             self.flush()
 
     def flush(self):
-        # For missing data, repeat the existing one
+        # For missing data, return a OHLC with all zeroes.
         self.block_lock.acquire()
         for n in self.needed:
-            data = (
-                self.trader.storage.load(n, self.interval[n]["interval"])
-                .iloc[[-1]]
-                .copy()
-            )
+            data = pd.DataFrame({
+                    'open': 0,
+                    'high': 0,
+                    'low': 0,
+                    'close': 0,
+                    'volume': 0
+                })
+
             data.index = [self.timestamp]
             self.block_queue[n] = data
         self.block_lock.release()

@@ -21,7 +21,7 @@ class PolygonStreamer(API):
         super().__init__(path)
         self.basic = is_basic_account
 
-    def setup(self, interval, trader=None, trader_main=None):
+    def setup(self, interval, trader_main=None):
         self.watch_stock = []
         self.watch_crypto = []
 
@@ -32,7 +32,7 @@ class PolygonStreamer(API):
                 self.watch_stock.append(sym)
 
         self.option_cache = {}
-        super().setup(interval, trader, trader_main)
+        super().setup(interval, trader_main)
 
     def exit(self):
         self.option_cache = {}

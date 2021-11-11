@@ -42,9 +42,9 @@ class Robinhood(API):
         debugger.debug("Logged into Robinhood...")
 
     # @API._run_once
-    def setup(self, interval, trader=None, trader_main=None):
+    def setup(self, interval trader_main=None):
 
-        super().setup(interval, trader, trader_main)
+        super().setup(interval, trader_main)
 
         # Robinhood only supports 15SEC, 1MIN interval for crypto
         for sym in interval:

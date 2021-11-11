@@ -3,6 +3,7 @@ import datetime as dt
 from typing import Any, Dict, List, Tuple
 
 # External libraries
+import tzlocal
 import pandas as pd
 import yfinance as yf
 
@@ -25,8 +26,8 @@ class YahooStreamer(API):
     def __init__(self, path=None):
         self.timestamp = now()
 
-    def setup(self, interval: Dict, trader=None, trader_main=None):
-        super().setup(interval, trader, trader_main)
+    def setup(self, interval: Dict, trader_main=None):
+        super().setup(interval, trader_main)
 
         self.watch_ticker = {}
 
@@ -169,7 +170,7 @@ class YahooStreamer(API):
         return {
             "id": "n/a",
             "exp_dates": [
-                convert_input_to_datetime(s, self.trader.timezone) for s in option_list
+                convert_input_to_datetime(s, tzlocal.get_localzone()) for s in option_list
             ],
             "multiplier": 100,
         }

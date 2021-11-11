@@ -35,7 +35,7 @@ class DummyStreamer(API):
         now: dt.datetime = default_now,
         realistic_times: bool = False,
     ):
-        self.trader = None
+
         self.trader_main = None
         self.realistic_times = realistic_times
 
