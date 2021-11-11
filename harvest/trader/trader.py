@@ -47,7 +47,6 @@ class LiveTrader:
         self._set_streamer_broker(streamer, broker)
         # Initialize the storage
         self.storage = BaseStorage() if storage is None else storage
-        self.storage.setup(self)
 
         self._init_attributes()
         self._setup_debugger(debug)
@@ -144,7 +143,7 @@ class LiveTrader:
 
         # Initialize the account
         self._setup_account()
-        self.storage.init_performace_data(self.account["equity"])
+        self.storage.init_performace_data(self.account["equity"], self.timestamp)
 
         self.broker.setup(self.interval, self.main)
         if self.broker != self.streamer:
@@ -282,7 +281,7 @@ class LiveTrader:
         if self.timestamp.hour % 12 == 0 and self.timestamp.minute == 0:
             self.streamer.refresh_cred()
 
-        self.storage.add_performance_data(self.account["equity"])
+        self.storage.add_performance_data(self.account["equity"], self.timestamp)
 
         # Save the data locally
         for sym in df_dict:
