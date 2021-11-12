@@ -74,9 +74,6 @@ class LiveTrader:
 
         signal(SIGINT, self.exit)
 
-        # Initialize timestamp
-        self.timestamp = self.streamer.timestamp
-
         self.watchlist_global = []  # List of securities specified in this class
         self.algo = []  # List of algorithms to run.
         self.account = {}  # Local cache of account data.
@@ -143,7 +140,9 @@ class LiveTrader:
 
         # Initialize the account
         self._setup_account()
-        self.storage.init_performace_data(self.account["equity"], self.timestamp)
+        self.storage.init_performace_data(
+            self.account["equity"], self.streamer.timestamp
+        )
 
         self.broker.setup(self.interval, self.main)
         if self.broker != self.streamer:
@@ -276,12 +275,16 @@ class LiveTrader:
         """
         Main loop of the Trader.
         """
-        self.timestamp = self.streamer.timestamp
         # Periodically refresh access tokens
-        if self.timestamp.hour % 12 == 0 and self.timestamp.minute == 0:
+        if (
+            self.streamer.timestamp.hour % 12 == 0
+            and self.streamer.timestamp.minute == 0
+        ):
             self.streamer.refresh_cred()
 
-        self.storage.add_performance_data(self.account["equity"], self.timestamp)
+        self.storage.add_performance_data(
+            self.account["equity"], self.streamer.timestamp
+        )
 
         # Save the data locally
         for sym in df_dict:
@@ -301,7 +304,7 @@ class LiveTrader:
 
         new_algo = []
         for a in self.algo:
-            if not is_freq(self.timestamp, a.interval):
+            if not is_freq(self.streamer.timestamp, a.interval):
                 new_algo.append(a)
                 continue
             try:
@@ -454,7 +457,7 @@ class LiveTrader:
             debugger.debug("BUY failed")
             return None
         self.order_queue.append(ret)
-        debugger.debug(f"BUY: {self.timestamp}, {symbol}, {quantity}")
+        debugger.debug(f"BUY: {self.streamer.timestamp}, {symbol}, {quantity}")
 
         return ret
 
@@ -481,7 +484,7 @@ class LiveTrader:
             debugger.debug("SELL failed")
             return None
         self.order_queue.append(ret)
-        debugger.debug(f"SELL: {self.timestamp}, {symbol}, {quantity}")
+        debugger.debug(f"SELL: {self.streamer.timestamp}, {symbol}, {quantity}")
         return ret
 
     # ================ Helper Functions ======================
@@ -531,9 +534,9 @@ class LiveTrader:
     #     if ret is None:
     #         raise Exception("BUY failed")
     #     self.order_queue.append(ret)
-    #     debugger.debug(f"BUY: {self.timestamp}, {symbol}, {quantity}")
+    #     debugger.debug(f"BUY: {self.streamer.timestamp}, {symbol}, {quantity}")
     #     debugger.debug(f"BUY order queue: {self.order_queue}")
-    #     self.logger.add_transaction(self.timestamp, "buy", "option", symbol, quantity)
+    #     self.logger.add_transaction(self.streamer.timestamp, "buy", "option", symbol, quantity)
     #     return ret
 
     # def sell_option(self, symbol: str, quantity: int, in_force: str):
@@ -553,9 +556,9 @@ class LiveTrader:
     #     if ret is None:
     #         raise Exception("SELL failed")
     #     self.order_queue.append(ret)
-    #     debugger.debug(f"SELL: {self.timestamp}, {symbol}, {quantity}")
+    #     debugger.debug(f"SELL: {self.streamer.timestamp}, {symbol}, {quantity}")
     #     debugger.debug(f"SELL order queue: {self.order_queue}")
-    #     self.logger.add_transaction(self.timestamp, "sell", "option", symbol, quantity)
+    #     self.logger.add_transaction(self.streamer.timestamp, "sell", "option", symbol, quantity)
     #     return ret
 
     def set_algo(self, algo):

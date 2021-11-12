@@ -210,7 +210,7 @@ def visualize(args: argparse.Namespace):
         sys.exit(2)
 
     path = os.path.basename(args.path)
-    # File names are asset {ticker name}@{interval}.{file format} 
+    # File names are asset {ticker name}@{interval}.{file format}
     file_search = re.search("^(@?[\w]+)@([\w]+).(csv|pickle)$", path)
     symbol, interval = file_search.group(1), file_search.group(2)
     open_price = df.iloc[0]["open"]
@@ -229,7 +229,14 @@ def visualize(args: argparse.Namespace):
     print(f"price change\t{price_delta}")
     print(f"price change percentage\t{price_delta_precent}%")
     print(f"volume\t{volume}")
-    mpf.plot(df, type="candle", style="charles", volume=True, show_nontrading=True, title=path)
+    mpf.plot(
+        df,
+        type="candle",
+        style="charles",
+        volume=True,
+        show_nontrading=True,
+        title=path,
+    )
 
 
 def _get_storage(storage: str):

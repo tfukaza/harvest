@@ -177,8 +177,8 @@ class API:
         df_dict = {}
         for sym in self.interval:
             inter = self.interval[sym]["interval"]
-            if is_freq(self.timestamp, inter):
-                n = self.timestamp
+            if is_freq(harvest_timestamp, inter):
+                n = harvest_timestamp
                 latest = self.fetch_price_history(
                     sym, inter, n - interval_to_timedelta(inter) * 2, n
                 )
@@ -224,14 +224,15 @@ class API:
         return wrapper
 
     def _run_once(func):
-        """ 
+        """
         Wrapper to only allows wrapped functions to be run once.
 
         :func: Function to wrap.
-        :returns: The return of the inputted function if it has not been run before and None otherwise. 
+        :returns: The return of the inputted function if it has not been run before and None otherwise.
         """
 
         ran = False
+
         def wrapper(*args, **kwargs):
             nonlocal ran
             if not ran:
@@ -252,7 +253,7 @@ class API:
     ) -> pd.DataFrame:
         """
         Fetches historical price data for the specified asset and period
-        using the API. The first row is the earliest entry and the last 
+        using the API. The first row is the earliest entry and the last
         row is the latest entry.
 
         :param symbol: The stock/crypto to get data for.
@@ -888,13 +889,10 @@ class StreamAPI(API):
         # For missing data, return a OHLC with all zeroes.
         self.block_lock.acquire()
         for n in self.needed:
-            data = pd.DataFrame({
-                    'open': 0,
-                    'high': 0,
-                    'low': 0,
-                    'close': 0,
-                    'volume': 0
-                }, index=[self.timestamp])
+            data = pd.DataFrame(
+                {"open": 0, "high": 0, "low": 0, "close": 0, "volume": 0},
+                index=[self.timestamp],
+            )
 
             self.block_queue[n] = data
         self.block_lock.release()

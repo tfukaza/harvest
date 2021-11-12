@@ -103,7 +103,6 @@ class BaseStorage:
             self.storage_performance[interval] = pd.DataFrame(
                 columns=["equity"], index=[]
             )
-            
 
     def store(
         self, symbol: str, interval: Interval, data: pd.DataFrame, remove_duplicate=True
@@ -316,13 +315,9 @@ class BaseStorage:
             df = self.storage_performance[interval]
             if df.index[-1].date() == timestamp.date():
                 df = df.iloc[:-1]
-                df = df.append(
-                    pd.DataFrame({"equity": [equity]}, index=[timestamp])
-                )
+                df = df.append(pd.DataFrame({"equity": [equity]}, index=[timestamp]))
             else:
-                df = df.append(
-                    pd.DataFrame({"equity": [equity]}, index=[timestamp])
-                )
+                df = df.append(pd.DataFrame({"equity": [equity]}, index=[timestamp]))
                 cutoff = timestamp - dt.timedelta(days=days)
                 if df.index[0] < cutoff:
                     df = df.loc[df.index >= cutoff]

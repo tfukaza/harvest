@@ -254,7 +254,7 @@ class TestAlgo(unittest.TestCase):
         p = t.option_positions[0]
         self.assertEqual(p["symbol"], "X     110101C01000000")
 
-        t.algo[0].sell_option()
+        t.algo[0].sell_all_options()
         streamer.tick()
 
         # p = t.stock_positions[0]

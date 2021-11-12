@@ -95,7 +95,7 @@ class PaperBroker(API):
     def update_option_positions(self, positions) -> List[Dict[str, Any]]:
         for r in self.options:
             occ_sym = r["symbol"]
-            price = self.fetch_option_market_data(occ_sym)["price"]
+            price = self.streamer.fetch_option_market_data(occ_sym)["price"]
 
             r["current_price"] = price
             r["market_value"] = price * r["quantity"] * 100
@@ -157,7 +157,7 @@ class PaperBroker(API):
                     self.orders.remove(ret)
                     ret = ret_1
                     ret["status"] = "filled"
-                    ret["filled_time"] = self.trader.timestamp
+                    ret["filled_time"] = self.streamer.timestamp
                     ret["filled_price"] = price
             else:
                 if pos is None:
@@ -175,7 +175,7 @@ class PaperBroker(API):
                 self.orders.remove(ret)
                 ret = ret_1
                 ret["status"] = "filled"
-                ret["filled_time"] = self.trader.timestamp
+                ret["filled_time"] = self.streamer.timestamp
                 ret["filled_price"] = price
 
             self.equity = self._calc_equity()
@@ -237,7 +237,7 @@ class PaperBroker(API):
                     self.cash -= actual_price
                     self.buying_power -= actual_price
                     ret["status"] = "filled"
-                    ret["filled_time"] = self.trader.timestamp
+                    ret["filled_time"] = self.streamer.timestamp
                     ret["filled_price"] = price
                     debugger.debug(f"After BUY: {self.buying_power}")
                     ret_1 = ret.copy()
@@ -259,7 +259,7 @@ class PaperBroker(API):
                 if pos["quantity"] < 1e-8:
                     self.options.remove(pos)
                 ret["status"] = "filled"
-                ret["filled_time"] = self.trader.timestamp
+                ret["filled_time"] = self.streamer.timestamp
                 ret["filled_price"] = price
                 ret_1 = ret.copy()
                 self.orders.remove(ret)
