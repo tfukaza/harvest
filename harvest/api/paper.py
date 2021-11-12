@@ -9,6 +9,7 @@ import yaml
 
 # Submodule imports
 from harvest.api._base import API
+from harvest.api.dummy import DummyStreamer
 from harvest.utils import *
 
 
@@ -27,7 +28,7 @@ class PaperBroker(API):
         Interval.DAY_1,
     ]
 
-    def __init__(self, account_path: str = None, commission_fee=0):
+    def __init__(self, account_path: str = None, commission_fee=0, streamer=None):
         """
         :commission_fee: When this is a number it is assumed to be a flat price
             on all buys and sells of assets. When this is a string formatted as
@@ -49,6 +50,11 @@ class PaperBroker(API):
         self.multiplier = 1
         self.commission_fee = commission_fee
         self.id = 0
+
+        if streamer is None:
+            self.streamer = DummyStreamer()
+        else:
+            self.streamer = streamer
 
         if account_path:
             with open(account_path, "r") as f:
@@ -89,11 +95,7 @@ class PaperBroker(API):
     def update_option_positions(self, positions) -> List[Dict[str, Any]]:
         for r in self.options:
             occ_sym = r["symbol"]
-
-            if self.trader is None:
-                price = self.fetch_option_market_data(occ_sym)["price"]
-            else:
-                price = self.trader.streamer.fetch_option_market_data(occ_sym)["price"]
+            price = self.fetch_option_market_data(occ_sym)["price"]
 
             r["current_price"] = price
             r["market_value"] = price * r["quantity"] * 100
@@ -112,17 +114,12 @@ class PaperBroker(API):
         ret = next(r for r in self.orders if r["id"] == id)
         sym = ret["symbol"]
 
-        if self.trader is None:
-            price = self.streamer.fetch_price_history(
-                sym,
-                self.interval[sym]["interval"],
-                dt.datetime.now() - dt.timedelta(days=7),
-                dt.datetime.now(),
-            )[sym]["close"][-1]
-        else:
-            price = self.trader.storage.load(sym, self.interval[sym]["interval"])[sym][
-                "close"
-            ][-1]
+        price = self.streamer.fetch_price_history(
+            sym,
+            self.interval[sym]["interval"],
+            dt.datetime.now() - dt.timedelta(days=7),
+            dt.datetime.now(),
+        )[sym]["close"][-1]
 
         qty = ret["quantity"]
         original_price = price * qty
@@ -194,10 +191,7 @@ class PaperBroker(API):
         sym = ret["base_symbol"]
         occ_sym = ret["symbol"]
 
-        if self.trader is None:
-            price = self.streamer.fetch_option_market_data(occ_sym)["price"]
-        else:
-            price = self.trader.streamer.fetch_option_market_data(occ_sym)["price"]
+        price = self.streamer.fetch_option_market_data(occ_sym)["price"]
 
         qty = ret["quantity"]
         original_price = price * qty

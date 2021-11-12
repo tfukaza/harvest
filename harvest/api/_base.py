@@ -233,6 +233,7 @@ class API:
 
         ran = False
         def wrapper(*args, **kwargs):
+            nonlocal ran
             if not ran:
                 ran = True
                 return func(*args, **kwargs)
@@ -529,7 +530,7 @@ class API:
             Raises an exception if order fails.
         """
         raise NotImplementedError(
-            f"{type(self).__name__} does not support this broker method: `order_limit`."
+            f"{type(self).__name__} does not support this broker method: `order_stock_limit`."
         )
 
     def order_crypto_limit(
@@ -557,7 +558,7 @@ class API:
             Raises an exception if order fails.
         """
         raise NotImplementedError(
-            f"{type(self).__name__} does not support this broker method: `order_limit`."
+            f"{type(self).__name__} does not support this broker method: `order_crypto_limit`."
         )
 
     def order_option_limit(
@@ -867,7 +868,7 @@ class StreamAPI(API):
 
         # If there are data that has not been received, start a timer
         if self.first:
-            timer = threading.Thread(self.timeout, daemon=True)
+            timer = threading.Thread(target=self.timeout, daemon=True)
             timer.start()
             self.all_recv = False
             self.first = False
@@ -893,9 +894,8 @@ class StreamAPI(API):
                     'low': 0,
                     'close': 0,
                     'volume': 0
-                })
+                }, index=[self.timestamp])
 
-            data.index = [self.timestamp]
             self.block_queue[n] = data
         self.block_lock.release()
         self.trader_main(self.block_queue)

@@ -118,7 +118,7 @@ class BackTester(trader.PaperTrader):
         common_end = None
         for s in self.interval:
             for i in [self.interval[s]["interval"]] + self.interval[s]["aggregations"]:
-                df = self.storage.load(s, i, no_slice=True)
+                df = self.storage.load(s, i)
                 df = pandas_datetime_to_utc(df, self.timezone)
                 if common_start is None or df.index[0] > common_start:
                     common_start = df.index[0]
@@ -146,7 +146,7 @@ class BackTester(trader.PaperTrader):
 
         for s in self.interval:
             for i in [self.interval[s]["interval"]] + self.interval[s]["aggregations"]:
-                df = self.storage.load(s, i, no_slice=True).copy()
+                df = self.storage.load(s, i).copy()
                 df = df.loc[start:end]
                 self.storage.reset(s, i)
                 self.storage.store(s, i, df)
@@ -198,7 +198,7 @@ class BackTester(trader.PaperTrader):
         debugger.debug("Formatting complete")
         for sym in self.interval:
             for agg in self.interval[sym]["aggregations"]:
-                data = self.storage.load(sym, int(agg) - 16, no_slice=True)
+                data = self.storage.load(sym, int(agg) - 16)
                 data = pandas_datetime_to_utc(data, self.timezone)
                 self.storage.store(
                     sym,
@@ -219,13 +219,13 @@ class BackTester(trader.PaperTrader):
             self.df[sym] = {}
             inter = self.interval[sym]["interval"]
             interval_txt = interval_enum_to_string(inter)
-            df = self.storage.load(sym, inter, no_slice=True)
+            df = self.storage.load(sym, inter)
             self.df[sym][inter] = df.copy()
 
             for agg in self.interval[sym]["aggregations"]:
                 # agg_txt = interval_enum_to_string(agg)
                 # agg_txt = f"{interval_txt}+{agg_txt}"
-                df = self.storage.load(sym, int(agg) - 16, no_slice=True)
+                df = self.storage.load(sym, int(agg) - 16)
                 self.df[sym][int(agg) - 16] = df.copy()
 
         # Trim data so start and end dates match between assets and intervals
@@ -328,7 +328,7 @@ class BackTester(trader.PaperTrader):
                         df_dict[sym] = self.df[sym][inter].loc[self.timestamp]
 
             update = self._update_order_queue()
-            self._update_stats(df_dict, new=update, option_update=True)
+            self._update_position_cache(df_dict, new=update, option_update=True)
             for sym in self.interval:
                 inter = self.interval[sym]["interval"]
                 if is_freq(self.timestamp, inter):

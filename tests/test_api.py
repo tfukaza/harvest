@@ -25,7 +25,7 @@ class TestAPI(unittest.TestCase):
     def test_timeout(self):
         stream = StreamAPI()
         stream.fetch_account = lambda: None
-        stream.fetch_price_history = lambda x, y: pd.DataFrame()
+        stream.fetch_price_history = lambda x, y, z: pd.DataFrame()
         stream.fetch_account = lambda: {"cash": 100, "equity": 100}
         t = PaperTrader(stream)
         stream.trader = t
@@ -75,7 +75,7 @@ class TestAPI(unittest.TestCase):
     def test_timeout_cancel(self):
         stream = StreamAPI()
         stream.fetch_account = lambda: None
-        stream.fetch_price_history = lambda x, y: pd.DataFrame()
+        stream.fetch_price_history = lambda x, y, z: pd.DataFrame()
         stream.fetch_account = lambda: {"cash": 100, "equity": 100}
         t = PaperTrader(stream)
         t.set_algo(BaseAlgo())
@@ -185,16 +185,36 @@ class TestAPI(unittest.TestCase):
             self.assertEqual(str(e), "API does not support this broker method: `fetch_crypto_order_status`.")
 
         try:
-            api.order_limit("buy", "A", 5, 7)
+            api.order_stock_limit("buy", "A", 5, 7)
             self.assertTrue(False)
         except NotImplementedError as e:
-            self.assertEqual(str(e), "API does not support this broker method: `order_limit`.")
+            self.assertEqual(str(e), "API does not support this broker method: `order_stock_limit`.")
+
+        try:
+            api.order_crypto_limit("buy", "@A", 5, 7)
+            self.assertTrue(False)
+        except NotImplementedError as e:
+            self.assertEqual(str(e), "API does not support this broker method: `order_crypto_limit`.")
 
         try:
             api.order_option_limit("buy", "A", 5, 7, "call", now(), 8)
             self.assertTrue(False)
         except NotImplementedError as e:
             self.assertEqual(str(e), "API does not support this broker method: `order_option_limit`.")
+
+        try:
+            api.buy('A', -1, 0)
+            self.assertTrue(False)
+        except NotImplementedError as e:
+            self.assertEqual(str(e), "API does not support this broker method: `order_stock_limit`.")
+
+        try:
+            api.sell('A', -1, 0)
+            self.assertTrue(False)
+        except NotImplementedError as e:
+            self.assertEqual(str(e), "API does not support this broker method: `order_stock_limit`.")
+
+            
 
     def test_base_cases(self):
         api = API()
@@ -206,15 +226,13 @@ class TestAPI(unittest.TestCase):
         self.assertEqual(api.fetch_crypto_positions(), [])
         api.update_option_positions([])
         self.assertEqual(api.fetch_order_queue(), [])
-        self.assertTrue(api.buy('A', -1) is None)
-        self.assertTrue(api.buy_option("A", -1) is None)
 
     def test_run_once(self):
         api = API()
         fn = lambda x: x + 1
         wrapper = API._run_once(fn)
-        self.assertEqual(wrapper(api)(5), 6)
-        self.assertTrue(wrapper(api) is None)
+        self.assertEqual(wrapper(5), 6)
+        self.assertTrue(wrapper(5) is None)
 
     def test_timestamp(self):
         api = API()
