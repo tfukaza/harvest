@@ -407,6 +407,7 @@ class LiveTrader:
 
         equity = net_value + self.account["cash"]
         self.account["equity"] = equity
+        self.stock_positions = self.broker.fetch_stock_positions()
 
     def _fetch_account_data(self):
         pos = self.broker.fetch_stock_positions()
@@ -442,6 +443,8 @@ class LiveTrader:
         limit_price = mark_up(price)
         total_price = limit_price * quantity
 
+        debugger.warning(f"Attempting to buy {quantity} shares of {symbol} at price {price} with price limit {limit_price} and a maximum total price of {total_price}")
+
         if total_price >= buy_power:
             debugger.error(
                 "Not enough buying power.\n"
@@ -471,9 +474,9 @@ class LiveTrader:
             return None
 
         if symbol_type(symbol) == "OPTION":
-            price = self.trader.streamer.fetch_option_market_data(symbol)["price"]
+            price = self.streamer.fetch_option_market_data(symbol)["price"]
         else:
-            price = self.trader.storage.load(symbol, self.interval[symbol]["interval"])[
+            price = self.storage.load(symbol, self.interval[symbol]["interval"])[
                 symbol
             ]["close"][-1]
 
@@ -603,7 +606,7 @@ class PaperTrader(LiveTrader):
 
         # If streamer is not specified, use YahooStreamer
         self.streamer = YahooStreamer() if streamer is None else streamer
-        self.broker = PaperBroker()
+        self.broker = PaperBroker(streamer=self.streamer)
 
         self.storage = (
             BaseStorage() if storage is None else storage

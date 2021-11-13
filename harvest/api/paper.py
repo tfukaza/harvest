@@ -50,11 +50,7 @@ class PaperBroker(API):
         self.multiplier = 1
         self.commission_fee = commission_fee
         self.id = 0
-
-        if streamer is None:
-            self.streamer = DummyStreamer()
-        else:
-            self.streamer = streamer
+        self.streamer = DummyStreamer() if streamer is None else streamer
 
         if account_path:
             with open(account_path, "r") as f:
@@ -117,8 +113,8 @@ class PaperBroker(API):
         price = self.streamer.fetch_price_history(
             sym,
             self.interval[sym]["interval"],
-            dt.datetime.now() - dt.timedelta(days=7),
-            dt.datetime.now(),
+            self.streamer.get_current_time() - dt.timedelta(days=7),
+            self.streamer.get_current_time(),
         )[sym]["close"][-1]
 
         qty = ret["quantity"]
@@ -157,7 +153,7 @@ class PaperBroker(API):
                     self.orders.remove(ret)
                     ret = ret_1
                     ret["status"] = "filled"
-                    ret["filled_time"] = self.streamer.timestamp
+                    ret["filled_time"] = self.streamer.get_current_time()
                     ret["filled_price"] = price
             else:
                 if pos is None:
@@ -175,7 +171,7 @@ class PaperBroker(API):
                 self.orders.remove(ret)
                 ret = ret_1
                 ret["status"] = "filled"
-                ret["filled_time"] = self.streamer.timestamp
+                ret["filled_time"] = self.streamer.get_current_time()
                 ret["filled_price"] = price
 
             self.equity = self._calc_equity()
@@ -237,7 +233,7 @@ class PaperBroker(API):
                     self.cash -= actual_price
                     self.buying_power -= actual_price
                     ret["status"] = "filled"
-                    ret["filled_time"] = self.streamer.timestamp
+                    ret["filled_time"] = self.streamer.get_current_time()
                     ret["filled_price"] = price
                     debugger.debug(f"After BUY: {self.buying_power}")
                     ret_1 = ret.copy()
@@ -259,7 +255,7 @@ class PaperBroker(API):
                 if pos["quantity"] < 1e-8:
                     self.options.remove(pos)
                 ret["status"] = "filled"
-                ret["filled_time"] = self.streamer.timestamp
+                ret["filled_time"] = self.streamer.get_current_time()
                 ret["filled_price"] = price
                 ret_1 = ret.copy()
                 self.orders.remove(ret)

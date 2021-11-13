@@ -163,7 +163,7 @@ class BaseAlgo:
         for s in symbols:
             debugger.debug(f"Algo SELL OPTION: {s}")
             quantity = self.get_asset_quantity(s)
-            ret.append(self.trader.sell_option(s, quantity, in_force))
+            ret.append(self.trader.sell(s, quantity, in_force, True))
 
         return ret
 

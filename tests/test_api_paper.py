@@ -55,7 +55,7 @@ class TestPaperBroker(unittest.TestCase):
         dummy = PaperBroker()
         interval = {"A": {"interval": Interval.MIN_1, "aggregations": []}}
         dummy.setup(interval)
-        order = dummy.buy("A", 5, 7)
+        order = dummy.buy("A", 5, 1e5)
         self.assertEqual(order["type"], "STOCK")
         self.assertEqual(order["id"], 0)
         self.assertEqual(order["symbol"], "A")
@@ -117,10 +117,10 @@ class TestPaperBroker(unittest.TestCase):
         )
         self.assertEqual(order["type"], "OPTION")
         self.assertEqual(order["id"], 0)
-        self.assertEqual(order["symbol"], "A     211106P50001000")
+        self.assertEqual(order["symbol"], "A     211113P50001000")
 
         status = dummy.fetch_option_order_status(order["id"])
-        self.assertEqual(status["symbol"], "A     211106P50001000")
+        self.assertEqual(status["symbol"], "A     211113P50001000")
         self.assertEqual(status["quantity"], 5)
 
     def test_commission(self):

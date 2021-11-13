@@ -62,13 +62,13 @@ class TestAPI(unittest.TestCase):
             data["A"]["A"]["close"][-1],
             t.storage.load("A", Interval.MIN_1)["A"]["close"][-1],
         )
-        # Check if B has been duplicated
+        # Check if B has been set to 0
         self.assertEqual(
             b_cur["B"]["close"][-1],
             t.storage.load("B", Interval.MIN_1)["B"]["close"][-2],
         )
         self.assertEqual(
-            b_cur["B"]["close"][-1],
+            0,
             t.storage.load("B", Interval.MIN_1)["B"]["close"][-1],
         )
 
@@ -130,11 +130,7 @@ class TestAPI(unittest.TestCase):
     def test_exceptions(self):
         api = API()
 
-        try:
-            api.create_secret("I dont exists")
-            self.assertTrue(False)
-        except Exception as e:
-            self.assertEqual(str(e), "I dont exists was not found.")
+        self.assertEqual(api.create_secret("I dont exists"), False)
 
         try:
             api.fetch_price_history('A', Interval.MIN_1, now(), now())

@@ -70,7 +70,9 @@ class API:
         """
         This method is called when the yaml file with credentials
         is not found."""
-        raise Exception(f"{path} was not found.")
+        # raise Exception(f"{path} was not found.")
+        debugger.warning(f"Assuming API does not need account information.")
+        return False
 
     def refresh_cred(self):
         """
@@ -243,6 +245,9 @@ class API:
         return wrapper
 
     # -------------- Streamer methods -------------- #
+
+    def get_current_time(self):
+        return now()
 
     def fetch_price_history(
         self,
@@ -894,6 +899,7 @@ class StreamAPI(API):
                 index=[self.timestamp],
             )
 
+            data.columns = pd.MultiIndex.from_product([[n], data.columns])
             self.block_queue[n] = data
         self.block_lock.release()
         self.trader_main(self.block_queue)
