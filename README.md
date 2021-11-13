@@ -1,5 +1,5 @@
 ![Header](docs/banner.png)<br />
-Harvest is a Python framework providing a **simple** and **flexible** framework for algorithmic trading. Visit Harvest's [**website**](https://tfukaza.github.io/harvest/) for details, tutorials, and documentation. 
+Harvest is a Python framework providing a **simple** and **flexible** framework for algorithmic trading. Visit Harvest's [**website**](https://tfukaza.github.io/harvest-website/) for details, tutorials, and documentation. 
 
 <br />
 
