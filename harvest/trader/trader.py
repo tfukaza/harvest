@@ -443,7 +443,9 @@ class LiveTrader:
         limit_price = mark_up(price)
         total_price = limit_price * quantity
 
-        debugger.warning(f"Attempting to buy {quantity} shares of {symbol} at price {price} with price limit {limit_price} and a maximum total price of {total_price}")
+        debugger.warning(
+            f"Attempting to buy {quantity} shares of {symbol} at price {price} with price limit {limit_price} and a maximum total price of {total_price}"
+        )
 
         if total_price >= buy_power:
             debugger.error(
