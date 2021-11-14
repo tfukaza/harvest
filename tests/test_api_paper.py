@@ -117,10 +117,10 @@ class TestPaperBroker(unittest.TestCase):
         )
         self.assertEqual(order["type"], "OPTION")
         self.assertEqual(order["id"], 0)
-        self.assertEqual(order["symbol"], "A     211113P50001000")
+        self.assertEqual(order["symbol"], "A     211114P50001000")
 
         status = dummy.fetch_option_order_status(order["id"])
-        self.assertEqual(status["symbol"], "A     211113P50001000")
+        self.assertEqual(status["symbol"], "A     211114P50001000")
         self.assertEqual(status["quantity"], 5)
 
     def test_commission(self):
