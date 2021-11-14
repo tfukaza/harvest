@@ -246,6 +246,7 @@ def datetime_utc_to_local(date_time: dt.datetime, timezone: ZoneInfo) -> dt.date
     Converts a datetime object in UTC to local time, represented as a
     timezone naive datetime object.
     """
+    date_time = date_time.to_pydatetime()
     new_tz = date_time.astimezone(timezone)
     return new_tz.replace(tzinfo=None)
 

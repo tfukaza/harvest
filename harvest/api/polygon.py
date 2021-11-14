@@ -47,7 +47,9 @@ class PolygonStreamer(API):
             return
 
         for s in combo:
-            df = self.fetch_price_history(s, Interval.MIN_1, now() - dt.timedelta(days=1), now()).iloc[-1]
+            df = self.fetch_price_history(
+                s, Interval.MIN_1, now() - dt.timedelta(days=1), now()
+            ).iloc[-1]
             df_dict[s] = df
             debugger.debug(df)
         self.trader_main(df_dict)
