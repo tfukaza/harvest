@@ -111,7 +111,7 @@ class TestPaperBroker(unittest.TestCase):
         dummy = PaperBroker()
         interval = {"A": {"interval": Interval.MIN_1, "aggregations": []}}
         dummy.setup(interval)
-        exp_date = dt.datetime(2020, 11, 14) + dt.timedelta(hours=5)
+        exp_date = dt.datetime(2021, 11, 14) + dt.timedelta(hours=5)
         order = dummy.order_option_limit(
             "buy", "A", 5, 50000, "OPTION", exp_date, 50001
         )
