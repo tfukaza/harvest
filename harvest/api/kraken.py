@@ -115,8 +115,8 @@ class Kraken(API):
         super().__init__(path)
         self.api = krakenex.API(self.config["api_key"], self.config["secret_key"])
 
-    def setup(self, interval: Dict, trader=None, trader_main=None):
-        super().setup(interval, trader, trader_main)
+    def setup(self, interval: Dict, trader_main=None):
+        super().setup(interval, trader_main)
         self.watch_crypto = []
         for sym in interval:
             if is_crypto(sym):

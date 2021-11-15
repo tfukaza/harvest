@@ -12,6 +12,7 @@ from zoneinfo import ZoneInfo
 # External Imports
 import pandas as pd
 
+# Configure a logger used by all of Harvest.
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s : %(name)s : %(levelname)s : %(message)s",

@@ -163,7 +163,7 @@ class BaseAlgo:
         for s in symbols:
             debugger.debug(f"Algo SELL OPTION: {s}")
             quantity = self.get_asset_quantity(s)
-            ret.append(self.trader.sell_option(s, quantity, in_force))
+            ret.append(self.trader.sell(s, quantity, in_force, True))
 
         return ret
 
@@ -770,7 +770,9 @@ class BaseAlgo:
 
         :returns: The current date and time as a datetime object
         """
-        return datetime_utc_to_local(self.trader.timestamp, self.trader.timezone)
+        return datetime_utc_to_local(
+            self.trader.streamer.timestamp, self.trader.timezone
+        )
 
     def get_option_position_quantity(self, symbol: str = None) -> bool:
         """Returns the number of types of options held for a stock.

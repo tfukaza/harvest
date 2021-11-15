@@ -47,7 +47,6 @@ class LiveTrader:
         self._set_streamer_broker(streamer, broker)
         # Initialize the storage
         self.storage = BaseStorage() if storage is None else storage
-        self.storage.setup(self)
 
         self._init_attributes()
         self._setup_debugger(debug)
@@ -74,9 +73,6 @@ class LiveTrader:
     def _init_attributes(self):
 
         signal(SIGINT, self.exit)
-
-        # Initialize timestamp
-        self.timestamp = self.streamer.timestamp
 
         self.watchlist_global = []  # List of securities specified in this class
         self.algo = []  # List of algorithms to run.
@@ -144,13 +140,15 @@ class LiveTrader:
 
         # Initialize the account
         self._setup_account()
-        self.storage.init_performace_data(self.account["equity"])
+        self.storage.init_performace_data(
+            self.account["equity"], self.streamer.timestamp
+        )
 
-        self.broker.setup(self.interval, self, self.main)
+        self.broker.setup(self.interval, self.main)
         if self.broker != self.streamer:
             # Only call the streamer setup if it is a different
             # instance than the broker otherwise some brokers can fail!
-            self.streamer.setup(self.interval, self, self.main)
+            self.streamer.setup(self.interval, self.main)
 
         # Initialize the storage
         self._storage_init(all_history)
@@ -277,12 +275,16 @@ class LiveTrader:
         """
         Main loop of the Trader.
         """
-        self.timestamp = self.streamer.timestamp
         # Periodically refresh access tokens
-        if self.timestamp.hour % 12 == 0 and self.timestamp.minute == 0:
+        if (
+            self.streamer.timestamp.hour % 12 == 0
+            and self.streamer.timestamp.minute == 0
+        ):
             self.streamer.refresh_cred()
 
-        self.storage.add_performance_data(self.account["equity"])
+        self.storage.add_performance_data(
+            self.account["equity"], self.streamer.timestamp
+        )
 
         # Save the data locally
         for sym in df_dict:
@@ -302,7 +304,7 @@ class LiveTrader:
 
         new_algo = []
         for a in self.algo:
-            if not is_freq(self.timestamp, a.interval):
+            if not is_freq(self.streamer.timestamp, a.interval):
                 new_algo.append(a)
                 continue
             try:
@@ -405,6 +407,7 @@ class LiveTrader:
 
         equity = net_value + self.account["cash"]
         self.account["equity"] = equity
+        self.stock_positions = self.broker.fetch_stock_positions()
 
     def _fetch_account_data(self):
         pos = self.broker.fetch_stock_positions()
@@ -440,6 +443,10 @@ class LiveTrader:
         limit_price = mark_up(price)
         total_price = limit_price * quantity
 
+        debugger.warning(
+            f"Attempting to buy {quantity} shares of {symbol} at price {price} with price limit {limit_price} and a maximum total price of {total_price}"
+        )
+
         if total_price >= buy_power:
             debugger.error(
                 "Not enough buying power.\n"
@@ -455,7 +462,7 @@ class LiveTrader:
             debugger.debug("BUY failed")
             return None
         self.order_queue.append(ret)
-        debugger.debug(f"BUY: {self.timestamp}, {symbol}, {quantity}")
+        debugger.debug(f"BUY: {self.streamer.timestamp}, {symbol}, {quantity}")
 
         return ret
 
@@ -469,9 +476,9 @@ class LiveTrader:
             return None
 
         if symbol_type(symbol) == "OPTION":
-            price = self.trader.streamer.fetch_option_market_data(symbol)["price"]
+            price = self.streamer.fetch_option_market_data(symbol)["price"]
         else:
-            price = self.trader.storage.load(symbol, self.interval[symbol]["interval"])[
+            price = self.storage.load(symbol, self.interval[symbol]["interval"])[
                 symbol
             ]["close"][-1]
 
@@ -482,7 +489,7 @@ class LiveTrader:
             debugger.debug("SELL failed")
             return None
         self.order_queue.append(ret)
-        debugger.debug(f"SELL: {self.timestamp}, {symbol}, {quantity}")
+        debugger.debug(f"SELL: {self.streamer.timestamp}, {symbol}, {quantity}")
         return ret
 
     # ================ Helper Functions ======================
@@ -532,9 +539,9 @@ class LiveTrader:
     #     if ret is None:
     #         raise Exception("BUY failed")
     #     self.order_queue.append(ret)
-    #     debugger.debug(f"BUY: {self.timestamp}, {symbol}, {quantity}")
+    #     debugger.debug(f"BUY: {self.streamer.timestamp}, {symbol}, {quantity}")
     #     debugger.debug(f"BUY order queue: {self.order_queue}")
-    #     self.logger.add_transaction(self.timestamp, "buy", "option", symbol, quantity)
+    #     self.logger.add_transaction(self.streamer.timestamp, "buy", "option", symbol, quantity)
     #     return ret
 
     # def sell_option(self, symbol: str, quantity: int, in_force: str):
@@ -554,9 +561,9 @@ class LiveTrader:
     #     if ret is None:
     #         raise Exception("SELL failed")
     #     self.order_queue.append(ret)
-    #     debugger.debug(f"SELL: {self.timestamp}, {symbol}, {quantity}")
+    #     debugger.debug(f"SELL: {self.streamer.timestamp}, {symbol}, {quantity}")
     #     debugger.debug(f"SELL order queue: {self.order_queue}")
-    #     self.logger.add_transaction(self.timestamp, "sell", "option", symbol, quantity)
+    #     self.logger.add_transaction(self.streamer.timestamp, "sell", "option", symbol, quantity)
     #     return ret
 
     def set_algo(self, algo):
@@ -601,7 +608,7 @@ class PaperTrader(LiveTrader):
 
         # If streamer is not specified, use YahooStreamer
         self.streamer = YahooStreamer() if streamer is None else streamer
-        self.broker = PaperBroker()
+        self.broker = PaperBroker(streamer=self.streamer)
 
         self.storage = (
             BaseStorage() if storage is None else storage

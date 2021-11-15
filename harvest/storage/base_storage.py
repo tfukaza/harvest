@@ -104,12 +104,6 @@ class BaseStorage:
                 columns=["equity"], index=[]
             )
 
-    def setup(self, trader):
-        """
-        Sets up the storage
-        """
-        self.trader = trader
-
     def store(
         self, symbol: str, interval: Interval, data: pd.DataFrame, remove_duplicate=True
     ) -> None:
@@ -288,13 +282,13 @@ class BaseStorage:
             ].iloc[-self.price_storage_size :]
         self.storage_lock.release()
 
-    def init_performace_data(self, equity: float):
+    def init_performace_data(self, equity: float, timestamp):
         for interval, days in self.performance_history_intervals:
             self.storage_performance[interval] = pd.DataFrame(
-                {"equity": [equity]}, index=[self.trader.timestamp]
+                {"equity": [equity]}, index=[timestamp]
             )
 
-    def add_performance_data(self, equity: float):
+    def add_performance_data(self, equity: float, timestamp):
         """
         Adds the performance data to the storage.
 
@@ -304,40 +298,35 @@ class BaseStorage:
 
         :param equity: Current equity of the account.
         """
-        cur_timestamp = self.trader.timestamp
 
         # Performance history range up until '3 MONTHS' have the
         # same interval as the polling interval of the trader.
         for interval, days in self.performance_history_intervals[0:3]:
             df = self.storage_performance[interval]
-            cutoff = cur_timestamp - dt.timedelta(days=days)
+            cutoff = timestamp - dt.timedelta(days=days)
             if df.index[0] < cutoff:
                 df = df.loc[df.index >= cutoff]
-            df = df.append(pd.DataFrame({"equity": [equity]}, index=[cur_timestamp]))
+            df = df.append(pd.DataFrame({"equity": [equity]}, index=[timestamp]))
             self.storage_performance[interval] = df
 
         # Performance history intervals after '3 MONTHS' are populated
         # only for each day.
         for interval, days in self.performance_history_intervals[3:5]:
             df = self.storage_performance[interval]
-            if df.index[-1].date() == cur_timestamp.date():
+            if df.index[-1].date() == timestamp.date():
                 df = df.iloc[:-1]
-                df = df.append(
-                    pd.DataFrame({"equity": [equity]}, index=[cur_timestamp])
-                )
+                df = df.append(pd.DataFrame({"equity": [equity]}, index=[timestamp]))
             else:
-                df = df.append(
-                    pd.DataFrame({"equity": [equity]}, index=[cur_timestamp])
-                )
-                cutoff = cur_timestamp - dt.timedelta(days=days)
+                df = df.append(pd.DataFrame({"equity": [equity]}, index=[timestamp]))
+                cutoff = timestamp - dt.timedelta(days=days)
                 if df.index[0] < cutoff:
                     df = df.loc[df.index >= cutoff]
             self.storage_performance[interval] = df
 
         df = self.storage_performance["ALL"]
-        if df.index[-1].date() == cur_timestamp.date():
+        if df.index[-1].date() == timestamp.date():
             df = df.iloc[:-1]
-        df = df.append(pd.DataFrame({"equity": [equity]}, index=[cur_timestamp]))
+        df = df.append(pd.DataFrame({"equity": [equity]}, index=[timestamp]))
         self.storage_performance["ALL"] = df
 
         debugger.debug("Performance data added")
