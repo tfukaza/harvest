@@ -58,7 +58,7 @@ class TestWebull(unittest.TestCase):
             "@BTC": {"interval": Interval.MIN_1, "aggregations": []},
             "SPY": {"interval": Interval.MIN_1, "aggregations": []},
         }
-        wb.setup(interval, None, test_main)
+        wb.setup(interval, test_main)
         wb.main()
 
     @not_gh_action
@@ -72,7 +72,7 @@ class TestWebull(unittest.TestCase):
         wb = Webull()
         watch = ["SPY"]
         interval = {"SPY": {"interval": Interval.MIN_1, "aggregations": []}}
-        wb.setup(interval, None, test_main)
+        wb.setup(interval, test_main)
         wb.main()
 
     @not_gh_action

@@ -76,8 +76,8 @@ class Alpaca(StreamAPI):
         else:
             self.data_lock.release()
 
-    def setup(self, interval: Dict, trader=None, trader_main=None):
-        super().setup(interval, trader, trader_main)
+    def setup(self, interval: Dict, trader_main=None):
+        super().setup(interval, trader_main)
 
         self.watch_stock = []
         self.watch_crypto = []

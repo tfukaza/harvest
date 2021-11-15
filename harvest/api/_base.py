@@ -22,7 +22,7 @@ class API:
 
     Attributes
     :interval_list: A list of supported intervals.
-    :exchange: The market the API trades on. Ignored if the API is not a broker. 
+    :exchange: The market the API trades on. Ignored if the API is not a broker.
     """
 
     interval_list = [
@@ -53,11 +53,6 @@ class API:
         :path: path to the YAML file containing credentials to communicate with the API.
             If not specified, defaults to './secret.yaml'
         """
-        self.trader = (
-            None  # Allows broker to handle the case when runs without a trader
-        )
-
-        self.run_count = 0
 
         if path is None:
             path = "./secret.yaml"
@@ -69,14 +64,15 @@ class API:
             with open(path, "r") as stream:
                 self.config = yaml.safe_load(stream)
 
-        self.run_count = 0
         self.timestamp = now()
 
     def create_secret(self, path: str):
         """
         This method is called when the yaml file with credentials
         is not found."""
-        raise Exception(f"{path} was not found.")
+        # raise Exception(f"{path} was not found.")
+        debugger.warning(f"Assuming API does not need account information.")
+        return False
 
     def refresh_cred(self):
         """
@@ -85,14 +81,15 @@ class API:
         """
         debugger.info(f"Refreshing credentials for {type(self).__name__}.")
 
-    def setup(self, interval: Dict, trader=None, trader_main=None) -> None:
+    def setup(self, interval: Dict, trader_main=None) -> None:
         """
         This function is called right before the algorithm begins,
         and initializes several runtime parameters like
         the symbols to watch and what interval data is needed.
+
+        :trader_main: A callback function to the trader which will pass the data to the algorithms.
         """
 
-        self.trader = trader
         self.trader_main = trader_main
 
         min_interval = None
@@ -182,12 +179,12 @@ class API:
         df_dict = {}
         for sym in self.interval:
             inter = self.interval[sym]["interval"]
-            if is_freq(self.timestamp, inter):
-                n = self.timestamp
+            if is_freq(harvest_timestamp, inter):
+                n = harvest_timestamp
                 latest = self.fetch_price_history(
                     sym, inter, n - interval_to_timedelta(inter) * 2, n
                 )
-                debugger.debug(f"Price fetch returned: \n{latest}")
+                debugger.debug(f"{sym} price fetch returned: {latest}")
                 if latest is None or latest.empty:
                     continue
                 df_dict[sym] = latest.iloc[-1]
@@ -229,18 +226,28 @@ class API:
         return wrapper
 
     def _run_once(func):
-        """ """
+        """
+        Wrapper to only allows wrapped functions to be run once.
+
+        :func: Function to wrap.
+        :returns: The return of the inputted function if it has not been run before and None otherwise.
+        """
+
+        ran = False
 
         def wrapper(*args, **kwargs):
-            self = args[0]
-            if self.run_count == 0:
-                self.run_count += 1
-                return func(args, kwargs)
+            nonlocal ran
+            if not ran:
+                ran = True
+                return func(*args, **kwargs)
             return None
 
         return wrapper
 
     # -------------- Streamer methods -------------- #
+
+    def get_current_time(self):
+        return now()
 
     def fetch_price_history(
         self,
@@ -248,10 +255,11 @@ class API:
         interval: Interval,
         start: dt.datetime = None,
         end: dt.datetime = None,
-    ):
+    ) -> pd.DataFrame:
         """
         Fetches historical price data for the specified asset and period
-        using the API.
+        using the API. The first row is the earliest entry and the last
+        row is the latest entry.
 
         :param symbol: The stock/crypto to get data for.
         :param interval: The interval of requested historical data.
@@ -306,10 +314,10 @@ class API:
         raise NotImplementedError(
             f"{type(self).__name__} does not support this streamer method: `fetch_option_market_data`."
         )
-    
+
     def fetch_market_hours(self, date: datetime.date):
         """
-        Returns the market hours for a given day. 
+        Returns the market hours for a given day.
         Hours are based on the exchange specified in the class's 'exchange' attribute.
 
         :returns: A dictionary with the following keys and values:
@@ -528,7 +536,7 @@ class API:
             Raises an exception if order fails.
         """
         raise NotImplementedError(
-            f"{type(self).__name__} does not support this broker method: `order_limit`."
+            f"{type(self).__name__} does not support this broker method: `order_stock_limit`."
         )
 
     def order_crypto_limit(
@@ -556,7 +564,7 @@ class API:
             Raises an exception if order fails.
         """
         raise NotImplementedError(
-            f"{type(self).__name__} does not support this broker method: `order_limit`."
+            f"{type(self).__name__} does not support this broker method: `order_crypto_limit`."
         )
 
     def order_option_limit(
@@ -596,7 +604,12 @@ class API:
     # These do not need to be re-implemented in a subclass
 
     def buy(
-        self, symbol: str, quantity: int, limit_price: float, in_force: str = "gtc", extended: bool = False
+        self,
+        symbol: str,
+        quantity: int,
+        limit_price: float,
+        in_force: str = "gtc",
+        extended: bool = False,
     ):
         """
         Buys the specified asset.
@@ -653,7 +666,7 @@ class API:
 
         :returns: The result of order_limit(). Returns None if there is an issue with the parameters.
         """
-    
+
         debugger.debug(f"{type(self).__name__} ordered a sell of {quantity} {symbol}")
 
         typ = symbol_type(symbol)
@@ -707,8 +720,8 @@ class API:
 
     #     if total_price >= buy_power:
     #         debugger.warning(
-    #             "Not enough buying power.\n" + 
-    #             f"Total price ({price} * {quantity} * 1.05 = {limit_price*quantity}) exceeds buying power {buy_power}.\n" + 
+    #             "Not enough buying power.\n" +
+    #             f"Total price ({price} * {quantity} * 1.05 = {limit_price*quantity}) exceeds buying power {buy_power}.\n" +
     #             "Reduce purchase quantity or increase buying power."
     #         )
 
@@ -817,8 +830,8 @@ class StreamAPI(API):
         self.block_queue = {}
         self.first = True
 
-    def setup(self, interval: Dict, trader=None, trader_main=None) -> None:
-        super().setup(interval, trader, trader_main)
+    def setup(self, interval: Dict, trader_main=None) -> None:
+        super().setup(interval, trader_main)
         self.blocker = {}
 
     def start(self):
@@ -878,15 +891,15 @@ class StreamAPI(API):
             self.flush()
 
     def flush(self):
-        # For missing data, repeat the existing one
+        # For missing data, return a OHLC with all zeroes.
         self.block_lock.acquire()
         for n in self.needed:
-            data = (
-                self.trader.storage.load(n, self.interval[n]["interval"])
-                .iloc[[-1]]
-                .copy()
+            data = pd.DataFrame(
+                {"open": 0, "high": 0, "low": 0, "close": 0, "volume": 0},
+                index=[self.timestamp],
             )
-            data.index = [self.timestamp]
+
+            data.columns = pd.MultiIndex.from_product([[n], data.columns])
             self.block_queue[n] = data
         self.block_lock.release()
         self.trader_main(self.block_queue)

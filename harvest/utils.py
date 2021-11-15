@@ -12,6 +12,7 @@ from zoneinfo import ZoneInfo
 # External Imports
 import pandas as pd
 
+# Configure a logger used by all of Harvest.
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s : %(name)s : %(levelname)s : %(message)s",
@@ -246,6 +247,7 @@ def datetime_utc_to_local(date_time: dt.datetime, timezone: ZoneInfo) -> dt.date
     Converts a datetime object in UTC to local time, represented as a
     timezone naive datetime object.
     """
+    date_time = date_time.to_pydatetime()
     new_tz = date_time.astimezone(timezone)
     return new_tz.replace(tzinfo=None)
 

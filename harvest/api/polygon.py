@@ -21,7 +21,7 @@ class PolygonStreamer(API):
         super().__init__(path)
         self.basic = is_basic_account
 
-    def setup(self, interval, trader=None, trader_main=None):
+    def setup(self, interval, trader_main=None):
         self.watch_stock = []
         self.watch_crypto = []
 
@@ -32,7 +32,7 @@ class PolygonStreamer(API):
                 self.watch_stock.append(sym)
 
         self.option_cache = {}
-        super().setup(interval, trader, trader_main)
+        super().setup(interval, trader_main)
 
     def exit(self):
         self.option_cache = {}
@@ -47,7 +47,9 @@ class PolygonStreamer(API):
             return
 
         for s in combo:
-            df = self.fetch_price_history(s, Interval.MIN_1, now() - dt.timedelta(days=1), now()).iloc[-1]
+            df = self.fetch_price_history(
+                s, Interval.MIN_1, now() - dt.timedelta(days=1), now()
+            ).iloc[-1]
             df_dict[s] = df
             debugger.debug(df)
         self.trader_main(df_dict)

@@ -1,5 +1,5 @@
 ![Header](docs/banner.png)<br />
-Harvest is a Python framework providing a **simple** and **flexible** framework for algorithmic trading. Visit Harvest's [**website**](https://tfukaza.github.io/harvest-website/) for details, tutorials, and documentation. 
+Harvest is a simple yet flexible Python framework for algorithmic trading. Paper trade and live trade stocks, cryptos, and options![^1][^2] Visit Harvest's [**website**](https://tfukaza.github.io/harvest-website/) for details, tutorials, and documentation. 
 
 <br />
 
@@ -77,3 +77,6 @@ Currently looking for...
 - Many of the brokers were also not designed to be used for algo-trading. Excessive access to their API can result in your account getting locked. 
 - Tutorials and documentation solely exist to provide technical references of the code. They are not recommendations of any specific securities or strategies. 
 - Use Harvest at your own responsibility. Developers of Harvest take no responsibility for any financial losses you incur by using Harvest. By using Harvest, you certify you understand that Harvest is a software in early development and may contain bugs and unexpected behaviors.
+
+[^1]: What assets you can trade depends on the broker you are using. 
+[^2]: Backtesting is also available, but it is not supported for options. 

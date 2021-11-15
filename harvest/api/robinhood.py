@@ -42,9 +42,9 @@ class Robinhood(API):
         debugger.debug("Logged into Robinhood...")
 
     # @API._run_once
-    def setup(self, interval, trader=None, trader_main=None):
+    def setup(self, interval, trader_main=None):
 
-        super().setup(interval, trader, trader_main)
+        super().setup(interval, trader_main)
 
         # Robinhood only supports 15SEC, 1MIN interval for crypto
         for sym in interval:
@@ -388,7 +388,7 @@ class Robinhood(API):
             "time_in_force": ret["time_in_force"],
             "status": ret["state"],
             "filled_time": filled_time,
-            "filled_price": filled_price
+            "filled_price": filled_price,
         }
 
     @API._exception_handler
@@ -551,7 +551,7 @@ class Robinhood(API):
             return {
                 "type": "CRYPTO",
                 "id": ret["id"],
-                "symbol": '@'+ symbol,
+                "symbol": "@" + symbol,
             }
         except:
             debugger.error("Error while placing order.\nReturned: {ret}", exc_info=True)
@@ -630,9 +630,9 @@ class Robinhood(API):
         df.columns = pd.MultiIndex.from_product([watch, df.columns])
 
         return df.dropna()
-    
+
     def _rh_datestr_to_datetime(self, date_str: str):
-        date_str = date_str[:-3]+date_str[-2:]
+        date_str = date_str[:-3] + date_str[-2:]
         return dt.datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%S.%f%z")
 
     def create_secret(self, path):
