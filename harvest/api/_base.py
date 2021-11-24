@@ -101,7 +101,7 @@ class API:
             # If the exact inteval is not supported but it can be recreated by aggregating
             # candles from a more granular interval
             if inter not in self.interval_list:
-                granular_int = [i for i in self.crypto_interval_list if i < inter]
+                granular_int = [i for i in self.interval_list if i < inter]
                 new_inter = granular_int[-1]
                 interval[sym]["aggregations"].append(inter)
                 interval[sym]["interval"] = new_inter
