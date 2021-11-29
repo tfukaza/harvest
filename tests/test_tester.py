@@ -43,7 +43,7 @@ class TestTester(unittest.TestCase):
 
         minutes = list(t.storage.load("A", Interval.MIN_1)["A"]["close"])[-200:]
         days_agg = list(
-            t.storage.load("A", int(Interval.DAY_1) - 16, no_slice=True)["A"]["close"]
+            t.storage.load("A", int(Interval.DAY_1) - 16)["A"]["close"]
         )[-200:]
 
         self.assertListEqual(minutes, days_agg)
@@ -56,7 +56,7 @@ class TestTester(unittest.TestCase):
             def main(self):
                 print(self.get_datetime())
 
-        t = BackTester(DummyStreamer(), debug=False)
+        t = BackTester(DummyStreamer())
         t.set_symbol("A")
         t.set_algo(TestAlgo())
         t.start("1MIN", ["1DAY"], period="1DAY")

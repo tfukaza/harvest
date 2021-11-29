@@ -61,7 +61,7 @@ class CSVStorage(BaseStorage):
 
         if not data.empty:
             self.storage_lock.acquire()
-            self.storage[symbol][interval][symbol].to_csv(
+            self.storage_price[symbol][interval][symbol].to_csv(
                 self.save_dir + f"/{symbol}@{interval_enum_to_string(interval)}.csv"
             )
             self.storage_lock.release()

@@ -7,7 +7,9 @@ import os
 
 import pandas as pd
 
-from harvest.api._base import StreamAPI
+
+from harvest.algo import BaseAlgo
+from harvest.api._base import API, StreamAPI
 from harvest.api.dummy import DummyStreamer
 from harvest.trader import PaperTrader
 from harvest.utils import *
@@ -23,7 +25,7 @@ class TestAPI(unittest.TestCase):
     def test_timeout(self):
         stream = StreamAPI()
         stream.fetch_account = lambda: None
-        stream.fetch_price_history = lambda x, y: pd.DataFrame()
+        stream.fetch_price_history = lambda x, y, z: pd.DataFrame()
         stream.fetch_account = lambda: {"cash": 100, "equity": 100}
         t = PaperTrader(stream)
         stream.trader = t
@@ -60,22 +62,23 @@ class TestAPI(unittest.TestCase):
             data["A"]["A"]["close"][-1],
             t.storage.load("A", Interval.MIN_1)["A"]["close"][-1],
         )
-        # Check if B has been duplicated
+        # Check if B has been set to 0
         self.assertEqual(
             b_cur["B"]["close"][-1],
             t.storage.load("B", Interval.MIN_1)["B"]["close"][-2],
         )
         self.assertEqual(
-            b_cur["B"]["close"][-1],
+            0,
             t.storage.load("B", Interval.MIN_1)["B"]["close"][-1],
         )
 
     def test_timeout_cancel(self):
         stream = StreamAPI()
         stream.fetch_account = lambda: None
-        stream.fetch_price_history = lambda x, y: pd.DataFrame()
+        stream.fetch_price_history = lambda x, y, z: pd.DataFrame()
         stream.fetch_account = lambda: {"cash": 100, "equity": 100}
         t = PaperTrader(stream)
+        t.set_algo(BaseAlgo())
         stream.trader = t
         stream.trader_main = t.main
         t.set_symbol(["A", "B"])
@@ -123,6 +126,113 @@ class TestAPI(unittest.TestCase):
             data_b["B"]["B"]["close"][-1],
             t.storage.load("B", Interval.MIN_1)["B"]["close"][-1],
         )
+
+    def test_exceptions(self):
+        api = API()
+
+        self.assertEqual(api.create_secret("I dont exists"), False)
+
+        try:
+            api.fetch_price_history('A', Interval.MIN_1, now(), now())
+            self.assertTrue(False)
+        except NotImplementedError as e:
+            self.assertEqual(str(e), "API does not support this streamer method: `fetch_price_history`.")
+
+        try:
+            api.fetch_chain_info("A")
+            self.assertTrue(False)
+        except NotImplementedError as e:
+            self.assertEqual(str(e), "API does not support this streamer method: `fetch_chain_info`.")
+
+        try:
+            api.fetch_chain_data("A")
+            self.assertTrue(False)
+        except NotImplementedError as e:
+            self.assertEqual(str(e), "API does not support this streamer method: `fetch_chain_data`.")
+
+        try:
+            api.fetch_option_market_data("A")
+            self.assertTrue(False)
+        except NotImplementedError as e:
+            self.assertEqual(str(e), "API does not support this streamer method: `fetch_option_market_data`.")
+
+        try:
+            api.fetch_account()
+            self.assertTrue(False)
+        except NotImplementedError as e:
+            self.assertEqual(str(e), "API does not support this broker method: `fetch_account`.")
+
+        try:
+            api.fetch_stock_order_status(0)
+            self.assertTrue(False)
+        except NotImplementedError as e:
+            self.assertEqual(str(e), "API does not support this broker method: `fetch_stock_order_status`.")
+
+        try:
+            api.fetch_option_order_status(0)
+            self.assertTrue(False)
+        except NotImplementedError as e:
+            self.assertEqual(str(e), "API does not support this broker method: `fetch_option_order_status`.")
+
+        try:
+            api.fetch_crypto_order_status(0)
+            self.assertTrue(False)
+        except NotImplementedError as e:
+            self.assertEqual(str(e), "API does not support this broker method: `fetch_crypto_order_status`.")
+
+        try:
+            api.order_stock_limit("buy", "A", 5, 7)
+            self.assertTrue(False)
+        except NotImplementedError as e:
+            self.assertEqual(str(e), "API does not support this broker method: `order_stock_limit`.")
+
+        try:
+            api.order_crypto_limit("buy", "@A", 5, 7)
+            self.assertTrue(False)
+        except NotImplementedError as e:
+            self.assertEqual(str(e), "API does not support this broker method: `order_crypto_limit`.")
+
+        try:
+            api.order_option_limit("buy", "A", 5, 7, "call", now(), 8)
+            self.assertTrue(False)
+        except NotImplementedError as e:
+            self.assertEqual(str(e), "API does not support this broker method: `order_option_limit`.")
+
+        try:
+            api.buy('A', -1, 0)
+            self.assertTrue(False)
+        except NotImplementedError as e:
+            self.assertEqual(str(e), "API does not support this broker method: `order_stock_limit`.")
+
+        try:
+            api.sell('A', -1, 0)
+            self.assertTrue(False)
+        except NotImplementedError as e:
+            self.assertEqual(str(e), "API does not support this broker method: `order_stock_limit`.")
+
+            
+
+    def test_base_cases(self):
+        api = API()
+
+        api.refresh_cred()
+        api.exit()
+        self.assertEqual(api.fetch_stock_positions(), [])
+        self.assertEqual(api.fetch_option_positions(), [])
+        self.assertEqual(api.fetch_crypto_positions(), [])
+        api.update_option_positions([])
+        self.assertEqual(api.fetch_order_queue(), [])
+
+    def test_run_once(self):
+        api = API()
+        fn = lambda x: x + 1
+        wrapper = API._run_once(fn)
+        self.assertEqual(wrapper(5), 6)
+        self.assertTrue(wrapper(5) is None)
+
+    def test_timestamp(self):
+        api = API()
+        self.assertTrue(now() >= api.current_timestamp())
 
     @classmethod
     def tearDownClass(self):

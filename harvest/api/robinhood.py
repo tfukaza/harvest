@@ -1,5 +1,6 @@
 # Builtins
 import datetime as dt
+from logging import debug
 from typing import Any, Dict, List, Tuple
 
 # External libraries
@@ -17,6 +18,7 @@ from harvest.utils import *
 class Robinhood(API):
 
     interval_list = [Interval.SEC_15, Interval.MIN_5, Interval.HR_1, Interval.DAY_1]
+    exchange = "NASDAQ"
 
     def __init__(self, path=None):
         super().__init__(path)
@@ -33,15 +35,16 @@ class Robinhood(API):
         )
 
     def refresh_cred(self):
+        super().refresh_cred()
         debugger.debug("Logging out of Robinhood...")
         rh.authentication.logout()
         self.login()
         debugger.debug("Logged into Robinhood...")
 
-    @API._run_once
-    def setup(self, interval, trader=None, trader_main=None):
+    # @API._run_once
+    def setup(self, interval, trader_main=None):
 
-        super().setup(interval, trader, trader_main)
+        super().setup(interval, trader_main)
 
         # Robinhood only supports 15SEC, 1MIN interval for crypto
         for sym in interval:
@@ -121,38 +124,42 @@ class Robinhood(API):
 
         get_interval_fmt = ""
 
-        if interval == "15SEC":  # Not used
-            if not symbol[0] == "@":
+        if interval == Interval.SEC_15:  # Not used
+            if symbol[0] != "@":
                 raise Exception("15SEC interval is only allowed for crypto")
             get_interval_fmt = "15second"
-        elif interval == "1MIN":
-            if not symbol[0] == "@":
+        elif interval == Interval.MIN_1:
+            if symbol[0] != "@":
                 raise Exception("MIN interval is only allowed for crypto")
             get_interval_fmt = "15second"
-        elif interval == "5MIN":
+        elif interval == Interval.MIN_5:
             get_interval_fmt = "5minute"
-        elif interval == "15MIN":
+        elif interval == Interval.MIN_15:
             get_interval_fmt = "5minute"
-        elif interval == "30MIN":
+        elif interval == Interval.MIN_30:
             get_interval_fmt = "10minute"
-        elif interval == "1HR":
+        elif interval == Interval.HR_1:
             get_interval_fmt = "hour"
-        elif interval == "1DAY":
+        elif interval == Interval.DAY_1:
             get_interval_fmt = "day"
-
         else:
             return df
 
         delta = end - start
         delta = delta.total_seconds()
         delta = delta / 3600
-        if interval == "DAY" and delta < 24:
+        if interval == Interval.DAY_1 and delta < 24:
             return df
-        if delta < 1 or interval == "15SEC" or interval == "1MIN":
+        if delta < 1 and interval in [Interval.SEC_15, Interval.MIN_1]:
             span = "hour"
-        elif delta >= 1 and delta < 24 or interval in ["5MIN", "15MIN", "30MIN", "1HR"]:
+        elif delta < 24 or interval in [
+            Interval.MIN_5,
+            Interval.MIN_15,
+            Interval.MIN_30,
+            Interval.HR_1,
+        ]:
             span = "day"
-        elif delta >= 24 and delta < 24 * 28:
+        elif delta < 24 * 28:
             span = "month"
         elif delta < 24 * 300:
             span = "year"
@@ -169,6 +176,7 @@ class Robinhood(API):
         df = pd.DataFrame.from_dict(ret)
         df = self._format_df(df, [symbol], interval)
         df = aggregate_df(df, interval)
+
         return df
 
     @API._exception_handler
@@ -219,7 +227,7 @@ class Robinhood(API):
         )
         df = df.set_index("occ_symbol")
 
-        if not symbol in self.__option_cache:
+        if symbol not in self.__option_cache:
             self.__option_cache[symbol] = {}
         self.__option_cache[symbol][date] = df
 
@@ -269,7 +277,7 @@ class Robinhood(API):
             data = rh.get_option_instrument_data_by_id(r["option_id"])
             pos.append(
                 {
-                    "symbol": r["chain_symbol"],
+                    "base_symbol": r["chain_symbol"],
                     "avg_price": float(r["average_price"])
                     / float(r["trade_value_multiplier"]),
                     "quantity": float(r["quantity"]),
@@ -281,7 +289,7 @@ class Robinhood(API):
             )
             date = data["expiration_date"]
             date = dt.datetime.strptime(date, "%Y-%m-%d")
-            pos[-1]["occ_symbol"] = self.data_to_occ(
+            pos[-1]["symbol"] = self.data_to_occ(
                 r["chain_symbol"], date, data["type"], float(data["strike_price"])
             )
 
@@ -312,7 +320,7 @@ class Robinhood(API):
     @API._exception_handler
     def update_option_positions(self, positions: List[Any]):
         for r in positions:
-            sym, date, type, price = self.occ_to_data(r["occ_symbol"])
+            sym, date, type, price = self.occ_to_data(r["symbol"])
             upd = rh.get_option_market_data(
                 sym, date.strftime("%Y-%m-%d"), str(price), type
             )
@@ -335,6 +343,15 @@ class Robinhood(API):
     @API._exception_handler
     def fetch_stock_order_status(self, id):
         ret = rh.get_stock_order_info(id)
+        # Check if any of the orders were executed
+        executions = ret["executions"]
+        if len(executions) > 0:
+            filled_time = self._rh_datestr_to_datetime(executions[0]["timestamp"])
+            filled_time = filled_time.replace(tzinfo=pytz.utc)
+            filled_price = float(executions[0]["effective_price"])
+        else:
+            filled_time = None
+            filled_price = None
         return {
             "type": "STOCK",
             "id": ret["id"],
@@ -344,11 +361,23 @@ class Robinhood(API):
             "side": ret["side"],
             "time_in_force": ret["time_in_force"],
             "status": ret["status"],
+            "filled_time": filled_time,
+            "filled_price": filled_price,
         }
 
     @API._exception_handler
     def fetch_option_order_status(self, id):
         ret = rh.get_option_order_info(id)
+        debugger.debug(ret)
+        # Check if any of the orders were executed
+        executions = ret["legs"][0]["executions"]
+        if len(executions) > 0:
+            filled_time = self._rh_datestr_to_datetime(executions[0]["timestamp"])
+            filled_time = filled_time.replace(tzinfo=pytz.utc)
+            filled_price = float(executions[0]["effective_price"])
+        else:
+            filled_time = None
+            filled_price = None
         return {
             "type": "OPTION",
             "id": ret["id"],
@@ -358,23 +387,35 @@ class Robinhood(API):
             "side": ret["legs"][0]["side"],
             "time_in_force": ret["time_in_force"],
             "status": ret["state"],
+            "filled_time": filled_time,
+            "filled_price": filled_price,
         }
 
     @API._exception_handler
     def fetch_crypto_order_status(self, id):
         ret = rh.get_crypto_order_info(id)
+        debugger.debug(ret)
+        # Check if any of the orders were executed
+        executions = ret["executions"]
+        if len(executions) > 0:
+            filled_time = self._rh_datestr_to_datetime(executions[0]["timestamp"])
+            filled_time = filled_time.replace(tzinfo=pytz.utc)
+            filled_price = float(executions[0]["effective_price"])
+        else:
+            filled_time = None
+            filled_price = None
+
         return {
             "type": "CRYPTO",
             "id": ret["id"],
-            "qty": float(ret["quantity"]),
+            "symbol": ret["symbol"],
+            "quantity": float(ret["quantity"]),
             "filled_qty": float(ret["cumulative_quantity"]),
-            "filled_price": float(ret["executions"][0]["effective_price"])
-            if len(ret["executions"])
-            else 0,
-            "filled_cost": float(ret["rounded_executed_notional"]),
             "side": ret["side"],
             "time_in_force": ret["time_in_force"],
             "status": ret["state"],
+            "filled_time": filled_time,
+            "filled_price": filled_price,
         }
 
     @API._exception_handler
@@ -382,7 +423,6 @@ class Robinhood(API):
         queue = []
         ret = rh.get_all_open_stock_orders()
         for r in ret:
-            # print(r)
             sym = rh.get_symbol_by_url(r["instrument"])
             queue.append(
                 {
@@ -394,25 +434,36 @@ class Robinhood(API):
                     "time_in_force": r["time_in_force"],
                     "status": r["state"],
                     "side": r["side"],
+                    "filled_time": None,
+                    "filled_price": None,
                 }
             )
 
         ret = rh.get_all_open_option_orders()
         for r in ret:
-            # print(r)
-            legs = []
-            for l in r["legs"]:
-                legs.append({"id": l["id"], "side": l["side"]})
+            debugger.debug(r)
+            legs = [{"id": l["id"], "side": l["side"]} for l in r["legs"]]
+            date = r["legs"][0]["expiration_date"]
+            date = dt.datetime.strptime(date, "%Y-%m-%d")
+            s = self.data_to_occ(
+                r["chain_symbol"],
+                date,
+                r["legs"][0]["option_type"],
+                float(r["legs"][0]["strike_price"]),
+            )
             queue.append(
                 {
                     "type": "OPTION",
-                    "symbol": r["chain_symbol"],
+                    "symbol": s,
+                    "base_symbol": r["chain_symbol"],
                     "quantity": r["quantity"],
                     "filled_qty": r["processed_quantity"],
                     "id": r["id"],
                     "time_in_force": r["time_in_force"],
                     "status": r["state"],
                     "legs": legs,
+                    "filled_time": None,
+                    "filled_price": None,
                 }
             )
         ret = rh.get_all_open_crypto_orders()
@@ -428,6 +479,8 @@ class Robinhood(API):
                     "time_in_force": r["time_in_force"],
                     "status": r["state"],
                     "side": r["side"],
+                    "filled_time": None,
+                    "filled_price": None,
                 }
             )
         return queue
@@ -436,7 +489,7 @@ class Robinhood(API):
 
     # Order functions are not wrapped in the exception handler to prevent duplicate
     # orders from being made.
-    def order_limit(
+    def order_stock_limit(
         self,
         side: str,
         symbol: str,
@@ -447,43 +500,58 @@ class Robinhood(API):
     ):
         ret = None
         try:
-            if symbol[0] == "@":
-                symbol = symbol[1:]
-                if side == "buy":
-                    ret = rh.order_buy_crypto_limit(
-                        symbol=symbol,
-                        quantity=quantity,
-                        timeInForce=in_force,
-                        limitPrice=limit_price,
-                    )
-                else:
-                    ret = rh.order_sell_crypto_limit(
-                        symbol=symbol,
-                        quantity=quantity,
-                        timeInForce=in_force,
-                        limitPrice=limit_price,
-                    )
-                typ = "CRYPTO"
+            if side == "buy":
+                ret = rh.order_buy_limit(
+                    symbol=symbol,
+                    quantity=quantity,
+                    timeInForce=in_force,
+                    limitPrice=limit_price,
+                )
             else:
-                if side == "buy":
-                    ret = rh.order_buy_limit(
-                        symbol=symbol,
-                        quantity=quantity,
-                        timeInForce=in_force,
-                        limitPrice=limit_price,
-                    )
-                else:
-                    ret = rh.order_sell_limit(
-                        symbol=symbol,
-                        quantity=quantity,
-                        timeInForce=in_force,
-                        limitPrice=limit_price,
-                    )
-                typ = "STOCK"
+                ret = rh.order_sell_limit(
+                    symbol=symbol,
+                    quantity=quantity,
+                    timeInForce=in_force,
+                    limitPrice=limit_price,
+                )
             return {
-                "type": typ,
+                "type": "STOCK",
                 "id": ret["id"],
                 "symbol": symbol,
+            }
+        except:
+            debugger.error("Error while placing order.\nReturned: {ret}", exc_info=True)
+            raise Exception("Error while placing order.")
+
+    def order_crypto_limit(
+        self,
+        side: str,
+        symbol: str,
+        quantity: float,
+        limit_price: float,
+        in_force: str = "gtc",
+        extended: bool = False,
+    ):
+        ret = None
+        try:
+            if side == "buy":
+                ret = rh.order_buy_crypto_limit(
+                    symbol=symbol,
+                    quantity=quantity,
+                    timeInForce=in_force,
+                    limitPrice=limit_price,
+                )
+            else:
+                ret = rh.order_sell_crypto_limit(
+                    symbol=symbol,
+                    quantity=quantity,
+                    timeInForce=in_force,
+                    limitPrice=limit_price,
+                )
+            return {
+                "type": "CRYPTO",
+                "id": ret["id"],
+                "symbol": "@" + symbol,
             }
         except:
             debugger.error("Error while placing order.\nReturned: {ret}", exc_info=True)
@@ -562,6 +630,10 @@ class Robinhood(API):
         df.columns = pd.MultiIndex.from_product([watch, df.columns])
 
         return df.dropna()
+
+    def _rh_datestr_to_datetime(self, date_str: str):
+        date_str = date_str[:-3] + date_str[-2:]
+        return dt.datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%S.%f%z")
 
     def create_secret(self, path):
         import harvest.wizard as wizard

@@ -1,3 +1,4 @@
+# HARVEST_SKIP
 """
 This code uses the pickle storage class in action.
 """

@@ -2,11 +2,12 @@
 from logging import debug
 import re
 import threading
+import traceback
 import sys
 from sys import exit
 from signal import signal, SIGINT
 import time
-import traceback
+import datetime as dt
 
 # External libraries
 import tzlocal
@@ -18,7 +19,6 @@ from harvest.api.yahoo import YahooStreamer
 from harvest.api.dummy import DummyStreamer
 from harvest.api.paper import PaperBroker
 from harvest.storage import BaseStorage
-from harvest.storage import BaseLogger
 from harvest.server import Server
 
 
@@ -45,17 +45,16 @@ class LiveTrader:
         self._init_checks()
 
         self._set_streamer_broker(streamer, broker)
-        self.storage = (
-            BaseStorage() if storage is None else storage
-        )  # Initialize the storage
-        self._init_attributes()
+        # Initialize the storage
+        self.storage = BaseStorage() if storage is None else storage
 
+        self._init_attributes()
         self._setup_debugger(debug)
 
     def _init_checks(self):
-        # Harvest only supports Python 3.8 or newer.
-        if sys.version_info[0] < 3 or sys.version_info[1] < 8:
-            raise Exception("Harvest requires Python 3.8 or above.")
+        # Harvest only supports Python 3.9 or newer.
+        if sys.version_info[0] < 3 or sys.version_info[1] < 9:
+            raise Exception("Harvest requires Python 3.9 or above.")
 
     def _set_streamer_broker(self, streamer, broker):
         """Sets the streamer and broker."""
@@ -63,7 +62,7 @@ class LiveTrader:
         self.streamer = YahooStreamer() if streamer is None else streamer
         # Broker must be specified
         if broker is None:
-            # TODO: Raise exception is specified class is streaming only
+            # TODO: Raise exception if specified class is streaming only
             if isinstance(self.streamer, YahooStreamer):
                 raise Exception("Broker must be specified")
             else:
@@ -75,9 +74,6 @@ class LiveTrader:
 
         signal(SIGINT, self.exit)
 
-        # Initialize timestamp
-        self.timestamp = self.streamer.timestamp
-
         self.watchlist_global = []  # List of securities specified in this class
         self.algo = []  # List of algorithms to run.
         self.account = {}  # Local cache of account data.
@@ -86,7 +82,6 @@ class LiveTrader:
         self.crypto_positions = []  # Local cache of current crypto positions.
         self.order_queue = []  # Queue of unfilled orders.
 
-        self.logger = BaseLogger()
         self.server = Server(self)  # Initialize the web interface server
 
         self.timezone = tzlocal.get_localzone()
@@ -101,7 +96,14 @@ class LiveTrader:
             f"Streamer: {type(self.streamer).__name__}\nBroker: {type(self.broker).__name__}\nStorage: {type(self.storage).__name__}"
         )
 
-    def start(self, interval="5MIN", aggregations=[], sync=True, server=False):
+    def start(
+        self,
+        interval="5MIN",
+        aggregations=[],
+        sync=True,
+        server=False,
+        all_history=True,
+    ):
         """Entry point to start the system.
 
         :param str? interval: The interval to run the algorithm. defaults to '5MIN'
@@ -109,8 +111,7 @@ class LiveTrader:
             For example, if this is set to ['5MIN', '30MIN'], and interval is '1MIN', the algorithm will have access to
             5MIN, 30MIN aggregated data in addition to 1MIN data. defaults to None
         :param bool? sync: If true, the system will sync with the broker and fetch current positions and pending orders. defaults to true.
-        :kill_switch: If true, kills the infinite loop in streamer. Primarily used for testing. defaults to False.
-
+        :param bool? all_history: If true, gets all history for all the given assets and if false only get data in the past three days.
         """
         debugger.debug("Setting up Harvest...")
 
@@ -120,11 +121,12 @@ class LiveTrader:
             for s in self.stock_positions:
                 self.watchlist_global.append(s["symbol"])
             for s in self.option_positions:
-                self.watchlist_global.append(s["symbol"])
+                self.watchlist_global.append(s["base_symbol"])
             for s in self.crypto_positions:
                 self.watchlist_global.append(s["symbol"])
             for s in self.order_queue:
-                self.watchlist_global.append(s["symbol"])
+                sym = s["base_symbol"] if s["type"] == "OPTION" else s["symbol"]
+                self.watchlist_global.append(sym)
 
         # Remove duplicates in watchlist
         self.watchlist_global = list(set(self.watchlist_global))
@@ -138,15 +140,18 @@ class LiveTrader:
 
         # Initialize the account
         self._setup_account()
+        self.storage.init_performace_data(
+            self.account["equity"], self.streamer.timestamp
+        )
 
-        self.broker.setup(self.interval, self, self.main)
+        self.broker.setup(self.interval, self.main)
         if self.broker != self.streamer:
             # Only call the streamer setup if it is a different
             # instance than the broker otherwise some brokers can fail!
-            self.streamer.setup(self.interval, self, self.main)
+            self.streamer.setup(self.interval, self.main)
 
         # Initialize the storage
-        self._storage_init()
+        self._storage_init(all_history)
 
         for a in self.algo:
             a.trader = self
@@ -183,6 +188,10 @@ class LiveTrader:
         debugger.debug(f"Updated option positions:\n{self.option_positions}")
 
     def _setup_params(self, interval, aggregations):
+        """
+        Sets up configuration parameters for the Trader, notably
+        the 'interval' attribute.
+        """
         interval = interval_string_to_enum(interval)
         aggregations = [interval_string_to_enum(a) for a in aggregations]
         self.interval = {}
@@ -242,23 +251,40 @@ class LiveTrader:
         For testing, it should manually be specified
         """
         ret = self.broker.fetch_account()
+        if ret is None:
+            raise Exception("Failed to load account info from broker.")
         self.account = ret
 
-    def _storage_init(self):
-        """Initializes the storage."""
+    def _storage_init(self, all_history: bool):
+        """
+        Initializes the storage.
+        :all_history: bool :
+        """
 
         for sym in self.interval:
             for inter in [self.interval[sym]["interval"]] + self.interval[sym][
                 "aggregations"
             ]:
-                df = self.streamer.fetch_price_history(sym, inter)
+                start = None if all_history else now() - dt.timedelta(days=3)
+                df = self.streamer.fetch_price_history(sym, inter, start)
                 self.storage.store(sym, inter, df)
 
+    # ================== Functions for main routine =====================
+
     def main(self, df_dict):
-        self.timestamp = self.streamer.timestamp
+        """
+        Main loop of the Trader.
+        """
         # Periodically refresh access tokens
-        if self.timestamp.hour % 12 == 0 and self.timestamp.minute == 0:
+        if (
+            self.streamer.timestamp.hour % 12 == 0
+            and self.streamer.timestamp.minute == 0
+        ):
             self.streamer.refresh_cred()
+
+        self.storage.add_performance_data(
+            self.account["equity"], self.streamer.timestamp
+        )
 
         # Save the data locally
         for sym in df_dict:
@@ -272,16 +298,17 @@ class LiveTrader:
         # If an order was processed, fetch the latest position info.
         # Otherwise, calculate current positions locally
         update = self._update_order_queue()
-        self._update_stats(
+        self._update_position_cache(
             df_dict, new=update, option_update=len(self.option_positions) > 0
         )
 
         new_algo = []
         for a in self.algo:
-            if not is_freq(self.timestamp, a.interval):
+            if not is_freq(self.streamer.timestamp, a.interval):
                 new_algo.append(a)
                 continue
             try:
+                debugger.info(f"Running algo: {a}")
                 a.main()
                 new_algo.append(a)
             except Exception as e:
@@ -315,14 +342,26 @@ class LiveTrader:
             elif order["type"] == "CRYPTO":
                 stat = self.broker.fetch_crypto_order_status(order["id"])
             debugger.debug(f"Updating status of order {order['id']}")
-            self.order_queue[i] = stat
+            self.order_queue[i].update(stat)
 
         debugger.debug(f"Updated order queue: {self.order_queue}")
         new_order = []
         order_filled = False
         for order in self.order_queue:
+            # TODO: handle cancelled orders
             if order["status"] == "filled":
                 order_filled = True
+                debugger.debug(
+                    f"Order {order['id']} filled at {order['filled_time']} at {order['filled_price']}"
+                )
+                self.storage.store_transaction(
+                    order["filled_time"],
+                    "N/A",
+                    order["symbol"],
+                    order["side"],
+                    order["quantity"],
+                    order["filled_price"],
+                )
             else:
                 new_order.append(order)
         self.order_queue = new_order
@@ -330,14 +369,14 @@ class LiveTrader:
         # if an order was processed, update the positions and account info
         return order_filled
 
-    def _update_stats(self, df_dict, new=False, option_update=False):
+    def _update_position_cache(self, df_dict, new=False, option_update=False):
         """Update local cache of stocks, options, and crypto positions"""
         # Update entries in local cache
         # API should also be called if load_watch is false, as there is a high chance
         # that data in local cache are not representative of the entire portfolio,
         # meaning total equity cannot be calculated locally
         if new:
-            self._update_positions()
+            self._fetch_account_data()
         if option_update:
             self.broker.update_option_positions(self.option_positions)
 
@@ -368,12 +407,13 @@ class LiveTrader:
 
         equity = net_value + self.account["cash"]
         self.account["equity"] = equity
+        self.stock_positions = self.broker.fetch_stock_positions()
 
-    def _update_positions(self):
+    def _fetch_account_data(self):
         pos = self.broker.fetch_stock_positions()
         self.stock_positions = [p for p in pos if p["symbol"] in self.interval]
         pos = self.broker.fetch_option_positions()
-        self.option_positions = [p for p in pos if p["symbol"] in self.interval]
+        self.option_positions = [p for p in pos if p["base_symbol"] in self.interval]
         pos = self.broker.fetch_crypto_positions()
         self.crypto_positions = [p for p in pos if p["symbol"] in self.interval]
         ret = self.broker.fetch_account()
@@ -391,50 +431,140 @@ class LiveTrader:
         return self.streamer.fetch_option_market_data(*args, **kwargs)
 
     def buy(self, symbol: str, quantity: int, in_force: str, extended: bool):
-        ret = self.broker.buy(symbol, quantity, in_force, extended)
+        # Check if user has enough buying power
+        buy_power = self.account["buying_power"]
+        if symbol_type(symbol) == "OPTION":
+            price = self.streamer.fetch_option_market_data(symbol)["price"]
+        else:
+            price = self.storage.load(symbol, self.interval[symbol]["interval"])[
+                symbol
+            ]["close"][-1]
+
+        limit_price = mark_up(price)
+        total_price = limit_price * quantity
+
+        debugger.warning(
+            f"Attempting to buy {quantity} shares of {symbol} at price {price} with price limit {limit_price} and a maximum total price of {total_price}"
+        )
+
+        if total_price >= buy_power:
+            debugger.error(
+                "Not enough buying power.\n"
+                + f"Total price ({price} * {quantity} * 1.05 = {limit_price*quantity}) exceeds buying power {buy_power}."
+                + "Reduce purchase quantity or increase buying power."
+            )
+            return None
+
+        # TODO? Perform other checks
+        ret = self.broker.buy(symbol, quantity, limit_price, in_force, extended)
+
         if ret is None:
             debugger.debug("BUY failed")
             return None
         self.order_queue.append(ret)
-        debugger.debug(f"BUY: {self.timestamp}, {symbol}, {quantity}")
-        debugger.debug(f"BUY order queue: {self.order_queue}")
-        asset_type = "crypto" if is_crypto(symbol) else "stock"
-        self.logger.add_transaction(self.timestamp, "buy", asset_type, symbol, quantity)
+        debugger.debug(f"BUY: {self.streamer.timestamp}, {symbol}, {quantity}")
+
         return ret
 
     def sell(self, symbol: str, quantity: int, in_force: str, extended: bool):
-        ret = self.broker.sell(symbol, quantity, in_force, extended)
+        # Check how many of the given asset we currently own
+        owned_qty = self.get_asset_quantity(symbol, exclude_pending_sell=True)
+        if quantity > owned_qty:
+            debugger.debug(
+                "SELL failed: More quantities are being sold than currently owned."
+            )
+            return None
+
+        if symbol_type(symbol) == "OPTION":
+            price = self.streamer.fetch_option_market_data(symbol)["price"]
+        else:
+            price = self.storage.load(symbol, self.interval[symbol]["interval"])[
+                symbol
+            ]["close"][-1]
+
+        limit_price = mark_down(price)
+
+        ret = self.broker.sell(symbol, quantity, limit_price, in_force, extended)
         if ret is None:
             debugger.debug("SELL failed")
             return None
         self.order_queue.append(ret)
-        debugger.debug(f"SELL: {self.timestamp}, {symbol}, {quantity}")
-        debugger.debug(f"SELL order queue: {self.order_queue}")
-        asset_type = "crypto" if is_crypto(symbol) else "stock"
-        self.logger.add_transaction(
-            self.timestamp, "sell", asset_type, symbol, quantity
-        )
+        debugger.debug(f"SELL: {self.streamer.timestamp}, {symbol}, {quantity}")
         return ret
 
-    def buy_option(self, symbol: str, quantity: int, in_force: str):
-        ret = self.broker.buy_option(symbol, quantity, in_force)
-        if ret is None:
-            raise Exception("BUY failed")
-        self.order_queue.append(ret)
-        debugger.debug(f"BUY: {self.timestamp}, {symbol}, {quantity}")
-        debugger.debug(f"BUY order queue: {self.order_queue}")
-        self.logger.add_transaction(self.timestamp, "buy", "option", symbol, quantity)
-        return ret
+    # ================ Helper Functions ======================
+    def get_asset_quantity(
+        self, symbol: str = None, include_pending_buy=False, exclude_pending_sell=False
+    ) -> float:
+        """Returns the quantity owned of a specified asset.
 
-    def sell_option(self, symbol: str, quantity: int, in_force: str):
-        ret = self.broker.sell_option(symbol, quantity, in_force)
-        if ret is None:
-            raise Exception("SELL failed")
-        self.order_queue.append(ret)
-        debugger.debug(f"SELL: {self.timestamp}, {symbol}, {quantity}")
-        debugger.debug(f"SELL order queue: {self.order_queue}")
-        self.logger.add_transaction(self.timestamp, "sell", "option", symbol, quantity)
-        return ret
+        :param str? symbol:  Symbol of asset. defaults to first symbol in watchlist
+        :returns: Quantity of asset as float. 0 if quantity is not owned.
+        :raises:
+        """
+        if symbol is None:
+            symbol = self.watchlist_global[0]
+
+        if typ := symbol_type(symbol) == "OPTION":
+            owned_qty = sum(
+                p["quantity"] for p in self.option_positions if p["symbol"] == symbol
+            )
+        elif typ == "CRYPTO":
+            owned_qty = sum(
+                p["quantity"] for p in self.crypto_positions if p["symbol"] == symbol
+            )
+        else:
+            owned_qty = sum(
+                p["quantity"] for p in self.stock_positions if p["symbol"] == symbol
+            )
+
+        if include_pending_buy:
+            owned_qty += sum(
+                o["quantity"]
+                for o in self.order_queue
+                if o["symbol"] == symbol and o["side"] == "buy"
+            )
+
+        if exclude_pending_sell:
+            owned_qty -= sum(
+                o["quantity"]
+                for o in self.order_queue
+                if o["symbol"] == symbol and o["side"] == "sell"
+            )
+
+        return owned_qty
+
+    # def buy_option(self, symbol: str, quantity: int, in_force: str):
+    #     ret = self.broker.buy_option(symbol, quantity, in_force)
+    #     if ret is None:
+    #         raise Exception("BUY failed")
+    #     self.order_queue.append(ret)
+    #     debugger.debug(f"BUY: {self.streamer.timestamp}, {symbol}, {quantity}")
+    #     debugger.debug(f"BUY order queue: {self.order_queue}")
+    #     self.logger.add_transaction(self.streamer.timestamp, "buy", "option", symbol, quantity)
+    #     return ret
+
+    # def sell_option(self, symbol: str, quantity: int, in_force: str):
+    #     owned_qty = sum(
+    #         p["quantity"] for p in self.option_positions if p["symbol"] == symbol
+    #     )
+    #     owned_qty -= sum(
+    #         o["quantity"]
+    #         for o in self.order_queue
+    #         if o["symbol"] == symbol and o["side"] == "sell"
+    #     )
+    #     if quantity > owned_qty:
+    #         debugger.debug("SELL failed: Quantity too high")
+    #         return None
+
+    #     ret = self.broker.sell_option(symbol, quantity, in_force)
+    #     if ret is None:
+    #         raise Exception("SELL failed")
+    #     self.order_queue.append(ret)
+    #     debugger.debug(f"SELL: {self.streamer.timestamp}, {symbol}, {quantity}")
+    #     debugger.debug(f"SELL order queue: {self.order_queue}")
+    #     self.logger.add_transaction(self.streamer.timestamp, "sell", "option", symbol, quantity)
+    #     return ret
 
     def set_algo(self, algo):
         """Specifies the algorithm to use.
@@ -443,6 +573,9 @@ class LiveTrader:
             list of Algo classes.
         """
         self.algo = algo if isinstance(algo, list) else [algo]
+
+    def add_algo(self, algo):
+        self.algo.append(algo)
 
     def set_symbol(self, symbol):
         """Specifies the symbol(s) to watch.
@@ -475,7 +608,7 @@ class PaperTrader(LiveTrader):
 
         # If streamer is not specified, use YahooStreamer
         self.streamer = YahooStreamer() if streamer is None else streamer
-        self.broker = PaperBroker()
+        self.broker = PaperBroker(streamer=self.streamer)
 
         self.storage = (
             BaseStorage() if storage is None else storage

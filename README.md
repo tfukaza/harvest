@@ -1,5 +1,5 @@
 ![Header](docs/banner.png)<br />
-Harvest is a Python framework providing a **simple** and **flexible** framework for algorithmic trading. Visit Harvest's [**website**](https://tfukaza.github.io/harvest/) for details, tutorials, and documentation. 
+Harvest is a simple yet flexible Python framework for algorithmic trading. Paper trade and live trade stocks, cryptos, and options![^1][^2] Visit [**here**](https://github.com/tfukaza/harvest-docs) for tutorials and documentation. 
 
 <br />
 
@@ -16,7 +16,7 @@ Harvest is currently at **v0.3**. The program is unstable and contains many bugs
 - 📝 [Request documentation](https://github.com/tfukaza/harvest/issues/new?assignees=&labels=documentation&template=documentation.md&title=%5B%F0%9F%93%9DDocumentation%5D)
 
 # See for yourself!
-Below is a minimal example of a crossover strategy for `TWTR` implemented with Harvest, paper trading.
+The example below is an algorithm to trade Twitter stocks using the moving average crossover strategy.
 ```python
 from harvest.algo import *
 from harvest.trader import *
@@ -33,13 +33,16 @@ class Watch(BaseAlgo):
             self.buy()
         elif self.crossover(sma_short, sma_long):
             self.sell()
-
-if __name__ == "__main__":
-    trader = PaperTrader()
-    trader.set_algo(Watch())
-    trader.start()
 ```
-With Harvest, the process of testing, simulating, and deploying your strategies is a piece of cake 🍰
+To paper trade using this algorithm, run the following command:
+```bash
+pyhton -m harvest start -s yahoo -b paper 
+```
+To live trade using Robinhood, run:
+```bash
+pyhton -m harvest start -s robinhood -b robinhood
+```
+With Harvest, the process of testing and deploying your strategies is a piece of cake 🍰
 
 # Installation
 The only requirement is to have **Python 3.9 or newer**.
@@ -59,21 +62,17 @@ Replace `BROKER` with a brokerage/data source of your choice:
 - Webull
 - Kraken
 - Polygon 
-- Yahoo
 
 Now you're all set!
 
 # Contributing
 Contributions are greatly appreciated. Check out the [CONTRIBUTING](CONTRIBUTING.md) document for details, and [ABOUT](ABOUT.md) for the long-term goals of this project. 
 
-Currently looking for...
-- Python devs to code the framework
-- Backend devs for the Flask backend
-- Frontend devs to make the web GUI based on Svelte
-- UX/UI designers for the web GUI
-
 # Disclaimer
 - Harvest is not officially associated with Robinhood, Alpaca, Webull, Kraken, Polygon, or Yahoo. 
 - Many of the brokers were also not designed to be used for algo-trading. Excessive access to their API can result in your account getting locked. 
 - Tutorials and documentation solely exist to provide technical references of the code. They are not recommendations of any specific securities or strategies. 
 - Use Harvest at your own responsibility. Developers of Harvest take no responsibility for any financial losses you incur by using Harvest. By using Harvest, you certify you understand that Harvest is a software in early development and may contain bugs and unexpected behaviors.
+
+[^1]: What assets you can trade depends on the broker you are using. 
+[^2]: Backtesting is also available, but it is not supported for options. 

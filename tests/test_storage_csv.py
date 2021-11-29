@@ -18,7 +18,7 @@ class TestCSVStorage(unittest.TestCase):
     def test_create_storage(self):
         storage = CSVStorage(self.storage_dir)
 
-        self.assertEqual(storage.storage, {})
+        self.assertEqual(storage.storage_price, {})
 
     def test_simple_store(self):
         storage = CSVStorage(self.storage_dir)
@@ -26,8 +26,8 @@ class TestCSVStorage(unittest.TestCase):
         storage.store("A", Interval.MIN_1, data.copy(True))
 
         self.assertTrue(not pd.isna(data.iloc[0]["A"]["low"]))
-        self.assertTrue("A" in list(storage.storage.keys()))
-        self.assertEqual(list(storage.storage["A"].keys()), [Interval.MIN_1])
+        self.assertTrue("A" in list(storage.storage_price.keys()))
+        self.assertEqual(list(storage.storage_price["A"].keys()), [Interval.MIN_1])
 
     def test_saved_load(self):
         storage1 = CSVStorage(self.storage_dir)

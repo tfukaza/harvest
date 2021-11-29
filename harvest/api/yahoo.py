@@ -3,6 +3,7 @@ import datetime as dt
 from typing import Any, Dict, List, Tuple
 
 # External libraries
+import tzlocal
 import pandas as pd
 import yfinance as yf
 
@@ -20,15 +21,14 @@ class YahooStreamer(API):
         Interval.MIN_30,
         Interval.HR_1,
     ]
+    exchange = "NASDAQ"
 
     def __init__(self, path=None):
         self.timestamp = now()
 
-    def setup(self, interval: Dict, trader=None, trader_main=None):
-        super().setup(interval, trader, trader_main)
+    def setup(self, interval: Dict, trader_main=None):
+        super().setup(interval, trader_main)
 
-        # self.watch_stock = []
-        # self.watch_crypto = []
         self.watch_ticker = {}
 
         for s in interval:
@@ -166,11 +166,12 @@ class YahooStreamer(API):
 
     @API._exception_handler
     def fetch_chain_info(self, symbol: str):
+        option_list = self.watch_ticker[symbol].options
         return {
             "id": "n/a",
             "exp_dates": [
-                convert_input_to_datetime(s, self.trader.timezone)
-                for s in self.watch_ticker[symbol].options
+                convert_input_to_datetime(s, tzlocal.get_localzone())
+                for s in option_list
             ],
             "multiplier": 100,
         }
@@ -202,7 +203,7 @@ class YahooStreamer(API):
         df = df[["occ_symbol", "exp_date", "strike", "type"]]
         df.set_index("occ_symbol", inplace=True)
 
-        if not symbol in self.option_cache:
+        if symbol not in self.option_cache:
             self.option_cache[symbol] = {}
         self.option_cache[symbol][date] = df
 
@@ -213,10 +214,7 @@ class YahooStreamer(API):
         occ_symbol = occ_symbol.replace(" ", "")
         symbol, date, typ, _ = self.occ_to_data(occ_symbol)
         chain = self.watch_ticker[symbol].option_chain(date_to_str(date))
-        if typ == "call":
-            chain = chain.calls
-        else:
-            chain = chain.puts
+        chain = chain.calls if typ == "call" else chain.puts
         df = chain[chain["contractSymbol"] == occ_symbol]
         debugger.debug(occ_symbol, df)
         return {

@@ -27,21 +27,22 @@ class DummyStreamer(API):
         Interval.HR_1,
         Interval.DAY_1,
     ]
-    default_now = dt.datetime(year=2000, month=1, day=1, hour=0, minute=0)
+
+    default_timestamp = dt.datetime(year=2000, month=1, day=1, hour=0, minute=0)
 
     def __init__(
         self,
-        path: str = None,
-        now: dt.datetime = default_now,
+        timestamp: dt.datetime = default_timestamp,
         realistic_times: bool = False,
     ):
-        self.trader = None
+
+        super().__init__(None)
+
         self.trader_main = None
         self.realistic_times = realistic_times
 
         # Set the current time
-        self._set_now(now)
-        self.timestamp = self.now
+        self._set_timestamp(timestamp)
         # Used so `fetch_price_history` can work without running `setup`
         self.interval = self.interval_list[0]
         # Store random values and generates for each asset tot make `fetch_price_history` fixed
@@ -65,7 +66,7 @@ class DummyStreamer(API):
         """
 
         results = {}
-        today = self.now
+        today = self.timestamp
         last = today - dt.timedelta(days=3)
 
         for symbol in self.interval:
@@ -83,7 +84,7 @@ class DummyStreamer(API):
         """
 
         results = {}
-        today = self.now
+        today = self.timestamp
         last = today - dt.timedelta(days=3)
         for symbol in self.interval:
             if is_crypto(symbol):
@@ -94,6 +95,9 @@ class DummyStreamer(API):
 
     # -------------- Streamer methods -------------- #
 
+    def get_current_time(self):
+        return self.timestamp
+
     def fetch_price_history(
         self,
         symbol: str,
@@ -103,15 +107,20 @@ class DummyStreamer(API):
     ) -> pd.DataFrame:
 
         if start is None:
-            if interval in ["1MIN", "5MIN", "15MIN", "30MIN"]:
-                start = self.now - dt.timedelta(days=2)
-            elif interval == "1HR":
-                start = self.now - dt.timedelta(days=14)
+            if interval in [
+                Interval.MIN_1,
+                Interval.MIN_5,
+                Interval.MIN_15,
+                Interval.MIN_30,
+            ]:
+                start = self.timestamp - dt.timedelta(days=2)
+            elif interval == Interval.HR_1:
+                start = self.timestamp - dt.timedelta(days=14)
             else:
-                start = self.now - dt.timedelta(days=365)
+                start = self.timestamp - dt.timedelta(days=365)
 
         if end is None:
-            end = self.now
+            end = self.timestamp
 
         if start.tzinfo is None or start.tzinfo.utcoffset(start) is None:
             start = pytz.utc.localize(start)
@@ -163,7 +172,7 @@ class DummyStreamer(API):
             self.randomness[symbol + "_rng"] = rng
 
         # The inital price is arbitarly calculated from the first change in price
-        start_price = 1000 * (self.randomness[symbol][0] + 0.51)
+        start_price = 1000 * (self.randomness[symbol][0] + 0.501)
 
         times = []
         current_time = start
@@ -213,7 +222,6 @@ class DummyStreamer(API):
 
         results.columns = pd.MultiIndex.from_product([[symbol], results.columns])
         results = aggregate_df(results, interval)
-
         return results
 
     # TODO: Generate dummy option data
@@ -222,7 +230,7 @@ class DummyStreamer(API):
         # This is a placeholder so Trader doesn't crash
         message = hashlib.sha256()
         message.update(symbol.encode("utf-8"))
-        message.update(str(self.now).encode("utf-8"))
+        message.update(str(self.timestamp).encode("utf-8"))
         hsh = message.digest()
         price = int.from_bytes(hsh[:4], "big") / (2 ** 32)
         price = (price + 1) * 1.5
@@ -256,21 +264,22 @@ class DummyStreamer(API):
     # --------------- Methods for Trading --------------- #
 
     # Not implemented functions:
-    #   order_limit
+    #   order_stock_limit
+    #   order_crypto_limit
     #   order_option_limit
 
     # ------------- Helper methods ------------- #
 
-    def _set_now(self, current_datetime: dt.datetime) -> None:
+    def _set_timestamp(self, current_datetime: dt.datetime) -> None:
         if (
             current_datetime.tzinfo is None
             or current_datetime.tzinfo.utcoffset(current_datetime) is None
         ):
-            self.now = pytz.utc.localize(current_datetime)
+            self.timestamp = pytz.utc.localize(current_datetime)
         else:
-            self.now = current_datetime
+            self.timestamp = current_datetime
 
     def tick(self) -> None:
-        self.now += interval_to_timedelta(self.poll_interval)
+        self.timestamp += interval_to_timedelta(self.poll_interval)
         if not self.trader_main == None:
             self.main()

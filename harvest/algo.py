@@ -21,7 +21,7 @@ Methods that perform an action should follow this naming convention:
 
 Algo class is the main interface between users and the program, so
 remember the following guidelines for handling inputs and outputs:
--   Date inputs can be a string, a naive DateTime object, or a Timestamp object. 
+-   Date inputs can be a string, a naive DateTime object, or a Timestamp object.
     These must be converted to UTC timezone DateTime objects using convert_input_to_datetime()
     before being passed onto other parts of the code. The same applies for timedelta inputs.
 -   Conversely, date outputs must be converted to a naive DateTime object set to the user's timezone.
@@ -98,7 +98,6 @@ class BaseAlgo:
         :param str? extended: Whether to trade in extended hours or not. defaults to False
         :returns: The following Python dictionary
 
-            - type: str, 'STOCK' or 'CRYPTO'
             - id: str, ID of order
             - symbol: str, symbol of asset
 
@@ -130,7 +129,6 @@ class BaseAlgo:
         :param str? extended:  Whether to trade in extended hours or not. defaults to False
         :returns: A dictionary with the following keys:
 
-            - type: str, 'STOCK' or 'CRYPTO'
             - id: str, ID of order
             - symbol: str, symbol of asset
 
@@ -144,63 +142,89 @@ class BaseAlgo:
         debugger.debug(f"Algo SELL: {symbol}, {quantity}")
         return self.trader.sell(symbol, quantity, in_force, extended)
 
-    def buy_option(self, symbol: str, quantity: int = None, in_force: str = "gtc"):
-        """Buys the specified option.
+    def sell_all_options(self, symbol: str = None, in_force: str = "gtc"):
+        """Sells all options of a stock
 
-        When called, a limit buy order is placed with a limit
-        price 5% higher than the current price.
+        :param str? symbol: symbol of stock. defaults to first symbol in watchlist
+        :returns: A list of dictionaries with the following keys:
 
-        :param str symbol:    Symbol of the asset to buy, in {OCC} format.
-        :param float? quantity:  Quantity of asset to buy. defaults to buys as many as possible
-        :param str? in_force:  Duration the order is in force. '{gtc}' or '{gtd}'. defaults to 'gtc'
-        :returns: A dictionary with the following keys:
-
-            - type: 'OPTION'
-            - id: ID of order
-            - symbol: symbol of asset
-
-        :raises Exception: There is an error in the order process.
-        """
-        if quantity is None:
-            quantity = self.get_asset_max_quantity(symbol)
-        return self.trader.buy_option(symbol, quantity, in_force)
-
-    def sell_option(
-        self, symbol: str = None, quantity: int = None, in_force: str = "gtc"
-    ):
-        """Sells the specified option.
-
-        When called, a limit sell order is placed with a limit
-        price 5% lower than the current price.
-
-        If the option symbol is specified, it will sell that option. If it is not, then the
-        method will select the first stock symbol in the watchlist, and sell all options
-        related to that stock.
-
-        :param str? symbol: Symbol of the asset to sell, in {OCC} format. defaults to sell all options for the first stock in watchlist
-        :param float? quantity:  Quantity of asset to sell. defaults to sells all
-        :param str? in_force:  Duration the order is in force. '{gtc}' or '{gtd}'. defaults to 'gtc'
-        :returns: A dictionary with the following keys:
-
-            - type: 'OPTION'
-            - id: ID of order
-            - symbol: symbol of asset
-
-        :raises Exception: There is an error in the order process.
+            - id: str, ID of order
+            - symbol: str, symbol of asset
         """
         if symbol is None:
             symbol = self.watchlist[0]
-            symbols = [
-                s["occ_symbol"]
-                for s in self.get_account_option_positions()
-                if s["symbol"] == symbol
-            ]
-        else:
-            symbols = [symbol]
+
+        symbols = [
+            s["symbol"]
+            for s in self.get_account_option_positions()
+            if s["base_symbol"] == symbol
+        ]
+        ret = []
         for s in symbols:
-            if quantity is None:
-                quantity = self.get_asset_quantity(s)
-            return self.trader.sell_option(s, quantity, in_force)
+            debugger.debug(f"Algo SELL OPTION: {s}")
+            quantity = self.get_asset_quantity(s)
+            ret.append(self.trader.sell(s, quantity, in_force, True))
+
+        return ret
+
+    # def buy_option(self, symbol: str, quantity: int = None, in_force: str = "gtc"):
+    #     """Buys the specified option.
+
+    #     When called, a limit buy order is placed with a limit
+    #     price 5% higher than the current price.
+
+    #     :param str symbol:    Symbol of the asset to buy, in {OCC} format.
+    #     :param float? quantity:  Quantity of asset to buy. defaults to buys as many as possible
+    #     :param str? in_force:  Duration the order is in force. '{gtc}' or '{gtd}'. defaults to 'gtc'
+    #     :returns: A dictionary with the following keys:
+
+    #         - type: 'OPTION'
+    #         - id: ID of order
+    #         - symbol: symbol of asset
+
+    #     :raises Exception: There is an error in the order process.
+    #     """
+    #     if quantity is None:
+    #         quantity = self.get_asset_max_quantity(symbol)
+    #     return self.trader.buy_option(symbol, quantity, in_force)
+
+    # def sell_option(
+    #     self, symbol: str = None, quantity: int = None, in_force: str = "gtc"
+    # ):
+    #     """Sells the specified option.
+
+    #     When called, a limit sell order is placed with a limit
+    #     price 5% lower than the current price.
+
+    #     If the option symbol is specified, it will sell that option. If it is not, then the
+    #     method will select the first stock symbol in the watchlist, and sell all options
+    #     related to that stock.
+
+    #     :param str? symbol: Symbol of the asset to sell, in {OCC} format. defaults to sell all options for the first stock in watchlist
+    #     :param float? quantity:  Quantity of asset to sell. defaults to sells all
+    #     :param str? in_force:  Duration the order is in force. '{gtc}' or '{gtd}'. defaults to 'gtc'
+    #     :returns: A dictionary with the following keys:
+
+    #         - type: 'OPTION'
+    #         - id: ID of order
+    #         - symbol: symbol of asset
+
+    #     :raises Exception: There is an error in the order process.
+    #     """
+    #     if symbol is None:
+    #         symbol = self.watchlist[0]
+    #         symbols = [
+    #             s["symbol"]
+    #             for s in self.get_account_option_positions()
+    #             if s["base_symbol"] == symbol
+    #         ]
+    #     else:
+    #         symbols = [symbol]
+    #     for s in symbols:
+    #         debugger.debug(f"Algo SELL OPTION: {s}")
+    #         if quantity is None:
+    #             quantity = self.get_asset_quantity(s)
+    #         return self.trader.sell_option(s, quantity, in_force)
 
     def filter_option_chain(
         self,
@@ -490,22 +514,16 @@ class BaseAlgo:
     def get_asset_quantity(self, symbol: str = None) -> float:
         """Returns the quantity owned of a specified asset.
 
+        Assets that are currently pending to be sold are not counted.
+
         :param str? symbol:  Symbol of asset. defaults to first symbol in watchlist
         :returns: Quantity of asset as float. 0 if quantity is not owned.
         :raises:
         """
         if symbol is None:
             symbol = self.watchlist[0]
-        if len(symbol) <= 6:
-            search = self.trader.stock_positions + self.trader.crypto_positions
-            for p in search:
-                if p["symbol"] == symbol:
-                    return p["quantity"]
-        else:
-            for p in self.trader.option_positions:
-                if p["occ_symbol"] == symbol:
-                    return p["quantity"]
-        return 0
+
+        return self.trader.get_asset_quantity(symbol, exclude_pending_sell=True)
 
     def get_asset_cost(self, symbol: str = None) -> float:
         """Returns the average cost of a specified asset.
@@ -591,6 +609,7 @@ class BaseAlgo:
             interval = self.interval
         if len(symbol) <= 6:
             df = self.trader.storage.load(symbol, interval).iloc[[-1]][symbol]
+            print(self.trader.storage.load(symbol, interval))
             return pandas_timestamp_to_local(df, self.trader.timezone)
         debugger.warning("Candles not available for options")
         return None
@@ -700,7 +719,15 @@ class BaseAlgo:
             - quantity
             - avg_price
         """
-        return self.trader.option_positions
+        return [
+            {
+                "symbol": p["symbol"],
+                "base_symbol": p["base_symbol"],
+                "quantity": p["quantity"],
+                "avg_price": p["avg_price"],
+            }
+            for p in self.trader.option_positions
+        ]
 
     def get_watchlist(self) -> List:
         """Returns the current watchlist."""
@@ -743,7 +770,9 @@ class BaseAlgo:
 
         :returns: The current date and time as a datetime object
         """
-        return datetime_utc_to_local(self.trader.timestamp, self.trader.timezone)
+        return datetime_utc_to_local(
+            self.trader.streamer.timestamp, self.trader.timezone
+        )
 
     def get_option_position_quantity(self, symbol: str = None) -> bool:
         """Returns the number of types of options held for a stock.

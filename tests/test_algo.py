@@ -242,19 +242,19 @@ class TestAlgo(unittest.TestCase):
         mock_mark_up.return_value = 10
 
         streamer = DummyStreamer()
-        t = PaperTrader(streamer)
+        t = PaperTrader(streamer, debug=True)
         t.set_symbol("X")
         t.set_algo(BaseAlgo())
         t.start("1MIN")
         streamer.tick()
 
-        t.algo[0].buy_option("X     110101C01000000")
+        t.algo[0].buy("X     110101C01000000")
         streamer.tick()
 
         p = t.option_positions[0]
-        self.assertEqual(p["occ_symbol"], "X     110101C01000000")
+        self.assertEqual(p["symbol"], "X     110101C01000000")
 
-        t.algo[0].sell_option()
+        t.algo[0].sell_all_options()
         streamer.tick()
 
         # p = t.stock_positions[0]
