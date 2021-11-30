@@ -50,6 +50,36 @@ def interval_string_to_enum(str_interval: str):
     else:
         raise ValueError(f"Invalid interval string {str_interval}")
 
+class Stats:
+    def __init__(self):
+        self._timestamp = None
+        self._timezone = None
+        self._interval = None
+    
+    @property
+    def timestamp(self):
+        return self._timestamp
+    
+    @timestamp.setter
+    def timestamp(self, value):
+        self._timestamp = value
+    
+    @property
+    def timezone(self):
+        return self._timezone
+    
+    @timezone.setter
+    def timezone(self, value):
+        self._timezone = value
+    
+    @property
+    def interval(self):
+        return self._interval
+    
+    @interval.setter
+    def interval(self, value):
+        self._interval = value
+
 
 def interval_enum_to_string(enum):
     try:

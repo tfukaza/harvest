@@ -81,7 +81,7 @@ class API:
         """
         debugger.info(f"Refreshing credentials for {type(self).__name__}.")
 
-    def setup(self, interval: Dict, trader_main=None) -> None:
+    def setup(self, stats: Stats, trader_main=None) -> None:
         """
         This function is called right before the algorithm begins,
         and initializes several runtime parameters like
@@ -91,10 +91,11 @@ class API:
         """
 
         self.trader_main = trader_main
+        self.stats = stats
 
         min_interval = None
-        for sym in interval:
-            inter = interval[sym]["interval"]
+        for sym in stats.interval:
+            inter = stats.interval[sym]["interval"]
             # If the specified interval is not supported on this API, raise Exception
             if inter < self.interval_list[0]:
                 raise Exception(f"Specified interval {inter} is not supported.")
@@ -103,13 +104,13 @@ class API:
             if inter not in self.interval_list:
                 granular_int = [i for i in self.interval_list if i < inter]
                 new_inter = granular_int[-1]
-                interval[sym]["aggregations"].append(inter)
-                interval[sym]["interval"] = new_inter
+                stats.interval[sym]["aggregations"].append(inter)
+                stats.interval[sym]["interval"] = new_inter
 
-            if min_interval is None or interval[sym]["interval"] < min_interval:
-                min_interval = interval[sym]["interval"]
+            if min_interval is None or stats.interval[sym]["interval"] < min_interval:
+                min_interval = stats.interval[sym]["interval"]
 
-        self.interval = interval
+        self.interval = stats.interval
         self.poll_interval = min_interval
         debugger.debug(f"Interval: {self.interval}")
         debugger.debug(f"Poll Interval: {self.poll_interval}")
@@ -134,7 +135,7 @@ class API:
                 cur = now()
                 minutes = cur.minute
                 if minutes % val == 0 and minutes != cur_min:
-                    self.timestamp = cur
+                    self.stats.timestamp = cur
                     self.main()
                     time.sleep(sleep)
                 cur_min = minutes
@@ -144,7 +145,7 @@ class API:
                 cur = now()
                 minutes = cur.minute
                 if minutes == 0 and minutes != cur_min:
-                    self.timestamp = cur
+                    self.stats.timestamp = cur
                     self.main()
                     time.sleep(sleep)
                 cur_min = minutes
@@ -154,7 +155,7 @@ class API:
                 minutes = cur.minute
                 hours = cur.hour
                 if hours == 19 and minutes == 50:
-                    self.timestamp = cur
+                    self.stats.timestamp = cur
                     self.main()
                     time.sleep(80000)
                 cur_min = minutes
@@ -179,8 +180,8 @@ class API:
         df_dict = {}
         for sym in self.interval:
             inter = self.interval[sym]["interval"]
-            if is_freq(harvest_timestamp, inter):
-                n = harvest_timestamp
+            if is_freq(self.stats.timestamp, inter):
+                n = self.stats.timestamp
                 latest = self.fetch_price_history(
                     sym, inter, n - interval_to_timedelta(inter) * 2, n
                 )
@@ -852,7 +853,7 @@ class StreamAPI(API):
                 for sym in self.interval
                 if is_freq(now(), self.interval[sym]["interval"])
             ]
-            self.timestamp = df_dict[got[0]].index[0]
+            self.stats.timestamp = df_dict[got[0]].index[0]
 
         debugger.debug(f"Needs: {self.needed}")
         debugger.debug(f"Got data for: {got}")

@@ -84,8 +84,10 @@ class LiveTrader:
 
         self.server = Server(self)  # Initialize the web interface server
 
-        self.timezone = tzlocal.get_localzone()
-        debugger.debug(f"Timezone: {self.timezone}")
+        self.stats = Stats()  # Initialize the stats object
+        self.stats.timestamp = None
+        self.stats.timezone = tzlocal.get_localzone()
+        self.stats.interval = None
 
     def _setup_debugger(self, debug):
         # Set up logger
@@ -135,7 +137,7 @@ class LiveTrader:
         # Initialize a dict of symbols and the intervals they need to run at
         self._setup_params(interval, aggregations)
 
-        if len(self.interval) == 0:
+        if len(self.stats.interval) == 0:
             raise Exception("No securities were added to watchlist")
 
         # Initialize the account
@@ -144,16 +146,17 @@ class LiveTrader:
             self.account["equity"], self.streamer.timestamp
         )
 
-        self.broker.setup(self.interval, self.main)
+        self.broker.setup(self.stats, self.main)
         if self.broker != self.streamer:
             # Only call the streamer setup if it is a different
             # instance than the broker otherwise some brokers can fail!
-            self.streamer.setup(self.interval, self.main)
+            self.streamer.setup(self.stats, self.main)
 
         # Initialize the storage
         self._storage_init(all_history)
 
         for a in self.algo:
+            a.init(self.stats)
             a.trader = self
             a.setup()
 
@@ -194,15 +197,10 @@ class LiveTrader:
         """
         interval = interval_string_to_enum(interval)
         aggregations = [interval_string_to_enum(a) for a in aggregations]
-        self.interval = {}
-
-        # Initialize a dict with symbol keys and values indicating
-        # what data intervals they need.
-        for sym in self.watchlist_global:
-            self.interval[sym] = {}
-            self.interval[sym]["interval"] = interval
-            self.interval[sym]["aggregations"] = aggregations
-
+        watch_dict = {
+            sym: {'interval': interval, 'aggregations': aggregations}
+            for sym in self.watchlist_global
+        }
         # Update the dict based on parameters specified in Algo class
         for a in self.algo:
             a.config()
@@ -224,27 +222,29 @@ class LiveTrader:
             for sym in a.watchlist:
                 # If the algorithm needs data for the symbol at a higher frequency than
                 # it is currently available in the Trader class, update the interval
-                if sym in self.interval:
-                    cur_interval = self.interval[sym]["interval"]
+                if sym in watch_dict:
+                    cur_interval = watch_dict[sym]["interval"]
                     if a.interval < cur_interval:
-                        self.interval[sym]["aggregations"].append(cur_interval)
-                        self.interval[sym]["interval"] = a.interval
+                        watch_dict[sym]["aggregations"].append(cur_interval)
+                        watch_dict[sym]["interval"] = a.interval
                 # If symbol is not in global watchlist, simply add it
                 else:
-                    self.interval[sym] = {}
-                    self.interval[sym]["interval"] = a.interval
-                    self.interval[sym]["aggregations"] = a.aggregations
+                    watch_dict[sym] = {}
+                    watch_dict[sym]["interval"] = a.interval
+                    watch_dict[sym]["aggregations"] = a.aggregations
 
                 # If the algo specifies an aggregation that is currently not set, add it to the
                 # global aggregation list
                 for agg in a.aggregations:
-                    if agg not in self.interval[sym]["aggregations"]:
-                        self.interval[sym]["aggregations"].append(agg)
+                    if agg not in watch_dict[sym]["aggregations"]:
+                        watch_dict[sym]["aggregations"].append(agg)
 
         # Remove any duplicates in the dict
-        for sym in self.interval:
-            new_agg = list((set(self.interval[sym]["aggregations"])))
-            self.interval[sym]["aggregations"] = [] if new_agg is None else new_agg
+        for sym in watch_dict:
+            new_agg = list((set(watch_dict[sym]["aggregations"])))
+            watch_dict[sym]["aggregations"] = [] if new_agg is None else new_agg
+        
+        self.stats.interval = watch_dict
 
     def _setup_account(self):
         """Initializes local cache of account info.
@@ -261,8 +261,8 @@ class LiveTrader:
         :all_history: bool :
         """
 
-        for sym in self.interval:
-            for inter in [self.interval[sym]["interval"]] + self.interval[sym][
+        for sym in self.stats.interval:
+            for inter in [self.stats.interval[sym]["interval"]] + self.stats.interval[sym][
                 "aggregations"
             ]:
                 start = None if all_history else now() - dt.timedelta(days=3)
@@ -277,13 +277,13 @@ class LiveTrader:
         """
         # Periodically refresh access tokens
         if (
-            self.streamer.timestamp.hour % 12 == 0
-            and self.streamer.timestamp.minute == 0
+            self.stats.timestamp.hour % 12 == 0
+            and self.stats.timestamp.minute == 0
         ):
             self.streamer.refresh_cred()
 
         self.storage.add_performance_data(
-            self.account["equity"], self.streamer.timestamp
+            self.account["equity"], self.stats.timestamp
         )
 
         # Save the data locally
@@ -304,7 +304,7 @@ class LiveTrader:
 
         new_algo = []
         for a in self.algo:
-            if not is_freq(self.streamer.timestamp, a.interval):
+            if not is_freq(self.stats.timestamp, a.interval):
                 new_algo.append(a)
                 continue
             try:
@@ -462,7 +462,7 @@ class LiveTrader:
             debugger.debug("BUY failed")
             return None
         self.order_queue.append(ret)
-        debugger.debug(f"BUY: {self.streamer.timestamp}, {symbol}, {quantity}")
+        debugger.debug(f"BUY: {self.stats.timestamp}, {symbol}, {quantity}")
 
         return ret
 
@@ -489,7 +489,7 @@ class LiveTrader:
             debugger.debug("SELL failed")
             return None
         self.order_queue.append(ret)
-        debugger.debug(f"SELL: {self.streamer.timestamp}, {symbol}, {quantity}")
+        debugger.debug(f"SELL: {self.stats.timestamp}, {symbol}, {quantity}")
         return ret
 
     # ================ Helper Functions ======================

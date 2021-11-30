@@ -40,6 +40,9 @@ class BaseAlgo:
         self.interval = None
         self.aggregations = None
         self.watchlist = []
+    
+    def init(self, stats):
+        self.stats = stats
 
     def config(self):
         """
@@ -248,8 +251,8 @@ class BaseAlgo:
         """
         if symbol is None:
             symbol = self.watchlist[0]
-        lower_exp = convert_input_to_datetime(lower_exp, self.trader.timezone)
-        upper_exp = convert_input_to_datetime(upper_exp, self.trader.timezone)
+        lower_exp = convert_input_to_datetime(lower_exp, self.stats.timezone)
+        upper_exp = convert_input_to_datetime(upper_exp, self.stats.timezone)
 
         exp_dates = self.get_option_chain_info(symbol)["exp_dates"]
         if lower_exp is not None:
@@ -303,7 +306,7 @@ class BaseAlgo:
         """
         if symbol is None:
             symbol = self.watchlist[0]
-        date = convert_input_to_datetime(date, self.trader.timezone)
+        date = convert_input_to_datetime(date, self.stats.timezone)
         print(f"Date: {date}\n")
         return self.trader.fetch_chain_data(symbol, date)
 
@@ -610,7 +613,7 @@ class BaseAlgo:
         if len(symbol) <= 6:
             df = self.trader.storage.load(symbol, interval).iloc[[-1]][symbol]
             print(self.trader.storage.load(symbol, interval))
-            return pandas_timestamp_to_local(df, self.trader.timezone)
+            return pandas_timestamp_to_local(df, self.stats.timezone)
         debugger.warning("Candles not available for options")
         return None
 
@@ -639,7 +642,7 @@ class BaseAlgo:
         if interval is None:
             interval = self.interval
         df = self.trader.storage.load(symbol, interval)[symbol]
-        return pandas_timestamp_to_local(df, self.trader.timezone)
+        return pandas_timestamp_to_local(df, self.stats.timezone)
 
     def get_asset_returns(self, symbol=None) -> float:
         """Returns the return of a specified asset.
@@ -771,7 +774,7 @@ class BaseAlgo:
         :returns: The current date and time as a datetime object
         """
         return datetime_utc_to_local(
-            self.trader.streamer.timestamp, self.trader.timezone
+            self.stats.timestamp, self.stats.timezone
         )
 
     def get_option_position_quantity(self, symbol: str = None) -> bool:
