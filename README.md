@@ -36,11 +36,11 @@ class Watch(BaseAlgo):
 ```
 To paper trade using this algorithm, run the following command:
 ```bash
-pyhton -m harvest start -s yahoo -b paper 
+harvest start -s yahoo -b paper 
 ```
 To live trade using Robinhood, run:
 ```bash
-pyhton -m harvest start -s robinhood -b robinhood
+harvest start -s robinhood -b robinhood
 ```
 With Harvest, the process of testing and deploying your strategies is a piece of cake 🍰
 
