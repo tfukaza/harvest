@@ -238,6 +238,7 @@ def visualize(args: argparse.Namespace):
         title=path,
     )
 
+
 def _get_storage(storage: str):
     """
     Returns the storage instance specified by the user.
