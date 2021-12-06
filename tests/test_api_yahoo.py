@@ -23,8 +23,9 @@ class TestYahooStreamer(unittest.TestCase):
             "SPY": {"interval": Interval.MIN_15, "aggregations": []},
             "AAPL": {"interval": Interval.MIN_1, "aggregations": []},
         }
+        stats = Stats(interval=interval)
+        yh.setup(stats)
 
-        yh.setup(interval)
         self.assertEqual(yh.poll_interval, Interval.MIN_1)
         self.assertListEqual([s for s in yh.interval], ["SPY", "AAPL"])
 
@@ -35,6 +36,7 @@ class TestYahooStreamer(unittest.TestCase):
             "@BTC": {"interval": Interval.MIN_1, "aggregations": []},
         }
 
+
         def test_main(df):
             self.assertEqual(len(df), 3)
             self.assertEqual(df["SPY"].columns[0][0], "SPY")
@@ -42,8 +44,9 @@ class TestYahooStreamer(unittest.TestCase):
             self.assertEqual(df["@BTC"].columns[0][0], "@BTC")
 
         yh = YahooStreamer()
-        watch = ["SPY", "AAPL", "@BTC"]
-        yh.setup(interval, test_main)
+        stats = Stats(interval=interval)
+        yh.setup(stats, test_main)
+
         yh.main()
 
     def test_main_single(self):
@@ -54,22 +57,29 @@ class TestYahooStreamer(unittest.TestCase):
             self.assertEqual(df["SPY"].columns[0][0], "SPY")
 
         yh = YahooStreamer()
-        yh.setup(interval, test_main)
+        stats = Stats(interval=interval)
+        yh.setup(stats, test_main)
+
         yh.main()
 
     def test_chain_info(self):
-        t = PaperTrader()
         yh = YahooStreamer()
+
         interval = {"LMND": {"interval": Interval.MIN_1, "aggregations": []}}
-        yh.setup(interval)
+        stats = Stats(interval=interval)
+        yh.setup(stats)
+
         info = yh.fetch_chain_info("LMND")
         self.assertGreater(len(info["exp_dates"]), 0)
 
     def test_chain_data(self):
-        t = PaperTrader()
+     
         yh = YahooStreamer()
+        
         interval = {"LMND": {"interval": Interval.MIN_1, "aggregations": []}}
-        yh.setup(interval)
+        stats = Stats(interval=interval)
+        yh.setup(stats)
+
         dates = yh.fetch_chain_info("LMND")["exp_dates"]
         data = yh.fetch_chain_data("LMND", dates[0])
         self.assertGreater(len(data), 0)

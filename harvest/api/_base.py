@@ -92,6 +92,7 @@ class API:
 
         self.trader_main = trader_main
         self.stats = stats
+        self.stats.timestamp = now()
 
         min_interval = None
         for sym in stats.interval:

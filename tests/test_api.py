@@ -27,8 +27,8 @@ class TestAPI(unittest.TestCase):
         stream.fetch_account = lambda: None
         stream.fetch_price_history = lambda x, y, z: pd.DataFrame()
         stream.fetch_account = lambda: {"cash": 100, "equity": 100}
-        t = PaperTrader(stream)
-        stream.trader = t
+        t = PaperTrader(stream, debug=True)
+
         stream.trader_main = t.main
         t.set_symbol(["A", "B"])
 
@@ -43,6 +43,10 @@ class TestAPI(unittest.TestCase):
         # Save the last datapoint of B
         a_cur = t.storage.load("A", Interval.MIN_1)
         b_cur = t.storage.load("B", Interval.MIN_1)
+        print("test0", b_cur)
+
+        # Manually advance timestamp of streamer
+        stream.timestamp = stream.timestamp + dt.timedelta(minutes=1)
 
         # Only send data for A
         data = gen_data("A", 1)
@@ -63,6 +67,7 @@ class TestAPI(unittest.TestCase):
             t.storage.load("A", Interval.MIN_1)["A"]["close"][-1],
         )
         # Check if B has been set to 0
+        print("Test", t.storage.load("B", Interval.MIN_1)["B"])
         self.assertEqual(
             b_cur["B"]["close"][-1],
             t.storage.load("B", Interval.MIN_1)["B"]["close"][-2],

@@ -288,12 +288,12 @@ class LiveTrader:
 
         # Save the data locally
         for sym in df_dict:
-            self.storage.store(sym, self.interval[sym]["interval"], df_dict[sym])
+            self.storage.store(sym, self.stats.interval[sym]["interval"], df_dict[sym])
 
         # Aggregate the data to other intervals
         for sym in df_dict:
-            for agg in self.interval[sym]["aggregations"]:
-                self.storage.aggregate(sym, self.interval[sym]["interval"], agg)
+            for agg in self.stats.interval[sym]["aggregations"]:
+                self.storage.aggregate(sym, self.stats.interval[sym]["interval"], agg)
 
         # If an order was processed, fetch the latest position info.
         # Otherwise, calculate current positions locally
@@ -411,11 +411,11 @@ class LiveTrader:
 
     def _fetch_account_data(self):
         pos = self.broker.fetch_stock_positions()
-        self.stock_positions = [p for p in pos if p["symbol"] in self.interval]
+        self.stock_positions = [p for p in pos if p["symbol"] in self.stats.interval]
         pos = self.broker.fetch_option_positions()
-        self.option_positions = [p for p in pos if p["base_symbol"] in self.interval]
+        self.option_positions = [p for p in pos if p["base_symbol"] in self.stats.interval]
         pos = self.broker.fetch_crypto_positions()
-        self.crypto_positions = [p for p in pos if p["symbol"] in self.interval]
+        self.crypto_positions = [p for p in pos if p["symbol"] in self.stats.interval]
         ret = self.broker.fetch_account()
         self.account = ret
 
@@ -436,7 +436,7 @@ class LiveTrader:
         if symbol_type(symbol) == "OPTION":
             price = self.streamer.fetch_option_market_data(symbol)["price"]
         else:
-            price = self.storage.load(symbol, self.interval[symbol]["interval"])[
+            price = self.storage.load(symbol, self.stats.interval[symbol]["interval"])[
                 symbol
             ]["close"][-1]
 
@@ -478,7 +478,7 @@ class LiveTrader:
         if symbol_type(symbol) == "OPTION":
             price = self.streamer.fetch_option_market_data(symbol)["price"]
         else:
-            price = self.storage.load(symbol, self.interval[symbol]["interval"])[
+            price = self.storage.load(symbol, self.stats.interval[symbol]["interval"])[
                 symbol
             ]["close"][-1]
 

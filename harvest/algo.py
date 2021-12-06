@@ -339,7 +339,7 @@ class BaseAlgo:
                 raise Exception(f"No prices found for symbol {symbol}")
         else:
             if interval is None:
-                interval = self.trader.interval[symbol]["interval"]
+                interval = self.trader.stats.interval[symbol]["interval"]
             else:
                 interval = interval_string_to_enum(interval)
             if prices == None:

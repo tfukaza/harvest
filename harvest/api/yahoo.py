@@ -31,7 +31,7 @@ class YahooStreamer(API):
 
         self.watch_ticker = {}
 
-        for s in interval:
+        for s in self.stats.interval:
             if is_crypto(s):
                 self.watch_ticker[s] = yf.Ticker(s[1:] + "-USD")
             else:
@@ -216,7 +216,8 @@ class YahooStreamer(API):
         chain = self.watch_ticker[symbol].option_chain(date_to_str(date))
         chain = chain.calls if typ == "call" else chain.puts
         df = chain[chain["contractSymbol"] == occ_symbol]
-        debugger.debug(occ_symbol, df)
+
+        debugger.debug(df)
         return {
             "price": float(df["lastPrice"].iloc[0]),
             "ask": float(df["ask"].iloc[0]),

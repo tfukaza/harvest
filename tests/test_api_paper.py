@@ -36,7 +36,8 @@ class TestPaperBroker(unittest.TestCase):
     def test_buy_order_limit(self):
         dummy = PaperBroker()
         interval = {"A": {"interval": Interval.MIN_1, "aggregations": []}}
-        dummy.setup(interval)
+        stats = Stats(interval=interval)
+        dummy.setup(stats)
         order = dummy.order_stock_limit("buy", "A", 5, 50000)
         self.assertEqual(order["type"], "STOCK")
         self.assertEqual(order["id"], 0)
@@ -54,7 +55,8 @@ class TestPaperBroker(unittest.TestCase):
     def test_buy(self):
         dummy = PaperBroker()
         interval = {"A": {"interval": Interval.MIN_1, "aggregations": []}}
-        dummy.setup(interval)
+        stats = Stats(interval=interval)
+        dummy.setup(stats)
         order = dummy.buy("A", 5, 1e5)
         self.assertEqual(order["type"], "STOCK")
         self.assertEqual(order["id"], 0)
@@ -72,8 +74,11 @@ class TestPaperBroker(unittest.TestCase):
     def test_sell_order_limit(self):
         directory = pathlib.Path(__file__).parent.resolve()
         dummy = PaperBroker(str(directory) + "/../dummy_account.yaml")
+
         interval = {"A": {"interval": Interval.MIN_1, "aggregations": []}}
-        dummy.setup(interval)
+        stats = Stats(interval=interval)
+        dummy.setup(stats)
+        
         order = dummy.order_stock_limit("sell", "A", 2, 50000)
         self.assertEqual(order["type"], "STOCK")
         self.assertEqual(order["id"], 0)
@@ -91,8 +96,11 @@ class TestPaperBroker(unittest.TestCase):
     def test_sell(self):
         directory = pathlib.Path(__file__).parent.resolve()
         dummy = PaperBroker(str(directory) + "/../dummy_account.yaml")
+
         interval = {"A": {"interval": Interval.MIN_1, "aggregations": []}}
-        dummy.setup(interval)
+        stats = Stats(interval=interval)
+        dummy.setup(stats)
+
         order = dummy.sell("A", 2)
         self.assertEqual(order["type"], "STOCK")
         self.assertEqual(order["id"], 0)
@@ -109,8 +117,11 @@ class TestPaperBroker(unittest.TestCase):
 
     def test_order_option_limit(self):
         dummy = PaperBroker()
+
         interval = {"A": {"interval": Interval.MIN_1, "aggregations": []}}
-        dummy.setup(interval)
+        stats = Stats(interval=interval)
+        dummy.setup(stats)
+
         exp_date = dt.datetime(2021, 11, 14) + dt.timedelta(hours=5)
         order = dummy.order_option_limit(
             "buy", "A", 5, 50000, "OPTION", exp_date, 50001
