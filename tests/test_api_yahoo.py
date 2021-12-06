@@ -36,7 +36,6 @@ class TestYahooStreamer(unittest.TestCase):
             "@BTC": {"interval": Interval.MIN_1, "aggregations": []},
         }
 
-
         def test_main(df):
             self.assertEqual(len(df), 3)
             self.assertEqual(df["SPY"].columns[0][0], "SPY")
@@ -73,9 +72,9 @@ class TestYahooStreamer(unittest.TestCase):
         self.assertGreater(len(info["exp_dates"]), 0)
 
     def test_chain_data(self):
-     
+
         yh = YahooStreamer()
-        
+
         interval = {"LMND": {"interval": Interval.MIN_1, "aggregations": []}}
         stats = Stats(interval=interval)
         yh.setup(stats)

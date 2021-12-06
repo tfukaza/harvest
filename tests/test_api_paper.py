@@ -78,7 +78,7 @@ class TestPaperBroker(unittest.TestCase):
         interval = {"A": {"interval": Interval.MIN_1, "aggregations": []}}
         stats = Stats(interval=interval)
         dummy.setup(stats)
-        
+
         order = dummy.order_stock_limit("sell", "A", 2, 50000)
         self.assertEqual(order["type"], "STOCK")
         self.assertEqual(order["id"], 0)

@@ -198,7 +198,7 @@ class LiveTrader:
         interval = interval_string_to_enum(interval)
         aggregations = [interval_string_to_enum(a) for a in aggregations]
         watch_dict = {
-            sym: {'interval': interval, 'aggregations': aggregations}
+            sym: {"interval": interval, "aggregations": aggregations}
             for sym in self.watchlist_global
         }
         # Update the dict based on parameters specified in Algo class
@@ -243,7 +243,7 @@ class LiveTrader:
         for sym in watch_dict:
             new_agg = list((set(watch_dict[sym]["aggregations"])))
             watch_dict[sym]["aggregations"] = [] if new_agg is None else new_agg
-        
+
         self.stats.interval = watch_dict
 
     def _setup_account(self):
@@ -262,9 +262,9 @@ class LiveTrader:
         """
 
         for sym in self.stats.interval:
-            for inter in [self.stats.interval[sym]["interval"]] + self.stats.interval[sym][
-                "aggregations"
-            ]:
+            for inter in [self.stats.interval[sym]["interval"]] + self.stats.interval[
+                sym
+            ]["aggregations"]:
                 start = None if all_history else now() - dt.timedelta(days=3)
                 df = self.streamer.fetch_price_history(sym, inter, start)
                 self.storage.store(sym, inter, df)
@@ -276,15 +276,10 @@ class LiveTrader:
         Main loop of the Trader.
         """
         # Periodically refresh access tokens
-        if (
-            self.stats.timestamp.hour % 12 == 0
-            and self.stats.timestamp.minute == 0
-        ):
+        if self.stats.timestamp.hour % 12 == 0 and self.stats.timestamp.minute == 0:
             self.streamer.refresh_cred()
 
-        self.storage.add_performance_data(
-            self.account["equity"], self.stats.timestamp
-        )
+        self.storage.add_performance_data(self.account["equity"], self.stats.timestamp)
 
         # Save the data locally
         for sym in df_dict:
@@ -413,7 +408,9 @@ class LiveTrader:
         pos = self.broker.fetch_stock_positions()
         self.stock_positions = [p for p in pos if p["symbol"] in self.stats.interval]
         pos = self.broker.fetch_option_positions()
-        self.option_positions = [p for p in pos if p["base_symbol"] in self.stats.interval]
+        self.option_positions = [
+            p for p in pos if p["base_symbol"] in self.stats.interval
+        ]
         pos = self.broker.fetch_crypto_positions()
         self.crypto_positions = [p for p in pos if p["symbol"] in self.stats.interval]
         ret = self.broker.fetch_account()

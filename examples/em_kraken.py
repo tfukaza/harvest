@@ -24,13 +24,14 @@ class EMAlgo(BaseAlgo):
             fig = mpf.figure()
             ax1 = fig.add_subplot(2, 1, 1)
             ax2 = fig.add_subplot(3, 1, 3)
-    
+
             return {
                 ticker: {
-                "initial_price": None, "ohlc": pd.DataFrame(),
-                "fig": fig,
-                "ax1": ax1,
-                "ax2": ax2
+                    "initial_price": None,
+                    "ohlc": pd.DataFrame(),
+                    "fig": fig,
+                    "ax1": ax1,
+                    "ax2": ax2,
                 }
             }
 
@@ -56,7 +57,9 @@ class EMAlgo(BaseAlgo):
                 ticker_value["initial_price"] = current_price
 
             if current_ohlc.empty:
-                logging.warn(f"{ticker}'s get_asset_candle_list returned an empty list.")
+                logging.warn(
+                    f"{ticker}'s get_asset_candle_list returned an empty list."
+                )
                 return
 
             ticker_value["ohlc"] = ticker_value["ohlc"].append(current_ohlc)
@@ -75,9 +78,9 @@ class EMAlgo(BaseAlgo):
         logging.info(f"{ticker} price change: ${delta_price}")
 
         # Update the OHLC graph
-        ticker_data['ax1'].clear()
-        ticker_data['ax2'].clear()
-        mpf.plot(ohlc, ax=ticker_data['ax1'], volume=ticker_data['ax2'], type="candle")
+        ticker_data["ax1"].clear()
+        ticker_data["ax2"].clear()
+        mpf.plot(ohlc, ax=ticker_data["ax1"], volume=ticker_data["ax2"], type="candle")
         plt.pause(3)
 
 
@@ -85,9 +88,7 @@ if __name__ == "__main__":
     # Store the OHLC data in a folder called `em_storage` with each file stored as a csv document
     csv_storage = CSVStorage(save_dir="em_storage")
     # Our streamer and broker will be Alpaca. My secret keys are stored in `alpaca_secret.yaml`
-    kraken = Kraken(
-        path="accounts/kraken-secret.yaml"
-    )
+    kraken = Kraken(path="accounts/kraken-secret.yaml")
     em_algo = EMAlgo()
     trader = LiveTrader(streamer=kraken, broker=kraken, storage=csv_storage, debug=True)
 

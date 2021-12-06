@@ -138,84 +138,113 @@ class TestAPI(unittest.TestCase):
         self.assertEqual(api.create_secret("I dont exists"), False)
 
         try:
-            api.fetch_price_history('A', Interval.MIN_1, now(), now())
+            api.fetch_price_history("A", Interval.MIN_1, now(), now())
             self.assertTrue(False)
         except NotImplementedError as e:
-            self.assertEqual(str(e), "API does not support this streamer method: `fetch_price_history`.")
+            self.assertEqual(
+                str(e),
+                "API does not support this streamer method: `fetch_price_history`.",
+            )
 
         try:
             api.fetch_chain_info("A")
             self.assertTrue(False)
         except NotImplementedError as e:
-            self.assertEqual(str(e), "API does not support this streamer method: `fetch_chain_info`.")
+            self.assertEqual(
+                str(e), "API does not support this streamer method: `fetch_chain_info`."
+            )
 
         try:
             api.fetch_chain_data("A")
             self.assertTrue(False)
         except NotImplementedError as e:
-            self.assertEqual(str(e), "API does not support this streamer method: `fetch_chain_data`.")
+            self.assertEqual(
+                str(e), "API does not support this streamer method: `fetch_chain_data`."
+            )
 
         try:
             api.fetch_option_market_data("A")
             self.assertTrue(False)
         except NotImplementedError as e:
-            self.assertEqual(str(e), "API does not support this streamer method: `fetch_option_market_data`.")
+            self.assertEqual(
+                str(e),
+                "API does not support this streamer method: `fetch_option_market_data`.",
+            )
 
         try:
             api.fetch_account()
             self.assertTrue(False)
         except NotImplementedError as e:
-            self.assertEqual(str(e), "API does not support this broker method: `fetch_account`.")
+            self.assertEqual(
+                str(e), "API does not support this broker method: `fetch_account`."
+            )
 
         try:
             api.fetch_stock_order_status(0)
             self.assertTrue(False)
         except NotImplementedError as e:
-            self.assertEqual(str(e), "API does not support this broker method: `fetch_stock_order_status`.")
+            self.assertEqual(
+                str(e),
+                "API does not support this broker method: `fetch_stock_order_status`.",
+            )
 
         try:
             api.fetch_option_order_status(0)
             self.assertTrue(False)
         except NotImplementedError as e:
-            self.assertEqual(str(e), "API does not support this broker method: `fetch_option_order_status`.")
+            self.assertEqual(
+                str(e),
+                "API does not support this broker method: `fetch_option_order_status`.",
+            )
 
         try:
             api.fetch_crypto_order_status(0)
             self.assertTrue(False)
         except NotImplementedError as e:
-            self.assertEqual(str(e), "API does not support this broker method: `fetch_crypto_order_status`.")
+            self.assertEqual(
+                str(e),
+                "API does not support this broker method: `fetch_crypto_order_status`.",
+            )
 
         try:
             api.order_stock_limit("buy", "A", 5, 7)
             self.assertTrue(False)
         except NotImplementedError as e:
-            self.assertEqual(str(e), "API does not support this broker method: `order_stock_limit`.")
+            self.assertEqual(
+                str(e), "API does not support this broker method: `order_stock_limit`."
+            )
 
         try:
             api.order_crypto_limit("buy", "@A", 5, 7)
             self.assertTrue(False)
         except NotImplementedError as e:
-            self.assertEqual(str(e), "API does not support this broker method: `order_crypto_limit`.")
+            self.assertEqual(
+                str(e), "API does not support this broker method: `order_crypto_limit`."
+            )
 
         try:
             api.order_option_limit("buy", "A", 5, 7, "call", now(), 8)
             self.assertTrue(False)
         except NotImplementedError as e:
-            self.assertEqual(str(e), "API does not support this broker method: `order_option_limit`.")
+            self.assertEqual(
+                str(e), "API does not support this broker method: `order_option_limit`."
+            )
 
         try:
-            api.buy('A', -1, 0)
+            api.buy("A", -1, 0)
             self.assertTrue(False)
         except NotImplementedError as e:
-            self.assertEqual(str(e), "API does not support this broker method: `order_stock_limit`.")
+            self.assertEqual(
+                str(e), "API does not support this broker method: `order_stock_limit`."
+            )
 
         try:
-            api.sell('A', -1, 0)
+            api.sell("A", -1, 0)
             self.assertTrue(False)
         except NotImplementedError as e:
-            self.assertEqual(str(e), "API does not support this broker method: `order_stock_limit`.")
-
-            
+            self.assertEqual(
+                str(e), "API does not support this broker method: `order_stock_limit`."
+            )
 
     def test_base_cases(self):
         api = API()
