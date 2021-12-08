@@ -42,15 +42,15 @@ class Robinhood(API):
         debugger.debug("Logged into Robinhood...")
 
     # @API._run_once
-    def setup(self, interval, trader_main=None):
+    def setup(self, stats, trader_main=None):
 
-        super().setup(interval, trader_main)
+        super().setup(stats, trader_main)
 
         # Robinhood only supports 15SEC, 1MIN interval for crypto
-        for sym in interval:
-            if not is_crypto(sym) and interval[sym]["interval"] < Interval.MIN_5:
+        for sym in self.stats.interval:
+            if not is_crypto(sym) and self.interval[sym]["interval"] < Interval.MIN_5:
                 raise Exception(
-                    f'Interval {interval[sym]["interval"]} is only supported for crypto'
+                    f'Interval {self.interval[sym]["interval"]} is only supported for crypto'
                 )
 
         # self.__watch_stock = []
