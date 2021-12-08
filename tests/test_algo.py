@@ -76,7 +76,7 @@ class TestAlgo(unittest.TestCase):
         s.tick()
 
         self.assertListEqual(
-            t.interval["A"]["aggregations"], [Interval.MIN_15, Interval.DAY_1]
+            t.stats.interval["A"]["aggregations"], [Interval.MIN_15, Interval.DAY_1]
         )
 
     def test_rsi(self):

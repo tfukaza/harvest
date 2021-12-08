@@ -15,6 +15,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import mplfinance as mpf
 
+
 class EMAlgo(BaseAlgo):
     def config(self):
         self.watchlist = ["@BTC"]
@@ -22,15 +23,10 @@ class EMAlgo(BaseAlgo):
 
     def setup(self):
         now = dt.datetime.now()
-        logging.info(f'EMAlgo.setup ran at: {now}')
+        logging.info(f"EMAlgo.setup ran at: {now}")
 
         def init_ticker(ticker):
-            return {
-                ticker: {
-                    'initial_price': None,
-                    'ohlc': pd.DataFrame()
-                }
-            }
+            return {ticker: {"initial_price": None, "ohlc": pd.DataFrame()}}
 
         self.tickers = {}
         for ticker in self.watchlist:
@@ -38,13 +34,18 @@ class EMAlgo(BaseAlgo):
 
     def main(self):
         now = dt.datetime.now()
-        logging.info('*' * 20)
-        logging.info(f'EMAlgo.main ran at: {now}')
+        logging.info("*" * 20)
+        logging.info(f"EMAlgo.main ran at: {now}")
 
-        if now - now.replace(hour=0, minute=0, second=0, microsecond=0) <= dt.timedelta(seconds=60):
-            logger.info(f'It\'s a new day! Clearning OHLC caches!')
+        if now - now.replace(hour=0, minute=0, second=0, microsecond=0) <= dt.timedelta(
+            seconds=60
+        ):
+            logger.info(f"It's a new day! Clearning OHLC caches!")
             for ticker_value in self.tickers.values():
-                ticker_value['ohlc'] = pd.DataFrame(columns=['open', 'high', 'low', 'close', 'volume'], index=['timestamp'])
+                ticker_value["ohlc"] = pd.DataFrame(
+                    columns=["open", "high", "low", "close", "volume"],
+                    index=["timestamp"],
+                )
 
         for ticker, ticker_value in self.tickers.items():
             current_price = self.get_asset_price(ticker)
@@ -52,20 +53,22 @@ class EMAlgo(BaseAlgo):
             if current_ohlc is None:
                 logging.warn("No ohlc returned!")
                 return
-            ticker_value['ohlc'] = ticker_value['ohlc'].append(current_ohlc)
-            ticker_value['ohlc'] = ticker_value['ohlc'][~ticker_value['ohlc'].index.duplicated(keep='first')]
+            ticker_value["ohlc"] = ticker_value["ohlc"].append(current_ohlc)
+            ticker_value["ohlc"] = ticker_value["ohlc"][
+                ~ticker_value["ohlc"].index.duplicated(keep="first")
+            ]
 
-            if ticker_value['initial_price'] is None:
-                ticker_value['initial_price'] = current_price
+            if ticker_value["initial_price"] is None:
+                ticker_value["initial_price"] = current_price
 
-            logging.info('-' * 5 + ticker + '-' * 5)
+            logging.info("-" * 5 + ticker + "-" * 5)
             self.process_ticker(ticker, ticker_value, current_price)
-            logging.info('-' * 20)
-        logging.info('*' * 20)
+            logging.info("-" * 20)
+        logging.info("*" * 20)
 
     def process_ticker(self, ticker, ticker_data, current_price):
-        initial_price = ticker_data['initial_price']
-        ohlc = ticker_data['ohlc']
+        initial_price = ticker_data["initial_price"]
+        ohlc = ticker_data["ohlc"]
 
         if ohlc.empty:
             logging.warning(f"{ticker} does not have ohlc info! Not processing.")
@@ -75,18 +78,21 @@ class EMAlgo(BaseAlgo):
         delta_price = current_price - initial_price
 
         # Print stock info
-        logging.info(f'{ticker} current price: ${current_price}')
-        logging.info(f'{ticker} price change: ${delta_price}')
+        logging.info(f"{ticker} current price: ${current_price}")
+        logging.info(f"{ticker} price change: ${delta_price}")
 
         axes.clear()
         mpf.plot(ohlc, ax=axes, block=False)
         plt.pause(3)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     # Store the OHLC data in a folder called `em_storage` with each file stored as a csv document
-    csv_storage = CSVStorage(save_dir='em-polygon-storage')
+    csv_storage = CSVStorage(save_dir="em-polygon-storage")
     # Our streamer will be Polygon and the broker will be Harvest's paper trader. My secret keys are stored in `polygon-secret.yaml`
-    polygon = PolygonStreamer(path='accounts/polygon-secret.yaml', is_basic_account=True)
+    polygon = PolygonStreamer(
+        path="accounts/polygon-secret.yaml", is_basic_account=True
+    )
     paper = PaperBroker()
     em_algo = EMAlgo()
     trader = LiveTrader(streamer=polygon, broker=paper, storage=csv_storage, debug=True)
@@ -96,6 +102,4 @@ if __name__ == '__main__':
     fig = mpf.figure()
     axes = fig.add_subplot(1, 1, 1)
     # Update every minute
-    trader.start('1MIN', all_history=False)
-
-
+    trader.start("1MIN", all_history=False)

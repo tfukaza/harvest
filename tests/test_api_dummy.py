@@ -39,7 +39,8 @@ class TestDummyStreamer(unittest.TestCase):
             "C": {"interval": Interval.MIN_1, "agg,regations": []},
             "@D": {"interval": Interval.MIN_1, "agg,regations": []},
         }
-        dummy.setup(interval)
+        stats = Stats(interval=interval)
+        dummy.setup(stats)
 
         self.assertEqual(dummy.interval, interval)
 
@@ -51,7 +52,9 @@ class TestDummyStreamer(unittest.TestCase):
             "C": {"interval": Interval.MIN_1, "agg,regations": []},
             "@D": {"interval": Interval.MIN_1, "agg,regations": []},
         }
-        dummy.setup(interval)
+        stats = Stats(interval=interval)
+        dummy.setup(stats)
+
         d = dummy.fetch_latest_stock_price()
         self.assertEqual(len(d), 3)
 
@@ -63,7 +66,9 @@ class TestDummyStreamer(unittest.TestCase):
             "C": {"interval": Interval.MIN_1, "agg,regations": []},
             "@D": {"interval": Interval.MIN_1, "agg,regations": []},
         }
-        dummy.setup(interval)
+        stats = Stats(interval=interval)
+        dummy.setup(stats)
+
         d = dummy.fetch_latest_crypto_price()
         self.assertTrue("@D" in d)
         self.assertEqual(d["@D"].shape, (1, 5))
