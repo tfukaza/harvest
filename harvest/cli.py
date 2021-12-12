@@ -145,7 +145,7 @@ def start(args: argparse.Namespace, test: bool = False):
     """
     storage = _get_storage(args.storage)
     streamer = _get_streamer(args.streamer)
-    broker = _get_broker(args.broker)
+    broker = streamer if args.streamer == args.broker else _get_broker(args.broker)
     debug = args.debug
     trader = LiveTrader(streamer=streamer, broker=broker, storage=storage, debug=debug)
 
