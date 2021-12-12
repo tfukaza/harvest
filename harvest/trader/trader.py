@@ -255,7 +255,7 @@ class LiveTrader:
         :all_history: bool :
         """
 
-        for sym in self.stats.watchlist_cfg:
+        for sym in self.stats.watchlist_cfg.keys():
             for inter in [self.stats.watchlist_cfg[sym]["interval"]] + self.stats.watchlist_cfg[sym]["aggregations"]:
                 start = None if all_history else now() - dt.timedelta(days=3)
                 df = self.streamer.fetch_price_history(sym, inter, start)

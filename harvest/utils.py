@@ -87,46 +87,62 @@ class Functions:
         fetch_chain_data=None, fetch_chain_info=None, fetch_option_market_data=None,
         get_asset_quantity=None,
         load=None, save=None):
-        self._buy = buy
-        self._sell = sell
-        self._fetch_chain_data = fetch_chain_data
-        self._fetch_chain_info = fetch_chain_info
-        self._fetch_option_market_data = fetch_option_market_data
-        self._get_asset_quantity = get_asset_quantity
-        self._load = load
-        self._save = save
+        self.buy = buy
+        self.sell = sell
+        self.fetch_chain_data = fetch_chain_data
+        self.fetch_chain_info = fetch_chain_info
+        self.fetch_option_market_data = fetch_option_market_data
+        self.get_asset_quantity = get_asset_quantity
+        self.load = load
+        self.save = save
+
+
+
+class Account:
+    def __init__(self, account_name=None):
+        self._account_name = account_name
+        self._positions = Positions()
+
+        self._asset_value = 0
+        self._cash = 0
+        self._equity = 0
+
+        self._buying_power = 0
+        self._multiplier = 1
+
+    def init(self, dict):
+        self._equity = dict["equity"]
+        self._cash = dict["cash"]
+        self._buying_power = dict["buying_power"]
+        self._multiplier = dict["multiplier"]
+    
+    def update(self):
+        self._asset_value = self._positions.value
+        self._equity = self._asset_value + self._cash
 
     @property
-    def buy(self):
-        return self._buy
+    def account_name(self):
+        return self._account_name
     
     @property
-    def sell(self):
-        return self._sell
+    def positions(self):
+        return self._positions
     
     @property
-    def fetch_chain_data(self):
-        return self._fetch_chain_data
-
+    def equity(self):
+        return self._equity
+    
     @property
-    def fetch_chain_info(self):
-        return self._fetch_chain_info
-
+    def cash(self):
+        return self._cash
+    
     @property
-    def fetch_option_market_data(self):
-        return self._fetch_option_market_data
-
+    def buying_power(self):
+        return self._buying_power
+    
     @property
-    def get_asset_quantity(self):
-        return self._get_asset_quantity
-
-    @property
-    def load(self):
-        return self._load
-
-    @property
-    def save(self):
-        return self._save
+    def multiplier(self):
+        return self._multiplier
 
 class Positions:
     def __init__(self,
@@ -225,53 +241,6 @@ class OptionPosition(Position):
     @property
     def base_symbol(self):
         return self._base_symbol
-
-
-class Account:
-    def __init__(self, account_name=None):
-        self._account_name = account_name
-        self._positions = Positions()
-
-        self._asset_value = 0
-        self._cash = 0
-        self._equity = 0
-
-        self._buying_power = 0
-        self._multiplier = 1
-
-    def init(self, dict):
-        self._equity = dict["equity"]
-        self._cash = dict["cash"]
-        self._buying_power = dict["buying_power"]
-        self._multiplier = dict["multiplier"]
-    
-    def update(self):
-        self._asset_value = self._positions.value
-        self._equity = self._asset_value + self._cash
-
-    @property
-    def account_name(self):
-        return self._account_name
-    
-    @property
-    def positions(self):
-        return self._positions
-    
-    @property
-    def equity(self):
-        return self._equity
-    
-    @property
-    def cash(self):
-        return self._cash
-    
-    @property
-    def buying_power(self):
-        return self._buying_power
-    
-    @property
-    def multiplier(self):
-        return self._multiplier
 
 def interval_enum_to_string(enum):
     try:
