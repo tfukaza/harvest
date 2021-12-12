@@ -71,19 +71,24 @@ class LiveTrader:
         signal(SIGINT, self.exit)
 
         self.watchlist = []  # List of securities specified in this class
-        self.algo = []              # List of algorithms to run.
-        self.order_queue = []       # Queue of unfilled orders.
+        self.algo = []  # List of algorithms to run.
+        self.order_queue = []  # Queue of unfilled orders.
 
         self.server = Server(self)  # Initialize the web interface server
 
-        self.stats = Stats(None, tzlocal.get_localzone(), None) 
+        self.stats = Stats(None, tzlocal.get_localzone(), None)
 
         self.func = Functions(
-            self.buy, self.sell, 
-            self.fetch_chain_data, self.fetch_chain_info, self.fetch_option_market_data,
+            self.buy,
+            self.sell,
+            self.fetch_chain_data,
+            self.fetch_chain_info,
+            self.fetch_option_market_data,
             self.get_asset_quantity,
-            self.storage.load, self.storage.store)
-        
+            self.storage.load,
+            self.storage.store,
+        )
+
         self.account = Account()
         self.positions = self.account.positions
 
@@ -139,9 +144,7 @@ class LiveTrader:
 
         # Initialize the account
         self._setup_account()
-        self.storage.init_performace_data(
-            self.account.equity, self.streamer.timestamp
-        )
+        self.storage.init_performace_data(self.account.equity, self.streamer.timestamp)
 
         self.broker.setup(self.stats, self.main)
         if self.broker != self.streamer:
@@ -177,7 +180,7 @@ class LiveTrader:
         option_positions = self.broker.fetch_option_positions()
         crypto_positions = self.broker.fetch_crypto_positions()
         self.positions.update(stock_positions, option_positions, crypto_positions)
-        
+
         debugger.debug(f"Fetched positions:\n{self.positions}")
 
         # Update option stats
@@ -256,7 +259,9 @@ class LiveTrader:
         """
 
         for sym in self.stats.watchlist_cfg.keys():
-            for inter in [self.stats.watchlist_cfg[sym]["interval"]] + self.stats.watchlist_cfg[sym]["aggregations"]:
+            for inter in [
+                self.stats.watchlist_cfg[sym]["interval"]
+            ] + self.stats.watchlist_cfg[sym]["aggregations"]:
                 start = None if all_history else now() - dt.timedelta(days=3)
                 df = self.streamer.fetch_price_history(sym, inter, start)
                 self.storage.store(sym, inter, df)
@@ -275,19 +280,23 @@ class LiveTrader:
 
         # Save the data locally
         for sym in df_dict:
-            self.storage.store(sym, self.stats.watchlist_cfg[sym]["interval"], df_dict[sym])
+            self.storage.store(
+                sym, self.stats.watchlist_cfg[sym]["interval"], df_dict[sym]
+            )
 
         # Aggregate the data to other intervals
         for sym in df_dict:
             for agg in self.stats.watchlist_cfg[sym]["aggregations"]:
-                self.storage.aggregate(sym, self.stats.watchlist_cfg[sym]["interval"], agg)
+                self.storage.aggregate(
+                    sym, self.stats.watchlist_cfg[sym]["interval"], agg
+                )
 
         # If an order was processed, fetch the latest position info from the brokerage.
         # Otherwise, calculate current positions locally
         is_order_filled = self._update_order_queue()
         if is_order_filled:
             self._fetch_account_data()
-        
+
         self._update_local_cache(df_dict)
 
         new_algo = []
@@ -364,12 +373,14 @@ class LiveTrader:
         # that data in local cache are not representative of the entire portfolio,
         # meaning total equity cannot be calculated locally
         debugger.debug(f"Updating positions: {self.positions}")
-        
+
         for p in self.positions.stock_crypto:
             symbol = p.symbol
             if symbol in df_dict:
                 price = df_dict[symbol][symbol]["close"][-1]
-            elif symbol not in self.watchlist:  # handle cases when user has an asset not in watchlist 
+            elif (
+                symbol not in self.watchlist
+            ):  # handle cases when user has an asset not in watchlist
                 price = self.streamer.fetch_latest_price(symbol)
             else:
                 continue
@@ -380,19 +391,26 @@ class LiveTrader:
             p.update(price)
 
         self.account.update()
-        
 
     def _fetch_account_data(self):
         stock_pos = [
-            Position(p['symbol'], p['quantity'], p['avg_price'])
+            Position(p["symbol"], p["quantity"], p["avg_price"])
             for p in self.broker.fetch_stock_positions()
         ]
         option_pos = [
-            OptionPosition(p['symbol'], p['quantity'], p['avg_price'], p['strike_price'], p['exp_date'], p['type'], p['multiplier'])
+            OptionPosition(
+                p["symbol"],
+                p["quantity"],
+                p["avg_price"],
+                p["strike_price"],
+                p["exp_date"],
+                p["type"],
+                p["multiplier"],
+            )
             for p in self.broker.fetch_option_positions()
         ]
         crypto_pos = [
-            Position(p['symbol'], p['quantity'], p['avg_price']) 
+            Position(p["symbol"], p["quantity"], p["avg_price"])
             for p in self.broker.fetch_crypto_positions()
         ]
         self.positions.update(stock_pos, option_pos, crypto_pos)
@@ -417,7 +435,9 @@ class LiveTrader:
         if symbol_type(symbol) == "OPTION":
             price = self.streamer.fetch_option_market_data(symbol)["price"]
         else:
-            price = self.storage.load(symbol, self.stats.watchlist_cfg[symbol]["interval"])[symbol]["close"][-1]
+            price = self.storage.load(
+                symbol, self.stats.watchlist_cfg[symbol]["interval"]
+            )[symbol]["close"][-1]
 
         limit_price = mark_up(price)
         total_price = limit_price * quantity
@@ -428,9 +448,9 @@ class LiveTrader:
 
         if total_price >= buy_power:
             debugger.error(
-                "Not enough buying power.\n" + 
-                f"Total price ({price} * {quantity} * 1.05 = {limit_price*quantity}) exceeds buying power {buy_power}." + 
-                "Reduce purchase quantity or increase buying power."
+                "Not enough buying power.\n"
+                + f"Total price ({price} * {quantity} * 1.05 = {limit_price*quantity}) exceeds buying power {buy_power}."
+                + "Reduce purchase quantity or increase buying power."
             )
             return None
         ret = self.broker.buy(symbol, quantity, limit_price, in_force, extended)
@@ -455,7 +475,9 @@ class LiveTrader:
         if symbol_type(symbol) == "OPTION":
             price = self.streamer.fetch_option_market_data(symbol)["price"]
         else:
-            price = self.storage.load(symbol, self.stats.watchlist_cfg[symbol]["interval"])[symbol]["close"][-1]
+            price = self.storage.load(
+                symbol, self.stats.watchlist_cfg[symbol]["interval"]
+            )[symbol]["close"][-1]
 
         limit_price = mark_down(price)
 

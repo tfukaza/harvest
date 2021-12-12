@@ -108,7 +108,10 @@ class API:
                 stats.watchlist_cfg[sym]["aggregations"].append(inter)
                 stats.watchlist_cfg[sym]["interval"] = new_inter
 
-            if min_interval is None or stats.watchlist_cfg[sym]["interval"] < min_interval:
+            if (
+                min_interval is None
+                or stats.watchlist_cfg[sym]["interval"] < min_interval
+            ):
                 min_interval = stats.watchlist_cfg[sym]["interval"]
 
         self.interval = stats.watchlist_cfg

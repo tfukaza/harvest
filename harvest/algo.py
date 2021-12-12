@@ -36,9 +36,9 @@ class BaseAlgo:
     """
 
     def __init__(self):
-        self.interval = None        # Interval to run the algorithm
-        self.aggregations = None    # Intervals to aggregate data
-        self.watchlist = []         # List of assets this algorithm tracks
+        self.interval = None  # Interval to run the algorithm
+        self.aggregations = None  # Intervals to aggregate data
+        self.watchlist = []  # List of assets this algorithm tracks
 
     def init(self, stats, func, account):
         self.stats = stats
@@ -334,7 +334,7 @@ class BaseAlgo:
             interval = self.stats.watchlist_cfg[symbol]["interval"]
         else:
             interval = interval_string_to_enum(interval)
-        
+
         if prices is None:
             prices = self.func.load(symbol, interval)[symbol][ref]
 

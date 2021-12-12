@@ -118,9 +118,9 @@ class BackTester(trader.PaperTrader):
         common_start = None
         common_end = None
         for s in self.stats.watchlist_cfg:
-            for i in [self.stats.watchlist_cfg[s]["interval"]] + self.stats.watchlist_cfg[s][
-                "aggregations"
-            ]:
+            for i in [
+                self.stats.watchlist_cfg[s]["interval"]
+            ] + self.stats.watchlist_cfg[s]["aggregations"]:
                 df = self.storage.load(s, i)
                 df = pandas_datetime_to_utc(df, self.stats.timezone)
                 if common_start is None or df.index[0] > common_start:
@@ -148,9 +148,9 @@ class BackTester(trader.PaperTrader):
         print(f"Common start: {start}, common end: {end}")
 
         for s in self.stats.watchlist_cfg:
-            for i in [self.stats.watchlist_cfg[s]["interval"]] + self.stats.watchlist_cfg[s][
-                "aggregations"
-            ]:
+            for i in [
+                self.stats.watchlist_cfg[s]["interval"]
+            ] + self.stats.watchlist_cfg[s]["aggregations"]:
                 df = self.storage.load(s, i).copy()
                 df = df.loc[start:end]
                 self.storage.reset(s, i)
@@ -259,9 +259,9 @@ class BackTester(trader.PaperTrader):
         :date_format: The format of the data's timestamps
         """
         for s in self.stats.watchlist_cfg:
-            for i in [self.stats.watchlist_cfg[s]["interval"]] + self.stats.watchlist_cfg[s][
-                "aggregations"
-            ]:
+            for i in [
+                self.stats.watchlist_cfg[s]["interval"]
+            ] + self.stats.watchlist_cfg[s]["aggregations"]:
                 df = self.storage.open(s, i).dropna()
                 if df.empty or now() - df.index[-1] > dt.timedelta(days=1):
                     df = self.streamer.fetch_price_history(s, i).dropna()
@@ -275,9 +275,9 @@ class BackTester(trader.PaperTrader):
         :date_format: The format of the data's timestamps
         """
         for s in self.stats.watchlist_cfg:
-            for i in [self.stats.watchlist_cfg[s]["interval"]] + self.stats.watchlist_cfg[s][
-                "aggregations"
-            ]:
+            for i in [
+                self.stats.watchlist_cfg[s]["interval"]
+            ] + self.stats.watchlist_cfg[s]["aggregations"]:
                 i_txt = interval_enum_to_string(i)
                 df = self.read_csv(f"{path}/{s}-{i_txt}.csv").dropna()
                 if df.empty:
@@ -309,9 +309,9 @@ class BackTester(trader.PaperTrader):
         # Reset them
 
         for s in self.stats.watchlist_cfg:
-            for i in [self.stats.watchlist_cfg[s]["interval"]] + self.stats.watchlist_cfg[s][
-                "aggregations"
-            ]:
+            for i in [
+                self.stats.watchlist_cfg[s]["interval"]
+            ] + self.stats.watchlist_cfg[s]["aggregations"]:
                 self.storage.reset(s, i)
 
         self.storage.limit_size = True
@@ -370,7 +370,7 @@ class BackTester(trader.PaperTrader):
                         f"Algorithm {a} failed, removing from algorithm list.\nException: {e}"
                     )
             if not new_algo:
-                debugger.debug('No algorithms left, exiting')
+                debugger.debug("No algorithms left, exiting")
                 break
             self.algo = new_algo
 

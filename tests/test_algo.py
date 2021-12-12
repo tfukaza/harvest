@@ -76,7 +76,8 @@ class TestAlgo(unittest.TestCase):
         s.tick()
 
         self.assertListEqual(
-            t.stats.watchlist_cfg["A"]["aggregations"], [Interval.MIN_15, Interval.DAY_1]
+            t.stats.watchlist_cfg["A"]["aggregations"],
+            [Interval.MIN_15, Interval.DAY_1],
         )
 
     def test_rsi(self):
@@ -84,9 +85,11 @@ class TestAlgo(unittest.TestCase):
         Test that RSI values are calculated correctly.
         """
         algo = BaseAlgo()
-        stats = Stats(watchlist_cfg={
-            "A": {"interval": Interval.MIN_1, "aggregations": []},
-        })
+        stats = Stats(
+            watchlist_cfg={
+                "A": {"interval": Interval.MIN_1, "aggregations": []},
+            }
+        )
         algo.init(stats, Functions(), Account())
         algo.watchlist = ["A"]
         rsi = algo.rsi(prices=prices)[-1]
@@ -98,9 +101,11 @@ class TestAlgo(unittest.TestCase):
         Test that SMA values are calculated correctly.
         """
         algo = BaseAlgo()
-        stats = Stats(watchlist_cfg={
-            "A": {"interval": Interval.MIN_1, "aggregations": []},
-        })
+        stats = Stats(
+            watchlist_cfg={
+                "A": {"interval": Interval.MIN_1, "aggregations": []},
+            }
+        )
         algo.init(stats, Functions(), Account())
         algo.watchlist = ["A"]
         sma = algo.sma(prices=prices)[-1]
@@ -112,9 +117,11 @@ class TestAlgo(unittest.TestCase):
         Test that EMA values are calculated correctly.
         """
         algo = BaseAlgo()
-        stats = Stats(watchlist_cfg={
-            "A": {"interval": Interval.MIN_1, "aggregations": []},
-        })
+        stats = Stats(
+            watchlist_cfg={
+                "A": {"interval": Interval.MIN_1, "aggregations": []},
+            }
+        )
         algo.init(stats, Functions(), Account())
         algo.watchlist = ["A"]
         ema = algo.ema(prices=prices)[-1]
@@ -132,9 +139,11 @@ class TestAlgo(unittest.TestCase):
         Test that bbands returns the correct values based on provided price list.
         """
         algo = BaseAlgo()
-        stats = Stats(watchlist_cfg={
-            "A": {"interval": Interval.MIN_1, "aggregations": []},
-        })
+        stats = Stats(
+            watchlist_cfg={
+                "A": {"interval": Interval.MIN_1, "aggregations": []},
+            }
+        )
         algo.init(stats, Functions(), Account())
         algo.watchlist = ["A"]
 
