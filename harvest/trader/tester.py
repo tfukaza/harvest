@@ -108,10 +108,10 @@ class BackTester(trader.PaperTrader):
             else:
                 end = start + period
 
-        if source == "PICKLE":
-            self.read_pickle_data()
-        elif source == "CSV":
+        if source == "CSV":
             self.read_csv_data(path)
+        elif source == "PICKLE":
+            self.read_pickle_data()
         else:
             raise Exception(f"Invalid source {source}. Must be 'PICKLE' or 'CSV'")
 
@@ -188,7 +188,7 @@ class BackTester(trader.PaperTrader):
                 )
                 points = int(conv[agg] / conv[interval])
                 for i in tqdm(range(df_len)):
-                    df_tmp = df.iloc[0 : i + 1]
+                    df_tmp = df.iloc[: i + 1]
                     df_tmp = df_tmp.iloc[
                         -points:
                     ]  # Only get recent data, since aggregating the entire df will take too long
@@ -212,13 +212,6 @@ class BackTester(trader.PaperTrader):
                     remove_duplicate=False,
                 )
 
-        # # Save the current state of the queue
-        # for s in self.watch:
-        #     self.load.append_entry(s, self.stats.watchlist_cfg, self.storage.load(s, self.stats.watchlist_cfg))
-        #     for i in self.aggregations:
-        #         self.load.append_entry(s, '-'+i, self.storage.load(s, '-'+i), False, True)
-        #         self.load.append_entry(s, i, self.storage.load(s, i))
-
         # Move all data to a cached dataframe
         for sym in self.stats.watchlist_cfg:
             self.df[sym] = {}
@@ -232,22 +225,6 @@ class BackTester(trader.PaperTrader):
                 # agg_txt = f"{interval_txt}+{agg_txt}"
                 df = self.storage.load(sym, int(agg) - 16)
                 self.df[sym][int(agg) - 16] = df.copy()
-
-        # Trim data so start and end dates match between assets and intervals
-        # data_start = pytz.utc.localize(dt.datetime(1970, 1, 1))
-        # data_end = pytz.utc.localize(dt.datetime.utcnow().replace(microsecond=0, second=0))
-        # for i in [self.stats.watchlist_cfg] + self.aggregations:
-        #     for s in self.watch:
-        #         start = self.df[i][s].index[0]
-        #         end = self.df[i][s].index[-1]
-        #         if start > data_start:
-        #             data_start = start
-        #         if end < data_end:
-        #             data_end = end
-
-        # for i in [self.stats.watchlist_cfg] + self.aggregations:
-        #     for s in self.watch:
-        #         self.df[i][s] = self.df[i][s].loc[data_start:data_end]
 
         self.load_watch = True
 

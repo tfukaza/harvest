@@ -169,65 +169,6 @@ class BaseAlgo:
 
         return ret
 
-    # def buy_option(self, symbol: str, quantity: int = None, in_force: str = "gtc"):
-    #     """Buys the specified option.
-
-    #     When called, a limit buy order is placed with a limit
-    #     price 5% higher than the current price.
-
-    #     :param str symbol:    Symbol of the asset to buy, in {OCC} format.
-    #     :param float? quantity:  Quantity of asset to buy. defaults to buys as many as possible
-    #     :param str? in_force:  Duration the order is in force. '{gtc}' or '{gtd}'. defaults to 'gtc'
-    #     :returns: A dictionary with the following keys:
-
-    #         - type: 'OPTION'
-    #         - id: ID of order
-    #         - symbol: symbol of asset
-
-    #     :raises Exception: There is an error in the order process.
-    #     """
-    #     if quantity is None:
-    #         quantity = self.get_asset_max_quantity(symbol)
-    #     return self.func.buy_option(symbol, quantity, in_force)
-
-    # def sell_option(
-    #     self, symbol: str = None, quantity: int = None, in_force: str = "gtc"
-    # ):
-    #     """Sells the specified option.
-
-    #     When called, a limit sell order is placed with a limit
-    #     price 5% lower than the current price.
-
-    #     If the option symbol is specified, it will sell that option. If it is not, then the
-    #     method will select the first stock symbol in the watchlist, and sell all options
-    #     related to that stock.
-
-    #     :param str? symbol: Symbol of the asset to sell, in {OCC} format. defaults to sell all options for the first stock in watchlist
-    #     :param float? quantity:  Quantity of asset to sell. defaults to sells all
-    #     :param str? in_force:  Duration the order is in force. '{gtc}' or '{gtd}'. defaults to 'gtc'
-    #     :returns: A dictionary with the following keys:
-
-    #         - type: 'OPTION'
-    #         - id: ID of order
-    #         - symbol: symbol of asset
-
-    #     :raises Exception: There is an error in the order process.
-    #     """
-    #     if symbol is None:
-    #         symbol = self.watchlist[0]
-    #         symbols = [
-    #             s.symbol
-    #             for s in self.get_account_option_positions()
-    #             if s["base_symbol"] == symbol
-    #         ]
-    #     else:
-    #         symbols = [symbol]
-    #     for s in symbols:
-    #         debugger.debug(f"Algo SELL OPTION: {s}")
-    #         if quantity is None:
-    #             quantity = self.get_asset_quantity(s)
-    #         return self.func.sell_option(s, quantity, in_force)
-
     def filter_option_chain(
         self,
         symbol=None,

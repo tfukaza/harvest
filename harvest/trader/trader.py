@@ -531,38 +531,6 @@ class LiveTrader:
 
         return owned_qty
 
-    # def buy_option(self, symbol: str, quantity: int, in_force: str):
-    #     ret = self.broker.buy_option(symbol, quantity, in_force)
-    #     if ret is None:
-    #         raise Exception("BUY failed")
-    #     self.order_queue.append(ret)
-    #     debugger.debug(f"BUY: {self.streamer.timestamp}, {symbol}, {quantity}")
-    #     debugger.debug(f"BUY order queue: {self.order_queue}")
-    #     self.logger.add_transaction(self.streamer.timestamp, "buy", "option", symbol, quantity)
-    #     return ret
-
-    # def sell_option(self, symbol: str, quantity: int, in_force: str):
-    #     owned_qty = sum(
-    #         p.quantity for p in self.positions.option if p.symbol == symbol
-    #     )
-    #     owned_qty -= sum(
-    #         o["quantity"]
-    #         for o in self.order_queue
-    #         if o["symbol"] == symbol and o["side"] == "sell"
-    #     )
-    #     if quantity > owned_qty:
-    #         debugger.debug("SELL failed: Quantity too high")
-    #         return None
-
-    #     ret = self.broker.sell_option(symbol, quantity, in_force)
-    #     if ret is None:
-    #         raise Exception("SELL failed")
-    #     self.order_queue.append(ret)
-    #     debugger.debug(f"SELL: {self.streamer.timestamp}, {symbol}, {quantity}")
-    #     debugger.debug(f"SELL order queue: {self.order_queue}")
-    #     self.logger.add_transaction(self.streamer.timestamp, "sell", "option", symbol, quantity)
-    #     return ret
-
     def set_algo(self, algo):
         """Specifies the algorithm to use.
 
