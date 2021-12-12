@@ -34,36 +34,41 @@ class TestDummyStreamer(unittest.TestCase):
     def test_setup(self):
         dummy = DummyStreamer()
         interval = {
-            "A": {"interval": Interval.MIN_1, "agg,regations": []},
-            "B": {"interval": Interval.MIN_1, "agg,regations": []},
-            "C": {"interval": Interval.MIN_1, "agg,regations": []},
-            "@D": {"interval": Interval.MIN_1, "agg,regations": []},
+            "A": {"interval": Interval.MIN_1, "aggregations": []},
+            "B": {"interval": Interval.MIN_1, "aggregations": []},
+            "C": {"interval": Interval.MIN_1, "aggregations": []},
+            "@D": {"interval": Interval.MIN_1, "aggregations": []},
         }
-        dummy.setup(interval)
+        stats = Stats(watchlist_cfg=interval)
+        dummy.setup(stats)
 
         self.assertEqual(dummy.interval, interval)
 
     def test_get_stock_price(self):
         dummy = DummyStreamer()
         interval = {
-            "A": {"interval": Interval.MIN_1, "agg,regations": []},
-            "B": {"interval": Interval.MIN_1, "agg,regations": []},
-            "C": {"interval": Interval.MIN_1, "agg,regations": []},
-            "@D": {"interval": Interval.MIN_1, "agg,regations": []},
+            "A": {"interval": Interval.MIN_1, "aggregations": []},
+            "B": {"interval": Interval.MIN_1, "aggregations": []},
+            "C": {"interval": Interval.MIN_1, "aggregations": []},
+            "@D": {"interval": Interval.MIN_1, "aggregations": []},
         }
-        dummy.setup(interval)
+        stats = Stats(watchlist_cfg=interval)
+        dummy.setup(stats)
+
         d = dummy.fetch_latest_stock_price()
         self.assertEqual(len(d), 3)
 
     def test_get_crypto_price(self):
         dummy = DummyStreamer()
         interval = {
-            "A": {"interval": Interval.MIN_1, "agg,regations": []},
-            "B": {"interval": Interval.MIN_1, "agg,regations": []},
-            "C": {"interval": Interval.MIN_1, "agg,regations": []},
-            "@D": {"interval": Interval.MIN_1, "agg,regations": []},
+            "A": {"interval": Interval.MIN_1, "aggregations": []},
+            "B": {"interval": Interval.MIN_1, "aggregations": []},
+            "C": {"interval": Interval.MIN_1, "aggregations": []},
+            "@D": {"interval": Interval.MIN_1, "aggregations": []},
         }
-        dummy.setup(interval)
+        stats = Stats(watchlist_cfg=interval)
+        dummy.setup(stats)
+
         d = dummy.fetch_latest_crypto_price()
         self.assertTrue("@D" in d)
         self.assertEqual(d["@D"].shape, (1, 5))

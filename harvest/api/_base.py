@@ -81,7 +81,7 @@ class API:
         """
         debugger.info(f"Refreshing credentials for {type(self).__name__}.")
 
-    def setup(self, interval: Dict, trader_main=None) -> None:
+    def setup(self, stats: Stats, trader_main=None) -> None:
         """
         This function is called right before the algorithm begins,
         and initializes several runtime parameters like
@@ -91,10 +91,12 @@ class API:
         """
 
         self.trader_main = trader_main
+        self.stats = stats
+        self.stats.timestamp = now()
 
         min_interval = None
-        for sym in interval:
-            inter = interval[sym]["interval"]
+        for sym in stats.watchlist_cfg:
+            inter = stats.watchlist_cfg[sym]["interval"]
             # If the specified interval is not supported on this API, raise Exception
             if inter < self.interval_list[0]:
                 raise Exception(f"Specified interval {inter} is not supported.")
@@ -103,13 +105,16 @@ class API:
             if inter not in self.interval_list:
                 granular_int = [i for i in self.interval_list if i < inter]
                 new_inter = granular_int[-1]
-                interval[sym]["aggregations"].append(inter)
-                interval[sym]["interval"] = new_inter
+                stats.watchlist_cfg[sym]["aggregations"].append(inter)
+                stats.watchlist_cfg[sym]["interval"] = new_inter
 
-            if min_interval is None or interval[sym]["interval"] < min_interval:
-                min_interval = interval[sym]["interval"]
+            if (
+                min_interval is None
+                or stats.watchlist_cfg[sym]["interval"] < min_interval
+            ):
+                min_interval = stats.watchlist_cfg[sym]["interval"]
 
-        self.interval = interval
+        self.interval = stats.watchlist_cfg
         self.poll_interval = min_interval
         debugger.debug(f"Interval: {self.interval}")
         debugger.debug(f"Poll Interval: {self.poll_interval}")
@@ -134,7 +139,7 @@ class API:
                 cur = now()
                 minutes = cur.minute
                 if minutes % val == 0 and minutes != cur_min:
-                    self.timestamp = cur
+                    self.stats.timestamp = cur
                     self.main()
                     time.sleep(sleep)
                 cur_min = minutes
@@ -144,7 +149,7 @@ class API:
                 cur = now()
                 minutes = cur.minute
                 if minutes == 0 and minutes != cur_min:
-                    self.timestamp = cur
+                    self.stats.timestamp = cur
                     self.main()
                     time.sleep(sleep)
                 cur_min = minutes
@@ -154,7 +159,7 @@ class API:
                 minutes = cur.minute
                 hours = cur.hour
                 if hours == 19 and minutes == 50:
-                    self.timestamp = cur
+                    self.stats.timestamp = cur
                     self.main()
                     time.sleep(80000)
                 cur_min = minutes
@@ -179,8 +184,8 @@ class API:
         df_dict = {}
         for sym in self.interval:
             inter = self.interval[sym]["interval"]
-            if is_freq(harvest_timestamp, inter):
-                n = harvest_timestamp
+            if is_freq(self.stats.timestamp, inter):
+                n = self.stats.timestamp
                 latest = self.fetch_price_history(
                     sym, inter, n - interval_to_timedelta(inter) * 2, n
                 )
@@ -261,7 +266,7 @@ class API:
         using the API. The first row is the earliest entry and the last
         row is the latest entry.
 
-        :param symbol: The stock/crypto to get data for.
+        :param symbol: The stock/crypto to get data for. Note options are not supported.
         :param interval: The interval of requested historical data.
         :param start: The starting date of the period, inclusive.
         :param end: The ending date of the period, inclusive.
@@ -270,6 +275,13 @@ class API:
         raise NotImplementedError(
             f"{type(self).__name__} does not support this streamer method: `fetch_price_history`."
         )
+
+    def fetch_latest_price(self, symbol: str) -> float:
+        interval = self.poll_interval
+        end = self.get_current_time()
+        start = end - interval_to_timedelta(interval) * 2
+        price = self.fetch_price_history(symbol, interval, start, end)
+        return price[symbol]["close"][-1]
 
     def fetch_chain_info(self, symbol: str):
         """
@@ -377,18 +389,18 @@ class API:
         )
         return []
 
-    def update_option_positions(self, positions: List[Any]):
-        """
-        Updates entries in option_positions list with the latest option price.
-        This is needed as options are priced based on various metrics,
-        and cannot be easily calculated from stock prices.
+    # def update_option_positions(self, positions: List[Any]):
+    #     """
+    #     Updates entries in option_positions list with the latest option price.
+    #     This is needed as options are priced based on various metrics,
+    #     and cannot be easily calculated from stock prices.
 
-        :positions: The option_positions list in the Trader class.
-        :returns: Nothing
-        """
-        debugger.error(
-            f"{type(self).__name__} does not support this broker method: `update_option_positions`. Doing nothing."
-        )
+    #     :positions: The option_positions list in the Trader class.
+    #     :returns: Nothing
+    #     """
+    #     debugger.error(
+    #         f"{type(self).__name__} does not support this broker method: `update_option_positions`. Doing nothing."
+    #     )
 
     def fetch_account(self):
         """
@@ -852,7 +864,7 @@ class StreamAPI(API):
                 for sym in self.interval
                 if is_freq(now(), self.interval[sym]["interval"])
             ]
-            self.timestamp = df_dict[got[0]].index[0]
+            self.stats.timestamp = df_dict[got[0]].index[0]
 
         debugger.debug(f"Needs: {self.needed}")
         debugger.debug(f"Got data for: {got}")

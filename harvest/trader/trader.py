@@ -16,7 +16,6 @@ import tzlocal
 from harvest.utils import *
 from harvest.storage import BaseStorage
 from harvest.api.yahoo import YahooStreamer
-from harvest.api.dummy import DummyStreamer
 from harvest.api.paper import PaperBroker
 from harvest.storage import BaseStorage
 from harvest.server import Server
@@ -43,11 +42,8 @@ class LiveTrader:
         """Initializes the Trader."""
 
         self._init_checks()
-
         self._set_streamer_broker(streamer, broker)
-        # Initialize the storage
         self.storage = BaseStorage() if storage is None else storage
-
         self._init_attributes()
         self._setup_debugger(debug)
 
@@ -74,18 +70,27 @@ class LiveTrader:
 
         signal(SIGINT, self.exit)
 
-        self.watchlist_global = []  # List of securities specified in this class
+        self.watchlist = []  # List of securities specified in this class
         self.algo = []  # List of algorithms to run.
-        self.account = {}  # Local cache of account data.
-        self.stock_positions = []  # Local cache of current stock positions.
-        self.option_positions = []  # Local cache of current options positions.
-        self.crypto_positions = []  # Local cache of current crypto positions.
         self.order_queue = []  # Queue of unfilled orders.
 
         self.server = Server(self)  # Initialize the web interface server
 
-        self.timezone = tzlocal.get_localzone()
-        debugger.debug(f"Timezone: {self.timezone}")
+        self.stats = Stats(None, tzlocal.get_localzone(), None)
+
+        self.func = Functions(
+            self.buy,
+            self.sell,
+            self.fetch_chain_data,
+            self.fetch_chain_info,
+            self.fetch_option_market_data,
+            self.get_asset_quantity,
+            self.storage.load,
+            self.storage.store,
+        )
+
+        self.account = Account()
+        self.positions = self.account.positions
 
     def _setup_debugger(self, debug):
         # Set up logger
@@ -118,42 +123,40 @@ class LiveTrader:
         # If sync is on, call the broker to load pending orders and all positions currently held.
         if sync:
             self._setup_stats()
-            for s in self.stock_positions:
-                self.watchlist_global.append(s["symbol"])
-            for s in self.option_positions:
-                self.watchlist_global.append(s["base_symbol"])
-            for s in self.crypto_positions:
-                self.watchlist_global.append(s["symbol"])
+            for s in self.positions.stock_crypto:
+                self.watchlist.append(s["symbol"])
+            for s in self.positions.option:
+                self.watchlist.append(s["base_symbol"])
             for s in self.order_queue:
                 sym = s["base_symbol"] if s["type"] == "OPTION" else s["symbol"]
-                self.watchlist_global.append(sym)
+                self.watchlist.append(sym)
 
         # Remove duplicates in watchlist
-        self.watchlist_global = list(set(self.watchlist_global))
-        debugger.debug(f"Watchlist: {self.watchlist_global}")
+        self.watchlist = list(set(self.watchlist))
+        debugger.debug(f"Watchlist: {self.watchlist}")
 
         # Initialize a dict of symbols and the intervals they need to run at
-        self._setup_params(interval, aggregations)
+        self._setup_params(self.watchlist, interval, aggregations)
+        self.watchlist = self.stats.watchlist_cfg.keys()
 
-        if len(self.interval) == 0:
+        if not self.watchlist:
             raise Exception("No securities were added to watchlist")
 
         # Initialize the account
         self._setup_account()
-        self.storage.init_performace_data(
-            self.account["equity"], self.streamer.timestamp
-        )
+        self.storage.init_performace_data(self.account.equity, self.streamer.timestamp)
 
-        self.broker.setup(self.interval, self.main)
+        self.broker.setup(self.stats, self.main)
         if self.broker != self.streamer:
             # Only call the streamer setup if it is a different
             # instance than the broker otherwise some brokers can fail!
-            self.streamer.setup(self.interval, self.main)
+            self.streamer.setup(self.stats, self.main)
 
         # Initialize the storage
         self._storage_init(all_history)
 
         for a in self.algo:
+            a.init(self.stats, self.func, self.account)
             a.trader = self
             a.setup()
 
@@ -173,36 +176,28 @@ class LiveTrader:
         debugger.debug(f"Fetched orders:\n{self.order_queue}")
 
         # Get positions
-        pos = self.broker.fetch_stock_positions()
-        self.stock_positions = pos
-        pos = self.broker.fetch_option_positions()
-        self.option_positions = pos
-        pos = self.broker.fetch_crypto_positions()
-        self.crypto_positions = pos
-        debugger.debug(
-            f"Fetched positions:\n{self.stock_positions}\n{self.option_positions}\n{self.crypto_positions}"
-        )
+        stock_positions = self.broker.fetch_stock_positions()
+        option_positions = self.broker.fetch_option_positions()
+        crypto_positions = self.broker.fetch_crypto_positions()
+        self.positions.update(stock_positions, option_positions, crypto_positions)
+
+        debugger.debug(f"Fetched positions:\n{self.positions}")
 
         # Update option stats
-        self.broker.update_option_positions(self.option_positions)
-        debugger.debug(f"Updated option positions:\n{self.option_positions}")
+        self.broker.update_option_positions(self.positions.option)
+        debugger.debug(f"Updated option positions:\n{self.positions.option}")
 
-    def _setup_params(self, interval, aggregations):
+    def _setup_params(self, watchlist, interval, aggregations):
         """
         Sets up configuration parameters for the Trader, notably
         the 'interval' attribute.
         """
         interval = interval_string_to_enum(interval)
         aggregations = [interval_string_to_enum(a) for a in aggregations]
-        self.interval = {}
-
-        # Initialize a dict with symbol keys and values indicating
-        # what data intervals they need.
-        for sym in self.watchlist_global:
-            self.interval[sym] = {}
-            self.interval[sym]["interval"] = interval
-            self.interval[sym]["aggregations"] = aggregations
-
+        watchlist_cfg_tmp = {
+            sym: {"interval": interval, "aggregations": aggregations}
+            for sym in watchlist
+        }
         # Update the dict based on parameters specified in Algo class
         for a in self.algo:
             a.config()
@@ -210,7 +205,7 @@ class LiveTrader:
             # If the algorithm does not specify a parameter, use the one
             # specified in the Trader class
             if len(a.watchlist) == 0:
-                a.watchlist = self.watchlist_global
+                a.watchlist = watchlist
             if a.interval is None:
                 a.interval = interval
             else:
@@ -224,27 +219,29 @@ class LiveTrader:
             for sym in a.watchlist:
                 # If the algorithm needs data for the symbol at a higher frequency than
                 # it is currently available in the Trader class, update the interval
-                if sym in self.interval:
-                    cur_interval = self.interval[sym]["interval"]
+                if sym in watchlist_cfg_tmp:
+                    cur_interval = watchlist_cfg_tmp[sym]["interval"]
                     if a.interval < cur_interval:
-                        self.interval[sym]["aggregations"].append(cur_interval)
-                        self.interval[sym]["interval"] = a.interval
+                        watchlist_cfg_tmp[sym]["aggregations"].append(cur_interval)
+                        watchlist_cfg_tmp[sym]["interval"] = a.interval
                 # If symbol is not in global watchlist, simply add it
                 else:
-                    self.interval[sym] = {}
-                    self.interval[sym]["interval"] = a.interval
-                    self.interval[sym]["aggregations"] = a.aggregations
+                    watchlist_cfg_tmp[sym] = {}
+                    watchlist_cfg_tmp[sym]["interval"] = a.interval
+                    watchlist_cfg_tmp[sym]["aggregations"] = a.aggregations
 
                 # If the algo specifies an aggregation that is currently not set, add it to the
                 # global aggregation list
                 for agg in a.aggregations:
-                    if agg not in self.interval[sym]["aggregations"]:
-                        self.interval[sym]["aggregations"].append(agg)
+                    if agg not in watchlist_cfg_tmp[sym]["aggregations"]:
+                        watchlist_cfg_tmp[sym]["aggregations"].append(agg)
 
         # Remove any duplicates in the dict
-        for sym in self.interval:
-            new_agg = list((set(self.interval[sym]["aggregations"])))
-            self.interval[sym]["aggregations"] = [] if new_agg is None else new_agg
+        for sym in watchlist_cfg_tmp:
+            new_agg = list((set(watchlist_cfg_tmp[sym]["aggregations"])))
+            watchlist_cfg_tmp[sym]["aggregations"] = [] if new_agg is None else new_agg
+
+        self.stats.watchlist_cfg = watchlist_cfg_tmp
 
     def _setup_account(self):
         """Initializes local cache of account info.
@@ -253,7 +250,7 @@ class LiveTrader:
         ret = self.broker.fetch_account()
         if ret is None:
             raise Exception("Failed to load account info from broker.")
-        self.account = ret
+        self.account.init(ret)
 
     def _storage_init(self, all_history: bool):
         """
@@ -261,10 +258,10 @@ class LiveTrader:
         :all_history: bool :
         """
 
-        for sym in self.interval:
-            for inter in [self.interval[sym]["interval"]] + self.interval[sym][
-                "aggregations"
-            ]:
+        for sym in self.stats.watchlist_cfg.keys():
+            for inter in [
+                self.stats.watchlist_cfg[sym]["interval"]
+            ] + self.stats.watchlist_cfg[sym]["aggregations"]:
                 start = None if all_history else now() - dt.timedelta(days=3)
                 df = self.streamer.fetch_price_history(sym, inter, start)
                 self.storage.store(sym, inter, df)
@@ -276,35 +273,35 @@ class LiveTrader:
         Main loop of the Trader.
         """
         # Periodically refresh access tokens
-        if (
-            self.streamer.timestamp.hour % 12 == 0
-            and self.streamer.timestamp.minute == 0
-        ):
+        if self.stats.timestamp.hour % 12 == 0 and self.stats.timestamp.minute == 0:
             self.streamer.refresh_cred()
 
-        self.storage.add_performance_data(
-            self.account["equity"], self.streamer.timestamp
-        )
+        self.storage.add_performance_data(self.account.equity, self.stats.timestamp)
 
         # Save the data locally
         for sym in df_dict:
-            self.storage.store(sym, self.interval[sym]["interval"], df_dict[sym])
+            self.storage.store(
+                sym, self.stats.watchlist_cfg[sym]["interval"], df_dict[sym]
+            )
 
         # Aggregate the data to other intervals
         for sym in df_dict:
-            for agg in self.interval[sym]["aggregations"]:
-                self.storage.aggregate(sym, self.interval[sym]["interval"], agg)
+            for agg in self.stats.watchlist_cfg[sym]["aggregations"]:
+                self.storage.aggregate(
+                    sym, self.stats.watchlist_cfg[sym]["interval"], agg
+                )
 
-        # If an order was processed, fetch the latest position info.
+        # If an order was processed, fetch the latest position info from the brokerage.
         # Otherwise, calculate current positions locally
-        update = self._update_order_queue()
-        self._update_position_cache(
-            df_dict, new=update, option_update=len(self.option_positions) > 0
-        )
+        is_order_filled = self._update_order_queue()
+        if is_order_filled:
+            self._fetch_account_data()
+
+        self._update_local_cache(df_dict)
 
         new_algo = []
         for a in self.algo:
-            if not is_freq(self.streamer.timestamp, a.interval):
+            if not is_freq(self.stats.timestamp, a.interval):
                 new_algo.append(a)
                 continue
             try:
@@ -369,55 +366,57 @@ class LiveTrader:
         # if an order was processed, update the positions and account info
         return order_filled
 
-    def _update_position_cache(self, df_dict, new=False, option_update=False):
+    def _update_local_cache(self, df_dict):
         """Update local cache of stocks, options, and crypto positions"""
         # Update entries in local cache
         # API should also be called if load_watch is false, as there is a high chance
         # that data in local cache are not representative of the entire portfolio,
         # meaning total equity cannot be calculated locally
-        if new:
-            self._fetch_account_data()
-        if option_update:
-            self.broker.update_option_positions(self.option_positions)
+        debugger.debug(f"Updating positions: {self.positions}")
 
-        debugger.debug(f"Stock positions: {self.stock_positions}")
-        debugger.debug(f"Option positions: {self.option_positions}")
-        debugger.debug(f"Crypto positions: {self.crypto_positions}")
-
-        if new:
-            return
-
-        net_value = 0
-        for p in self.stock_positions + self.crypto_positions:
-            key = p["symbol"]
-            if key in df_dict:
-                price = df_dict[key][key]["close"]
-            elif key not in self.watchlist_global:
-                i = self.streamer.poll_interval
-                end = now()
-                start = end - interval_to_timedelta(i) * 2
-                price = self.streamer.fetch_price_history(key, i, start, end)
-                price = price[key]["close"][-1]
+        for p in self.positions.stock_crypto:
+            symbol = p.symbol
+            if symbol in df_dict:
+                price = df_dict[symbol][symbol]["close"][-1]
+            elif (
+                symbol not in self.watchlist
+            ):  # handle cases when user has an asset not in watchlist
+                price = self.streamer.fetch_latest_price(symbol)
             else:
                 continue
-            p["current_price"] = price
-            value = price * p["quantity"]
-            p["market_value"] = value
-            net_value += value
+            p.update(price)
+        for p in self.positions.option:
+            symbol = p.symbol
+            price = self.streamer.fetch_option_market_data(symbol)["price"]
+            p.update(price)
 
-        equity = net_value + self.account["cash"]
-        self.account["equity"] = equity
-        self.stock_positions = self.broker.fetch_stock_positions()
+        self.account.update()
 
     def _fetch_account_data(self):
-        pos = self.broker.fetch_stock_positions()
-        self.stock_positions = [p for p in pos if p["symbol"] in self.interval]
-        pos = self.broker.fetch_option_positions()
-        self.option_positions = [p for p in pos if p["base_symbol"] in self.interval]
-        pos = self.broker.fetch_crypto_positions()
-        self.crypto_positions = [p for p in pos if p["symbol"] in self.interval]
+        stock_pos = [
+            Position(p["symbol"], p["quantity"], p["avg_price"])
+            for p in self.broker.fetch_stock_positions()
+        ]
+        option_pos = [
+            OptionPosition(
+                p["symbol"],
+                p["quantity"],
+                p["avg_price"],
+                p["strike_price"],
+                p["exp_date"],
+                p["type"],
+                p["multiplier"],
+            )
+            for p in self.broker.fetch_option_positions()
+        ]
+        crypto_pos = [
+            Position(p["symbol"], p["quantity"], p["avg_price"])
+            for p in self.broker.fetch_crypto_positions()
+        ]
+        self.positions.update(stock_pos, option_pos, crypto_pos)
+
         ret = self.broker.fetch_account()
-        self.account = ret
+        self.account.init(ret)
 
     # --------------------- Interface Functions -----------------------
 
@@ -432,13 +431,13 @@ class LiveTrader:
 
     def buy(self, symbol: str, quantity: int, in_force: str, extended: bool):
         # Check if user has enough buying power
-        buy_power = self.account["buying_power"]
+        buy_power = self.account.buying_power
         if symbol_type(symbol) == "OPTION":
             price = self.streamer.fetch_option_market_data(symbol)["price"]
         else:
-            price = self.storage.load(symbol, self.interval[symbol]["interval"])[
-                symbol
-            ]["close"][-1]
+            price = self.storage.load(
+                symbol, self.stats.watchlist_cfg[symbol]["interval"]
+            )[symbol]["close"][-1]
 
         limit_price = mark_up(price)
         total_price = limit_price * quantity
@@ -454,15 +453,13 @@ class LiveTrader:
                 + "Reduce purchase quantity or increase buying power."
             )
             return None
-
-        # TODO? Perform other checks
         ret = self.broker.buy(symbol, quantity, limit_price, in_force, extended)
 
         if ret is None:
             debugger.debug("BUY failed")
             return None
         self.order_queue.append(ret)
-        debugger.debug(f"BUY: {self.streamer.timestamp}, {symbol}, {quantity}")
+        debugger.debug(f"BUY: {self.stats.timestamp}, {symbol}, {quantity}")
 
         return ret
 
@@ -478,9 +475,9 @@ class LiveTrader:
         if symbol_type(symbol) == "OPTION":
             price = self.streamer.fetch_option_market_data(symbol)["price"]
         else:
-            price = self.storage.load(symbol, self.interval[symbol]["interval"])[
-                symbol
-            ]["close"][-1]
+            price = self.storage.load(
+                symbol, self.stats.watchlist_cfg[symbol]["interval"]
+            )[symbol]["close"][-1]
 
         limit_price = mark_down(price)
 
@@ -489,7 +486,7 @@ class LiveTrader:
             debugger.debug("SELL failed")
             return None
         self.order_queue.append(ret)
-        debugger.debug(f"SELL: {self.streamer.timestamp}, {symbol}, {quantity}")
+        debugger.debug(f"SELL: {self.stats.timestamp}, {symbol}, {quantity}")
         return ret
 
     # ================ Helper Functions ======================
@@ -503,19 +500,19 @@ class LiveTrader:
         :raises:
         """
         if symbol is None:
-            symbol = self.watchlist_global[0]
+            symbol = self.watchlist[0]
 
         if typ := symbol_type(symbol) == "OPTION":
             owned_qty = sum(
-                p["quantity"] for p in self.option_positions if p["symbol"] == symbol
+                p.quantity for p in self.positions.option if p.symbol == symbol
             )
         elif typ == "CRYPTO":
             owned_qty = sum(
-                p["quantity"] for p in self.crypto_positions if p["symbol"] == symbol
+                p.quantity for p in self.positions.crypto if p.symbol == symbol
             )
         else:
             owned_qty = sum(
-                p["quantity"] for p in self.stock_positions if p["symbol"] == symbol
+                p.quantity for p in self.positions.stock if p.symbol == symbol
             )
 
         if include_pending_buy:
@@ -546,7 +543,7 @@ class LiveTrader:
 
     # def sell_option(self, symbol: str, quantity: int, in_force: str):
     #     owned_qty = sum(
-    #         p["quantity"] for p in self.option_positions if p["symbol"] == symbol
+    #         p.quantity for p in self.positions.option if p.symbol == symbol
     #     )
     #     owned_qty -= sum(
     #         o["quantity"]
@@ -588,7 +585,7 @@ class LiveTrader:
         :symbol str symbol: Ticker Symbol(s) of stock or cryptocurrency to watch.
             It can either be a string, or a list of strings.
         """
-        self.watchlist_global = symbol if isinstance(symbol, list) else [symbol]
+        self.watchlist = symbol if isinstance(symbol, list) else [symbol]
 
     def exit(self, signum, frame):
         # TODO: Gracefully exit

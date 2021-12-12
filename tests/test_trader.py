@@ -19,7 +19,7 @@ class TestPaperTrader(unittest.TestCase):
     def test_trader_adding_symbol(self):
         t = PaperTrader(DummyStreamer())
         t.set_symbol("A")
-        self.assertEqual(t.watchlist_global[0], "A")
+        self.assertEqual(t.watchlist[0], "A")
 
     def test_start_do_nothing(self):
         t = PaperTrader(DummyStreamer())
