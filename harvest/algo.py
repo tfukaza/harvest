@@ -36,13 +36,15 @@ class BaseAlgo:
     """
 
     def __init__(self):
-        self.trader = None
-        self.interval = None
-        self.aggregations = None
-        self.watchlist = []
+        self.interval = None        # Interval to run the algorithm
+        self.aggregations = None    # Intervals to aggregate data
+        self.watchlist = []         # List of assets this algorithm tracks
 
-    def init(self, stats):
+    def init(self, stats, func, account):
         self.stats = stats
+        self.func = func
+        self.account = account
+        self.positions = account.positions
 
     def config(self):
         """
@@ -112,7 +114,7 @@ class BaseAlgo:
             quantity = self.get_asset_max_quantity(symbol)
 
         debugger.debug(f"Algo BUY: {symbol}, {quantity}")
-        return self.trader.buy(symbol, quantity, in_force, extended)
+        return self.func.buy(symbol, quantity, in_force, extended)
 
     def sell(
         self,
@@ -143,7 +145,7 @@ class BaseAlgo:
             quantity = self.get_asset_quantity(symbol)
 
         debugger.debug(f"Algo SELL: {symbol}, {quantity}")
-        return self.trader.sell(symbol, quantity, in_force, extended)
+        return self.func.sell(symbol, quantity, in_force, extended)
 
     def sell_all_options(self, symbol: str = None, in_force: str = "gtc"):
         """Sells all options of a stock
@@ -157,16 +159,13 @@ class BaseAlgo:
         if symbol is None:
             symbol = self.watchlist[0]
 
-        symbols = [
-            s["symbol"]
-            for s in self.get_account_option_positions()
-            if s["base_symbol"] == symbol
-        ]
+        symbols = filter(lambda x: x.base_symbol == symbol, self.positions.option)
+
         ret = []
         for s in symbols:
             debugger.debug(f"Algo SELL OPTION: {s}")
-            quantity = self.get_asset_quantity(s)
-            ret.append(self.trader.sell(s, quantity, in_force, True))
+            quantity = self.get_asset_quantity(s.symbol)
+            ret.append(self.func.sell(s.symbol, quantity, in_force, True))
 
         return ret
 
@@ -189,7 +188,7 @@ class BaseAlgo:
     #     """
     #     if quantity is None:
     #         quantity = self.get_asset_max_quantity(symbol)
-    #     return self.trader.buy_option(symbol, quantity, in_force)
+    #     return self.func.buy_option(symbol, quantity, in_force)
 
     # def sell_option(
     #     self, symbol: str = None, quantity: int = None, in_force: str = "gtc"
@@ -217,7 +216,7 @@ class BaseAlgo:
     #     if symbol is None:
     #         symbol = self.watchlist[0]
     #         symbols = [
-    #             s["symbol"]
+    #             s.symbol
     #             for s in self.get_account_option_positions()
     #             if s["base_symbol"] == symbol
     #         ]
@@ -227,7 +226,7 @@ class BaseAlgo:
     #         debugger.debug(f"Algo SELL OPTION: {s}")
     #         if quantity is None:
     #             quantity = self.get_asset_quantity(s)
-    #         return self.trader.sell_option(s, quantity, in_force)
+    #         return self.func.sell_option(s, quantity, in_force)
 
     def filter_option_chain(
         self,
@@ -286,9 +285,9 @@ class BaseAlgo:
             - exp_dates: List of expiration dates, in the fomrat "YYYY-MM-DD"
             - multiplier: Multiplier of the option, usually 100
         """
-        if symbol == None:
+        if symbol is None:
             symbol = self.watchlist[0]
-        return self.trader.fetch_chain_info(symbol)
+        return self.func.fetch_chain_info(symbol)
 
     def get_option_chain(self, symbol: str, date):
         """Returns the option chain for the specified symbol and expiration date.
@@ -308,7 +307,7 @@ class BaseAlgo:
             symbol = self.watchlist[0]
         date = convert_input_to_datetime(date, self.stats.timezone)
         print(f"Date: {date}\n")
-        return self.trader.fetch_chain_data(symbol, date)
+        return self.func.fetch_chain_data(symbol, date)
 
     def get_option_market_data(self, symbol: str):
         """Retrieves data of specified option.
@@ -323,27 +322,21 @@ class BaseAlgo:
         """
         if symbol is None:
             symbol = self.watchlist[0]
-        return self.trader.fetch_option_market_data(symbol)
+        return self.func.fetch_option_market_data(symbol)
 
     # ------------------ Technical Indicators -------------------
 
     def _default_param(self, symbol, interval, ref, prices):
         if symbol is None:
             symbol = self.watchlist[0]
-        if self.trader is None:
-            if interval == None:
-                interval = Interval.MIN_5
-            else:
-                interval = interval_string_to_enum(interval)
-            if prices is None:
-                raise Exception(f"No prices found for symbol {symbol}")
+
+        if interval is None:
+            interval = self.stats.watchlist_cfg[symbol]["interval"]
         else:
-            if interval is None:
-                interval = self.trader.stats.interval[symbol]["interval"]
-            else:
-                interval = interval_string_to_enum(interval)
-            if prices == None:
-                prices = self.trader.storage.load(symbol, interval)[symbol][ref]
+            interval = interval_string_to_enum(interval)
+        
+        if prices is None:
+            prices = self.func.load(symbol, interval)[symbol][ref]
 
         return symbol, interval, ref, prices
 
@@ -526,7 +519,7 @@ class BaseAlgo:
         if symbol is None:
             symbol = self.watchlist[0]
 
-        return self.trader.get_asset_quantity(symbol, exclude_pending_sell=True)
+        return self.func.get_asset_quantity(symbol, exclude_pending_sell=True)
 
     def get_asset_cost(self, symbol: str = None) -> float:
         """Returns the average cost of a specified asset.
@@ -538,14 +531,14 @@ class BaseAlgo:
         if symbol is None:
             symbol = self.watchlist[0]
         if len(symbol) <= 6:
-            search = self.trader.stock_positions + self.trader.crypto_positions
+            search = self.positions.stock_crypto
             for p in search:
-                if p["symbol"] == symbol:
-                    return p["avg_price"]
+                if p.symbol == symbol:
+                    return p.avg_price
         else:
-            for p in self.trader.option_positions:
+            for p in self.positions.option:
                 if p["occ_symbol"].replace(" ", "") == symbol.replace(" ", ""):
-                    return p["avg_price"]
+                    return p.avg_price
 
         raise Exception(f"{symbol} is not currently owned")
 
@@ -559,11 +552,11 @@ class BaseAlgo:
         if symbol is None:
             symbol = self.watchlist[0]
         if len(symbol) <= 6:
-            return self.trader.storage.load(symbol, self.interval)[symbol]["close"][-1]
-        for p in self.trader.option_positions:
+            return self.func.load(symbol, self.interval)[symbol]["close"][-1]
+        for p in self.positions.option:
             if p["occ_symbol"] == symbol:
                 return p["current_price"] * p["multiplier"]
-        return self.get_option_market_data(symbol)["price"] * 100
+        return self.func.fetch_option_market_data(symbol)["price"] * 100
 
     def get_asset_price_list(
         self, symbol: str = None, interval: str = None, ref: str = "close"
@@ -584,7 +577,7 @@ class BaseAlgo:
         else:
             interval = interval_string_to_enum(interval)
         if len(symbol) <= 6:
-            return list(self.trader.storage.load(symbol, interval)[symbol][ref])
+            return list(self.func.load(symbol, interval)[symbol][ref])
         debugger.warning("Price list not available for options")
         return None
 
@@ -611,8 +604,8 @@ class BaseAlgo:
         if interval is None:
             interval = self.interval
         if len(symbol) <= 6:
-            df = self.trader.storage.load(symbol, interval).iloc[[-1]][symbol]
-            print(self.trader.storage.load(symbol, interval))
+            df = self.func.load(symbol, interval).iloc[[-1]][symbol]
+            print(self.func.load(symbol, interval))
             return pandas_timestamp_to_local(df, self.stats.timezone)
         debugger.warning("Candles not available for options")
         return None
@@ -641,7 +634,7 @@ class BaseAlgo:
             symbol = self.watchlist[0]
         if interval is None:
             interval = self.interval
-        df = self.trader.storage.load(symbol, interval)[symbol]
+        df = self.func.load(symbol, interval)[symbol]
         return pandas_timestamp_to_local(df, self.stats.timezone)
 
     def get_asset_returns(self, symbol=None) -> float:
@@ -685,14 +678,14 @@ class BaseAlgo:
 
         :returns: The current buying power as a float.
         """
-        return self.trader.account["buying_power"]
+        return self.account.buying_power
 
     def get_account_equity(self) -> float:
         """Returns the current equity.
 
         :returns: The current equity as a float.
         """
-        return self.trader.account["equity"]
+        return self.account.equity
 
     def get_account_stock_positions(self) -> List:
         """Returns the current stock positions.
@@ -702,7 +695,7 @@ class BaseAlgo:
             - quantity
             - avg_price
         """
-        return self.trader.stock_positions
+        return self.positions.stock
 
     def get_account_crypto_positions(self) -> List:
         """Returns the current crypto positions.
@@ -712,7 +705,7 @@ class BaseAlgo:
             - quantity
             - avg_price
         """
-        return self.trader.crypto_positions
+        return self.positions.crypto
 
     def get_account_option_positions(self) -> List:
         """Returns the current option positions.
@@ -724,12 +717,12 @@ class BaseAlgo:
         """
         return [
             {
-                "symbol": p["symbol"],
-                "base_symbol": p["base_symbol"],
-                "quantity": p["quantity"],
-                "avg_price": p["avg_price"],
+                "symbol": p.symbol,
+                "base_symbol": p.base_symbol,
+                "quantity": p.quantity,
+                "avg_price": p.avg_price,
             }
-            for p in self.trader.option_positions
+            for p in self.positions.option
         ]
 
     def get_watchlist(self) -> List:
@@ -783,7 +776,7 @@ class BaseAlgo:
         """
         if symbol is None:
             symbol = self.watchlist[0]
-        pos = [p for p in self.trader.option_positions if p["symbol"] == symbol]
+        pos = [p for p in self.positions.option if p.symbol == symbol]
         return len(pos)
 
     def is_day_trade(self, action, symbol=None) -> bool:

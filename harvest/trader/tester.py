@@ -70,7 +70,7 @@ class BackTester(trader.PaperTrader):
         self.streamer.setup(self.stats, self.main)
 
         for a in self.algo:
-            a.init(self.stats)
+            a.init(self.stats, self.func, self.account)
             a.setup()
             a.trader = self
 
@@ -86,7 +86,7 @@ class BackTester(trader.PaperTrader):
         end,
         period,
     ):
-        self._setup_params(interval, aggregations)
+        self._setup_params(self.watchlist, interval, aggregations)
         self._setup_account()
 
         self.df = {}
@@ -117,8 +117,8 @@ class BackTester(trader.PaperTrader):
 
         common_start = None
         common_end = None
-        for s in self.stats.interval:
-            for i in [self.stats.interval[s]["interval"]] + self.stats.interval[s][
+        for s in self.stats.watchlist_cfg:
+            for i in [self.stats.watchlist_cfg[s]["interval"]] + self.stats.watchlist_cfg[s][
                 "aggregations"
             ]:
                 df = self.storage.load(s, i)
@@ -147,8 +147,8 @@ class BackTester(trader.PaperTrader):
 
         print(f"Common start: {start}, common end: {end}")
 
-        for s in self.stats.interval:
-            for i in [self.stats.interval[s]["interval"]] + self.stats.interval[s][
+        for s in self.stats.watchlist_cfg:
+            for i in [self.stats.watchlist_cfg[s]["interval"]] + self.stats.watchlist_cfg[s][
                 "aggregations"
             ]:
                 df = self.storage.load(s, i).copy()
@@ -166,14 +166,14 @@ class BackTester(trader.PaperTrader):
         }
 
         # Generate the "simulated aggregation" data
-        for sym in self.stats.interval:
-            interval = self.stats.interval[sym]["interval"]
+        for sym in self.stats.watchlist_cfg:
+            interval = self.stats.watchlist_cfg[sym]["interval"]
             interval_txt = interval_enum_to_string(interval)
             df = self.storage.load(sym, interval)
             df_len = len(df.index)
 
             debugger.debug(f"Formatting {sym} data...")
-            for agg in self.stats.interval[sym]["aggregations"]:
+            for agg in self.stats.watchlist_cfg[sym]["aggregations"]:
                 agg_txt = interval_enum_to_string(agg)
                 # tmp_path = f"{path}/{sym}-{interval_txt}+{agg_txt}.pickle"
                 tmp_path = f"{path}/{sym}@{int(agg)-16}.pickle"
@@ -201,8 +201,8 @@ class BackTester(trader.PaperTrader):
                         save_pickle=False,
                     )
         debugger.debug("Formatting complete")
-        for sym in self.stats.interval:
-            for agg in self.stats.interval[sym]["aggregations"]:
+        for sym in self.stats.watchlist_cfg:
+            for agg in self.stats.watchlist_cfg[sym]["aggregations"]:
                 data = self.storage.load(sym, int(agg) - 16)
                 data = pandas_datetime_to_utc(data, self.stats.timezone)
                 self.storage.store(
@@ -214,20 +214,20 @@ class BackTester(trader.PaperTrader):
 
         # # Save the current state of the queue
         # for s in self.watch:
-        #     self.load.append_entry(s, self.stats.interval, self.storage.load(s, self.stats.interval))
+        #     self.load.append_entry(s, self.stats.watchlist_cfg, self.storage.load(s, self.stats.watchlist_cfg))
         #     for i in self.aggregations:
         #         self.load.append_entry(s, '-'+i, self.storage.load(s, '-'+i), False, True)
         #         self.load.append_entry(s, i, self.storage.load(s, i))
 
         # Move all data to a cached dataframe
-        for sym in self.stats.interval:
+        for sym in self.stats.watchlist_cfg:
             self.df[sym] = {}
-            inter = self.stats.interval[sym]["interval"]
+            inter = self.stats.watchlist_cfg[sym]["interval"]
             interval_txt = interval_enum_to_string(inter)
             df = self.storage.load(sym, inter)
             self.df[sym][inter] = df.copy()
 
-            for agg in self.stats.interval[sym]["aggregations"]:
+            for agg in self.stats.watchlist_cfg[sym]["aggregations"]:
                 # agg_txt = interval_enum_to_string(agg)
                 # agg_txt = f"{interval_txt}+{agg_txt}"
                 df = self.storage.load(sym, int(agg) - 16)
@@ -236,7 +236,7 @@ class BackTester(trader.PaperTrader):
         # Trim data so start and end dates match between assets and intervals
         # data_start = pytz.utc.localize(dt.datetime(1970, 1, 1))
         # data_end = pytz.utc.localize(dt.datetime.utcnow().replace(microsecond=0, second=0))
-        # for i in [self.stats.interval] + self.aggregations:
+        # for i in [self.stats.watchlist_cfg] + self.aggregations:
         #     for s in self.watch:
         #         start = self.df[i][s].index[0]
         #         end = self.df[i][s].index[-1]
@@ -245,7 +245,7 @@ class BackTester(trader.PaperTrader):
         #         if end < data_end:
         #             data_end = end
 
-        # for i in [self.stats.interval] + self.aggregations:
+        # for i in [self.stats.watchlist_cfg] + self.aggregations:
         #     for s in self.watch:
         #         self.df[i][s] = self.df[i][s].loc[data_start:data_end]
 
@@ -258,8 +258,8 @@ class BackTester(trader.PaperTrader):
         :path: Path to the local data file
         :date_format: The format of the data's timestamps
         """
-        for s in self.stats.interval:
-            for i in [self.stats.interval[s]["interval"]] + self.stats.interval[s][
+        for s in self.stats.watchlist_cfg:
+            for i in [self.stats.watchlist_cfg[s]["interval"]] + self.stats.watchlist_cfg[s][
                 "aggregations"
             ]:
                 df = self.storage.open(s, i).dropna()
@@ -274,8 +274,8 @@ class BackTester(trader.PaperTrader):
         :path: Path to the local data file
         :date_format: The format of the data's timestamps
         """
-        for s in self.stats.interval:
-            for i in [self.stats.interval[s]["interval"]] + self.stats.interval[s][
+        for s in self.stats.watchlist_cfg:
+            for i in [self.stats.watchlist_cfg[s]["interval"]] + self.stats.watchlist_cfg[s][
                 "aggregations"
             ]:
                 i_txt = interval_enum_to_string(i)
@@ -308,8 +308,8 @@ class BackTester(trader.PaperTrader):
         # pr.enable()
         # Reset them
 
-        for s in self.stats.interval:
-            for i in [self.stats.interval[s]["interval"]] + self.stats.interval[s][
+        for s in self.stats.watchlist_cfg:
+            for i in [self.stats.watchlist_cfg[s]["interval"]] + self.stats.watchlist_cfg[s][
                 "aggregations"
             ]:
                 self.storage.reset(s, i)
@@ -320,10 +320,10 @@ class BackTester(trader.PaperTrader):
         common_end = self.common_end
 
         counter = {}
-        for s in self.stats.interval:
-            inter = self.stats.interval[s]["interval"]
+        for s in self.stats.watchlist_cfg:
+            inter = self.stats.watchlist_cfg[s]["interval"]
             start_index = list(self.df[s][inter].index).index(common_start)
-            self.stats.interval[s]["start"] = start_index
+            self.stats.watchlist_cfg[s]["start"] = start_index
             counter[s] = 0
 
         self.timestamp = common_start.to_pydatetime()
@@ -331,28 +331,29 @@ class BackTester(trader.PaperTrader):
 
         while self.timestamp <= common_end:
             df_dict = {}
-            for sym in self.stats.interval:
-                inter = self.stats.interval[sym]["interval"]
-                if is_freq(self.timestamp, inter):
-                    # If data is not in the cache, skip it
-                    if self.timestamp in self.df[sym][inter].index:
-                        df_dict[sym] = self.df[sym][inter].loc[self.timestamp]
+            for sym in self.stats.watchlist_cfg:
+                inter = self.stats.watchlist_cfg[sym]["interval"]
+                if (
+                    is_freq(self.timestamp, inter)
+                    and self.timestamp in self.df[sym][inter].index
+                ):
+                    df_dict[sym] = self.df[sym][inter].loc[self.timestamp]
 
             update = self._update_order_queue()
-            self._update_position_cache(df_dict, new=update, option_update=True)
-            for sym in self.stats.interval:
-                inter = self.stats.interval[sym]["interval"]
+            self._update_local_cache(df_dict)
+            for sym in self.stats.watchlist_cfg:
+                inter = self.stats.watchlist_cfg[sym]["interval"]
                 if is_freq(self.timestamp, inter):
 
                     # If data is not in the cache, skip it
-                    if not self.timestamp in self.df[sym][inter].index:
+                    if self.timestamp not in self.df[sym][inter].index:
                         continue
                     df = self.df[sym][inter].loc[[self.timestamp], :]
                     self.storage.store(s, inter, df, save_pickle=False)
                     # Add data to aggregation queue
-                    for agg in self.stats.interval[sym]["aggregations"]:
+                    for agg in self.stats.watchlist_cfg[sym]["aggregations"]:
                         df = self.df[s][int(agg) - 16].iloc[
-                            [self.stats.interval[sym]["start"] + counter[sym]], :
+                            [self.stats.watchlist_cfg[sym]["start"] + counter[sym]], :
                         ]
                         self.storage.store(s, agg, df)
                     counter[sym] += 1
@@ -368,8 +369,8 @@ class BackTester(trader.PaperTrader):
                     debugger.debug(
                         f"Algorithm {a} failed, removing from algorithm list.\nException: {e}"
                     )
-            if len(new_algo) == 0:
-                debugger.debug(f"No algorithms left, exiting")
+            if not new_algo:
+                debugger.debug('No algorithms left, exiting')
                 break
             self.algo = new_algo
 
@@ -388,12 +389,14 @@ class BackTester(trader.PaperTrader):
         pass
 
     def _setup_account(self):
-        self.account = {
+        account = {
             "equity": 1000000.0,
             "cash": 1000000.0,
             "buying_power": 1000000.0,
             "multiplier": 1,
         }
+        self.account = Account()
+        self.account.init(account)
 
     def fetch_position(self, key):
         pass
