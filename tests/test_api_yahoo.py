@@ -23,7 +23,7 @@ class TestYahooStreamer(unittest.TestCase):
             "SPY": {"interval": Interval.MIN_15, "aggregations": []},
             "AAPL": {"interval": Interval.MIN_1, "aggregations": []},
         }
-        stats = Stats(interval=interval)
+        stats = Stats(watchlist_cfg=interval)
         yh.setup(stats)
 
         self.assertEqual(yh.poll_interval, Interval.MIN_1)
@@ -43,7 +43,7 @@ class TestYahooStreamer(unittest.TestCase):
             self.assertEqual(df["@BTC"].columns[0][0], "@BTC")
 
         yh = YahooStreamer()
-        stats = Stats(interval=interval)
+        stats = Stats(watchlist_cfg=interval)
         yh.setup(stats, test_main)
 
         yh.main()
@@ -56,7 +56,7 @@ class TestYahooStreamer(unittest.TestCase):
             self.assertEqual(df["SPY"].columns[0][0], "SPY")
 
         yh = YahooStreamer()
-        stats = Stats(interval=interval)
+        stats = Stats(watchlist_cfg=interval)
         yh.setup(stats, test_main)
 
         yh.main()
@@ -65,7 +65,7 @@ class TestYahooStreamer(unittest.TestCase):
         yh = YahooStreamer()
 
         interval = {"LMND": {"interval": Interval.MIN_1, "aggregations": []}}
-        stats = Stats(interval=interval)
+        stats = Stats(watchlist_cfg=interval)
         yh.setup(stats)
 
         info = yh.fetch_chain_info("LMND")
@@ -76,7 +76,7 @@ class TestYahooStreamer(unittest.TestCase):
         yh = YahooStreamer()
 
         interval = {"LMND": {"interval": Interval.MIN_1, "aggregations": []}}
-        stats = Stats(interval=interval)
+        stats = Stats(watchlist_cfg=interval)
         yh.setup(stats)
 
         dates = yh.fetch_chain_info("LMND")["exp_dates"]

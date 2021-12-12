@@ -8,7 +8,7 @@ from harvest.trader import PaperTrader
 from harvest.api.dummy import DummyStreamer
 from harvest.algo import BaseAlgo
 
-from harvest.utils import Interval, gen_data
+from harvest.utils import *
 
 import logging
 
@@ -76,7 +76,8 @@ class TestAlgo(unittest.TestCase):
         s.tick()
 
         self.assertListEqual(
-            t.stats.interval["A"]["aggregations"], [Interval.MIN_15, Interval.DAY_1]
+            t.stats.watchlist_cfg["A"]["aggregations"],
+            [Interval.MIN_15, Interval.DAY_1],
         )
 
     def test_rsi(self):
@@ -84,7 +85,13 @@ class TestAlgo(unittest.TestCase):
         Test that RSI values are calculated correctly.
         """
         algo = BaseAlgo()
-        algo.add_symbol("DUMMY")
+        stats = Stats(
+            watchlist_cfg={
+                "A": {"interval": Interval.MIN_1, "aggregations": []},
+            }
+        )
+        algo.init(stats, Functions(), Account())
+        algo.watchlist = ["A"]
         rsi = algo.rsi(prices=prices)[-1]
 
         self.assertAlmostEqual(rsi, 59.476113, places=5)
@@ -94,7 +101,13 @@ class TestAlgo(unittest.TestCase):
         Test that SMA values are calculated correctly.
         """
         algo = BaseAlgo()
-        algo.add_symbol("DUMMY")
+        stats = Stats(
+            watchlist_cfg={
+                "A": {"interval": Interval.MIN_1, "aggregations": []},
+            }
+        )
+        algo.init(stats, Functions(), Account())
+        algo.watchlist = ["A"]
         sma = algo.sma(prices=prices)[-1]
 
         self.assertAlmostEqual(sma, sum(prices) / len(prices), places=5)
@@ -104,7 +117,13 @@ class TestAlgo(unittest.TestCase):
         Test that EMA values are calculated correctly.
         """
         algo = BaseAlgo()
-        algo.add_symbol("DUMMY")
+        stats = Stats(
+            watchlist_cfg={
+                "A": {"interval": Interval.MIN_1, "aggregations": []},
+            }
+        )
+        algo.init(stats, Functions(), Account())
+        algo.watchlist = ["A"]
         ema = algo.ema(prices=prices)[-1]
 
         alpha = 2 / (len(prices) + 1)
@@ -120,7 +139,14 @@ class TestAlgo(unittest.TestCase):
         Test that bbands returns the correct values based on provided price list.
         """
         algo = BaseAlgo()
-        algo.add_symbol("DUMMY")
+        stats = Stats(
+            watchlist_cfg={
+                "A": {"interval": Interval.MIN_1, "aggregations": []},
+            }
+        )
+        algo.init(stats, Functions(), Account())
+        algo.watchlist = ["A"]
+
         upper, middle, lower = algo.bbands(prices=prices)
 
         mean = sum(prices) / len(prices)
@@ -204,17 +230,17 @@ class TestAlgo(unittest.TestCase):
         t.algo[0].buy("A", 2)
         s.tick()
 
-        p = t.stock_positions[0]
-        self.assertEqual(p["symbol"], "A")
-        self.assertEqual(p["quantity"], 2)
+        p = t.positions.stock[0]
+        self.assertEqual(p.symbol, "A")
+        self.assertEqual(p.quantity, 2)
 
         # This should sell 1 of A
         t.algo[0].sell("A", 1)
         s.tick()
 
-        p = t.stock_positions[0]
-        self.assertEqual(p["symbol"], "A")
-        self.assertEqual(p["quantity"], 1)
+        p = t.positions.stock[0]
+        self.assertEqual(p.symbol, "A")
+        self.assertEqual(p.quantity, 1)
 
     def test_buy_sell_auto(self):
         s = DummyStreamer()
@@ -228,9 +254,9 @@ class TestAlgo(unittest.TestCase):
         t.algo[0].buy()
         s.tick()
 
-        p = t.stock_positions[0]
-        self.assertEqual(p["symbol"], "A")
-        self.assertEqual(p["quantity"], qty)
+        p = t.positions.stock[0]
+        self.assertEqual(p.symbol, "A")
+        self.assertEqual(p.quantity, qty)
 
         # This should sell all of A
         t.algo[0].sell()
@@ -251,8 +277,8 @@ class TestAlgo(unittest.TestCase):
         t.algo[0].buy("X     110101C01000000")
         streamer.tick()
 
-        p = t.option_positions[0]
-        self.assertEqual(p["symbol"], "X     110101C01000000")
+        p = t.positions.option[0]
+        self.assertEqual(p.symbol, "X     110101C01000000")
 
         t.algo[0].sell_all_options()
         streamer.tick()

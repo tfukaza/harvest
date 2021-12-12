@@ -36,7 +36,7 @@ class TestPaperBroker(unittest.TestCase):
     def test_buy_order_limit(self):
         dummy = PaperBroker()
         interval = {"A": {"interval": Interval.MIN_1, "aggregations": []}}
-        stats = Stats(interval=interval)
+        stats = Stats(watchlist_cfg=interval)
         dummy.setup(stats)
         order = dummy.order_stock_limit("buy", "A", 5, 50000)
         self.assertEqual(order["type"], "STOCK")
@@ -55,7 +55,7 @@ class TestPaperBroker(unittest.TestCase):
     def test_buy(self):
         dummy = PaperBroker()
         interval = {"A": {"interval": Interval.MIN_1, "aggregations": []}}
-        stats = Stats(interval=interval)
+        stats = Stats(watchlist_cfg=interval)
         dummy.setup(stats)
         order = dummy.buy("A", 5, 1e5)
         self.assertEqual(order["type"], "STOCK")
@@ -76,7 +76,7 @@ class TestPaperBroker(unittest.TestCase):
         dummy = PaperBroker(str(directory) + "/../dummy_account.yaml")
 
         interval = {"A": {"interval": Interval.MIN_1, "aggregations": []}}
-        stats = Stats(interval=interval)
+        stats = Stats(watchlist_cfg=interval)
         dummy.setup(stats)
 
         order = dummy.order_stock_limit("sell", "A", 2, 50000)
@@ -98,7 +98,7 @@ class TestPaperBroker(unittest.TestCase):
         dummy = PaperBroker(str(directory) + "/../dummy_account.yaml")
 
         interval = {"A": {"interval": Interval.MIN_1, "aggregations": []}}
-        stats = Stats(interval=interval)
+        stats = Stats(watchlist_cfg=interval)
         dummy.setup(stats)
 
         order = dummy.sell("A", 2)
@@ -119,7 +119,7 @@ class TestPaperBroker(unittest.TestCase):
         dummy = PaperBroker()
 
         interval = {"A": {"interval": Interval.MIN_1, "aggregations": []}}
-        stats = Stats(interval=interval)
+        stats = Stats(watchlist_cfg=interval)
         dummy.setup(stats)
 
         exp_date = dt.datetime(2021, 11, 14) + dt.timedelta(hours=5)
