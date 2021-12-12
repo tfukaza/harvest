@@ -31,7 +31,7 @@ class YahooStreamer(API):
 
         self.watch_ticker = {}
 
-        for s in self.stats.interval:
+        for s in self.stats.watchlist_cfg:
             if is_crypto(s):
                 self.watch_ticker[s] = yf.Ticker(s[1:] + "-USD")
             else:

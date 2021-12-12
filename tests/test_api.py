@@ -254,7 +254,6 @@ class TestAPI(unittest.TestCase):
         self.assertEqual(api.fetch_stock_positions(), [])
         self.assertEqual(api.fetch_option_positions(), [])
         self.assertEqual(api.fetch_crypto_positions(), [])
-        api.update_option_positions([])
         self.assertEqual(api.fetch_order_queue(), [])
 
     def test_run_once(self):
