@@ -494,17 +494,12 @@ class LiveTrader:
         """
         if symbol is None:
             symbol = self.watchlist[0]
-        
-        debugger.debug(f"Getting quantity of {symbol}")
-
         typ = symbol_type(symbol)
-        debugger.debug(f"Symbol type: {typ}")
         if typ == "OPTION":
             owned_qty = sum(
                 p.quantity for p in self.positions.option if p.symbol == symbol
             )
         elif typ == "CRYPTO":
-            debugger.debug(f"Getting crypto quantity for {[p.quantity for p in self.positions.crypto]}, {symbol}")
             owned_qty = sum(
                 p.quantity for p in self.positions.crypto if p.symbol == symbol
             )

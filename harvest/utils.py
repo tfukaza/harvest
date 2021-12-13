@@ -212,7 +212,7 @@ class Position:
         self._current_price = current_price
         self._value = self._current_price * self._quantity
         self._profit = self._value - self._avg_price * self._quantity
-        self._profit_percent = self._profit / self._avg_price
+        self._profit_percent = self._profit / (self._avg_price * self._quantity)
 
     def buy(self, quantity, price):
         self._avg_price = (self._avg_price * self._quantity + price * quantity) / (
@@ -240,7 +240,16 @@ class Position:
         return self._avg_price
 
     def __str__(self):
-        return f"[{self._symbol}]: {self._quantity}, {self._avg_price}" + f", {self._current_price}"
+        return (
+            f"\n[{self._symbol}]\n" +
+            f" Quantity:\t{self._quantity}\n" + 
+            f" Avg. Cost:\t${self._avg_price}\n" + 
+            f" Price:  \t${self._current_price}\n" + 
+            f" Value:  \t${self._value}\n" +
+            f" Profit:\t${self._profit}\n" +
+            f" Returns:\t{'▲' if self._profit_percent > 0 else '▼'}{self._profit_percent * 100}%\n" + 
+            "─"*50
+        )
 
 
 class OptionPosition(Position):
