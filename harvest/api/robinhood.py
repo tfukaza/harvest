@@ -47,7 +47,7 @@ class Robinhood(API):
         super().setup(stats, trader_main)
 
         # Robinhood only supports 15SEC, 1MIN interval for crypto
-        for sym in self.stats.interval:
+        for sym in self.stats.watchlist_cfg:
             if not is_crypto(sym) and self.interval[sym]["interval"] < Interval.MIN_5:
                 raise Exception(
                     f'Interval {self.interval[sym]["interval"]} is only supported for crypto'
@@ -317,17 +317,17 @@ class Robinhood(API):
             )
         return pos
 
-    @API._exception_handler
-    def update_option_positions(self, positions: List[Any]):
-        for r in positions:
-            sym, date, type, price = self.occ_to_data(r["symbol"])
-            upd = rh.get_option_market_data(
-                sym, date.strftime("%Y-%m-%d"), str(price), type
-            )
-            upd = upd[0][0]
-            r["current_price"] = float(upd["adjusted_mark_price"])
-            r["market_value"] = float(upd["adjusted_mark_price"]) * r["quantity"]
-            r["cost_basis"] = r["avg_price"] * r["quantity"]
+    # @API._exception_handler
+    # def update_option_positions(self, positions: List[Any]):
+    #     for r in positions:
+    #         sym, date, type, price = self.occ_to_data(r["symbol"])
+    #         upd = rh.get_option_market_data(
+    #             sym, date.strftime("%Y-%m-%d"), str(price), type
+    #         )
+    #         upd = upd[0][0]
+    #         r["current_price"] = float(upd["adjusted_mark_price"])
+    #         r["market_value"] = float(upd["adjusted_mark_price"]) * r["quantity"]
+    #         r["cost_basis"] = r["avg_price"] * r["quantity"]
 
     @API._exception_handler
     def fetch_account(self):
@@ -355,7 +355,6 @@ class Robinhood(API):
         return {
             "type": "STOCK",
             "id": ret["id"],
-            "symbol": ret["symbol"],
             "quantity": ret["qty"],
             "filled_quantity": ret["filled_qty"],
             "side": ret["side"],
@@ -381,7 +380,6 @@ class Robinhood(API):
         return {
             "type": "OPTION",
             "id": ret["id"],
-            "symbol": ret["chain_symbol"],
             "qty": ret["quantity"],
             "filled_qty": ret["processed_quantity"],
             "side": ret["legs"][0]["side"],
@@ -408,7 +406,6 @@ class Robinhood(API):
         return {
             "type": "CRYPTO",
             "id": ret["id"],
-            "symbol": ret["symbol"],
             "quantity": float(ret["quantity"]),
             "filled_qty": float(ret["cumulative_quantity"]),
             "side": ret["side"],

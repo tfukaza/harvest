@@ -124,9 +124,9 @@ class LiveTrader:
         if sync:
             self._setup_stats()
             for s in self.positions.stock_crypto:
-                self.watchlist.append(s["symbol"])
+                self.watchlist.append(s.symbol)
             for s in self.positions.option:
-                self.watchlist.append(s["base_symbol"])
+                self.watchlist.append(s.base_symbol)
             for s in self.order_queue:
                 sym = s["base_symbol"] if s["type"] == "OPTION" else s["symbol"]
                 self.watchlist.append(sym)
@@ -175,17 +175,7 @@ class LiveTrader:
         self.order_queue = ret
         debugger.debug(f"Fetched orders:\n{self.order_queue}")
 
-        # Get positions
-        stock_positions = self.broker.fetch_stock_positions()
-        option_positions = self.broker.fetch_option_positions()
-        crypto_positions = self.broker.fetch_crypto_positions()
-        self.positions.update(stock_positions, option_positions, crypto_positions)
-
-        debugger.debug(f"Fetched positions:\n{self.positions}")
-
-        # Update option stats
-        self.broker.update_option_positions(self.positions.option)
-        debugger.debug(f"Updated option positions:\n{self.positions.option}")
+        self._fetch_account_data()
 
     def _setup_params(self, watchlist, interval, aggregations):
         """
@@ -372,12 +362,13 @@ class LiveTrader:
         # API should also be called if load_watch is false, as there is a high chance
         # that data in local cache are not representative of the entire portfolio,
         # meaning total equity cannot be calculated locally
-        debugger.debug(f"Updating positions: {self.positions}")
+        
+        debugger.debug(f"Got data: {df_dict}")
 
         for p in self.positions.stock_crypto:
             symbol = p.symbol
             if symbol in df_dict:
-                price = df_dict[symbol][symbol]["close"][-1]
+                price = df_dict[symbol][symbol]["close"]
             elif (
                 symbol not in self.watchlist
             ):  # handle cases when user has an asset not in watchlist
@@ -391,6 +382,8 @@ class LiveTrader:
             p.update(price)
 
         self.account.update()
+        
+        debugger.debug(f"Updated positions: {self.positions}")
 
     def _fetch_account_data(self):
         stock_pos = [
@@ -501,12 +494,17 @@ class LiveTrader:
         """
         if symbol is None:
             symbol = self.watchlist[0]
+        
+        debugger.debug(f"Getting quantity of {symbol}")
 
-        if typ := symbol_type(symbol) == "OPTION":
+        typ = symbol_type(symbol)
+        debugger.debug(f"Symbol type: {typ}")
+        if typ == "OPTION":
             owned_qty = sum(
                 p.quantity for p in self.positions.option if p.symbol == symbol
             )
         elif typ == "CRYPTO":
+            debugger.debug(f"Getting crypto quantity for {[p.quantity for p in self.positions.crypto]}, {symbol}")
             owned_qty = sum(
                 p.quantity for p in self.positions.crypto if p.symbol == symbol
             )

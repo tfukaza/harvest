@@ -190,8 +190,12 @@ class Positions:
         return sum(p.value for p in self.all)
 
     def __str__(self):
-        return f"Positions: \n\tStocks: {self._stock}\n\tOptions: {self._option}\n\tCrypto: {self._crypto}"
-
+        return (
+            "Positions: \n" + 
+            f"\tStocks : {'='.join(str(p) for p in self._stock)}\n" + 
+            f"\tOptions: {'='.join(str(p) for p in self._option)}\n" +
+            f"\tCrypto : {'='.join(str(p) for p in self._crypto)}"  
+        )
 
 class Position:
     def __init__(self, symbol, quantity, avg_price):
@@ -234,6 +238,9 @@ class Position:
     @property
     def avg_price(self):
         return self._avg_price
+
+    def __str__(self):
+        return f"[{self._symbol}]: {self._quantity}, {self._avg_price}" + f", {self._current_price}"
 
 
 class OptionPosition(Position):
