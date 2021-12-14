@@ -373,7 +373,7 @@ class Robinhood(API):
         if len(executions) > 0:
             filled_time = self._rh_datestr_to_datetime(executions[0]["timestamp"])
             filled_time = filled_time.replace(tzinfo=pytz.utc)
-            filled_price = float(executions[0]["effective_price"])
+            filled_price = float(executions[0]["price"])
         else:
             filled_time = None
             filled_price = None
