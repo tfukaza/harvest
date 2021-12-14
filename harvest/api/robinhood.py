@@ -597,7 +597,7 @@ class Robinhood(API):
                 "symbol": symbol,
             }
         except:
-            debugger.error("Error while placing order.\nReturned: {ret}", exc_info=True)
+            debugger.error(f"Error while placing order.\nReturned: {ret}", exc_info=True)
             raise Exception("Error while placing order")
 
     def _format_df(

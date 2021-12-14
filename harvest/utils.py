@@ -428,20 +428,20 @@ def str_to_datetime(date: str) -> dt.datetime:
 
 
 def convert_input_to_datetime(datetime, timezone: ZoneInfo):
-
+    """
+    Converts input to a datetime object, with timezone set to the given timezone.
+    If timezone is None, the returned datetime object will be offset-naive.
+    """
     if datetime is None:
         return None
-    elif isinstance(datetime, Timestamp):
-        datetime = tz.localize(datetime.timestamp)
     elif isinstance(datetime, str):
         datetime = str_to_datetime(datetime)
-    elif isinstance(datetime, dt.datetime):
-        datetime = datetime.replace(tzinfo=timezone)
-    else:
+    elif not isinstance(datetime, dt.datetime):
         raise ValueError(f"Cannot convert {datetime} to datetime.")
 
-    datetime = datetime.replace(tzinfo=timezone)
-    datetime = datetime.astimezone(tz.utc)
+    if timezone is not None:
+        datetime = datetime.replace(tzinfo=timezone)
+        datetime = datetime.astimezone(tz.utc)
 
     return datetime
 
