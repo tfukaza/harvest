@@ -191,11 +191,12 @@ class Positions:
 
     def __str__(self):
         return (
-            "Positions: \n" + 
-            f"\tStocks : {'='.join(str(p) for p in self._stock)}\n" + 
-            f"\tOptions: {'='.join(str(p) for p in self._option)}\n" +
-            f"\tCrypto : {'='.join(str(p) for p in self._crypto)}"  
+            "Positions: \n"
+            + f"\tStocks : {'='.join(str(p) for p in self._stock)}\n"
+            + f"\tOptions: {'='.join(str(p) for p in self._option)}\n"
+            + f"\tCrypto : {'='.join(str(p) for p in self._crypto)}"
         )
+
 
 class Position:
     def __init__(self, symbol, quantity, avg_price):
@@ -241,14 +242,14 @@ class Position:
 
     def __str__(self):
         return (
-            f"\n[{self._symbol}]\n" +
-            f" Quantity:\t{self._quantity}\n" + 
-            f" Avg. Cost:\t${self._avg_price}\n" + 
-            f" Price:  \t${self._current_price}\n" + 
-            f" Value:  \t${self._value}\n" +
-            f" Profit:\t${self._profit}\n" +
-            f" Returns:\t{'▲' if self._profit_percent > 0 else '▼'}{self._profit_percent * 100}%\n" + 
-            "─"*50
+            f"\n[{self._symbol}]\n"
+            + f" Quantity:\t{self._quantity}\n"
+            + f" Avg. Cost:\t${self._avg_price}\n"
+            + f" Price:  \t${self._current_price}\n"
+            + f" Value:  \t${self._value}\n"
+            + f" Profit:\t${self._profit}\n"
+            + f" Returns:\t{'▲' if self._profit_percent > 0 else '▼'}{self._profit_percent * 100}%\n"
+            + "─" * 50
         )
 
 

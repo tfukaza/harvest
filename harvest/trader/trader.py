@@ -362,7 +362,7 @@ class LiveTrader:
         # API should also be called if load_watch is false, as there is a high chance
         # that data in local cache are not representative of the entire portfolio,
         # meaning total equity cannot be calculated locally
-        
+
         debugger.debug(f"Got data: {df_dict}")
 
         for p in self.positions.stock_crypto:
@@ -382,7 +382,7 @@ class LiveTrader:
             p.update(price)
 
         self.account.update()
-        
+
         debugger.debug(f"Updated positions: {self.positions}")
 
     def _fetch_account_data(self):

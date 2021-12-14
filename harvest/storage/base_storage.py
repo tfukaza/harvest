@@ -330,4 +330,3 @@ class BaseStorage:
         self.storage_performance["ALL"] = df
 
         debugger.debug("Performance data added")
-
