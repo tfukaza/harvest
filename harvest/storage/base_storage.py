@@ -330,5 +330,4 @@ class BaseStorage:
         self.storage_performance["ALL"] = df
 
         debugger.debug("Performance data added")
-        for k in self.storage_performance:
-            debugger.debug(f"{k}:\n {self.storage_performance[k]}")
+
