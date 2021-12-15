@@ -213,7 +213,7 @@ class TestAlgo(unittest.TestCase):
         # This should buy 5 of A
         t.algo[0].buy("A", 5)
         s.tick()
-        price = s.fetch_latest_stock_price()["A"]["A"]["close"][0]
+        price = s.fetch_latest_stock_price()["A"]["A"]["close"]
 
         get_price = t.algo[0].get_asset_price("A")
 
