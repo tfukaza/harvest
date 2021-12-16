@@ -425,7 +425,6 @@ class API:
         :returns: A dictionary with the following keys and values:
             - type: 'STOCK'
             - id: ID of the order
-            - symbol: Ticker of stock
             - quantity: Quantity ordered
             - filled_quantity: Quantity filled so far
             - side: 'buy' or 'sell'
@@ -447,7 +446,6 @@ class API:
         :returns: A dictionary with the following keys and values:
             - type: 'OPTION'
             - id: ID of the order
-            - symbol: OCC symbol of option
             - quantity: Quantity ordered
             - filled_quantity: Quantity filled so far
             - side: 'buy' or 'sell'
@@ -469,7 +467,6 @@ class API:
         :returns: A dictionary with the following keys and values:
             - type: 'CRYPTO'
             - id: ID of the order
-            - symbol: Ticker of crypto
             - quantity: Quantity ordered
             - filled_quantity: Quantity filled so far
             - side: 'buy' or 'sell'
