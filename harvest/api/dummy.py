@@ -73,7 +73,7 @@ class DummyStreamer(API):
             if not is_crypto(symbol):
                 results[symbol] = self.fetch_price_history(
                     symbol, self.interval[symbol]["interval"], last, today
-                ).iloc[[-1]]
+                ).iloc[-1]
         return results
 
     def fetch_latest_crypto_price(self) -> Dict[str, pd.DataFrame]:
@@ -90,7 +90,7 @@ class DummyStreamer(API):
             if is_crypto(symbol):
                 results[symbol] = self.fetch_price_history(
                     symbol, self.interval[symbol]["interval"], last, today
-                ).iloc[[-1]]
+                ).iloc[-1]
         return results
 
     # -------------- Streamer methods -------------- #

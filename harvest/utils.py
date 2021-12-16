@@ -190,7 +190,12 @@ class Positions:
         return sum(p.value for p in self.all)
 
     def __str__(self):
-        return f"Positions: \n\tStocks: {self._stock}\n\tOptions: {self._option}\n\tCrypto: {self._crypto}"
+        return (
+            "Positions: \n"
+            + f"\tStocks : {'='.join(str(p) for p in self._stock)}\n"
+            + f"\tOptions: {'='.join(str(p) for p in self._option)}\n"
+            + f"\tCrypto : {'='.join(str(p) for p in self._crypto)}"
+        )
 
 
 class Position:
@@ -208,7 +213,7 @@ class Position:
         self._current_price = current_price
         self._value = self._current_price * self._quantity
         self._profit = self._value - self._avg_price * self._quantity
-        self._profit_percent = self._profit / self._avg_price
+        self._profit_percent = self._profit / (self._avg_price * self._quantity)
 
     def buy(self, quantity, price):
         self._avg_price = (self._avg_price * self._quantity + price * quantity) / (
@@ -234,6 +239,18 @@ class Position:
     @property
     def avg_price(self):
         return self._avg_price
+
+    def __str__(self):
+        return (
+            f"\n[{self._symbol}]\n"
+            + f" Quantity:\t{self._quantity}\n"
+            + f" Avg. Cost:\t${self._avg_price}\n"
+            + f" Price:  \t${self._current_price}\n"
+            + f" Value:  \t${self._value}\n"
+            + f" Profit:\t${self._profit}\n"
+            + f" Returns:\t{'▲' if self._profit_percent > 0 else '▼'}{self._profit_percent * 100}%\n"
+            + "─" * 50
+        )
 
 
 class OptionPosition(Position):
@@ -412,20 +429,20 @@ def str_to_datetime(date: str) -> dt.datetime:
 
 
 def convert_input_to_datetime(datetime, timezone: ZoneInfo):
-
+    """
+    Converts input to a datetime object, with timezone set to the given timezone.
+    If timezone is None, the returned datetime object will be offset-naive.
+    """
     if datetime is None:
         return None
-    elif isinstance(datetime, Timestamp):
-        datetime = tz.localize(datetime.timestamp)
     elif isinstance(datetime, str):
         datetime = str_to_datetime(datetime)
-    elif isinstance(datetime, dt.datetime):
-        datetime = datetime.replace(tzinfo=timezone)
-    else:
+    elif not isinstance(datetime, dt.datetime):
         raise ValueError(f"Cannot convert {datetime} to datetime.")
 
-    datetime = datetime.replace(tzinfo=timezone)
-    datetime = datetime.astimezone(tz.utc)
+    if timezone is not None:
+        datetime = datetime.replace(tzinfo=timezone)
+        datetime = datetime.astimezone(tz.utc)
 
     return datetime
 

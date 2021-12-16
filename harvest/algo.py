@@ -191,8 +191,8 @@ class BaseAlgo:
         """
         if symbol is None:
             symbol = self.watchlist[0]
-        lower_exp = convert_input_to_datetime(lower_exp, self.stats.timezone)
-        upper_exp = convert_input_to_datetime(upper_exp, self.stats.timezone)
+        lower_exp = convert_input_to_datetime(lower_exp, None)
+        upper_exp = convert_input_to_datetime(upper_exp, None)
 
         exp_dates = self.get_option_chain_info(symbol)["exp_dates"]
         if lower_exp is not None:
@@ -223,7 +223,7 @@ class BaseAlgo:
 
         :param str? symbol: symbol of stock. defaults to first symbol in watchlist
         :returns: A dict with the following keys:
-            - exp_dates: List of expiration dates, in the fomrat "YYYY-MM-DD"
+            - exp_dates: List of expiration dates
             - multiplier: Multiplier of the option, usually 100
         """
         if symbol is None:

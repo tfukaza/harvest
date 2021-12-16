@@ -71,7 +71,7 @@ class TestDummyStreamer(unittest.TestCase):
 
         d = dummy.fetch_latest_crypto_price()
         self.assertTrue("@D" in d)
-        self.assertEqual(d["@D"].shape, (1, 5))
+        self.assertEqual(d["@D"].shape, (5,))
 
     def test_simple_static(self):
         dummy1 = DummyStreamer()
