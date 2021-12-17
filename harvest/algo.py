@@ -448,7 +448,7 @@ class BaseAlgo:
 
     ############### Getters for Trader properties #################
 
-    def get_asset_quantity(self, symbol: str = None) -> float:
+    def get_asset_quantity(self, symbol: str=None, include_pending_buy=True, include_pending_sell=False) -> float:
         """Returns the quantity owned of a specified asset.
 
         Assets that are currently pending to be sold are not counted.
@@ -460,7 +460,7 @@ class BaseAlgo:
         if symbol is None:
             symbol = self.watchlist[0]
 
-        return self.func.get_asset_quantity(symbol, exclude_pending_sell=True)
+        return self.func.get_asset_quantity(symbol, include_pending_buy, include_pending_sell)
 
     def get_asset_cost(self, symbol: str = None) -> float:
         """Returns the average cost of a specified asset.

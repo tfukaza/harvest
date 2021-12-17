@@ -484,7 +484,7 @@ class LiveTrader:
 
     # ================ Helper Functions ======================
     def get_asset_quantity(
-        self, symbol: str = None, include_pending_buy=False, exclude_pending_sell=False
+        self, symbol, include_pending_buy, include_pending_sell
     ) -> float:
         """Returns the quantity owned of a specified asset.
 
@@ -515,7 +515,7 @@ class LiveTrader:
                 if o["symbol"] == symbol and o["side"] == "buy"
             )
 
-        if exclude_pending_sell:
+        if not include_pending_sell:
             owned_qty -= sum(
                 o["quantity"]
                 for o in self.order_queue
