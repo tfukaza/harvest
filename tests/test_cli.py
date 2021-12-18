@@ -33,13 +33,6 @@ class TestCLI(unittest.TestCase):
         except ValueError:
             self.assertTrue(True)
 
-    def test_bad_broekrs(self):
-        try:
-            cli._get_broker("I don't exist")
-            self.assertTrue(False)
-        except ValueError:
-            self.assertTrue(True)
-
     def test_start_basic(self):
         crossover = os.path.dirname(os.path.realpath(__file__)) + "/../examples"
         args = cli.parser.parse_args(

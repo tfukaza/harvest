@@ -458,7 +458,7 @@ class LiveTrader:
 
     def sell(self, symbol: str, quantity: int, in_force: str, extended: bool):
         # Check how many of the given asset we currently own
-        owned_qty = self.get_asset_quantity(symbol, exclude_pending_sell=True)
+        owned_qty = self.get_asset_quantity(symbol, True, False)
         if quantity > owned_qty:
             debugger.debug(
                 "SELL failed: More quantities are being sold than currently owned."
@@ -484,7 +484,7 @@ class LiveTrader:
 
     # ================ Helper Functions ======================
     def get_asset_quantity(
-        self, symbol: str = None, include_pending_buy=False, exclude_pending_sell=False
+        self, symbol, include_pending_buy, include_pending_sell
     ) -> float:
         """Returns the quantity owned of a specified asset.
 
@@ -515,7 +515,7 @@ class LiveTrader:
                 if o["symbol"] == symbol and o["side"] == "buy"
             )
 
-        if exclude_pending_sell:
+        if not include_pending_sell:
             owned_qty -= sum(
                 o["quantity"]
                 for o in self.order_queue
