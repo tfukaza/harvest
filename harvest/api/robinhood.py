@@ -384,7 +384,7 @@ class Robinhood(API):
         return {
             "type": "OPTION",
             "id": ret["id"],
-            "quantity": ret["quantity"],
+            "qty": ret["quantity"],
             "filled_qty": ret["processed_quantity"],
             "side": ret["legs"][0]["side"],
             "time_in_force": ret["time_in_force"],
