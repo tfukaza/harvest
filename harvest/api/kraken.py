@@ -113,6 +113,10 @@ class Kraken(API):
 
     def __init__(self, path: str = None):
         super().__init__(path)
+
+        if self.config is None:
+            raise Exception("Account credentials not found!")
+            
         self.api = krakenex.API(self.config["api_key"], self.config["secret_key"])
 
     def setup(self, interval: Dict, trader_main=None):

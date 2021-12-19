@@ -19,6 +19,10 @@ class PolygonStreamer(API):
 
     def __init__(self, path: str = None, is_basic_account: bool = False):
         super().__init__(path)
+
+        if self.config is None:
+            raise Exception("Account credentials not found!")
+
         self.basic = is_basic_account
 
     def setup(self, interval, trader_main=None):

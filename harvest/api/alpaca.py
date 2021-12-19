@@ -27,6 +27,10 @@ class Alpaca(StreamAPI):
         paper_trader: bool = False,
     ):
         super().__init__(path)
+
+        if self.config is None:
+            raise Exception("Account credentials not found!")
+
         self.basic = is_basic_account
 
         endpoint = (

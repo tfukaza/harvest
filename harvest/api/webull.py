@@ -16,6 +16,10 @@ from harvest.utils import *
 class Webull(API):
     def __init__(self, path: str = None, paper_trader: bool = False):
         super().__init__(path)
+
+        if self.config is None:
+            raise Exception("Account credentials not found!")
+        
         self.paper = paper_trader
         self.wb_tokens = None
         self.timestamp = now()
