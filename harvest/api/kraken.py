@@ -115,7 +115,7 @@ class Kraken(API):
         super().__init__(path)
 
         if self.config is None:
-            raise Exception("Account credentials not found!")
+            raise Exception(f"Account credentials not found! Expected file path: {path}")
             
         self.api = krakenex.API(self.config["api_key"], self.config["secret_key"])
 

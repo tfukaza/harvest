@@ -30,7 +30,7 @@ class YahooStreamer(API):
         super().setup(interval, trader_main)
 
         if self.config is None:
-            raise Exception("Account credentials not found!")
+            raise Exception(f"Account credentials not found! Expected file path: {path}")
 
         self.watch_ticker = {}
 
