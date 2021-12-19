@@ -28,10 +28,7 @@ class YahooStreamer(API):
 
     def setup(self, interval: Dict, trader_main=None):
         super().setup(interval, trader_main)
-
-        if self.config is None:
-            raise Exception(f"Account credentials not found! Expected file path: {path}")
-
+        
         self.watch_ticker = {}
 
         for s in self.stats.watchlist_cfg:
