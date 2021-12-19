@@ -28,7 +28,7 @@ class YahooStreamer(API):
 
     def setup(self, interval: Dict, trader_main=None):
         super().setup(interval, trader_main)
-        
+
         self.watch_ticker = {}
 
         for s in self.stats.watchlist_cfg:
