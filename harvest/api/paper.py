@@ -28,7 +28,7 @@ class PaperBroker(API):
         Interval.DAY_1,
     ]
 
-    def __init__(self, account_path: str = None, commission_fee=0, streamer=None):
+    def __init__(self, path: str = None, commission_fee=0, streamer=None):
         """
         :commission_fee: When this is a number it is assumed to be a flat price
             on all buys and sells of assets. When this is a string formatted as
@@ -174,7 +174,7 @@ class PaperBroker(API):
             self.config["equity"] = self._calc_equity()
 
         debugger.debug(f"Returning status: {ret}")
-        stocks, cryptos = self.config["stocks"], self.config["cyptos"]
+        stocks, cryptos = self.config["stocks"], self.config["cryptos"]
         debugger.debug(f"Positions:\n{stocks}\n=========\n{cryptos}")
         debugger.debug(f"Equity:{self._calc_equity()}")
         self.update_account()
@@ -264,8 +264,8 @@ class PaperBroker(API):
             self.config["equity"] = self._calc_equity()
 
         debugger.debug(f"Returning status: {ret}")
-        stocks, cryptos = self.config["stocks"], self.config["cyptos"]
-        debugger.debug(f"Positions:\n{stocks}\n{self.options}\n{scryptos}")
+        stocks, cryptos = self.config["stocks"], self.config["cryptos"]
+        debugger.debug(f"Positions:\n{stocks}\n{self.options}\n{cryptos}")
         debugger.debug(f"Equity:{self._calc_equity()}")
         self.update_account()
         return ret
@@ -395,6 +395,11 @@ class PaperBroker(API):
         elif type(commission_fee) is dict:
             return self.apply_commission(inital_price, commission_fee[side], side)
 
-    def update_account():
-        with open(self.path, "w") as account:
-            yaml.dump(self.config, account)
+    def update_account(self):
+        """
+        If the path is set, then save and update the account information.
+        """
+        print(self.config)
+        if self.path is not None:
+            with open(self.path, "w") as account:
+                yaml.dump(self.config, account)
