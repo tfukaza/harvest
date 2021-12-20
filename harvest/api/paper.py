@@ -54,8 +54,7 @@ class PaperBroker(API):
                 "buying_power": 1000000.0,
                 "multiplier": 1,
                 "stocks": [],
-                "cryptos": []
-
+                "cryptos": [],
             }
 
     def setup(self, interval, trader_main=None):
@@ -114,7 +113,11 @@ class PaperBroker(API):
         original_price = price * qty
         # If order is open, simulate asset buy/sell if possible
         if ret["status"] == "open":
-            lst = self.config["cryptos"] if is_crypto(ret["symbol"]) else self.config["stocks"]
+            lst = (
+                self.config["cryptos"]
+                if is_crypto(ret["symbol"])
+                else self.config["stocks"]
+            )
             pos = next((r for r in lst if r["symbol"] == sym), None)
             if ret["side"] == "buy":
                 # Check to see if user has enough funds to buy the stock
@@ -122,8 +125,9 @@ class PaperBroker(API):
                     original_price, self.commission_fee, "sell"
                 )
                 if self.config["buying_power"] < actual_price:
+                    buying_power = self.config["buying_power"]
                     debugger.error(
-                        f"""Not enough buying power.\n Total price ({actual_price}) exceeds buying power {self.config["buying_power"]}.\n Reduce purchase quantity or increase buying power."""
+                        f"""Not enough buying power.\n Total price ({actual_price}) exceeds buying power {buying_power}.\n Reduce purchase quantity or increase buying power."""
                     )
                 elif ret["limit_price"] < price:
                     limit_price = ret["limit_price"]
@@ -170,7 +174,8 @@ class PaperBroker(API):
             self.config["equity"] = self._calc_equity()
 
         debugger.debug(f"Returning status: {ret}")
-        debugger.debug(f"Positions:\n{self.config["stocks"]}\n=========\n{self.config["cryptos"]}")
+        stocks, cryptos = self.config["stocks"], self.config["cyptos"]
+        debugger.debug(f"Positions:\n{stocks}\n=========\n{cryptos}")
         debugger.debug(f"Equity:{self._calc_equity()}")
         self.update_account()
         return ret
@@ -193,8 +198,9 @@ class PaperBroker(API):
                     original_price, self.commission_fee, "buy"
                 )
                 if self.config["buying_power"] < actual_price:
+                    buying_power = self.config["buying_power"]
                     debugger.error(
-                        f"""Not enough buying power.\n Total price ({actual_price}) exceeds buying power {self.config["buying_power"]}.\n Reduce purchase quantity or increase buying power."""
+                        f"""Not enough buying power.\n Total price ({actual_price}) exceeds buying power {buying_power}.\n Reduce purchase quantity or increase buying power."""
                     )
                 elif ret["limit_price"] < price:
                     limit_price = ret["limit_price"]
@@ -228,7 +234,8 @@ class PaperBroker(API):
                     ret["status"] = "filled"
                     ret["filled_time"] = self.streamer.get_current_time()
                     ret["filled_price"] = price
-                    debugger.debug(f"After BUY: {self.config["buying_power"]}")
+                    buying_power = self.config["buying_power"]
+                    debugger.debug(f"After BUY: {buying_power}")
                     ret_1 = ret.copy()
                     self.orders.remove(ret)
                     ret = ret_1
@@ -236,15 +243,15 @@ class PaperBroker(API):
                 if pos is None:
                     raise Exception(f"Cannot sell {sym}, is not owned")
                 pos["quantity"] = pos["quantity"] - qty
-                debugger.debug(f"current:{self.config["buying_power"]}")
+                buying_power = self.config["buying_power"]
+                debugger.debug(f"current:{buying_power}")
                 actual_price = self.apply_commission(
                     original_price, self.commission_fee, "sell"
                 )
                 self.config["cash"] += actual_price
                 self.config["buying_power"] += actual_price
-                debugger.debug(
-                    f"Made {sym} {occ_sym} {qty} {price}: {self.config["buying_power"]}"
-                )
+                buying_power = self.config["buying_power"]
+                debugger.debug(f"Made {sym} {occ_sym} {qty} {price}: {buying_power}")
                 if pos["quantity"] < 1e-8:
                     self.options.remove(pos)
                 ret["status"] = "filled"
@@ -257,7 +264,8 @@ class PaperBroker(API):
             self.config["equity"] = self._calc_equity()
 
         debugger.debug(f"Returning status: {ret}")
-        debugger.debug(f"Positions:\n{self.config["stocks"]}\n{self.options}\n{self.config["cryptos"]}")
+        stocks, cryptos = self.config["stocks"], self.config["cyptos"]
+        debugger.debug(f"Positions:\n{stocks}\n{self.options}\n{scryptos}")
         debugger.debug(f"Equity:{self._calc_equity()}")
         self.update_account()
         return ret
@@ -388,5 +396,5 @@ class PaperBroker(API):
             return self.apply_commission(inital_price, commission_fee[side], side)
 
     def update_account():
-        with open(self.path, 'w') as account:
+        with open(self.path, "w") as account:
             yaml.dump(self.config, account)
