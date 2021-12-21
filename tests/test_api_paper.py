@@ -39,7 +39,7 @@ class TestPaperBroker(unittest.TestCase):
         stats = Stats(watchlist_cfg=interval)
         dummy.setup(stats)
         order = dummy.order_stock_limit("buy", "A", 5, 50000)
-      
+
         self.assertEqual(order["order_id"], 0)
         self.assertEqual(order["symbol"], "A")
 
@@ -58,7 +58,7 @@ class TestPaperBroker(unittest.TestCase):
         stats = Stats(watchlist_cfg=interval)
         dummy.setup(stats)
         order = dummy.buy("A", 5, 1e5)
-        
+
         self.assertEqual(order["order_id"], 0)
         self.assertEqual(order["symbol"], "A")
 
@@ -124,7 +124,7 @@ class TestPaperBroker(unittest.TestCase):
         order = dummy.order_option_limit(
             "buy", "A", 5, 50000, "OPTION", exp_date, 50001
         )
-      
+
         self.assertEqual(order["order_id"], 0)
         self.assertEqual(order["symbol"], "A     211114P50001000")
 

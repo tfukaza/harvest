@@ -507,7 +507,7 @@ class API:
                 - order_id: ID of order
                 - time_in_force: Time in force
                 - status: Status of the order
-                - side: 'buy' or 'sell' 
+                - side: 'buy' or 'sell'
 
         """
         debugger.error(
@@ -604,7 +604,7 @@ class API:
         raise NotImplementedError(
             f"{type(self).__name__} does not support this broker method: `order_option_limit`."
         )
-    
+
     def cancel_stock_order(self, order_id):
         raise NotImplementedError(
             f"{type(self).__name__} does not support this broker method: `cancel_stock_order`."
@@ -614,7 +614,7 @@ class API:
         raise NotImplementedError(
             f"{type(self).__name__} does not support this broker method: `cancel_crypto_order`."
         )
-    
+
     def cancel_option_order(self, order_id):
         raise NotImplementedError(
             f"{type(self).__name__} does not support this broker method: `cancel_option_order`."

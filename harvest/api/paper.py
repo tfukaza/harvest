@@ -49,7 +49,7 @@ class PaperBroker(API):
         self.buying_power = 1000000.0
         self.multiplier = 1
         self.commission_fee = commission_fee
-        self.order_id= 0
+        self.order_id = 0
         self.streamer = DummyStreamer() if streamer is None else streamer
 
         if account_path:
@@ -296,7 +296,7 @@ class PaperBroker(API):
         }
 
         self.orders.append(data)
-        self.order_id+= 1
+        self.order_id += 1
         ret = {"order_id": data["order_id"], "symbol": data["symbol"]}
         return ret
 
@@ -322,7 +322,7 @@ class PaperBroker(API):
         }
 
         self.orders.append(data)
-        self.order_id+= 1
+        self.order_id += 1
         ret = {"order_id": data["order_id"], "symbol": data["symbol"]}
         return ret
 
@@ -352,7 +352,7 @@ class PaperBroker(API):
         }
 
         self.orders.append(data)
-        self.order_id+= 1
+        self.order_id += 1
         return {"order_id": data["order_id"], "symbol": data["symbol"]}
 
     # ------------- Helper methods ------------- #

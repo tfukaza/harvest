@@ -599,7 +599,7 @@ class Robinhood(API):
                 f"Error while placing order.\nReturned: {ret}", exc_info=True
             )
             raise Exception("Error while placing order")
-    
+
     def cancel_stock_order(self, order_id):
         raise NotImplementedError(
             f"{type(self).__name__} does not support this broker method: `order_option_limit`."
