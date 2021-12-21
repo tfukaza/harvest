@@ -39,11 +39,11 @@ class TestPaperBroker(unittest.TestCase):
         stats = Stats(watchlist_cfg=interval)
         dummy.setup(stats)
         order = dummy.order_stock_limit("buy", "A", 5, 50000)
-        self.assertEqual(order["type"], "STOCK")
-        self.assertEqual(order["id"], 0)
+      
+        self.assertEqual(order["order_id"], 0)
         self.assertEqual(order["symbol"], "A")
 
-        status = dummy.fetch_stock_order_status(order["id"])
+        status = dummy.fetch_stock_order_status(order["order_id"])
         self.assertEqual(status["id"], 0)
         self.assertEqual(status["symbol"], "A")
         self.assertEqual(status["quantity"], 5)
@@ -58,11 +58,11 @@ class TestPaperBroker(unittest.TestCase):
         stats = Stats(watchlist_cfg=interval)
         dummy.setup(stats)
         order = dummy.buy("A", 5, 1e5)
-        self.assertEqual(order["type"], "STOCK")
-        self.assertEqual(order["id"], 0)
+        
+        self.assertEqual(order["order_id"], 0)
         self.assertEqual(order["symbol"], "A")
 
-        status = dummy.fetch_stock_order_status(order["id"])
+        status = dummy.fetch_stock_order_status(order["order_id"])
         self.assertEqual(status["id"], 0)
         self.assertEqual(status["symbol"], "A")
         self.assertEqual(status["quantity"], 5)
@@ -80,11 +80,10 @@ class TestPaperBroker(unittest.TestCase):
         dummy.setup(stats)
 
         order = dummy.order_stock_limit("sell", "A", 2, 50000)
-        self.assertEqual(order["type"], "STOCK")
-        self.assertEqual(order["id"], 0)
+        self.assertEqual(order["order_id"], 0)
         self.assertEqual(order["symbol"], "A")
 
-        status = dummy.fetch_stock_order_status(order["id"])
+        status = dummy.fetch_stock_order_status(order["order_id"])
         self.assertEqual(status["id"], 0)
         self.assertEqual(status["symbol"], "A")
         self.assertEqual(status["quantity"], 2)
@@ -102,11 +101,10 @@ class TestPaperBroker(unittest.TestCase):
         dummy.setup(stats)
 
         order = dummy.sell("A", 2)
-        self.assertEqual(order["type"], "STOCK")
-        self.assertEqual(order["id"], 0)
+        self.assertEqual(order["order_id"], 0)
         self.assertEqual(order["symbol"], "A")
 
-        status = dummy.fetch_stock_order_status(order["id"])
+        status = dummy.fetch_stock_order_status(order["order_id"])
         self.assertEqual(status["id"], 0)
         self.assertEqual(status["symbol"], "A")
         self.assertEqual(status["quantity"], 2)
@@ -126,11 +124,11 @@ class TestPaperBroker(unittest.TestCase):
         order = dummy.order_option_limit(
             "buy", "A", 5, 50000, "OPTION", exp_date, 50001
         )
-        self.assertEqual(order["type"], "OPTION")
-        self.assertEqual(order["id"], 0)
+      
+        self.assertEqual(order["order_id"], 0)
         self.assertEqual(order["symbol"], "A     211114P50001000")
 
-        status = dummy.fetch_option_order_status(order["id"])
+        status = dummy.fetch_option_order_status(order["order_id"])
         self.assertEqual(status["symbol"], "A     211114P50001000")
         self.assertEqual(status["quantity"], 5)
 

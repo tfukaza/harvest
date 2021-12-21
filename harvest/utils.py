@@ -108,6 +108,7 @@ class Account:
     def __init__(self, account_name=None):
         self._account_name = account_name
         self._positions = Positions()
+        self._orders = Orders()
 
         self._asset_value = 0
         self._cash = 0
@@ -133,6 +134,10 @@ class Account:
     @property
     def positions(self):
         return self._positions
+    
+    @property
+    def orders(self):
+        return self._orders
 
     @property
     def equity(self):
@@ -149,6 +154,124 @@ class Account:
     @property
     def multiplier(self):
         return self._multiplier
+
+class Orders:
+    def __init__(self):
+        self._orders = []
+
+    def init(self, orders):
+        self._orders = [Order(**o) for o in orders]
+    
+    @property 
+    def orders(self):
+        return self._orders
+
+    def get_order(self, order_id):
+        for o in self._orders:
+            if o.order_id == order_id:
+                return o
+    
+    def add_new_order(self, symbol, order_id, side, quantity, time_in_force):
+        self._orders.append(Order(symbol, order_id, side, quantity, time_in_force))
+
+    def remove_non_open(self):
+        self._orders = list(filter(lambda x: x.status == "open", self._orders))
+
+    @property
+    def symbols(self):
+        return [o.symbol for o in self._orders]
+    
+    @property
+    def stock_crypto_symbols(self):
+        return [o.base_symbol if o.type == "OPTION" else o.symbol for o in self._orders]
+
+class Order:
+    def __init__(
+        self, 
+        symbol,
+        order_id,
+        side,
+        quantity,
+        time_in_force):
+        self._symbol = symbol
+        self._order_id = order_id
+        self._type = symbol_type(symbol)
+        self._side = side
+        self._time_in_force = time_in_force
+        self._quantity = quantity
+
+        self._status = None
+        self._filled_time = None
+        self._filled_price = None
+        self._filled_qty = None
+    
+    @property
+    def symbol(self):
+        return self._symbol
+    
+    @property
+    def type(self):
+        return self._type
+    
+    @property
+    def quantity(self):
+        return self._quantity
+    
+    @property 
+    def filled_quantity(self):
+        return self._filled_quantity
+    
+    @property
+    def order_id(self):
+        return self._order_id
+
+    @property
+    def time_in_force(self):
+        return self._time_in_force
+    
+    @property
+    def status(self):
+        return self._status
+    
+    @property
+    def filled_time(self):
+        return self._filled_time
+    
+    @property
+    def filled_price(self):
+        return self._filled_price
+    
+    def update(self, val):
+
+        self._filled_quantity = val["quantity"]
+        self._status = val["status"]
+        self._filled_price = val["filled_price"]
+        self._filled_time = val["filled_time"]
+
+class OptionOrder(Order):
+    def __init__(
+        self, 
+        type,
+        symbol,
+        quantity,
+        filled_qty,
+        id, 
+        time_in_force,
+        status,
+        side,
+        filled_time,
+        filled_price,
+        base_symbol):
+        super().__init__(type, symbol, quantity, filled_qty, id, time_in_force, status, side, filled_time, filled_price)
+        self._base_symbol = base_symbol
+
+
+    @property
+    def base_symbol(self):
+        return self._base_symbol
+
+
+
 
 
 class Positions:
