@@ -107,8 +107,8 @@ class PaperBroker(API):
         }
 
     def fetch_stock_order_status(self, order_id: int) -> Dict[str, Any]:
-        ret = next(r for r in self.orders if r.order_id == order_id)
-        sym = ret.symbol
+        ret = next(r for r in self.orders if r["order_id"] == order_id)
+        sym = ret["symbol"]
 
         price = self.streamer.fetch_price_history(
             sym,
@@ -183,9 +183,9 @@ class PaperBroker(API):
         return ret
 
     def fetch_option_order_status(self, order_id: int) -> Dict[str, Any]:
-        ret = next(r for r in self.orders if r.order_id == order_id)
-        sym = ret.base_symbol
-        occ_sym = ret.symbol
+        ret = next(r for r in self.orders if r["order_id"] == order_id)
+        sym = ret["base_symbol"]
+        occ_sym = ret["symbol"]
 
         price = self.streamer.fetch_option_market_data(occ_sym)["price"]
 

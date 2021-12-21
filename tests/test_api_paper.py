@@ -44,7 +44,7 @@ class TestPaperBroker(unittest.TestCase):
         self.assertEqual(order["symbol"], "A")
 
         status = dummy.fetch_stock_order_status(order["order_id"])
-        self.assertEqual(status["id"], 0)
+        self.assertEqual(status["order_id"], 0)
         self.assertEqual(status["symbol"], "A")
         self.assertEqual(status["quantity"], 5)
         self.assertEqual(status["filled_qty"], 5)
@@ -63,7 +63,7 @@ class TestPaperBroker(unittest.TestCase):
         self.assertEqual(order["symbol"], "A")
 
         status = dummy.fetch_stock_order_status(order["order_id"])
-        self.assertEqual(status["id"], 0)
+        self.assertEqual(status["order_id"], 0)
         self.assertEqual(status["symbol"], "A")
         self.assertEqual(status["quantity"], 5)
         self.assertEqual(status["filled_qty"], 5)
@@ -84,7 +84,7 @@ class TestPaperBroker(unittest.TestCase):
         self.assertEqual(order["symbol"], "A")
 
         status = dummy.fetch_stock_order_status(order["order_id"])
-        self.assertEqual(status["id"], 0)
+        self.assertEqual(status["order_id"], 0)
         self.assertEqual(status["symbol"], "A")
         self.assertEqual(status["quantity"], 2)
         self.assertEqual(status["filled_qty"], 2)
@@ -105,7 +105,7 @@ class TestPaperBroker(unittest.TestCase):
         self.assertEqual(order["symbol"], "A")
 
         status = dummy.fetch_stock_order_status(order["order_id"])
-        self.assertEqual(status["id"], 0)
+        self.assertEqual(status["order_id"], 0)
         self.assertEqual(status["symbol"], "A")
         self.assertEqual(status["quantity"], 2)
         self.assertEqual(status["filled_qty"], 2)

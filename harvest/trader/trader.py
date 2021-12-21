@@ -333,7 +333,7 @@ class LiveTrader:
         order_filled = False
         for order in self.orders.orders:
             # TODO: handle cancelled orders
-            if order["status"] == "filled":
+            if order.status == "filled":
                 order_filled = True
                 debugger.debug(
                     f"Order {order.order_id} filled at {order.filled_time} at {order.filled_price}"
@@ -506,14 +506,14 @@ class LiveTrader:
         if include_pending_buy:
             owned_qty += sum(
                 o["quantity"]
-                for o in self.order_queue
+                for o in self.orders.orders
                 if o["symbol"] == symbol and o["side"] == "buy"
             )
 
         if not include_pending_sell:
             owned_qty -= sum(
                 o["quantity"]
-                for o in self.order_queue
+                for o in self.orders.orders
                 if o["symbol"] == symbol and o["side"] == "sell"
             )
 

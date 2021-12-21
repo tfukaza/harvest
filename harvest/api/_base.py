@@ -81,7 +81,7 @@ class API:
         """
         debugger.info(f"Refreshing credentials for {type(self).__name__}.")
 
-    def setup(self, stats: Stats, trader_main=None) -> None:
+    def setup(self, stats: Stats, account, trader_main=None) -> None:
         """
         This function is called right before the algorithm begins,
         and initializes several runtime parameters like
@@ -93,6 +93,7 @@ class API:
         self.trader_main = trader_main
         self.stats = stats
         self.stats.timestamp = now()
+        self.account = account
 
         min_interval = None
         for sym in stats.watchlist_cfg:

@@ -241,8 +241,11 @@ class Order:
     def filled_price(self):
         return self._filled_price
     
+    @property
+    def side(self):
+        return self._side
+    
     def update(self, val):
-
         self._filled_quantity = val["quantity"]
         self._status = val["status"]
         self._filled_price = val["filled_price"]
