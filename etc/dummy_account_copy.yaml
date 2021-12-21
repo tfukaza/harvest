@@ -1,14 +1,14 @@
-buying_power: 1000000.0
-cash: 1000000.0
+buying_power: 1208629.797490169
+cash: 1208629.797490169
 cryptos:
 - avg_price: 289.21
   quantity: 2
   symbol: '@C'
-equity: 1000000.0
+equity: 1214210.217490169
 multiplier: 1
 stocks:
 - avg_price: 1.0
-  quantity: 5
+  quantity: 4988
   symbol: A
 - avg_price: 2.0
   quantity: 7

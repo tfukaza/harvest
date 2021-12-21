@@ -73,7 +73,7 @@ class TestPaperBroker(unittest.TestCase):
 
     def test_sell_order_limit(self):
         directory = pathlib.Path(__file__).parent.resolve()
-        dummy = PaperBroker(str(directory) + "/../etc/dummy_account.yaml")
+        dummy = PaperBroker(str(directory) + "/../etc/dummy_account_copy.yaml")
 
         interval = {"A": {"interval": Interval.MIN_1, "aggregations": []}}
         stats = Stats(watchlist_cfg=interval)
@@ -95,7 +95,7 @@ class TestPaperBroker(unittest.TestCase):
 
     def test_sell(self):
         directory = pathlib.Path(__file__).parent.resolve()
-        dummy = PaperBroker(str(directory) + "/../etc/dummy_account.yaml")
+        dummy = PaperBroker(str(directory) + "/../etc/dummy_account_copy.yaml")
 
         interval = {"A": {"interval": Interval.MIN_1, "aggregations": []}}
         stats = Stats(watchlist_cfg=interval)
