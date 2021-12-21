@@ -57,6 +57,8 @@ class PaperBroker(API):
                 "cryptos": [],
             }
 
+        print("Config", self.config)
+
     def setup(self, interval, trader_main=None):
         super().setup(interval, trader_main)
 
@@ -373,13 +375,13 @@ class PaperBroker(API):
                 add = add * asset["multiplier"]
             e += add
         e += self.config["cash"]
-        return e
+        return float(e)
 
     def apply_commission(self, inital_price: float, commission_fee, side: str) -> float:
         if side == "buy":
-            f = lambda a, b: a + b
+            f = lambda a, b: float(a + b)
         elif side == "sell":
-            f = lambda a, b: a - b
+            f = lambda a, b: float(a - b)
 
         if type(commission_fee) in (int, float):
             return f(inital_price, commission_fee)
