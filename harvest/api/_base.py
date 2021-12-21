@@ -81,7 +81,7 @@ class API:
         """
         debugger.info(f"Refreshing credentials for {type(self).__name__}.")
 
-    def setup(self, stats: Stats, account, trader_main=None) -> None:
+    def setup(self, stats: Stats, trader_main=None, account=None) -> None:
         """
         This function is called right before the algorithm begins,
         and initializes several runtime parameters like
