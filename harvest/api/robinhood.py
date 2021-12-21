@@ -22,6 +22,12 @@ class Robinhood(API):
 
     def __init__(self, path=None):
         super().__init__(path)
+
+        if self.config is None:
+            raise Exception(
+                f"Account credentials not found! Expected file path: {path}"
+            )
+
         self.login()
 
     def login(self):

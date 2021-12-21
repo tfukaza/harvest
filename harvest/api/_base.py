@@ -60,6 +60,7 @@ class API:
         yml_file = Path(path)
         if not yml_file.is_file() and not self.create_secret(path):
             debugger.debug("Broker not initalized with account information.")
+            self.config = None
         else:
             with open(path, "r") as stream:
                 self.config = yaml.safe_load(stream)
