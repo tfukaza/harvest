@@ -29,7 +29,9 @@ class Alpaca(StreamAPI):
         super().__init__(path)
 
         if self.config is None:
-            raise Exception(f"Account credentials not found! Expected file path: {path}")
+            raise Exception(
+                f"Account credentials not found! Expected file path: {path}"
+            )
 
         self.basic = is_basic_account
 
