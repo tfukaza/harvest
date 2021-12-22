@@ -4,10 +4,13 @@ from harvest.utils import *
 import time
 
 class LiveTestRHBroker(unittest.TestCase):
+
+    @not_gh_action
     def test_buy_stock(self):
         """
         Test that it can buy stocks
         """
+        return
         rh = RobinhoodBroker("robinhood_secret.yaml")
         interval = {
             "SPY": {"interval": Interval.MIN_5, "aggregations": []},
