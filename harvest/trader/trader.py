@@ -144,11 +144,11 @@ class LiveTrader:
         self._setup_account()
         self.storage.init_performace_data(self.account.equity, self.streamer.timestamp)
 
-        self.broker.setup(self.stats, self.main, self.account)
+        self.broker.setup(self.stats, self.account, self.main)
         if self.broker != self.streamer:
             # Only call the streamer setup if it is a different
             # instance than the broker otherwise some brokers can fail!
-            self.streamer.setup(self.stats, self.main)
+            self.streamer.setup(self.stats, self.account, self.main)
 
         # Initialize the storage
         self._storage_init(all_history)

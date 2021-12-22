@@ -24,7 +24,7 @@ class TestYahooStreamer(unittest.TestCase):
             "AAPL": {"interval": Interval.MIN_1, "aggregations": []},
         }
         stats = Stats(watchlist_cfg=interval)
-        yh.setup(stats)
+        yh.setup(stats, Account())
 
         self.assertEqual(yh.poll_interval, Interval.MIN_1)
         self.assertListEqual([s for s in yh.interval], ["SPY", "AAPL"])
@@ -44,7 +44,7 @@ class TestYahooStreamer(unittest.TestCase):
 
         yh = YahooStreamer()
         stats = Stats(watchlist_cfg=interval)
-        yh.setup(stats, test_main)
+        yh.setup(stats, Account(), test_main)
 
         yh.main()
 
@@ -57,7 +57,7 @@ class TestYahooStreamer(unittest.TestCase):
 
         yh = YahooStreamer()
         stats = Stats(watchlist_cfg=interval)
-        yh.setup(stats, test_main)
+        yh.setup(stats, Account(), test_main)
 
         yh.main()
 
@@ -66,7 +66,7 @@ class TestYahooStreamer(unittest.TestCase):
 
         interval = {"LMND": {"interval": Interval.MIN_1, "aggregations": []}}
         stats = Stats(watchlist_cfg=interval)
-        yh.setup(stats)
+        yh.setup(stats, Account())
 
         info = yh.fetch_chain_info("LMND")
         self.assertGreater(len(info["exp_dates"]), 0)
@@ -77,7 +77,7 @@ class TestYahooStreamer(unittest.TestCase):
 
         interval = {"LMND": {"interval": Interval.MIN_1, "aggregations": []}}
         stats = Stats(watchlist_cfg=interval)
-        yh.setup(stats)
+        yh.setup(stats, Account())
 
         dates = yh.fetch_chain_info("LMND")["exp_dates"]
         data = yh.fetch_chain_data("LMND", dates[0])

@@ -601,9 +601,16 @@ class Robinhood(API):
             raise Exception("Error while placing order")
 
     def cancel_stock_order(self, order_id):
-        raise NotImplementedError(
-            f"{type(self).__name__} does not support this broker method: `order_option_limit`."
-        )
+        ret = rh.cancel_stock_order(order_id)
+        self.debugger.debug(ret)
+
+    def cancel_option_order(self, order_id):
+        ret = rh.cancel_option_order(order_id)
+        self.debugger.debug(ret)
+    
+    def cancel_crypto_order(self, order_id):
+        ret = rh.cancel_crypto_order(order_id)
+        self.debugger.debug(ret)
 
     def _format_df(
         self, df: pd.DataFrame, watch: List[str], interval: str, latest: bool = False
