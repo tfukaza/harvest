@@ -384,13 +384,8 @@ class Robinhood(API):
             filled_price = None
         return {
             "type": "OPTION",
-<<<<<<< HEAD
             "order_id": ret["id"],
             "quantity": ret["quantity"],
-=======
-            "id": ret["id"],
-            "qty": ret["quantity"],
->>>>>>> main
             "filled_qty": ret["processed_quantity"],
             "side": ret["legs"][0]["side"],
             "time_in_force": ret["time_in_force"],
