@@ -81,7 +81,7 @@ class API:
         """
         debugger.info(f"Refreshing credentials for {type(self).__name__}.")
 
-    def setup(self, stats: Stats, trader_main=None, account=None) -> None:
+    def setup(self, stats: Stats, account: Account, trader_main=None) -> None:
         """
         This function is called right before the algorithm begins,
         and initializes several runtime parameters like
@@ -712,6 +712,17 @@ class API:
             )
         else:
             debugger.error(f"Invalid asset type for {symbol}")
+    
+    def cancel(self, order_id):
+        for o in self.account.orders.orders:
+            if o.order_id == order_id:
+                asset_type = symbol_type(o.symbol)
+                if asset_type == "STOCK":
+                    self.cancel_stock_order(order_id)
+                elif asset_type == "CRYPTO":
+                    self.cancel_crypto_order(order_id)
+                elif asset_type == "OPTION":
+                    self.cancel_option_order(order_id)
 
     # def buy_option(self, symbol: str, quantity: int = 0, in_force: str = "gtc"):
     #     """
@@ -850,8 +861,8 @@ class StreamAPI(API):
         self.block_queue = {}
         self.first = True
 
-    def setup(self, interval: Dict, trader_main=None) -> None:
-        super().setup(interval, trader_main)
+    def setup(self, stats, account, trader_main=None) -> None:
+        super().setup(stats, account, trader_main)
         self.blocker = {}
 
     def start(self):
