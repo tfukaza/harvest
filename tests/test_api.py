@@ -16,15 +16,8 @@ from harvest.utils import *
 
 
 class TestAPI(unittest.TestCase):
-    @classmethod
-    def setUpClass(self):
-        with open("secret.yaml", "a") as f:
-            f.write("data: 0")
-            f.close()
-
     def test_timeout(self):
         stream = StreamAPI()
-        stream.fetch_account = lambda: None
         stream.fetch_price_history = lambda x, y, z: pd.DataFrame()
         stream.fetch_account = lambda: {"cash": 100, "equity": 100}
         t = PaperTrader(stream, debug=True)
@@ -79,7 +72,6 @@ class TestAPI(unittest.TestCase):
 
     def test_timeout_cancel(self):
         stream = StreamAPI()
-        stream.fetch_account = lambda: None
         stream.fetch_price_history = lambda x, y, z: pd.DataFrame()
         stream.fetch_account = lambda: {"cash": 100, "equity": 100}
         t = PaperTrader(stream)
@@ -266,10 +258,6 @@ class TestAPI(unittest.TestCase):
     def test_timestamp(self):
         api = API()
         self.assertTrue(now() >= api.current_timestamp())
-
-    @classmethod
-    def tearDownClass(self):
-        os.remove("secret.yaml")
 
 
 if __name__ == "__main__":

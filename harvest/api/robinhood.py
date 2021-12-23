@@ -22,6 +22,12 @@ class Robinhood(API):
 
     def __init__(self, path=None):
         super().__init__(path)
+
+        if self.config is None:
+            raise Exception(
+                f"Account credentials not found! Expected file path: {path}"
+            )
+
         self.login()
 
     def login(self):
@@ -378,8 +384,13 @@ class Robinhood(API):
             filled_price = None
         return {
             "type": "OPTION",
+<<<<<<< HEAD
             "order_id": ret["id"],
             "quantity": ret["quantity"],
+=======
+            "id": ret["id"],
+            "qty": ret["quantity"],
+>>>>>>> main
             "filled_qty": ret["processed_quantity"],
             "side": ret["legs"][0]["side"],
             "time_in_force": ret["time_in_force"],
