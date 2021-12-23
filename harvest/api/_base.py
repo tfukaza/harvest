@@ -82,7 +82,7 @@ class API:
         """
         debugger.info(f"Refreshing credentials for {type(self).__name__}.")
 
-    def setup(self, stats: Stats, trader_main=None) -> None:
+    def setup(self, stats: Stats, account: Account, trader_main=None) -> None:
         """
         This function is called right before the algorithm begins,
         and initializes several runtime parameters like
@@ -94,6 +94,7 @@ class API:
         self.trader_main = trader_main
         self.stats = stats
         self.stats.timestamp = now()
+        self.account = account
 
         min_interval = None
         for sym in stats.watchlist_cfg:
@@ -290,7 +291,7 @@ class API:
 
         :param symbol: Stock symbol. Cannot use crypto.
         :returns: A dict with the following keys and values:
-            - id: ID of the option chain
+            - chain_id: ID of the option chain
             - exp_dates: List of expiration dates as datetime objects
             - multiplier: Multiplier of the option, usually 100
         """
@@ -425,7 +426,7 @@ class API:
 
         :returns: A dictionary with the following keys and values:
             - type: 'STOCK'
-            - id: ID of the order
+            - order_id: ID of the order
             - quantity: Quantity ordered
             - filled_quantity: Quantity filled so far
             - side: 'buy' or 'sell'
@@ -446,7 +447,7 @@ class API:
 
         :returns: A dictionary with the following keys and values:
             - type: 'OPTION'
-            - id: ID of the order
+            - order_id: ID of the order
             - quantity: Quantity ordered
             - filled_quantity: Quantity filled so far
             - side: 'buy' or 'sell'
@@ -467,7 +468,7 @@ class API:
 
         :returns: A dictionary with the following keys and values:
             - type: 'CRYPTO'
-            - id: ID of the order
+            - order_id: ID of the order
             - quantity: Quantity ordered
             - filled_quantity: Quantity filled so far
             - side: 'buy' or 'sell'
@@ -486,32 +487,28 @@ class API:
 
         returns: A list of dictionaries with the following keys and values:
             For stocks and crypto:
-                - type: "STOCK" or "CRYPTO"
+                - order_type: "STOCK" or "CRYPTO"
                 - symbol: Symbol of asset
                 - quantity: Quantity ordered
                 - filled_qty: Quantity filled
-                - id: ID of order
+                - order_id: ID of order
                 - time_in_force: Time in force
                 - status: Status of the order
                 - side: 'buy' or 'sell'
                 - filled_time: Time the order was filled
                 - filled_price: Price the order was filled at
             For options:
-                - type: "OPTION",
+                - order_type: "OPTION",
                 - symbol: OCC symbol of option
                 - base_symbol:
                 - quantity: Quantity ordered
                 - filled_qty: Quantity filled
                 - filled_time: Time the order was filled
                 - filled_price: Price the order was filled at
-                - id: ID of order
+                - order_id: ID of order
                 - time_in_force: Time in force
                 - status: Status of the order
-                - legs: A list of dictionaries with keys:
-                    - id: id of leg
-                    - side: 'buy' or 'sell'
-                    Harvest does not support buying multiple options in a single transaction,
-                    so legs will always have a length of 1.
+                - side: 'buy' or 'sell'
 
         """
         debugger.error(
@@ -541,7 +538,7 @@ class API:
         :extended:  'False' by default
 
         :returns: A dictionary with the following keys and values:
-            - id: ID of order
+            - order_id: ID of order
             - symbol: symbol of asset
             Raises an exception if order fails.
         """
@@ -569,7 +566,7 @@ class API:
         :extended:  'False' by default
 
         :returns: A dictionary with the following keys and values:
-            - id: ID of order
+            - order_id: ID of order
             - symbol: symbol of asset
             Raises an exception if order fails.
         """
@@ -601,13 +598,27 @@ class API:
         :option_type:      'call' or 'put'
 
         :returns: A dictionary with the following keys and values:
-            - type: 'OPTION'
-            - id: ID of order
+            - order_id: ID of order
             - symbol: symbol of asset
             Raises an exception if order fails.
         """
         raise NotImplementedError(
             f"{type(self).__name__} does not support this broker method: `order_option_limit`."
+        )
+
+    def cancel_stock_order(self, order_id):
+        raise NotImplementedError(
+            f"{type(self).__name__} does not support this broker method: `cancel_stock_order`."
+        )
+
+    def cancel_crypto_order(self, order_id):
+        raise NotImplementedError(
+            f"{type(self).__name__} does not support this broker method: `cancel_crypto_order`."
+        )
+
+    def cancel_option_order(self, order_id):
+        raise NotImplementedError(
+            f"{type(self).__name__} does not support this broker method: `cancel_option_order`."
         )
 
     # -------------- Built-in methods -------------- #
@@ -702,6 +713,17 @@ class API:
             )
         else:
             debugger.error(f"Invalid asset type for {symbol}")
+    
+    def cancel(self, order_id):
+        for o in self.account.orders.orders:
+            if o.order_id == order_id:
+                asset_type = symbol_type(o.symbol)
+                if asset_type == "STOCK":
+                    self.cancel_stock_order(order_id)
+                elif asset_type == "CRYPTO":
+                    self.cancel_crypto_order(order_id)
+                elif asset_type == "OPTION":
+                    self.cancel_option_order(order_id)
 
     # def buy_option(self, symbol: str, quantity: int = 0, in_force: str = "gtc"):
     #     """
@@ -840,8 +862,8 @@ class StreamAPI(API):
         self.block_queue = {}
         self.first = True
 
-    def setup(self, interval: Dict, trader_main=None) -> None:
-        super().setup(interval, trader_main)
+    def setup(self, stats, account, trader_main=None) -> None:
+        super().setup(stats, account, trader_main)
         self.blocker = {}
 
     def start(self):

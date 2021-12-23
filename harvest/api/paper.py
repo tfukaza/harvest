@@ -44,7 +44,7 @@ class PaperBroker(API):
         self.options = []
         self.orders = []
         self.commission_fee = commission_fee
-        self.id = 0
+        self.order_id = 0
         self.streamer = DummyStreamer() if streamer is None else streamer
 
         if self.config is None:
@@ -58,9 +58,6 @@ class PaperBroker(API):
             }
 
         print("Config", self.config)
-
-    def setup(self, interval, trader_main=None):
-        super().setup(interval, trader_main)
 
     # -------------- Streamer methods -------------- #
 
@@ -100,8 +97,8 @@ class PaperBroker(API):
             "multiplier": self.config["multiplier"],
         }
 
-    def fetch_stock_order_status(self, id: int) -> Dict[str, Any]:
-        ret = next(r for r in self.orders if r["id"] == id)
+    def fetch_stock_order_status(self, order_id: int) -> Dict[str, Any]:
+        ret = next(r for r in self.orders if r["order_id"] == order_id)
         sym = ret["symbol"]
 
         price = self.streamer.fetch_price_history(
@@ -182,8 +179,8 @@ class PaperBroker(API):
         self.update_account()
         return ret
 
-    def fetch_option_order_status(self, id: int) -> Dict[str, Any]:
-        ret = next(r for r in self.orders if r["id"] == id)
+    def fetch_option_order_status(self, order_id: int) -> Dict[str, Any]:
+        ret = next(r for r in self.orders if r["order_id"] == order_id)
         sym = ret["base_symbol"]
         occ_sym = ret["symbol"]
 
@@ -272,8 +269,8 @@ class PaperBroker(API):
         self.update_account()
         return ret
 
-    def fetch_crypto_order_status(self, id: int) -> Dict[str, Any]:
-        return self.fetch_stock_order_status(id)
+    def fetch_crypto_order_status(self, order_id: int) -> Dict[str, Any]:
+        return self.fetch_stock_order_status(order_id)
 
     def fetch_order_queue(self) -> List[Dict[str, Any]]:
         return self.orders
@@ -295,15 +292,15 @@ class PaperBroker(API):
             "quantity": quantity,
             "filled_qty": quantity,
             "limit_price": limit_price,
-            "id": self.id,
+            "order_id": self.order_id,
             "time_in_force": in_force,
             "status": "open",
             "side": side,
         }
 
         self.orders.append(data)
-        self.id += 1
-        ret = {"type": "STOCK", "id": data["id"], "symbol": data["symbol"]}
+        self.order_id += 1
+        ret = {"order_id": data["order_id"], "symbol": data["symbol"]}
         return ret
 
     def order_crypto_limit(
@@ -321,15 +318,15 @@ class PaperBroker(API):
             "quantity": quantity,
             "filled_qty": quantity,
             "limit_price": limit_price,
-            "id": self.id,
+            "order_id": self.order_id,
             "time_in_force": in_force,
             "status": "open",
             "side": side,
         }
 
         self.orders.append(data)
-        self.id += 1
-        ret = {"type": "CRYPTO", "id": data["id"], "symbol": data["symbol"]}
+        self.order_id += 1
+        ret = {"order_id": data["order_id"], "symbol": data["symbol"]}
         return ret
 
     def order_option_limit(
@@ -349,7 +346,7 @@ class PaperBroker(API):
             "symbol": self.data_to_occ(symbol, exp_date, type, strike),
             "quantity": quantity,
             "filled_qty": 0,
-            "id": self.id,
+            "order_id": self.order_id,
             "time_in_force": in_force,
             "status": "open",
             "side": side,
@@ -358,8 +355,8 @@ class PaperBroker(API):
         }
 
         self.orders.append(data)
-        self.id += 1
-        return {"type": "OPTION", "id": data["id"], "symbol": data["symbol"]}
+        self.order_id += 1
+        return {"order_id": data["order_id"], "symbol": data["symbol"]}
 
     # ------------- Helper methods ------------- #
 
@@ -392,7 +389,7 @@ class PaperBroker(API):
                 commission_fee = inital_price * 0.01 * float(match.group(1))
                 return f(inital_price, commission_fee)
             raise Exception(
-                f"`commission_fee` {commission_fee} not valid, must match this regex expression: {pattern}"
+                f"`commission_fee` {commission_fee} not valorder_id must match this regex expression: {pattern}"
             )
         elif type(commission_fee) is dict:
             return self.apply_commission(inital_price, commission_fee[side], side)

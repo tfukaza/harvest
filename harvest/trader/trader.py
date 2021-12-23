@@ -72,7 +72,6 @@ class LiveTrader:
 
         self.watchlist = []  # List of securities specified in this class
         self.algo = []  # List of algorithms to run.
-        self.order_queue = []  # Queue of unfilled orders.
 
         self.server = Server(self)  # Initialize the web interface server
 
@@ -91,6 +90,7 @@ class LiveTrader:
 
         self.account = Account()
         self.positions = self.account.positions
+        self.orders = self.account.orders
 
     def _setup_debugger(self, debug):
         # Set up logger
@@ -127,9 +127,7 @@ class LiveTrader:
                 self.watchlist.append(s.symbol)
             for s in self.positions.option:
                 self.watchlist.append(s.base_symbol)
-            for s in self.order_queue:
-                sym = s["base_symbol"] if s["type"] == "OPTION" else s["symbol"]
-                self.watchlist.append(sym)
+            self.watchlist.extend(self.orders.stock_crypto_symbols)
 
         # Remove duplicates in watchlist
         self.watchlist = list(set(self.watchlist))
@@ -146,11 +144,11 @@ class LiveTrader:
         self._setup_account()
         self.storage.init_performace_data(self.account.equity, self.streamer.timestamp)
 
-        self.broker.setup(self.stats, self.main)
+        self.broker.setup(self.stats, self.account, self.main)
         if self.broker != self.streamer:
             # Only call the streamer setup if it is a different
             # instance than the broker otherwise some brokers can fail!
-            self.streamer.setup(self.stats, self.main)
+            self.streamer.setup(self.stats, self.account, self.main)
 
         # Initialize the storage
         self._storage_init(all_history)
@@ -172,8 +170,8 @@ class LiveTrader:
 
         # Get any pending orders
         ret = self.broker.fetch_order_queue()
-        self.order_queue = ret
-        debugger.debug(f"Fetched orders:\n{self.order_queue}")
+        self.orders.init(ret)
+        debugger.debug(f"Fetched orders:\n{self.orders}")
 
         self._fetch_account_data()
 
@@ -318,40 +316,37 @@ class LiveTrader:
         """Check to see if outstanding orders have been accepted or rejected
         and update the order queue accordingly.
         """
-        debugger.debug(f"Updating order queue: {self.order_queue}")
-        for i, order in enumerate(self.order_queue):
-            if "type" not in order:
-                raise Exception(f"key error in {order}\nof {self.order_queue}")
-            if order["type"] == "STOCK":
-                stat = self.broker.fetch_stock_order_status(order["id"])
-            elif order["type"] == "OPTION":
-                stat = self.broker.fetch_option_order_status(order["id"])
-            elif order["type"] == "CRYPTO":
-                stat = self.broker.fetch_crypto_order_status(order["id"])
-            debugger.debug(f"Updating status of order {order['id']}")
-            self.order_queue[i].update(stat)
+        debugger.debug(f"Updating order queue: {self.orders}")
+        for order in self.orders.orders:
+            typ = order.type
+            if typ == "STOCK":
+                stat = self.broker.fetch_stock_order_status(order.order_id)
+            elif typ == "OPTION":
+                stat = self.broker.fetch_option_order_status(order.order_id)
+            elif typ == "CRYPTO":
+                stat = self.broker.fetch_crypto_order_status(order.order_id)
+            debugger.debug(f"Updating status of order {order.order_id}")
+            order.update(stat)
 
-        debugger.debug(f"Updated order queue: {self.order_queue}")
-        new_order = []
+        debugger.debug(f"Updated order queue: {self.orders}")
+
         order_filled = False
-        for order in self.order_queue:
+        for order in self.orders.orders:
             # TODO: handle cancelled orders
-            if order["status"] == "filled":
+            if order.status == "filled":
                 order_filled = True
                 debugger.debug(
-                    f"Order {order['id']} filled at {order['filled_time']} at {order['filled_price']}"
+                    f"Order {order.order_id} filled at {order.filled_time} at {order.filled_price}"
                 )
                 self.storage.store_transaction(
-                    order["filled_time"],
+                    order.filled_time,
                     "N/A",
-                    order["symbol"],
-                    order["side"],
-                    order["quantity"],
-                    order["filled_price"],
+                    order.symbol,
+                    order.side,
+                    order.quantity,
+                    order.filled_price,
                 )
-            else:
-                new_order.append(order)
-        self.order_queue = new_order
+        self.orders.remove_non_open()
 
         # if an order was processed, update the positions and account info
         return order_filled
@@ -451,7 +446,7 @@ class LiveTrader:
         if ret is None:
             debugger.debug("BUY failed")
             return None
-        self.order_queue.append(ret)
+        self.orders.add_new_order(symbol, ret["order_id"], "buy", quantity, in_force)
         debugger.debug(f"BUY: {self.stats.timestamp}, {symbol}, {quantity}")
 
         return ret
@@ -478,7 +473,7 @@ class LiveTrader:
         if ret is None:
             debugger.debug("SELL failed")
             return None
-        self.order_queue.append(ret)
+        self.orders.add_new_order(symbol, ret["order_id"], "sell", quantity, in_force)
         debugger.debug(f"SELL: {self.stats.timestamp}, {symbol}, {quantity}")
         return ret
 
@@ -511,14 +506,14 @@ class LiveTrader:
         if include_pending_buy:
             owned_qty += sum(
                 o["quantity"]
-                for o in self.order_queue
+                for o in self.orders.orders
                 if o["symbol"] == symbol and o["side"] == "buy"
             )
 
         if not include_pending_sell:
             owned_qty -= sum(
                 o["quantity"]
-                for o in self.order_queue
+                for o in self.orders.orders
                 if o["symbol"] == symbol and o["side"] == "sell"
             )
 
