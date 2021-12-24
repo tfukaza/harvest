@@ -170,10 +170,10 @@ class TestPaperBroker(unittest.TestCase):
     def test_commission(self):
         commission_fee = {"buy": 5.76, "sell": "2%"}
 
-        dummy = PaperBroker(commission_fee=commission_fee)
-        total_cost = dummy.apply_commission(50, dummy.commission_fee, "buy")
+        paper = PaperBroker(commission_fee=commission_fee)
+        total_cost = paper.apply_commission(50, paper.commission_fee, "buy")
         self.assertEqual(total_cost, 55.76)
-        total_cost = dummy.apply_commission(50, dummy.commission_fee, "sell")
+        total_cost = paper.apply_commission(50, paper.commission_fee, "sell")
         self.assertEqual(total_cost, 49)
 
 

@@ -34,7 +34,7 @@ class TestCLI(unittest.TestCase):
             self.assertTrue(True)
 
     def test_start_basic(self):
-        crossover = os.path.dirname(os.path.realpath(__file__)) + "/../examples"
+        crossover = os.path.dirname(os.path.realpath(__file__)) + "/../../examples"
         args = cli.parser.parse_args(
             ["start", "-o", "memory", "-s", "dummy", "-b", "paper", "-d", crossover]
         )
@@ -42,7 +42,7 @@ class TestCLI(unittest.TestCase):
         self.assertTrue(True)
 
     def test_start_complex(self):
-        crossover = os.path.dirname(os.path.realpath(__file__)) + "/../examples"
+        crossover = os.path.dirname(os.path.realpath(__file__)) + "/../../examples"
         args = cli.parser.parse_args(
             ["start", "-o", "pickle", "-s", "yahoo", "-b", "paper", "-d", crossover]
         )
