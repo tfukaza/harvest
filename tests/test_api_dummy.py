@@ -40,7 +40,7 @@ class TestDummyStreamer(unittest.TestCase):
             "@D": {"interval": Interval.MIN_1, "aggregations": []},
         }
         stats = Stats(watchlist_cfg=interval)
-        dummy.setup(stats)
+        dummy.setup(stats, Account())
 
         self.assertEqual(dummy.interval, interval)
 
@@ -53,7 +53,7 @@ class TestDummyStreamer(unittest.TestCase):
             "@D": {"interval": Interval.MIN_1, "aggregations": []},
         }
         stats = Stats(watchlist_cfg=interval)
-        dummy.setup(stats)
+        dummy.setup(stats, Account())
 
         d = dummy.fetch_latest_stock_price()
         self.assertEqual(len(d), 3)
@@ -67,7 +67,7 @@ class TestDummyStreamer(unittest.TestCase):
             "@D": {"interval": Interval.MIN_1, "aggregations": []},
         }
         stats = Stats(watchlist_cfg=interval)
-        dummy.setup(stats)
+        dummy.setup(stats, Account())
 
         d = dummy.fetch_latest_crypto_price()
         self.assertTrue("@D" in d)

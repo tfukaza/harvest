@@ -22,6 +22,12 @@ class Robinhood(API):
 
     def __init__(self, path=None):
         super().__init__(path)
+
+        if self.config is None:
+            raise Exception(
+                f"Account credentials not found! Expected file path: {path}"
+            )
+
         self.login()
 
     def login(self):
@@ -183,7 +189,7 @@ class Robinhood(API):
     def fetch_chain_info(self, symbol: str):
         ret = rh.get_chains(symbol)
         return {
-            "id": "n/a",
+            "chain_id": "n/a",
             "exp_dates": [str_to_date(s) for s in ret["expiration_dates"]],
             "multiplier": ret["trade_value_multiplier"],
         }
@@ -201,8 +207,8 @@ class Robinhood(API):
         ret = rh.find_tradable_options(symbol, date_to_str(date))
         exp_date = []
         strike = []
-        type = []
-        id = []
+        option_type = []
+        option_id = []
         occ = []
         for entry in ret:
             date = entry["expiration_date"]
@@ -211,8 +217,8 @@ class Robinhood(API):
             exp_date.append(date)
             price = float(entry["strike_price"])
             strike.append(price)
-            type.append(entry["type"])
-            id.append(entry["id"])
+            option_type.append(entry["type"])
+            option_id.append(entry["id"])
 
             occ.append(self.data_to_occ(symbol, date, type[-1], price))
 
@@ -221,8 +227,7 @@ class Robinhood(API):
                 "occ_symbol": occ,
                 "exp_date": exp_date,
                 "strike": strike,
-                "type": type,
-                "id": id,
+                "type": option_type,
             }
         )
         df = df.set_index("occ_symbol")
@@ -354,7 +359,7 @@ class Robinhood(API):
             filled_price = None
         return {
             "type": "STOCK",
-            "id": ret["id"],
+            "order_id": ret["id"],
             "quantity": ret["qty"],
             "filled_quantity": ret["filled_qty"],
             "side": ret["side"],
@@ -379,8 +384,8 @@ class Robinhood(API):
             filled_price = None
         return {
             "type": "OPTION",
-            "id": ret["id"],
-            "qty": ret["quantity"],
+            "order_id": ret["id"],
+            "quantity": ret["quantity"],
             "filled_qty": ret["processed_quantity"],
             "side": ret["legs"][0]["side"],
             "time_in_force": ret["time_in_force"],
@@ -405,7 +410,7 @@ class Robinhood(API):
 
         return {
             "type": "CRYPTO",
-            "id": ret["id"],
+            "order_id": ret["id"],
             "quantity": float(ret["quantity"]),
             "filled_qty": float(ret["cumulative_quantity"]),
             "side": ret["side"],
@@ -423,11 +428,11 @@ class Robinhood(API):
             sym = rh.get_symbol_by_url(r["instrument"])
             queue.append(
                 {
-                    "type": "STOCK",
+                    "order_type": "STOCK",
                     "symbol": sym,
                     "quantity": r["quantity"],
                     "filled_qty": r["cumulative_quantity"],
-                    "id": r["id"],
+                    "order_id": r["id"],
                     "time_in_force": r["time_in_force"],
                     "status": r["state"],
                     "side": r["side"],
@@ -439,7 +444,8 @@ class Robinhood(API):
         ret = rh.get_all_open_option_orders()
         for r in ret:
             debugger.debug(r)
-            legs = [{"id": l["id"], "side": l["side"]} for l in r["legs"]]
+            # Assume there is only 1 leg per option order
+            leg = r["legs"][0]
             date = r["legs"][0]["expiration_date"]
             date = dt.datetime.strptime(date, "%Y-%m-%d")
             s = self.data_to_occ(
@@ -450,7 +456,7 @@ class Robinhood(API):
             )
             queue.append(
                 {
-                    "type": "OPTION",
+                    "order_type": "OPTION",
                     "symbol": s,
                     "base_symbol": r["chain_symbol"],
                     "quantity": r["quantity"],
@@ -458,7 +464,8 @@ class Robinhood(API):
                     "id": r["id"],
                     "time_in_force": r["time_in_force"],
                     "status": r["state"],
-                    "legs": legs,
+                    "order_id": leg["id"],
+                    "side": leg["side"],
                     "filled_time": None,
                     "filled_price": None,
                 }
@@ -468,11 +475,11 @@ class Robinhood(API):
             sym = rh.get_symbol_by_url(r["instrument"])
             queue.append(
                 {
-                    "type": "CRYPTO",
+                    "order_type": "CRYPTO",
                     "symbol": sym,
                     "quantity": r["quantity"],
                     "filled_qty": r["cumulative_quantity"],
-                    "id": r["id"],
+                    "order_id": r["id"],
                     "time_in_force": r["time_in_force"],
                     "status": r["state"],
                     "side": r["side"],
@@ -512,8 +519,7 @@ class Robinhood(API):
                     limitPrice=limit_price,
                 )
             return {
-                "type": "STOCK",
-                "id": ret["id"],
+                "order_id": ret["id"],
                 "symbol": symbol,
             }
         except:
@@ -546,8 +552,7 @@ class Robinhood(API):
                     limitPrice=limit_price,
                 )
             return {
-                "type": "CRYPTO",
-                "id": ret["id"],
+                "order_id": ret["id"],
                 "symbol": "@" + symbol,
             }
         except:
@@ -592,8 +597,7 @@ class Robinhood(API):
                     timeInForce=in_force,
                 )
             return {
-                "type": "OPTION",
-                "id": ret["id"],
+                "order_id": ret["id"],
                 "symbol": symbol,
             }
         except:
@@ -601,6 +605,18 @@ class Robinhood(API):
                 f"Error while placing order.\nReturned: {ret}", exc_info=True
             )
             raise Exception("Error while placing order")
+
+    def cancel_stock_order(self, order_id):
+        ret = rh.cancel_stock_order(order_id)
+        self.debugger.debug(ret)
+
+    def cancel_option_order(self, order_id):
+        ret = rh.cancel_option_order(order_id)
+        self.debugger.debug(ret)
+    
+    def cancel_crypto_order(self, order_id):
+        ret = rh.cancel_crypto_order(order_id)
+        self.debugger.debug(ret)
 
     def _format_df(
         self, df: pd.DataFrame, watch: List[str], interval: str, latest: bool = False

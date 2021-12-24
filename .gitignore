@@ -23,6 +23,7 @@ data/
 # misc.
 *.yaml
 !dummy_account.yaml
+!dummy_account_copy.yaml
 package-lock.json
 
 .DS_Store

@@ -29,7 +29,7 @@ class PaperBroker(API):
         Interval.DAY_1,
     ]
 
-    def __init__(self, account_path: str = None, commission_fee=0, streamer=None):
+    def __init__(self, path: str = None, commission_fee=0, streamer=None):
         """
         :commission_fee: When this is a number it is assumed to be a flat price
             on all buys and sells of assets. When this is a string formatted as
@@ -40,18 +40,14 @@ class PaperBroker(API):
             strings formatted as 'XX%'.
         """
 
-        self.stocks = []
+        super().__init__(path)
+        self.path = path
         self.options = []
         self.stocks = []
         self.cryptos = []
         self.orders = []
-
-        self.equity = 1000000.0
-        self.cash = 1000000.0
-        self.buying_power = 1000000.0
-        self.multiplier = 1
         self.commission_fee = commission_fee
-        self.id = 0
+        self.order_id = 0
         self.streamer = DummyStreamer() if streamer is None else streamer
 
         self.config = {
@@ -61,8 +57,7 @@ class PaperBroker(API):
             "multiplier": 1,
         }
 
-    def setup(self, interval, trader_main=None):
-        super().setup(interval, trader_main)
+        print("Config", self.config)
 
     # -------------- Streamer methods -------------- #
 
@@ -93,16 +88,17 @@ class PaperBroker(API):
             r["cost_basis"] = r["avg_price"] * r["quantity"] * 100
 
     def fetch_account(self) -> Dict[str, Any]:
-        self.equity = self._calc_equity()
+        self.config["equity"] = self._calc_equity()
+        self.update_account()
         return {
-            "equity": self.equity,
-            "cash": self.cash,
-            "buying_power": self.buying_power,
-            "multiplier": self.multiplier,
+            "equity": self.config["equity"],
+            "cash": self.config["cash"],
+            "buying_power": self.config["buying_power"],
+            "multiplier": self.config["multiplier"],
         }
 
-    def fetch_stock_order_status(self, id: int) -> Dict[str, Any]:
-        ret = next(r for r in self.orders if r["id"] == id)
+    def fetch_stock_order_status(self, order_id: int) -> Dict[str, Any]:
+        ret = next(r for r in self.orders if r["order_id"] == order_id)
         sym = ret["symbol"]
 
         price = self.streamer.fetch_price_history(
@@ -127,9 +123,10 @@ class PaperBroker(API):
                 actual_price = self.apply_commission(
                     original_price, self.commission_fee, "sell"
                 )
-                if self.buying_power < actual_price:
+                if self.config["buying_power"] < actual_price:
+                    buying_power = self.config["buying_power"]
                     debugger.error(
-                        f"""Not enough buying power.\n Total price ({actual_price}) exceeds buying power {self.buying_power}.\n Reduce purchase quantity or increase buying power."""
+                        f"""Not enough buying power.\n Total price ({actual_price}) exceeds buying power {buying_power}.\n Reduce purchase quantity or increase buying power."""
                     )
                 elif ret["limit_price"] < price:
                     limit_price = ret["limit_price"]
@@ -146,8 +143,8 @@ class PaperBroker(API):
                         ) / (qty + pos["quantity"])
                         pos["quantity"] = pos["quantity"] + qty
 
-                    self.cash -= actual_price
-                    self.buying_power -= actual_price
+                    self.config["cash"] -= actual_price
+                    self.config["buying_power"] -= actual_price
                     ret_1 = ret.copy()
                     self.orders.remove(ret)
                     ret = ret_1
@@ -164,8 +161,8 @@ class PaperBroker(API):
                 actual_worth = self.apply_commission(
                     original_price, self.commission_fee, "sell"
                 )
-                self.cash += actual_worth
-                self.buying_power += actual_worth
+                self.config["cash"] += actual_worth
+                self.config["buying_power"] += actual_worth
                 ret_1 = ret.copy()
                 self.orders.remove(ret)
                 ret = ret_1
@@ -173,17 +170,17 @@ class PaperBroker(API):
                 ret["filled_time"] = self.streamer.get_current_time()
                 ret["filled_price"] = price
 
-            self.equity = self._calc_equity()
+            self.config["equity"] = self._calc_equity()
 
         debugger.debug(f"Returning status: {ret}")
         stocks, cryptos =self.stocks,self.cryptos
         debugger.debug(f"Positions:\n{stocks}\n=========\n{cryptos}")
         debugger.debug(f"Equity:{self._calc_equity()}")
-
+        self.update_account()
         return ret
 
-    def fetch_option_order_status(self, id: int) -> Dict[str, Any]:
-        ret = next(r for r in self.orders if r["id"] == id)
+    def fetch_option_order_status(self, order_id: int) -> Dict[str, Any]:
+        ret = next(r for r in self.orders if r["order_id"] == order_id)
         sym = ret["base_symbol"]
         occ_sym = ret["symbol"]
 
@@ -199,9 +196,10 @@ class PaperBroker(API):
                 actual_price = self.apply_commission(
                     original_price, self.commission_fee, "buy"
                 )
-                if self.buying_power < actual_price:
+                if self.config["buying_power"] < actual_price:
+                    buying_power = self.config["buying_power"]
                     debugger.error(
-                        f"""Not enough buying power.\n Total price ({actual_price}) exceeds buying power {self.buying_power}.\n Reduce purchase quantity or increase buying power."""
+                        f"""Not enough buying power.\n Total price ({actual_price}) exceeds buying power {buying_power}.\n Reduce purchase quantity or increase buying power."""
                     )
                 elif ret["limit_price"] < price:
                     limit_price = ret["limit_price"]
@@ -230,12 +228,13 @@ class PaperBroker(API):
                         ) / (qty + pos["quantity"])
                         pos["quantity"] = pos["quantity"] + qty
 
-                    self.cash -= actual_price
-                    self.buying_power -= actual_price
+                    self.config["cash"] -= actual_price
+                    self.config["buying_power"] -= actual_price
                     ret["status"] = "filled"
                     ret["filled_time"] = self.streamer.get_current_time()
                     ret["filled_price"] = price
-                    debugger.debug(f"After BUY: {self.buying_power}")
+                    buying_power = self.config["buying_power"]
+                    debugger.debug(f"After BUY: {buying_power}")
                     ret_1 = ret.copy()
                     self.orders.remove(ret)
                     ret = ret_1
@@ -243,15 +242,15 @@ class PaperBroker(API):
                 if pos is None:
                     raise Exception(f"Cannot sell {sym}, is not owned")
                 pos["quantity"] = pos["quantity"] - qty
-                debugger.debug(f"current:{self.buying_power}")
+                buying_power = self.config["buying_power"]
+                debugger.debug(f"current:{buying_power}")
                 actual_price = self.apply_commission(
                     original_price, self.commission_fee, "sell"
                 )
-                self.cash += actual_price
-                self.buying_power += actual_price
-                debugger.debug(
-                    f"Made {sym} {occ_sym} {qty} {price}: {self.buying_power}"
-                )
+                self.config["cash"] += actual_price
+                self.config["buying_power"] += actual_price
+                buying_power = self.config["buying_power"]
+                debugger.debug(f"Made {sym} {occ_sym} {qty} {price}: {buying_power}")
                 if pos["quantity"] < 1e-8:
                     self.options.remove(pos)
                 ret["status"] = "filled"
@@ -261,17 +260,17 @@ class PaperBroker(API):
                 self.orders.remove(ret)
                 ret = ret_1
 
-            self.equity = self._calc_equity()
+            self.config["equity"] = self._calc_equity()
 
         debugger.debug(f"Returning status: {ret}")
         stocks, cryptos =self.stocks,self.cryptos
         debugger.debug(f"Positions:\n{stocks}\n{self.options}\n{cryptos}")
         debugger.debug(f"Equity:{self._calc_equity()}")
-
+        self.update_account()
         return ret
 
-    def fetch_crypto_order_status(self, id: int) -> Dict[str, Any]:
-        return self.fetch_stock_order_status(id)
+    def fetch_crypto_order_status(self, order_id: int) -> Dict[str, Any]:
+        return self.fetch_stock_order_status(order_id)
 
     def fetch_order_queue(self) -> List[Dict[str, Any]]:
         return self.orders
@@ -293,15 +292,15 @@ class PaperBroker(API):
             "quantity": quantity,
             "filled_qty": quantity,
             "limit_price": limit_price,
-            "id": self.id,
+            "order_id": self.order_id,
             "time_in_force": in_force,
             "status": "open",
             "side": side,
         }
 
         self.orders.append(data)
-        self.id += 1
-        ret = {"type": "STOCK", "id": data["id"], "symbol": data["symbol"]}
+        self.order_id += 1
+        ret = {"order_id": data["order_id"], "symbol": data["symbol"]}
         return ret
 
     def order_crypto_limit(
@@ -319,15 +318,15 @@ class PaperBroker(API):
             "quantity": quantity,
             "filled_qty": quantity,
             "limit_price": limit_price,
-            "id": self.id,
+            "order_id": self.order_id,
             "time_in_force": in_force,
             "status": "open",
             "side": side,
         }
 
         self.orders.append(data)
-        self.id += 1
-        ret = {"type": "CRYPTO", "id": data["id"], "symbol": data["symbol"]}
+        self.order_id += 1
+        ret = {"order_id": data["order_id"], "symbol": data["symbol"]}
         return ret
 
     def order_option_limit(
@@ -347,7 +346,7 @@ class PaperBroker(API):
             "symbol": self.data_to_occ(symbol, exp_date, type, strike),
             "quantity": quantity,
             "filled_qty": 0,
-            "id": self.id,
+            "order_id": self.order_id,
             "time_in_force": in_force,
             "status": "open",
             "side": side,
@@ -356,8 +355,8 @@ class PaperBroker(API):
         }
 
         self.orders.append(data)
-        self.id += 1
-        return {"type": "OPTION", "id": data["id"], "symbol": data["symbol"]}
+        self.order_id += 1
+        return {"order_id": data["order_id"], "symbol": data["symbol"]}
 
     # ------------- Helper methods ------------- #
 
@@ -372,14 +371,14 @@ class PaperBroker(API):
             if "multiplier" in asset:
                 add = add * asset["multiplier"]
             e += add
-        e += self.cash
-        return e
+        e += self.config["cash"]
+        return float(e)
 
     def apply_commission(self, inital_price: float, commission_fee, side: str) -> float:
         if side == "buy":
-            f = lambda a, b: a + b
+            f = lambda a, b: float(a + b)
         elif side == "sell":
-            f = lambda a, b: a - b
+            f = lambda a, b: float(a - b)
 
         if type(commission_fee) in (int, float):
             return f(inital_price, commission_fee)
@@ -390,7 +389,16 @@ class PaperBroker(API):
                 commission_fee = inital_price * 0.01 * float(match.group(1))
                 return f(inital_price, commission_fee)
             raise Exception(
-                f"`commission_fee` {commission_fee} not valid, must match this regex expression: {pattern}"
+                f"`commission_fee` {commission_fee} not valorder_id must match this regex expression: {pattern}"
             )
         elif type(commission_fee) is dict:
             return self.apply_commission(inital_price, commission_fee[side], side)
+
+    def update_account(self):
+        """
+        If the path is set, then save and update the account information.
+        """
+        print(self.config)
+        if self.path is not None:
+            with open(self.path, "w") as account:
+                yaml.dump(self.config, account)

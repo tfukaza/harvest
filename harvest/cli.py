@@ -15,6 +15,7 @@ def _raise(e):
     return raise_helper
 
 
+from harvest.utils import debugger
 from harvest.storage.base_storage import BaseStorage
 from harvest.storage.csv_storage import CSVStorage
 from harvest.storage.pickle_storage import PickleStorage
@@ -97,7 +98,7 @@ start_parser.add_argument(
 start_parser.add_argument(
     "-b",
     "--broker",
-    default="paper",
+    default="streamer",
     help="buys and sells assets on your behalf",
     choices=list(brokers.keys()),
 )
@@ -145,15 +146,15 @@ def start(args: argparse.Namespace, test: bool = False):
     """
     storage = _get_storage(args.storage)
     streamer = _get_streamer(args.streamer)
-    broker = streamer if args.streamer == args.broker else _get_broker(args.broker)
+    broker = _get_broker(args.broker, args.streamer, streamer)
     debug = args.debug
     trader = LiveTrader(streamer=streamer, broker=broker, storage=storage, debug=debug)
 
     # Get the directories.
     directory = args.directory
-    print(f"Searching directory {directory}")
+    debugger.info(f"🕵 Searching directory {directory}")
     files = [fi for fi in listdir(directory) if isfile(join(directory, fi))]
-    print(f"Found files {files}")
+    debugger.info(f"🎉 Found files {files}")
     # For each file in the directory...
     for f in files:
         names = f.split(".")
@@ -166,7 +167,7 @@ def start(args: argparse.Namespace, test: bool = False):
         with open(join(directory, f), "r") as algo_file:
             firstline = algo_file.readline()
             if firstline.find("HARVEST_SKIP") != -1:
-                print(f"Skipping {f}")
+                debugger.info(f"ℹ Skipping {f}")
                 continue
 
         # ...load in the entire file and add the algo to the trader.
@@ -178,10 +179,11 @@ def start(args: argparse.Namespace, test: bool = False):
         for algo_cls in inspect.getmembers(algo):
             k, v = algo_cls[0], algo_cls[1]
             if inspect.isclass(v) and v != BaseAlgo and issubclass(v, BaseAlgo):
-                print(f"Found algo {k} in {f}, adding to trader")
+                debugger.info(f"🎉 Found algo {k} in {f}, adding to trader")
                 trader.add_algo(v())
 
     if not test:
+        debugger.info(f"🎊 Starting trader")
         trader.start()
 
 
@@ -202,11 +204,11 @@ def visualize(args: argparse.Namespace):
     elif args.path.endswith(".pickle"):
         df = pd.read_pickle(args.path)
     else:
-        print("Invalid file extension, expecting .csv or .pickle.")
+        debugger.error("⛔ Invalid file extension, expecting .csv or .pickle.")
         sys.exit(1)
 
     if df.empty:
-        print(f"No data found in {args.path}.")
+        debugger.error(f"⛔ No data found in {args.path}.")
         sys.exit(2)
 
     path = os.path.basename(args.path)
@@ -221,14 +223,14 @@ def visualize(args: argparse.Namespace):
     price_delta_precent = 100 % (price_delta / open_price)
     volume = df["volume"].sum()
 
-    print(f"{symbol} at {interval}")
-    print(f"open\t{open_price}")
-    print(f"high\t{high_price}")
-    print(f"low\t{low_price}")
-    print(f"close\t{close_price}")
-    print(f"price change\t{price_delta}")
-    print(f"price change percentage\t{price_delta_precent}%")
-    print(f"volume\t{volume}")
+    debugger.info(f"{symbol} at {interval}")
+    debugger.info(f"open\t{open_price}")
+    debugger.info(f"high\t{high_price}")
+    debugger.info(f"low\t{low_price}")
+    debugger.info(f"close\t{close_price}")
+    debugger.info(f"price change\t{price_delta}")
+    debugger.info(f"price change percentage\t{price_delta_precent}%")
+    debugger.info(f"volume\t{volume}")
     mpf.plot(
         df,
         type="candle",
@@ -254,7 +256,7 @@ def _get_storage(storage: str):
 
 def _get_streamer(streamer):
     """
-    Returns the storage instance specified by the user.
+    Returns the streamer instance specified by the user.
     :streamer: The type of streamer to be instantiated.
     """
     streamer_cls = streamers.get(streamer)
@@ -265,11 +267,26 @@ def _get_streamer(streamer):
     return streamer_cls()
 
 
-def _get_broker(broker):
+def _get_broker(broker, streamer, streamer_cls):
     """
-    Returns the storage instance specified by the user.
+    Returns the broker instance specified by the user.
     :broker: The type of broker to be instantiated.
     """
+
+    if broker == streamer:
+        debugger.info(f"Using streamer instance as broker. Streamer: {streamer}")
+        return streamer_cls
+
+    if broker == "streamer":
+        if streamer in brokers.keys():
+            debugger.info(f"ℹ Using streamer instance as broker. Streamer: {streamer}")
+            return streamer_cls
+        else:
+            debugger.warning(
+                f"⚠ Streamer {streamer} does not support broker methods! Using paper broker."
+            )
+            return brokers.get("paper")()
+
     broker_cls = brokers.get(broker)
     if broker_cls is None:
         raise ValueError(

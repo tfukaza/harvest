@@ -26,8 +26,8 @@ class YahooStreamer(API):
     def __init__(self, path=None):
         self.timestamp = now()
 
-    def setup(self, interval: Dict, trader_main=None):
-        super().setup(interval, trader_main)
+    def setup(self, stats, account, trader_main=None):
+        super().setup(stats, account, trader_main)
 
         self.watch_ticker = {}
 
