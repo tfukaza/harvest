@@ -119,7 +119,7 @@ class Kraken(API):
                 f"Account credentials not found! Expected file path: {path}"
             )
 
-        self.api = krakenex.API(self.config["api_key"], self.config["secret_key"])
+        self.api = krakenex.API(self.config["kraken_api_key"], self.config["kraken_secret_key"])
 
     def setup(self, interval: Dict, trader_main=None):
         super().setup(interval, trader_main)
@@ -448,7 +448,7 @@ class Kraken(API):
 
         w.println(f"All steps are complete now 🎉. Generating {path}...")
 
-        d = {"api_key": f"{api_key_id}", "secret_key": f"{secret_key}"}
+        d = {"kraken_api_key": f"{api_key_id}", "kraken_secret_key": f"{secret_key}"}
 
         with open(path, "w") as file:
             yml = yaml.dump(d, file)
