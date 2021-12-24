@@ -2,6 +2,9 @@
 import re
 import datetime as dt
 from typing import Any, Dict, List, Tuple
+from pathlib import Path
+import pickle
+import os
 
 # External libraries
 import pandas as pd
@@ -28,7 +31,7 @@ class PaperBroker(API):
         Interval.DAY_1,
     ]
 
-    def __init__(self, path: str = None, commission_fee=0, streamer=None):
+    def __init__(self, path: str = None, streamer=None):
         """
         :commission_fee: When this is a number it is assumed to be a flat price
             on all buys and sells of assets. When this is a string formatted as
@@ -40,24 +43,89 @@ class PaperBroker(API):
         """
 
         super().__init__(path)
-        self.path = path
+
+        self.stocks = []
         self.options = []
+        self.cryptos = []
         self.orders = []
-        self.commission_fee = commission_fee
-        self.order_id = 0
+        self.id = 0
+        
         self.streamer = DummyStreamer() if streamer is None else streamer
 
-        if self.config is None:
-            self.config = {
-                "equity": 1000000.0,
-                "cash": 1000000.0,
-                "buying_power": 1000000.0,
-                "multiplier": 1,
-                "stocks": [],
-                "cryptos": [],
-            }
+        if path is None:
+            self.save_path = "./.save"
+        else:
+            self.save_path = path.replace("secret.yaml", ".save")
 
-        print("Config", self.config)
+        # If there is a previously saved broker status, load it
+        save_file = Path(self.save_path)
+        if save_file.is_file():
+            self._load_account()
+            return
+
+        if path is None or self.config is None:    
+            self.config = {
+                "paper_equity": 1000000.0,
+                "paper_cash": 1000000.0,
+                "paper_buying_power": 1000000.0,
+                "paper_multiplier": 1,
+            }
+            self.commission_fee = 0
+        else:
+            self.commission_fee = self.config["commission_fee"]
+        
+        self.equity = self.config["paper_equity"]
+        self.cash = self.config["paper_cash"]
+        self.buying_power = self.config["paper_buying_power"]
+        self.multiplier = self.config["paper_multiplier"]
+    
+    def _load_account(self):
+        with open(self.save_path, "rb") as stream:
+            save_data = pickle.load(stream)
+
+            account = save_data["account"]
+            self.equity = account["equity"]
+            self.cash = account["cash"]
+            self.buying_power = account["buying_power"]
+            self.multiplier = account["multiplier"]
+
+            positions = save_data["positions"] 
+            self.stocks = positions["stocks"]
+            self.options = positions["options"]
+            self.cryptos = positions["cryptos"]
+
+            orders = save_data["orders"]
+            self.orders = orders["orders"]
+            self.id = orders["id"]
+    
+    def _save_account(self):
+        with open(self.save_path, "wb") as stream:
+            save_data = {
+                "account": {
+                    "equity": self.equity,
+                    "cash": self.cash,
+                    "buying_power": self.buying_power,
+                    "multiplier": self.multiplier
+                },
+        
+                "positions":{
+                    "stocks": self.stocks,
+                    "options": self.options,
+                    "cryptos": self.cryptos,
+                },
+
+                "orders":{
+                    "orders": self.orders,
+                    "id": id,
+                }
+            }
+            pickle.dump(save_data, stream)
+    
+    def _delete_account(self):
+        os.remove(self.save_path)
+
+    def setup(self, stats, account, trader_main=None):
+        super().setup(stats, account, trader_main)
 
     # -------------- Streamer methods -------------- #
 
@@ -70,26 +138,26 @@ class PaperBroker(API):
     # ------------- Broker methods ------------- #
 
     def fetch_stock_positions(self) -> List[Dict[str, Any]]:
-        return self.config["stocks"]
+        return self.stocks
 
     def fetch_option_positions(self) -> List[Dict[str, Any]]:
         return self.options
 
     def fetch_crypto_positions(self) -> List[Dict[str, Any]]:
-        return self.config["cryptos"]
+        return self.cryptos
 
-    def update_option_positions(self, positions) -> List[Dict[str, Any]]:
-        for r in self.options:
-            occ_sym = r["symbol"]
-            price = self.streamer.fetch_option_market_data(occ_sym)["price"]
+    # def update_option_positions(self, positions) -> List[Dict[str, Any]]:
+    #     for r in self.options:
+    #         occ_sym = r["symbol"]
+    #         price = self.streamer.fetch_option_market_data(occ_sym)["price"]
 
-            r["current_price"] = price
-            r["market_value"] = price * r["quantity"] * 100
-            r["cost_basis"] = r["avg_price"] * r["quantity"] * 100
+    #         r["current_price"] = price
+    #         r["market_value"] = price * r["quantity"] * 100
+    #         r["cost_basis"] = r["avg_price"] * r["quantity"] * 100
 
     def fetch_account(self) -> Dict[str, Any]:
-        self.config["equity"] = self._calc_equity()
-        self.update_account()
+        self.equity = self._calc_equity()
+        self._save_account()
         return {
             "equity": self.config["equity"],
             "cash": self.config["cash"],
@@ -113,9 +181,9 @@ class PaperBroker(API):
         # If order is open, simulate asset buy/sell if possible
         if ret["status"] == "open":
             lst = (
-                self.config["cryptos"]
+                self.cryptos
                 if is_crypto(ret["symbol"])
-                else self.config["stocks"]
+                else self.stocks
             )
             pos = next((r for r in lst if r["symbol"] == sym), None)
             if ret["side"] == "buy":
@@ -173,7 +241,7 @@ class PaperBroker(API):
             self.config["equity"] = self._calc_equity()
 
         debugger.debug(f"Returning status: {ret}")
-        stocks, cryptos = self.config["stocks"], self.config["cryptos"]
+        stocks, cryptos =self.stocks,self.cryptos
         debugger.debug(f"Positions:\n{stocks}\n=========\n{cryptos}")
         debugger.debug(f"Equity:{self._calc_equity()}")
         self.update_account()
@@ -263,7 +331,7 @@ class PaperBroker(API):
             self.config["equity"] = self._calc_equity()
 
         debugger.debug(f"Returning status: {ret}")
-        stocks, cryptos = self.config["stocks"], self.config["cryptos"]
+        stocks, cryptos =self.stocks,self.cryptos
         debugger.debug(f"Positions:\n{stocks}\n{self.options}\n{cryptos}")
         debugger.debug(f"Equity:{self._calc_equity()}")
         self.update_account()
@@ -366,7 +434,7 @@ class PaperBroker(API):
         worth of all stocks, cryptos, options and cash in the broker.
         """
         e = 0
-        for asset in self.config["stocks"] + self.config["cryptos"] + self.options:
+        for asset in self.stocks + self.cryptos + self.options:
             add = asset["avg_price"] * asset["quantity"]
             if "multiplier" in asset:
                 add = add * asset["multiplier"]
@@ -394,11 +462,3 @@ class PaperBroker(API):
         elif type(commission_fee) is dict:
             return self.apply_commission(inital_price, commission_fee[side], side)
 
-    def update_account(self):
-        """
-        If the path is set, then save and update the account information.
-        """
-        print(self.config)
-        if self.path is not None:
-            with open(self.path, "w") as account:
-                yaml.dump(self.config, account)

@@ -18,9 +18,14 @@ class TestPaperBroker(unittest.TestCase):
         self.assertEqual(d["multiplier"], 1)
 
     def test_dummy_account(self):
-        directory = pathlib.Path(__file__).parent.resolve()
-        dummy = PaperBroker(str(directory) + "/../etc/dummy_account.yaml")
+        dummy = PaperBroker()
+        
+        dummy.stocks.append({"symbol": "A", "avg_price": 1.0, "quantity": 5})
+        dummy.stocks.append({"symbol": "B", "avg_price": 10.0, "quantity": 5})
+        dummy.cryptos.append({"symbol": "@C", "avg_price": 289.21, "quantity": 2})
+
         stocks = dummy.fetch_stock_positions()
+
         self.assertEqual(len(stocks), 2)
         self.assertEqual(stocks[0]["symbol"], "A")
         self.assertEqual(stocks[0]["avg_price"], 1.0)
@@ -31,6 +36,11 @@ class TestPaperBroker(unittest.TestCase):
         self.assertEqual(cryptos[0]["symbol"], "@C")
         self.assertEqual(cryptos[0]["avg_price"], 289.21)
         self.assertEqual(cryptos[0]["quantity"], 2)
+
+        try:
+            dummy._delete_account()
+        except:
+            pass
 
     def test_buy_order_limit(self):
         dummy = PaperBroker()
@@ -51,6 +61,11 @@ class TestPaperBroker(unittest.TestCase):
         self.assertEqual(status["time_in_force"], "gtc")
         self.assertEqual(status["status"], "filled")
 
+        try:
+            dummy._delete_account()
+        except:
+            pass
+
     def test_buy(self):
         dummy = PaperBroker()
         interval = {"A": {"interval": Interval.MIN_1, "aggregations": []}}
@@ -70,13 +85,19 @@ class TestPaperBroker(unittest.TestCase):
         self.assertEqual(status["time_in_force"], "gtc")
         self.assertEqual(status["status"], "filled")
 
+        try:
+            dummy._delete_account()
+        except:
+            pass
+
     def test_sell_order_limit(self):
-        directory = pathlib.Path(__file__).parent.resolve()
-        dummy = PaperBroker(str(directory) + "/../etc/dummy_account_copy.yaml")
+        dummy = PaperBroker()
 
         interval = {"A": {"interval": Interval.MIN_1, "aggregations": []}}
         stats = Stats(watchlist_cfg=interval)
         dummy.setup(stats, Account())
+
+        dummy.stocks = [{"symbol": "A", "avg_price": 10.0, "quantity": 5}]
 
         order = dummy.order_stock_limit("sell", "A", 2, 50000)
         self.assertEqual(order["order_id"], 0)
@@ -91,13 +112,18 @@ class TestPaperBroker(unittest.TestCase):
         self.assertEqual(status["time_in_force"], "gtc")
         self.assertEqual(status["status"], "filled")
 
-    def test_sell(self):
-        directory = pathlib.Path(__file__).parent.resolve()
-        dummy = PaperBroker(str(directory) + "/../etc/dummy_account_copy.yaml")
+        try:
+            dummy._delete_account()
+        except:
+            pass
 
-        interval = {"A": {"interval": Interval.MIN_1, "aggregations": []}}
+    def test_sell(self):
+        dummy = PaperBroker()
+
+        interval = {"A": {"interval": Interval.MIN_5, "aggregations": []}}
         stats = Stats(watchlist_cfg=interval)
         dummy.setup(stats, Account())
+        dummy.stocks = [{"symbol": "A", "avg_price": 10.0, "quantity": 5}]
 
         order = dummy.sell("A", 2)
         self.assertEqual(order["order_id"], 0)
@@ -111,6 +137,11 @@ class TestPaperBroker(unittest.TestCase):
         self.assertEqual(status["side"], "sell")
         self.assertEqual(status["time_in_force"], "gtc")
         self.assertEqual(status["status"], "filled")
+
+        try:
+            dummy._delete_account()
+        except:
+            pass
 
     def test_order_option_limit(self):
         dummy = PaperBroker()
@@ -130,6 +161,11 @@ class TestPaperBroker(unittest.TestCase):
         status = dummy.fetch_option_order_status(order["order_id"])
         self.assertEqual(status["symbol"], "A     211114P50001000")
         self.assertEqual(status["quantity"], 5)
+
+        try:
+            dummy._delete_account()
+        except:
+            pass
 
     def test_commission(self):
         commission_fee = {"buy": 5.76, "sell": "2%"}
