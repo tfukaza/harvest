@@ -3,6 +3,7 @@ import re
 import datetime as dt
 from typing import Any, Dict, List, Tuple
 
+
 # External libraries
 import pandas as pd
 import yaml
@@ -41,6 +42,10 @@ class PaperBroker(API):
 
         self.stocks = []
         self.options = []
+<<<<<<< Updated upstream
+=======
+        self.stocks = []
+>>>>>>> Stashed changes
         self.cryptos = []
         self.orders = []
 
@@ -52,6 +57,7 @@ class PaperBroker(API):
         self.id = 0
         self.streamer = DummyStreamer() if streamer is None else streamer
 
+<<<<<<< Updated upstream
         if account_path:
             with open(account_path, "r") as f:
                 account = yaml.safe_load(f)
@@ -65,6 +71,14 @@ class PaperBroker(API):
 
                 for crypto in account["cryptos"]:
                     self.cryptos.append(crypto)
+=======
+        self.config = {
+            "equity": 1000000.0,
+            "cash": 1000000.0,
+            "buying_power": 1000000.0,
+            "multiplier": 1,
+        }
+>>>>>>> Stashed changes
 
     def setup(self, interval, trader_main=None):
         super().setup(interval, trader_main)
@@ -121,7 +135,15 @@ class PaperBroker(API):
         original_price = price * qty
         # If order is open, simulate asset buy/sell if possible
         if ret["status"] == "open":
+<<<<<<< Updated upstream
             lst = self.cryptos if is_crypto(ret["symbol"]) else self.stocks
+=======
+            lst = (
+                self.cryptos
+                if is_crypto(ret["symbol"])
+                else self.stocks
+            )
+>>>>>>> Stashed changes
             pos = next((r for r in lst if r["symbol"] == sym), None)
             if ret["side"] == "buy":
                 # Check to see if user has enough funds to buy the stock
@@ -177,7 +199,12 @@ class PaperBroker(API):
             self.equity = self._calc_equity()
 
         debugger.debug(f"Returning status: {ret}")
+<<<<<<< Updated upstream
         debugger.debug(f"Positions:\n{self.stocks}\n=========\n{self.cryptos}")
+=======
+        stocks, cryptos =self.stocks,self.cryptos
+        debugger.debug(f"Positions:\n{stocks}\n=========\n{cryptos}")
+>>>>>>> Stashed changes
         debugger.debug(f"Equity:{self._calc_equity()}")
 
         return ret
@@ -264,7 +291,12 @@ class PaperBroker(API):
             self.equity = self._calc_equity()
 
         debugger.debug(f"Returning status: {ret}")
+<<<<<<< Updated upstream
         debugger.debug(f"Positions:\n{self.stocks}\n{self.options}\n{self.cryptos}")
+=======
+        stocks, cryptos =self.stocks,self.cryptos
+        debugger.debug(f"Positions:\n{stocks}\n{self.options}\n{cryptos}")
+>>>>>>> Stashed changes
         debugger.debug(f"Equity:{self._calc_equity()}")
 
         return ret

@@ -21,7 +21,13 @@ class TestPaperBroker(unittest.TestCase):
     def test_dummy_account(self):
         directory = pathlib.Path(__file__).parent.resolve()
         dummy = PaperBroker(str(directory) + "/../etc/dummy_account.yaml")
+        
+        dummy.stocks.append({"symbol": "A", "avg_price": 1.0, "quantity": 5})
+        dummy.stocks.append({"symbol": "B", "avg_price": 10.0, "quantity": 5})
+        dummy.cryptos.append({"symbol": "@C", "avg_price": 289.21, "quantity": 2})
+
         stocks = dummy.fetch_stock_positions()
+
         self.assertEqual(len(stocks), 2)
         self.assertEqual(stocks[0]["symbol"], "A")
         self.assertEqual(stocks[0]["avg_price"], 1.0)
@@ -72,12 +78,18 @@ class TestPaperBroker(unittest.TestCase):
         self.assertEqual(status["status"], "filled")
 
     def test_sell_order_limit(self):
+<<<<<<< Updated upstream
         directory = pathlib.Path(__file__).parent.resolve()
         dummy = PaperBroker(str(directory) + "/../etc/dummy_account.yaml")
+=======
+        dummy = PaperBroker()
+>>>>>>> Stashed changes
 
         interval = {"A": {"interval": Interval.MIN_1, "aggregations": []}}
         stats = Stats(watchlist_cfg=interval)
         dummy.setup(stats)
+
+        dummy.stocks = [{"symbol": "A", "avg_price": 10.0, "quantity": 5}]
 
         order = dummy.order_stock_limit("sell", "A", 2, 50000)
         self.assertEqual(order["type"], "STOCK")
@@ -94,12 +106,21 @@ class TestPaperBroker(unittest.TestCase):
         self.assertEqual(status["status"], "filled")
 
     def test_sell(self):
+<<<<<<< Updated upstream
         directory = pathlib.Path(__file__).parent.resolve()
         dummy = PaperBroker(str(directory) + "/../etc/dummy_account.yaml")
 
         interval = {"A": {"interval": Interval.MIN_1, "aggregations": []}}
         stats = Stats(watchlist_cfg=interval)
         dummy.setup(stats)
+=======
+        dummy = PaperBroker()
+
+        interval = {"A": {"interval": Interval.MIN_1, "aggregations": []}}
+        stats = Stats(watchlist_cfg=interval)
+        dummy.setup(stats, Account())
+        dummy.stocks = [{"symbol": "A", "avg_price": 10.0, "quantity": 5}]
+>>>>>>> Stashed changes
 
         order = dummy.sell("A", 2)
         self.assertEqual(order["type"], "STOCK")
