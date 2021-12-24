@@ -4,6 +4,7 @@ import datetime as dt
 from typing import Any, Dict, List, Tuple
 from pathlib import Path
 import pickle
+import os
 
 # External libraries
 import pandas as pd
@@ -119,7 +120,9 @@ class PaperBroker(API):
                 }
             }
             pickle.dump(save_data, stream)
-
+    
+    def _delete_account(self):
+        os.remove(self.save_path)
 
     def setup(self, stats, account, trader_main=None):
         super().setup(stats, account, trader_main)
@@ -459,11 +462,3 @@ class PaperBroker(API):
         elif type(commission_fee) is dict:
             return self.apply_commission(inital_price, commission_fee[side], side)
 
-    def update_account(self):
-        """
-        If the path is set, then save and update the account information.
-        """
-        print(self.config)
-        if self.path is not None:
-            with open(self.path, "w") as account:
-                yaml.dump(self.config, account)

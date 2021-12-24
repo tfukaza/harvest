@@ -37,6 +37,11 @@ class TestPaperBroker(unittest.TestCase):
         self.assertEqual(cryptos[0]["avg_price"], 289.21)
         self.assertEqual(cryptos[0]["quantity"], 2)
 
+        try:
+            dummy._delete_account()
+        except:
+            pass
+
     def test_buy_order_limit(self):
         dummy = PaperBroker()
         interval = {"A": {"interval": Interval.MIN_1, "aggregations": []}}
@@ -56,6 +61,11 @@ class TestPaperBroker(unittest.TestCase):
         self.assertEqual(status["time_in_force"], "gtc")
         self.assertEqual(status["status"], "filled")
 
+        try:
+            dummy._delete_account()
+        except:
+            pass
+
     def test_buy(self):
         dummy = PaperBroker()
         interval = {"A": {"interval": Interval.MIN_1, "aggregations": []}}
@@ -74,6 +84,11 @@ class TestPaperBroker(unittest.TestCase):
         self.assertEqual(status["side"], "buy")
         self.assertEqual(status["time_in_force"], "gtc")
         self.assertEqual(status["status"], "filled")
+
+        try:
+            dummy._delete_account()
+        except:
+            pass
 
     def test_sell_order_limit(self):
         dummy = PaperBroker()
@@ -97,9 +112,16 @@ class TestPaperBroker(unittest.TestCase):
         self.assertEqual(status["time_in_force"], "gtc")
         self.assertEqual(status["status"], "filled")
 
+        try:
+            dummy._delete_account()
+        except:
+            pass
+
     def test_sell(self):
         dummy = PaperBroker()
 
+        interval = {"A": {"interval": Interval.MIN_5, "aggregations": []}}
+        stats = Stats(watchlist_cfg=interval)
         dummy.setup(stats, Account())
         dummy.stocks = [{"symbol": "A", "avg_price": 10.0, "quantity": 5}]
 
@@ -115,6 +137,11 @@ class TestPaperBroker(unittest.TestCase):
         self.assertEqual(status["side"], "sell")
         self.assertEqual(status["time_in_force"], "gtc")
         self.assertEqual(status["status"], "filled")
+
+        try:
+            dummy._delete_account()
+        except:
+            pass
 
     def test_order_option_limit(self):
         dummy = PaperBroker()
@@ -134,6 +161,11 @@ class TestPaperBroker(unittest.TestCase):
         status = dummy.fetch_option_order_status(order["order_id"])
         self.assertEqual(status["symbol"], "A     211114P50001000")
         self.assertEqual(status["quantity"], 5)
+
+        try:
+            dummy._delete_account()
+        except:
+            pass
 
     def test_commission(self):
         commission_fee = {"buy": 5.76, "sell": "2%"}
