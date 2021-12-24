@@ -121,13 +121,15 @@ class Account:
         self._multiplier = 1
 
     def __str__(self):
-        return (f"Account:\t{self.account_name}\n"
+        return (
+            f"Account:\t{self.account_name}\n"
             + f"Cash:\t{self.cash}\n"
             + f"Equity:\t{self.equity}\n"
             + f"Buying Power:\t{self.buying_power}\n"
             + f"Multiplier:\t{self.multiplier}\n\n"
             + f"Positions:\n{self.positions}\n\n"
-            + f"Orders:\n{self.orders}")
+            + f"Orders:\n{self.orders}"
+        )
 
     def init(self, dict):
         self._equity = dict["equity"]
@@ -174,7 +176,6 @@ class Orders:
 
     def __str__(self):
         return "\n".join(str(order) for order in self._orders)
-
 
     def init(self, orders):
         self._orders = [Order(**o) for o in orders]

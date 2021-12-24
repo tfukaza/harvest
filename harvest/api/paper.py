@@ -307,7 +307,9 @@ class PaperBroker(API):
                 )
                 self.cash += actual_price
                 self.buying_power += actual_price
-                debugger.debug(f"Made {sym} {occ_sym} {qty} {price}: {self.buying_power}")
+                debugger.debug(
+                    f"Made {sym} {occ_sym} {qty} {price}: {self.buying_power}"
+                )
                 if pos["quantity"] < 1e-8:
                     self.options.remove(pos)
                 ret["status"] = "filled"
