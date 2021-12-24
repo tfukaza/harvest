@@ -49,7 +49,7 @@ class PaperBroker(API):
         self.cryptos = []
         self.orders = []
         self.id = 0
-        
+
         self.streamer = DummyStreamer() if streamer is None else streamer
 
         if path is None:
@@ -63,7 +63,7 @@ class PaperBroker(API):
             self._load_account()
             return
 
-        if path is None or self.config is None:    
+        if path is None or self.config is None:
             self.config = {
                 "paper_equity": 1000000.0,
                 "paper_cash": 1000000.0,
@@ -73,12 +73,12 @@ class PaperBroker(API):
             self.commission_fee = 0
         else:
             self.commission_fee = self.config["commission_fee"]
-        
+
         self.equity = self.config["paper_equity"]
         self.cash = self.config["paper_cash"]
         self.buying_power = self.config["paper_buying_power"]
         self.multiplier = self.config["paper_multiplier"]
-    
+
     def _load_account(self):
         with open(self.save_path, "rb") as stream:
             save_data = pickle.load(stream)
@@ -89,7 +89,7 @@ class PaperBroker(API):
             self.buying_power = account["buying_power"]
             self.multiplier = account["multiplier"]
 
-            positions = save_data["positions"] 
+            positions = save_data["positions"]
             self.stocks = positions["stocks"]
             self.options = positions["options"]
             self.cryptos = positions["cryptos"]
@@ -97,7 +97,7 @@ class PaperBroker(API):
             orders = save_data["orders"]
             self.orders = orders["orders"]
             self.id = orders["id"]
-    
+
     def _save_account(self):
         with open(self.save_path, "wb") as stream:
             save_data = {
@@ -105,22 +105,20 @@ class PaperBroker(API):
                     "equity": self.equity,
                     "cash": self.cash,
                     "buying_power": self.buying_power,
-                    "multiplier": self.multiplier
+                    "multiplier": self.multiplier,
                 },
-        
-                "positions":{
+                "positions": {
                     "stocks": self.stocks,
                     "options": self.options,
                     "cryptos": self.cryptos,
                 },
-
-                "orders":{
+                "orders": {
                     "orders": self.orders,
                     "id": id,
-                }
+                },
             }
             pickle.dump(save_data, stream)
-    
+
     def _delete_account(self):
         os.remove(self.save_path)
 
@@ -180,11 +178,7 @@ class PaperBroker(API):
         original_price = price * qty
         # If order is open, simulate asset buy/sell if possible
         if ret["status"] == "open":
-            lst = (
-                self.cryptos
-                if is_crypto(ret["symbol"])
-                else self.stocks
-            )
+            lst = self.cryptos if is_crypto(ret["symbol"]) else self.stocks
             pos = next((r for r in lst if r["symbol"] == sym), None)
             if ret["side"] == "buy":
                 # Check to see if user has enough funds to buy the stock
@@ -241,7 +235,7 @@ class PaperBroker(API):
             self.config["equity"] = self._calc_equity()
 
         debugger.debug(f"Returning status: {ret}")
-        stocks, cryptos =self.stocks,self.cryptos
+        stocks, cryptos = self.stocks, self.cryptos
         debugger.debug(f"Positions:\n{stocks}\n=========\n{cryptos}")
         debugger.debug(f"Equity:{self._calc_equity()}")
         self.update_account()
@@ -331,7 +325,7 @@ class PaperBroker(API):
             self.config["equity"] = self._calc_equity()
 
         debugger.debug(f"Returning status: {ret}")
-        stocks, cryptos =self.stocks,self.cryptos
+        stocks, cryptos = self.stocks, self.cryptos
         debugger.debug(f"Positions:\n{stocks}\n{self.options}\n{cryptos}")
         debugger.debug(f"Equity:{self._calc_equity()}")
         self.update_account()
@@ -461,4 +455,3 @@ class PaperBroker(API):
             )
         elif type(commission_fee) is dict:
             return self.apply_commission(inital_price, commission_fee[side], side)
-

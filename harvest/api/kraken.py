@@ -119,7 +119,9 @@ class Kraken(API):
                 f"Account credentials not found! Expected file path: {path}"
             )
 
-        self.api = krakenex.API(self.config["kraken_api_key"], self.config["kraken_secret_key"])
+        self.api = krakenex.API(
+            self.config["kraken_api_key"], self.config["kraken_secret_key"]
+        )
 
     def setup(self, interval: Dict, trader_main=None):
         super().setup(interval, trader_main)
