@@ -40,12 +40,12 @@ class Alpaca(StreamAPI):
             if paper_trader
             else "https://api.alpaca.markets"
         )
-        self.api = REST(self.config["api_key"], self.config["secret_key"], endpoint)
+        self.api = REST(self.config["alpaca_api_key"], self.config["alpaca_secret_key"], endpoint)
 
         data_feed = "iex" if self.basic else "sip"
         self.stream = Stream(
-            self.config["api_key"],
-            self.config["secret_key"],
+            self.config["alpaca_api_key"],
+            self.config["alpaca_secret_key"],
             URL(endpoint),
             data_feed=data_feed,
         )
@@ -413,10 +413,12 @@ class Alpaca(StreamAPI):
 
         w.println(f"All steps are complete now 🎉. Generating {path}...")
 
-        d = {"api_key": f"{api_key_id}", "secret_key": f"{secret_key}"}
+        d = {"alpaca_api_key": f"{api_key_id}", "alpaca_secret_key": f"{secret_key}"}
 
-        with open(path, "w") as file:
-            yml = yaml.dump(d, file)
+        with open(path, "w") as f:
+            yml = yaml.load(f, Loader=yaml.SafeLoader)
+            yml.update(d)
+            yaml.dump(yml, f)
 
         w.println(
             f"{path} has been created! Make sure you keep this file somewhere secure and never share it with other people."

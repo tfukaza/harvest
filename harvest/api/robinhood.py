@@ -608,15 +608,15 @@ class Robinhood(API):
 
     def cancel_stock_order(self, order_id):
         ret = rh.cancel_stock_order(order_id)
-        self.debugger.debug(ret)
+        debugger.debug(ret)
 
     def cancel_option_order(self, order_id):
         ret = rh.cancel_option_order(order_id)
-        self.debugger.debug(ret)
+        debugger.debug(ret)
     
     def cancel_crypto_order(self, order_id):
         ret = rh.cancel_crypto_order(order_id)
-        self.debugger.debug(ret)
+        debugger.debug(ret)
 
     def _format_df(
         self, df: pd.DataFrame, watch: List[str], interval: str, latest: bool = False

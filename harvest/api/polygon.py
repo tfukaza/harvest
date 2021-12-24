@@ -195,7 +195,7 @@ class PolygonStreamer(API):
             timespan=timespan,
             start=start_str,
             end=end_str,
-            api_key=self.config["api_key"],
+            api_key=self.config["polygon_api_key"],
         )
 
         response = json.load(urllib.request.urlopen(request))
@@ -258,7 +258,7 @@ class PolygonStreamer(API):
         w.println(f"All steps are complete now 🎉. Generating {path}...")
 
         d = {
-            "api_key": f"{api_key}",
+            "polygon_api_key": f"{api_key}",
         }
 
         with open(path, "w") as file:
