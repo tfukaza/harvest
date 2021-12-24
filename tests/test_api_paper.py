@@ -18,8 +18,7 @@ class TestPaperBroker(unittest.TestCase):
         self.assertEqual(d["multiplier"], 1)
 
     def test_dummy_account(self):
-        directory = pathlib.Path(__file__).parent.resolve()
-        dummy = PaperBroker(str(directory) + "/../etc/dummy_account.yaml")
+        dummy = PaperBroker()
         
         dummy.stocks.append({"symbol": "A", "avg_price": 1.0, "quantity": 5})
         dummy.stocks.append({"symbol": "B", "avg_price": 10.0, "quantity": 5})
