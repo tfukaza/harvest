@@ -1,4 +1,5 @@
 # Builtins
+import os
 import pathlib
 import unittest
 import datetime as dt
@@ -9,6 +10,13 @@ from harvest.utils import *
 
 
 class TestPaperBroker(unittest.TestCase):
+    @classmethod
+    def setUpClass(self):
+        try:
+            os.remove("./.save")
+        except:
+            pass
+
     def test_account(self):
         dummy = PaperBroker()
         d = dummy.fetch_account()
@@ -16,6 +24,7 @@ class TestPaperBroker(unittest.TestCase):
         self.assertEqual(d["cash"], 1000000.0)
         self.assertEqual(d["buying_power"], 1000000.0)
         self.assertEqual(d["multiplier"], 1)
+        dummy._delete_account()
 
     def test_dummy_account(self):
         dummy = PaperBroker()
@@ -36,11 +45,7 @@ class TestPaperBroker(unittest.TestCase):
         self.assertEqual(cryptos[0]["symbol"], "@C")
         self.assertEqual(cryptos[0]["avg_price"], 289.21)
         self.assertEqual(cryptos[0]["quantity"], 2)
-
-        try:
-            dummy._delete_account()
-        except:
-            pass
+        dummy._delete_account()
 
     def test_buy_order_limit(self):
         dummy = PaperBroker()
@@ -60,11 +65,7 @@ class TestPaperBroker(unittest.TestCase):
         self.assertEqual(status["side"], "buy")
         self.assertEqual(status["time_in_force"], "gtc")
         self.assertEqual(status["status"], "filled")
-
-        try:
-            dummy._delete_account()
-        except:
-            pass
+        dummy._delete_account()
 
     def test_buy(self):
         dummy = PaperBroker()
@@ -84,11 +85,7 @@ class TestPaperBroker(unittest.TestCase):
         self.assertEqual(status["side"], "buy")
         self.assertEqual(status["time_in_force"], "gtc")
         self.assertEqual(status["status"], "filled")
-
-        try:
-            dummy._delete_account()
-        except:
-            pass
+        dummy._delete_account()
 
     def test_sell_order_limit(self):
         dummy = PaperBroker()
@@ -110,12 +107,8 @@ class TestPaperBroker(unittest.TestCase):
         self.assertEqual(status["filled_qty"], 2)
         self.assertEqual(status["side"], "sell")
         self.assertEqual(status["time_in_force"], "gtc")
-        self.assertEqual(status["status"], "filled")
-
-        try:
-            dummy._delete_account()
-        except:
-            pass
+        self.assertEqual(status["status"], "filled")    
+        dummy._delete_account()
 
     def test_sell(self):
         dummy = PaperBroker()
@@ -137,11 +130,7 @@ class TestPaperBroker(unittest.TestCase):
         self.assertEqual(status["side"], "sell")
         self.assertEqual(status["time_in_force"], "gtc")
         self.assertEqual(status["status"], "filled")
-
-        try:
-            dummy._delete_account()
-        except:
-            pass
+        dummy._delete_account()
 
     def test_order_option_limit(self):
         dummy = PaperBroker()
@@ -161,20 +150,17 @@ class TestPaperBroker(unittest.TestCase):
         status = dummy.fetch_option_order_status(order["order_id"])
         self.assertEqual(status["symbol"], "A     211114P50001000")
         self.assertEqual(status["quantity"], 5)
-
-        try:
-            dummy._delete_account()
-        except:
-            pass
+        dummy._delete_account()
 
     def test_commission(self):
         commission_fee = {"buy": 5.76, "sell": "2%"}
 
-        paper = PaperBroker(commission_fee=commission_fee)
-        total_cost = paper.apply_commission(50, paper.commission_fee, "buy")
+        dummy = PaperBroker(commission_fee=commission_fee)
+        total_cost = dummy.apply_commission(50, dummy.commission_fee, "buy")
         self.assertEqual(total_cost, 55.76)
-        total_cost = paper.apply_commission(50, paper.commission_fee, "sell")
+        total_cost = dummy.apply_commission(50, dummy.commission_fee, "sell")
         self.assertEqual(total_cost, 49)
+        dummy._delete_account()
 
 
 if __name__ == "__main__":

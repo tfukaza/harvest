@@ -120,7 +120,11 @@ class PaperBroker(API):
             pickle.dump(save_data, stream)
 
     def _delete_account(self):
-        os.remove(self.save_path)
+        try:
+            os.remove(self.save_path)
+            debugger.debug("Removed saved account file.")
+        except:
+            debugger.warning("Saved account file does not exists.")
 
     def setup(self, stats, account, trader_main=None):
         super().setup(stats, account, trader_main)
@@ -301,7 +305,7 @@ class PaperBroker(API):
                 if pos is None:
                     raise Exception(f"Cannot sell {sym}, is not owned")
                 pos["quantity"] = pos["quantity"] - qty
-                debugger.debug(f"current:{buying_power}")
+                debugger.debug(f"current:{self.buying_power}")
                 actual_price = self.apply_commission(
                     original_price, self.commission_fee, "sell"
                 )
