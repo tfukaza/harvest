@@ -614,7 +614,7 @@ class Robinhood(API):
     def cancel_option_order(self, order_id):
         ret = rh.cancel_option_order(order_id)
         debugger.debug(ret)
-    
+
     def cancel_crypto_order(self, order_id):
         ret = rh.cancel_crypto_order(order_id)
         debugger.debug(ret)

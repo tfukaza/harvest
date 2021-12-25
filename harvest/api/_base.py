@@ -720,7 +720,7 @@ class API:
             )
         else:
             debugger.error(f"Invalid asset type for {symbol}")
-    
+
     def cancel(self, order_id):
         for o in self.account.orders.orders:
             if o.order_id == order_id:
