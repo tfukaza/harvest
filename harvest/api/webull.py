@@ -14,6 +14,11 @@ from harvest.utils import *
 
 
 class Webull(API):
+
+    interval_list = [Interval.SEC_15, Interval.MIN_5, Interval.HR_1, Interval.DAY_1]
+    exchange = "NASDAQ"
+    req_keys = ["wb_username", "wb_password", "wb_trade_pin"]
+
     def __init__(self, path: str = None, paper_trader: bool = False):
         super().__init__(path)
 

@@ -19,6 +19,7 @@ class Robinhood(API):
 
     interval_list = [Interval.SEC_15, Interval.MIN_5, Interval.HR_1, Interval.DAY_1]
     exchange = "NASDAQ"
+    req_keys = ["robin_username", "robin_password", "robin_mfa"]
 
     def __init__(self, path=None):
         super().__init__(path)

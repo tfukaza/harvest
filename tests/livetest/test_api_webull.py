@@ -9,7 +9,23 @@ from harvest.utils import *
 
 
 class TestWebull(unittest.TestCase):
-    @not_gh_action
+
+    def test_setup(self):
+        """
+        Assuming that secret.yml is already created with proper parameters,
+        test if the broker can read its contents and establish a connection with the server.
+        """
+        from harvest.api.webull import Webull
+
+        wb = Webull()
+        interval = {
+            "@BTC": {"interval": Interval.MIN_1, "aggregations": []},
+            "SPY": {"interval": Interval.MIN_1, "aggregations": []},
+        }
+        wb.setup(interval)
+        self.assertEqual(wb.watch_stock, ["SPY"])
+        self.assertEqual(wb.watch_crypto, ["@BTC"])
+ 
     def test_fetch_prices(self):
         from harvest.api.webull import Webull
 
@@ -30,21 +46,6 @@ class TestWebull(unittest.TestCase):
             sorted(["open", "high", "low", "close", "volume"]),
         )
 
-    @not_gh_action
-    def test_setup(self):
-        from harvest.api.webull import Webull
-
-        wb = Webull()
-        watch = ["SPY", "@BTC"]
-        interval = {
-            "@BTC": {"interval": Interval.MIN_1, "aggregations": []},
-            "SPY": {"interval": Interval.MIN_1, "aggregations": []},
-        }
-        wb.setup(interval)
-        self.assertEqual(wb.watch_stock, ["SPY"])
-        self.assertEqual(wb.watch_crypto, ["@BTC"])
-
-    @not_gh_action
     def test_main(self):
         from harvest.api.webull import Webull
 
@@ -54,7 +55,6 @@ class TestWebull(unittest.TestCase):
             self.assertEqual(df["@BTC"].columns[0][0], "@BTC")
 
         wb = Webull()
-        watch = ["SPY", "@BTC"]
         interval = {
             "@BTC": {"interval": Interval.MIN_1, "aggregations": []},
             "SPY": {"interval": Interval.MIN_1, "aggregations": []},
@@ -62,21 +62,6 @@ class TestWebull(unittest.TestCase):
         wb.setup(interval, test_main)
         wb.main()
 
-    @not_gh_action
-    def test_main_single(self):
-        from harvest.api.webull import Webull
-
-        def test_main(df):
-            self.assertEqual(len(df), 1)
-            self.assertEqual(df["SPY"].columns[0][0], "SPY")
-
-        wb = Webull()
-        watch = ["SPY"]
-        interval = {"SPY": {"interval": Interval.MIN_1, "aggregations": []}}
-        wb.setup(interval, test_main)
-        wb.main()
-
-    @not_gh_action
     def test_chain_info(self):
         from harvest.api.webull import Webull
 
@@ -87,7 +72,6 @@ class TestWebull(unittest.TestCase):
         info = wb.fetch_chain_info("SPY")
         self.assertGreater(len(info["exp_dates"]), 0)
 
-    @not_gh_action
     def test_chain_data(self):
         from harvest.api.webull import Webull
 
@@ -103,7 +87,6 @@ class TestWebull(unittest.TestCase):
         df = wb.fetch_option_market_data(sym)
         self.assertTrue(True)
 
-    @not_gh_action
     def test_order_option_limit(self):
         dummy = PaperBroker()
         dummy.streamer = Webull()
@@ -117,29 +100,27 @@ class TestWebull(unittest.TestCase):
         self.assertEqual(order["id"], 0)
         self.assertEqual(order["symbol"], "A")
 
-    @not_gh_action
-    def test_sell(self):
-        dummy = PaperBroker()
-        dummy.streamer = Webull()
-        interval = {"A": {"interval": Interval.MIN_1, "aggregations": []}}
-        dummy.setup(interval)
-        order = dummy.sell("A", 2)
-        self.assertEqual(order["type"], "STOCK")
-        self.assertEqual(order["id"], 0)
-        self.assertEqual(order["symbol"], "A")
+    # def test_sell(self):
+    #     dummy = PaperBroker()
+    #     dummy.streamer = Webull()
+    #     interval = {"A": {"interval": Interval.MIN_1, "aggregations": []}}
+    #     dummy.setup(interval)
+    #     order = dummy.sell("A", 2)
+    #     self.assertEqual(order["type"], "STOCK")
+    #     self.assertEqual(order["id"], 0)
+    #     self.assertEqual(order["symbol"], "A")
 
-    @not_gh_action
-    def test_sell_order_limit(self):
-        dummy = PaperBroker()
-        dummy.streamer = Webull()
-        interval = {"A": {"interval": Interval.MIN_1, "aggregations": []}}
-        dummy.setup(interval)
-        order = dummy.order_limit("sell", "A", 2, 50000)
-        self.assertEqual(order["type"], "STOCK")
-        self.assertEqual(order["id"], 0)
-        self.assertEqual(order["symbol"], "A")
+    # @not_gh_action
+    # def test_sell_order_limit(self):
+    #     dummy = PaperBroker()
+    #     dummy.streamer = Webull()
+    #     interval = {"A": {"interval": Interval.MIN_1, "aggregations": []}}
+    #     dummy.setup(interval)
+    #     order = dummy.order_limit("sell", "A", 2, 50000)
+    #     self.assertEqual(order["type"], "STOCK")
+    #     self.assertEqual(order["id"], 0)
+    #     self.assertEqual(order["symbol"], "A")
 
-    @not_gh_action
     def test_buy(self):
         dummy = PaperBroker()
         dummy.streamer = Webull()
@@ -150,16 +131,16 @@ class TestWebull(unittest.TestCase):
         self.assertEqual(order["id"], 0)
         self.assertEqual(order["symbol"], "A")
 
-    @not_gh_action
-    def test_buy_order_limit(self):
-        dummy = PaperBroker()
-        dummy.streamer = Webull()
-        interval = {"A": {"interval": Interval.MIN_1, "aggregations": []}}
-        dummy.setup(interval)
-        order = dummy.order_limit("buy", "A", 5, 50000)
-        self.assertEqual(order["type"], "STOCK")
-        self.assertEqual(order["id"], 0)
-        self.assertEqual(order["symbol"], "A")
+    # @not_gh_action
+    # def test_buy_order_limit(self):
+    #     dummy = PaperBroker()
+    #     dummy.streamer = Webull()
+    #     interval = {"A": {"interval": Interval.MIN_1, "aggregations": []}}
+    #     dummy.setup(interval)
+    #     order = dummy.order_limit("buy", "A", 5, 50000)
+    #     self.assertEqual(order["type"], "STOCK")
+    #     self.assertEqual(order["id"], 0)
+    #     self.assertEqual(order["symbol"], "A")
 
 
 if __name__ == "__main__":

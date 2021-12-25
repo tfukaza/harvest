@@ -53,17 +53,20 @@ class API:
         :path: path to the YAML file containing credentials to communicate with the API.
             If not specified, defaults to './secret.yaml'
         """
+        self.config = None
 
         if path is None:
             path = "./secret.yaml"
-        # Check if file exists
-        yml_file = Path(path)
-        if not yml_file.is_file() and not self.create_secret(path):
-            debugger.debug("Broker not initalized with account information.")
-            self.config = None
-        else:
-            with open(path, "r") as stream:
-                self.config = yaml.safe_load(stream)
+        # Check if file exists. If not, create a secret file
+        if not Path(path):
+            self.create_secret(path)
+
+        # Open file
+        with open(path, "r") as stream:
+            self.config = yaml.safe_load(stream)
+            # Check if the file contains all the required parameters
+            if any(key not in self.config for key in self.req_keys):
+                self.create_secret(path)
 
         self.timestamp = now()
 
@@ -72,7 +75,7 @@ class API:
         This method is called when the yaml file with credentials
         is not found."""
         # raise Exception(f"{path} was not found.")
-        debugger.warning(f"Assuming API does not need account information.")
+        debugger.warning('Assuming API does not need account information.')
         return False
 
     def refresh_cred(self):
@@ -299,7 +302,7 @@ class API:
             f"{type(self).__name__} does not support this streamer method: `fetch_chain_info`."
         )
 
-    def fetch_chain_data(self, symbol: str):
+    def fetch_chain_data(self, symbol: str, date):
         """
         Returns the option chain for the specified symbol.
 
