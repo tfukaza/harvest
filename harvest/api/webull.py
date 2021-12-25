@@ -690,4 +690,3 @@ class Webull(API):
         w.println(f"All steps are complete now 🎉. Generating secret.yml...")
 
         return {"wb_username": username, "wb_password": password, "wb_trade_pin": pin}
-
