@@ -53,27 +53,31 @@ class API:
         :path: path to the YAML file containing credentials to communicate with the API.
             If not specified, defaults to './secret.yaml'
         """
-        self.config = None
+        config = {}
 
         if path is None:
             path = "./secret.yaml"
         # Check if file exists. If not, create a secret file
         if not Path(path):
-            self.create_secret(path)
-
-        # Open file
-        with open(path, "r") as stream:
-            self.config = yaml.safe_load(stream)
-            # Check if the file contains all the required parameters
-            if any(key not in self.config for key in self.req_keys):
-                self.create_secret(path)
-
-        self.timestamp = now()
+            config = self.create_secret(path)
+        else:
+            # Open file
+            with open(path, "r") as stream:
+                config = yaml.safe_load(stream)
+                # Check if the file contains all the required parameters
+                if any(key not in config for key in self.req_keys):
+                    config.update(self.create_secret(path))
+        
+        with open(path, "w") as f:
+            yaml.dump(config, f)
+        
+        self.config = config
 
     def create_secret(self, path: str):
         """
         This method is called when the yaml file with credentials
-        is not found."""
+        is not found. It returns a dictionary containing the necessary credentials. 
+        """
         # raise Exception(f"{path} was not found.")
         debugger.warning('Assuming API does not need account information.')
         return False
@@ -119,9 +123,8 @@ class API:
             ):
                 min_interval = stats.watchlist_cfg[sym]["interval"]
 
-        self.interval = stats.watchlist_cfg
         self.poll_interval = min_interval
-        debugger.debug(f"Interval: {self.interval}")
+
         debugger.debug(f"Poll Interval: {self.poll_interval}")
         debugger.debug(f"{type(self).__name__} setup finished")
 
@@ -187,8 +190,9 @@ class API:
         # intervals that needs to be called now, fetch the latest data
 
         df_dict = {}
-        for sym in self.interval:
-            inter = self.interval[sym]["interval"]
+        for sym in self.stats.watchlist_cfg:
+            inter = self.stats.watchlist_cfg[sym]["interval"]
+           
             if is_freq(self.stats.timestamp, inter):
                 n = self.stats.timestamp
                 latest = self.fetch_price_history(
@@ -884,8 +888,8 @@ class StreamAPI(API):
         if self.first:
             self.needed = [
                 sym
-                for sym in self.interval
-                if is_freq(now(), self.interval[sym]["interval"])
+                for sym in self.stats.watchlist_cfg
+                if is_freq(now(), self.stats.watchlist_cfg[sym]["interval"])
             ]
             self.stats.timestamp = df_dict[got[0]].index[0]
 

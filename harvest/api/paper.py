@@ -30,6 +30,7 @@ class PaperBroker(API):
         Interval.HR_1,
         Interval.DAY_1,
     ]
+    req_keys = []
 
     def __init__(self, path: str = None, streamer=None):
         """
@@ -48,7 +49,7 @@ class PaperBroker(API):
         self.options = []
         self.cryptos = []
         self.orders = []
-        self.id = 0
+        self.order_id = 0
         
         self.streamer = DummyStreamer() if streamer is None else streamer
 
@@ -96,7 +97,7 @@ class PaperBroker(API):
 
             orders = save_data["orders"]
             self.orders = orders["orders"]
-            self.id = orders["id"]
+            self.order_id = orders["order_id"]
     
     def _save_account(self):
         with open(self.save_path, "wb") as stream:
@@ -116,7 +117,7 @@ class PaperBroker(API):
 
                 "orders":{
                     "orders": self.orders,
-                    "id": id,
+                    "order_id": self.order_id,
                 }
             }
             pickle.dump(save_data, stream)
@@ -457,7 +458,7 @@ class PaperBroker(API):
                 commission_fee = inital_price * 0.01 * float(match.group(1))
                 return f(inital_price, commission_fee)
             raise Exception(
-                f"`commission_fee` {commission_fee} not valorder_id must match this regex expression: {pattern}"
+                f"`commission_fee` {commission_fee} not valid must match this regex expression: {pattern}"
             )
         elif type(commission_fee) is dict:
             return self.apply_commission(inital_price, commission_fee[side], side)

@@ -27,6 +27,7 @@ class DummyStreamer(API):
         Interval.HR_1,
         Interval.DAY_1,
     ]
+    req_keys = []
 
     default_timestamp = dt.datetime(year=2000, month=1, day=1, hour=0, minute=0)
 
