@@ -42,7 +42,7 @@ class TestDummyStreamer(unittest.TestCase):
         stats = Stats(watchlist_cfg=interval)
         dummy.setup(stats, Account())
 
-        self.assertEqual(dummy.interval, interval)
+        self.assertEqual(dummy.stats.watchlist_cfg, interval)
 
     def test_get_stock_price(self):
         dummy = DummyStreamer()

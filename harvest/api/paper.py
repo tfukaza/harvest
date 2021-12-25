@@ -32,7 +32,7 @@ class PaperBroker(API):
     ]
     req_keys = []
 
-    def __init__(self, path: str = None, streamer=None, commission_fee=0):
+    def __init__(self, path: str = None, streamer=None, commission_fee=0, save=False):
         """
         :commission_fee: When this is a number it is assumed to be a flat price
             on all buys and sells of assets. When this is a string formatted as
@@ -51,19 +51,19 @@ class PaperBroker(API):
         self.orders = []
         self.order_id = 0
         self.commission_fee = commission_fee
+        self.save = save
 
         self.streamer = DummyStreamer() if streamer is None else streamer
 
         if path is None:
-            self.save_path = "./.save"
+            self.save_path = "./save"
         else:
-            self.save_path = path.replace("secret.yaml", ".save")
+            self.save_path = path.replace("secret.yaml", "save")
 
         # If there is a previously saved broker status, load it
         save_file = Path(self.save_path)
-        if save_file.is_file():
+        if save_file.is_file() and save:
             self._load_account()
-            return
 
         if path is None or self.config is None:
             self.config = {
@@ -170,7 +170,7 @@ class PaperBroker(API):
 
         price = self.streamer.fetch_price_history(
             sym,
-            self.interval[sym]["interval"],
+            self.stats.watchlist_cfg[sym]["interval"],
             self.streamer.get_current_time() - dt.timedelta(days=7),
             self.streamer.get_current_time(),
         )[sym]["close"][-1]
@@ -302,7 +302,7 @@ class PaperBroker(API):
                 if pos is None:
                     raise Exception(f"Cannot sell {sym}, is not owned")
                 pos["quantity"] = pos["quantity"] - qty
-                debugger.debug(f"current:{buying_power}")
+                debugger.debug(f"current:{self.buying_power}")
                 actual_price = self.apply_commission(
                     original_price, self.commission_fee, "sell"
                 )

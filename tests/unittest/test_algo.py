@@ -51,6 +51,11 @@ class TestAlgo(unittest.TestCase):
             prices1, list(t.storage.load("A", Interval.MIN_5)["A"]["close"])
         )
 
+        try:
+            t._delete_account()
+        except:
+            pass
+
     # PaperTrader class should be able to run algorithms at the individually specified intervals
     def test_config_interval(self):
         class Algo1(BaseAlgo):
@@ -79,6 +84,11 @@ class TestAlgo(unittest.TestCase):
             t.stats.watchlist_cfg["A"]["aggregations"],
             [Interval.MIN_15, Interval.DAY_1],
         )
+
+        try:
+            t._delete_account()
+        except:
+            pass
 
     def test_rsi(self):
         """
@@ -157,6 +167,7 @@ class TestAlgo(unittest.TestCase):
         self.assertAlmostEqual(middle[-1], expected_middle, places=5)
         self.assertAlmostEqual(upper[-1], expected_middle + std, places=5)
         self.assertAlmostEqual(lower[-1], expected_middle - std, places=5)
+        
 
     def test_bbands_trader(self):
         """
@@ -173,6 +184,11 @@ class TestAlgo(unittest.TestCase):
 
         self.assertEqual(True, True)
 
+        try:
+            t._delete_account()
+        except:
+            pass
+
     def test_get_asset_quantity(self):
         s = DummyStreamer()
         t = PaperTrader(s)
@@ -187,6 +203,11 @@ class TestAlgo(unittest.TestCase):
         q = t.algo[0].get_asset_quantity("A")
 
         self.assertEqual(q, 5)
+
+        try:
+            t._delete_account()
+        except:
+            pass
 
     def test_get_asset_cost(self):
         s = DummyStreamer()
@@ -203,6 +224,11 @@ class TestAlgo(unittest.TestCase):
 
         self.assertEqual(get_cost, cost)
 
+        try:
+            t._delete_account()
+        except:
+            pass
+
     def test_get_asset_price(self):
         s = DummyStreamer()
         t = PaperTrader(s)
@@ -218,6 +244,11 @@ class TestAlgo(unittest.TestCase):
         get_price = t.algo[0].get_asset_price("A")
 
         self.assertEqual(get_price, price)
+
+        try:
+            t._delete_account()
+        except:
+            pass
 
     def test_buy_sell(self):
         s = DummyStreamer()
@@ -242,6 +273,11 @@ class TestAlgo(unittest.TestCase):
         self.assertEqual(p.symbol, "A")
         self.assertEqual(p.quantity, 1)
 
+        try:
+            t._delete_account()
+        except:
+            pass
+
     def test_buy_sell_auto(self):
         s = DummyStreamer()
         t = PaperTrader(s)
@@ -262,6 +298,11 @@ class TestAlgo(unittest.TestCase):
         t.algo[0].sell()
         s.tick()
         self.assertEqual(0, t.algo[0].get_asset_quantity())
+
+        try:
+            t._delete_account()
+        except:
+            pass
 
     @patch("harvest.api._base.mark_up")
     def test_buy_sell_option_auto(self, mock_mark_up):
@@ -286,6 +327,11 @@ class TestAlgo(unittest.TestCase):
         # p = t.stock_positions[0]
         self.assertEqual(0, t.algo[0].get_asset_quantity("X     110101C01000000"))
         # self.assertEqual(p['quantity'], 1)
+
+        try:
+            t._delete_account()
+        except:
+            pass
 
 
 if __name__ == "__main__":

@@ -33,8 +33,8 @@ class API:
         Interval.HR_1,
         Interval.DAY_1,
     ]
-
     exchange = ""
+    req_keys = []
 
     def __init__(self, path: str = None):
         """
@@ -311,6 +311,7 @@ class API:
         Returns the option chain for the specified symbol.
 
         :param symbol: Stock symbol. Cannot use crypto.
+        :param date: Expiration date.
         :returns: A dataframe in the following format:
 
                     exp_date strike  type
@@ -935,7 +936,7 @@ class StreamAPI(API):
         for n in self.needed:
             data = pd.DataFrame(
                 {"open": 0, "high": 0, "low": 0, "close": 0, "volume": 0},
-                index=[self.timestamp],
+                index=[self.stats.timestamp],
             )
 
             data.columns = pd.MultiIndex.from_product([[n], data.columns])

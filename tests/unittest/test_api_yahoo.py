@@ -27,7 +27,7 @@ class TestYahooStreamer(unittest.TestCase):
         yh.setup(stats, Account())
 
         self.assertEqual(yh.poll_interval, Interval.MIN_1)
-        self.assertListEqual([s for s in yh.interval], ["SPY", "AAPL"])
+        self.assertListEqual([s for s in yh.stats.watchlist_cfg], ["SPY", "AAPL"])
 
     def test_main(self):
         interval = {

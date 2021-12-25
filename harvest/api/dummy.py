@@ -44,8 +44,8 @@ class DummyStreamer(API):
 
         # Set the current time
         self._set_timestamp(timestamp)
-        # Used so `fetch_price_history` can work without running `setup`
-        self.interval = self.interval_list[0]
+        # # Used so `fetch_price_history` can work without running `setup`
+        # self.interval = self.interval_list[0]
         # Store random values and generates for each asset tot make `fetch_price_history` fixed
         self.randomness = {}
 
@@ -70,10 +70,10 @@ class DummyStreamer(API):
         today = self.timestamp
         last = today - dt.timedelta(days=3)
 
-        for symbol in self.interval:
+        for symbol in self.stats.watchlist_cfg:
             if not is_crypto(symbol):
                 results[symbol] = self.fetch_price_history(
-                    symbol, self.interval[symbol]["interval"], last, today
+                    symbol, self.stats.watchlist_cfg[symbol]["interval"], last, today
                 ).iloc[-1]
         return results
 
@@ -87,10 +87,10 @@ class DummyStreamer(API):
         results = {}
         today = self.timestamp
         last = today - dt.timedelta(days=3)
-        for symbol in self.interval:
+        for symbol in self.stats.watchlist_cfg:
             if is_crypto(symbol):
                 results[symbol] = self.fetch_price_history(
-                    symbol, self.interval[symbol]["interval"], last, today
+                    symbol, self.stats.watchlist_cfg[symbol]["interval"], last, today
                 ).iloc[-1]
         return results
 

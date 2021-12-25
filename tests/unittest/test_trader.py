@@ -21,6 +21,11 @@ class TestPaperTrader(unittest.TestCase):
         t.set_symbol("A")
         self.assertEqual(t.watchlist[0], "A")
 
+        try:
+            t._delete_account()
+        except:
+            pass
+
     def test_start_do_nothing(self):
         t = PaperTrader(DummyStreamer())
         t.set_symbol("A")
@@ -28,6 +33,11 @@ class TestPaperTrader(unittest.TestCase):
         t.start("1MIN")
 
         self.assertTrue(True)
+
+        try:
+            t._delete_account()
+        except:
+            pass
 
     def test_no_streamer(self):
         """
@@ -38,6 +48,11 @@ class TestPaperTrader(unittest.TestCase):
 
         self.assertIsInstance(t.streamer, DummyStreamer)
         self.assertIsInstance(t.broker, PaperBroker)
+
+        try:
+            t._delete_account()
+        except:
+            pass
 
     # def test_broker_set(self):
     #     """If a single API class is set, it should be set as
@@ -54,11 +69,21 @@ class TestPaperTrader(unittest.TestCase):
         self.assertIsInstance(t.streamer, DummyStreamer)
         self.assertIsInstance(t.broker, PaperBroker)
 
+        try:
+            t._delete_account()
+        except:
+            pass
+
     def test_invalid_aggregation(self):
         """If invalid aggregation is set, it should raise an error"""
         t = PaperTrader(DummyStreamer())
         with self.assertRaises(Exception):
             t.start("30MIN", ["5MIN", "1DAY"])
+
+        try:
+            t._delete_account()
+        except:
+            pass
 
 
 if __name__ == "__main__":
