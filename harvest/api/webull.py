@@ -689,13 +689,5 @@ class Webull(API):
         wb.logout()
         w.println(f"All steps are complete now 🎉. Generating secret.yml...")
 
-        d = {"wb_username": username, "wb_password": password, "wb_trade_pin": pin}
+        return {"wb_username": username, "wb_password": password, "wb_trade_pin": pin}
 
-        with open(path, "w") as file:
-            yml = yaml.dump(d, file)
-
-        w.println(
-            f"secret.yml has been created! Make sure you keep this file somewhere secure and never share it with other people."
-        )
-
-        return True
