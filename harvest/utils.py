@@ -57,6 +57,9 @@ class Stats:
         self._timezone = timezone
         self._watchlist_cfg = watchlist_cfg
 
+    def __str__(self):
+        return f"{self.timestamp} {self.timezone} {self.watchlist_cfg}"
+
     @property
     def timestamp(self):
         return self._timestamp
@@ -117,6 +120,17 @@ class Account:
         self._buying_power = 0
         self._multiplier = 1
 
+    def __str__(self):
+        return (
+            f"Account:\t{self.account_name}\n"
+            + f"Cash:\t{self.cash}\n"
+            + f"Equity:\t{self.equity}\n"
+            + f"Buying Power:\t{self.buying_power}\n"
+            + f"Multiplier:\t{self.multiplier}\n\n"
+            + f"Positions:\n{self.positions}\n\n"
+            + f"Orders:\n{self.orders}"
+        )
+
     def init(self, dict):
         self._equity = dict["equity"]
         self._cash = dict["cash"]
@@ -160,6 +174,9 @@ class Orders:
     def __init__(self):
         self._orders = []
 
+    def __str__(self):
+        return "\n".join(str(order) for order in self._orders)
+
     def init(self, orders):
         self._orders = [Order(**o) for o in orders]
 
@@ -199,7 +216,10 @@ class Order:
         self._status = None
         self._filled_time = None
         self._filled_price = None
-        self._filled_qty = None
+        self._filled_quantity = None
+
+    def __str__(self):
+        return f"{self.order_id} {self.status} {self.symbol} {self.type} {self.filled_quantity}/{self.quantity} {self.time_in_force} {self.filled_time} {self.filled_price}"
 
     @property
     def symbol(self):
@@ -276,6 +296,10 @@ class OptionOrder(Order):
             filled_price,
         )
         self._base_symbol = base_symbol
+
+    def __str__(self):
+        s = super().__str__()
+        return f"{s} {self.base_symbol}"
 
     @property
     def base_symbol(self):

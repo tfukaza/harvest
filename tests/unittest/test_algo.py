@@ -16,6 +16,12 @@ prices = [10, 12, 11, 9, 8, 10, 11, 12, 13, 15, 14, 16, 13, 14]
 
 
 class TestAlgo(unittest.TestCase):
+    @classmethod
+    def setUpClass(self):
+        try:
+            os.remove("./.save")
+        except:
+            pass
 
     # Watchlist set in the Algo class locally should take precendance over watchlist in PaperTrader class
     def test_config_watchlist_1(self):
@@ -187,6 +193,7 @@ class TestAlgo(unittest.TestCase):
         q = t.algo[0].get_asset_quantity("A")
 
         self.assertEqual(q, 5)
+        t.broker._delete_account()
 
     def test_get_asset_cost(self):
         s = DummyStreamer()
@@ -202,6 +209,7 @@ class TestAlgo(unittest.TestCase):
         get_cost = t.algo[0].get_asset_cost("A")
 
         self.assertEqual(get_cost, cost)
+        t.broker._delete_account()
 
     def test_get_asset_price(self):
         s = DummyStreamer()
@@ -218,6 +226,7 @@ class TestAlgo(unittest.TestCase):
         get_price = t.algo[0].get_asset_price("A")
 
         self.assertEqual(get_price, price)
+        t.broker._delete_account()
 
     def test_buy_sell(self):
         s = DummyStreamer()
@@ -241,6 +250,7 @@ class TestAlgo(unittest.TestCase):
         p = t.positions.stock[0]
         self.assertEqual(p.symbol, "A")
         self.assertEqual(p.quantity, 1)
+        t.broker._delete_account()
 
     def test_buy_sell_auto(self):
         s = DummyStreamer()
@@ -262,6 +272,7 @@ class TestAlgo(unittest.TestCase):
         t.algo[0].sell()
         s.tick()
         self.assertEqual(0, t.algo[0].get_asset_quantity())
+        t.broker._delete_account()
 
     @patch("harvest.api._base.mark_up")
     def test_buy_sell_option_auto(self, mock_mark_up):

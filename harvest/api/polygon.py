@@ -27,25 +27,16 @@ class PolygonStreamer(API):
 
         self.basic = is_basic_account
 
-    def setup(self, interval, trader_main=None):
-        self.watch_stock = []
-        self.watch_crypto = []
-
-        for sym in interval:
-            if is_crypto(sym):
-                self.watch_crypto.append(sym)
-            else:
-                self.watch_stock.append(sym)
-
+    def setup(self, stats, account, trader_main=None):
+        super().setup(stats, account, trader_main)
         self.option_cache = {}
-        super().setup(interval, trader_main)
 
     def exit(self):
         self.option_cache = {}
 
     def main(self):
         df_dict = {}
-        combo = self.watch_stock + self.watch_crypto
+        combo = self.stats.watchlist_cfg.keys()
         if self.basic and len(combo) > 5:
             debugger.error(
                 "Basic accounts only allow for 5 API calls per minute, trying to get data for more than 5 assets! Aborting."

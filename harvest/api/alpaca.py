@@ -40,7 +40,9 @@ class Alpaca(StreamAPI):
             if paper_trader
             else "https://api.alpaca.markets"
         )
-        self.api = REST(self.config["alpaca_api_key"], self.config["alpaca_secret_key"], endpoint)
+        self.api = REST(
+            self.config["alpaca_api_key"], self.config["alpaca_secret_key"], endpoint
+        )
 
         data_feed = "iex" if self.basic else "sip"
         self.stream = Stream(
