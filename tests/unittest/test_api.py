@@ -49,7 +49,7 @@ class TestAPI(unittest.TestCase):
 
         # Wait for the timeout
         time.sleep(2)
-        
+
         # Check if A has been added to storage
         self.assertEqual(
             a_cur["A"]["close"][-1],

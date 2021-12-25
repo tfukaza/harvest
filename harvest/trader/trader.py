@@ -145,7 +145,7 @@ class LiveTrader:
             # Only call the streamer setup if it is a different
             # instance than the broker otherwise some brokers can fail!
             self.streamer.setup(self.stats, self.account, self.main)
-        
+
         # Initialize the account
         self._setup_account()
         self.storage.init_performace_data(self.account.equity, self.stats.timestamp)

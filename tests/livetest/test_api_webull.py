@@ -11,7 +11,6 @@ from harvest.utils import *
 
 
 class TestWebull(unittest.TestCase):
-
     def test_setup(self):
         """
         Assuming that secret.yml is already created with proper parameters,
@@ -24,7 +23,7 @@ class TestWebull(unittest.TestCase):
         }
         stats = Stats(watchlist_cfg=interval)
         wb.setup(stats, Account())
- 
+
     def test_fetch_prices(self):
         """
         Test if price history can be properly fetched for every interval supported
@@ -52,7 +51,6 @@ class TestWebull(unittest.TestCase):
             )
 
     def test_main(self):
-
         def test_main(df):
             self.assertEqual(len(df), 2)
 
@@ -92,7 +90,7 @@ class TestWebull(unittest.TestCase):
         self.assertTrue(True)
 
     def test_order_option_limit(self):
-        
+
         wb = Webull()
         interval = {"TWTR": {"interval": Interval.MIN_1, "aggregations": []}}
         stats = Stats(watchlist_cfg=interval)
@@ -105,9 +103,7 @@ class TestWebull(unittest.TestCase):
         exp_date = option["exp_date"]
         strike = option["strike"]
 
-        ret = wb.order_option_limit(
-            "buy", "TWTR", 1, 0.01, "call", exp_date, strike
-        )
+        ret = wb.order_option_limit("buy", "TWTR", 1, 0.01, "call", exp_date, strike)
 
         time.sleep(5)
 
@@ -142,7 +138,7 @@ class TestWebull(unittest.TestCase):
         stats = Stats(watchlist_cfg=interval)
         wb.setup(stats, Account())
 
-        ret = wb.order_stock_limit('buy', "TWTR", 1, 10.0)
+        ret = wb.order_stock_limit("buy", "TWTR", 1, 10.0)
         self.assertEqual(ret["order_id"], 0)
         self.assertEqual(ret["symbol"], "TWTR")
 

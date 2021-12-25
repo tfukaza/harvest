@@ -8,8 +8,8 @@ import os
 secret_path = os.environ["SECRET_PATH"]
 debugger.setLevel("DEBUG")
 
-class TestLiveRobinhood(unittest.TestCase):
 
+class TestLiveRobinhood(unittest.TestCase):
     def test_setup(self):
         """
         Assuming that secret.yml is already created with proper parameters,
@@ -36,7 +36,7 @@ class TestLiveRobinhood(unittest.TestCase):
         }
         stats = Stats(watchlist_cfg=interval)
         rh.setup(stats, Account())
-    
+
         for i in intervals:
             df = rh.fetch_price_history("TWTR", interval=i)["TWTR"]
             self.assertEqual(
@@ -48,7 +48,7 @@ class TestLiveRobinhood(unittest.TestCase):
                 sorted(list(df.columns.values)),
                 sorted(["open", "high", "low", "close", "volume"]),
             )
-    
+
     def test_main(self):
         """
         Test if latest prices can be fetched.
@@ -68,7 +68,7 @@ class TestLiveRobinhood(unittest.TestCase):
         # Override timestamp to ensure is_freq() evaluates to True
         stats.timestamp = epoch_zero()
         rh.main()
-    
+
     def test_chain_info(self):
         """
         Test if chain info can be fetched
@@ -82,7 +82,7 @@ class TestLiveRobinhood(unittest.TestCase):
 
         info = rh.fetch_chain_info("TWTR")
         self.assertGreater(len(info["exp_dates"]), 0)
-    
+
     def test_chain_data(self):
         """
         Test if chain data can be fetched
@@ -120,9 +120,7 @@ class TestLiveRobinhood(unittest.TestCase):
         exp_date = option["exp_date"]
         strike = option["strike"]
 
-        ret = rh.order_option_limit(
-            "buy", "TWTR", 1, 0.01, "call", exp_date, strike
-        )
+        ret = rh.order_option_limit("buy", "TWTR", 1, 0.01, "call", exp_date, strike)
 
         time.sleep(5)
 
@@ -140,14 +138,15 @@ class TestLiveRobinhood(unittest.TestCase):
         }
         stats = Stats(watchlist_cfg=interval)
         rh.setup(stats, Account())
-    
+
         # Limit order TWTR stock at an extremely low limit price
-        # to ensure the order is not actually filled. 
-        ret = rh.order_stock_limit('buy', "TWTR", 1, 10.0)
+        # to ensure the order is not actually filled.
+        ret = rh.order_stock_limit("buy", "TWTR", 1, 10.0)
 
         time.sleep(5)
 
         rh.cancel_stock_order(ret["order_id"])
-    
+
+
 if __name__ == "__main__":
     unittest.main()

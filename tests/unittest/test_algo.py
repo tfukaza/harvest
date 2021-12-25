@@ -167,7 +167,6 @@ class TestAlgo(unittest.TestCase):
         self.assertAlmostEqual(middle[-1], expected_middle, places=5)
         self.assertAlmostEqual(upper[-1], expected_middle + std, places=5)
         self.assertAlmostEqual(lower[-1], expected_middle - std, places=5)
-        
 
     def test_bbands_trader(self):
         """

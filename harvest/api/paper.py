@@ -98,7 +98,7 @@ class PaperBroker(API):
             orders = save_data["orders"]
             self.orders = orders["orders"]
             self.order_id = orders["order_id"]
-    
+
     def _save_account(self):
         with open(self.save_path, "wb") as stream:
             save_data = {
@@ -116,7 +116,7 @@ class PaperBroker(API):
                 "orders": {
                     "orders": self.orders,
                     "order_id": self.order_id,
-                }
+                },
             }
             pickle.dump(save_data, stream)
 

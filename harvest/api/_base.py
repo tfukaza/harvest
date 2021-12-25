@@ -67,19 +67,19 @@ class API:
                 # Check if the file contains all the required parameters
                 if any(key not in config for key in self.req_keys):
                     config.update(self.create_secret(path))
-        
+
         with open(path, "w") as f:
             yaml.dump(config, f)
-        
+
         self.config = config
 
     def create_secret(self, path: str):
         """
         This method is called when the yaml file with credentials
-        is not found. It returns a dictionary containing the necessary credentials. 
+        is not found. It returns a dictionary containing the necessary credentials.
         """
         # raise Exception(f"{path} was not found.")
-        debugger.warning('Assuming API does not need account information.')
+        debugger.warning("Assuming API does not need account information.")
         return False
 
     def refresh_cred(self):
@@ -192,7 +192,7 @@ class API:
         df_dict = {}
         for sym in self.stats.watchlist_cfg:
             inter = self.stats.watchlist_cfg[sym]["interval"]
-           
+
             if is_freq(self.stats.timestamp, inter):
                 n = self.stats.timestamp
                 latest = self.fetch_price_history(

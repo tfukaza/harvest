@@ -19,7 +19,7 @@ class TestPaperBroker(unittest.TestCase):
 
     def test_dummy_account(self):
         dummy = PaperBroker()
-        
+
         dummy.stocks.append({"symbol": "A", "avg_price": 1.0, "quantity": 5})
         dummy.stocks.append({"symbol": "B", "avg_price": 10.0, "quantity": 5})
         dummy.cryptos.append({"symbol": "@C", "avg_price": 289.21, "quantity": 2})
