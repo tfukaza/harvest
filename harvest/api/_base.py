@@ -6,6 +6,7 @@ import yaml
 import traceback
 import threading
 from typing import List, Dict, Any
+from os.path import exists
 
 # External libraries
 import pandas as pd
@@ -33,8 +34,8 @@ class API:
         Interval.HR_1,
         Interval.DAY_1,
     ]
-
     exchange = ""
+    req_keys = []
 
     def __init__(self, path: str = None):
         """
@@ -53,27 +54,34 @@ class API:
         :path: path to the YAML file containing credentials to communicate with the API.
             If not specified, defaults to './secret.yaml'
         """
+        config = {}
 
         if path is None:
             path = "./secret.yaml"
-        # Check if file exists
-        yml_file = Path(path)
-        if not yml_file.is_file() and not self.create_secret(path):
-            debugger.debug("Broker not initalized with account information.")
-            self.config = None
+        # Check if file exists. If not, create a secret file
+        if not exists(path):
+            config = self.create_secret(path)
         else:
+            # Open file
             with open(path, "r") as stream:
-                self.config = yaml.safe_load(stream)
+                config = yaml.safe_load(stream)
+                # Check if the file contains all the required parameters
+                if any(key not in config for key in self.req_keys):
+                    config.update(self.create_secret(path))
 
-        self.timestamp = now()
+        with open(path, "w") as f:
+            yaml.dump(config, f)
+
+        self.config = config
 
     def create_secret(self, path: str):
         """
         This method is called when the yaml file with credentials
-        is not found."""
+        is not found. It returns a dictionary containing the necessary credentials.
+        """
         # raise Exception(f"{path} was not found.")
-        debugger.warning(f"Assuming API does not need account information.")
-        return False
+        debugger.warning("Assuming API does not need account information.")
+        return None
 
     def refresh_cred(self):
         """
@@ -116,9 +124,8 @@ class API:
             ):
                 min_interval = stats.watchlist_cfg[sym]["interval"]
 
-        self.interval = stats.watchlist_cfg
         self.poll_interval = min_interval
-        debugger.debug(f"Interval: {self.interval}")
+
         debugger.debug(f"Poll Interval: {self.poll_interval}")
         debugger.debug(f"{type(self).__name__} setup finished")
 
@@ -184,8 +191,9 @@ class API:
         # intervals that needs to be called now, fetch the latest data
 
         df_dict = {}
-        for sym in self.interval:
-            inter = self.interval[sym]["interval"]
+        for sym in self.stats.watchlist_cfg:
+            inter = self.stats.watchlist_cfg[sym]["interval"]
+
             if is_freq(self.stats.timestamp, inter):
                 n = self.stats.timestamp
                 latest = self.fetch_price_history(
@@ -299,11 +307,12 @@ class API:
             f"{type(self).__name__} does not support this streamer method: `fetch_chain_info`."
         )
 
-    def fetch_chain_data(self, symbol: str):
+    def fetch_chain_data(self, symbol: str, date):
         """
         Returns the option chain for the specified symbol.
 
         :param symbol: Stock symbol. Cannot use crypto.
+        :param date: Expiration date.
         :returns: A dataframe in the following format:
 
                     exp_date strike  type
@@ -881,8 +890,8 @@ class StreamAPI(API):
         if self.first:
             self.needed = [
                 sym
-                for sym in self.interval
-                if is_freq(now(), self.interval[sym]["interval"])
+                for sym in self.stats.watchlist_cfg
+                if is_freq(now(), self.stats.watchlist_cfg[sym]["interval"])
             ]
             self.stats.timestamp = df_dict[got[0]].index[0]
 
@@ -928,7 +937,7 @@ class StreamAPI(API):
         for n in self.needed:
             data = pd.DataFrame(
                 {"open": 0, "high": 0, "low": 0, "close": 0, "volume": 0},
-                index=[self.timestamp],
+                index=[self.stats.timestamp],
             )
 
             data.columns = pd.MultiIndex.from_product([[n], data.columns])

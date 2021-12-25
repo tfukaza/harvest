@@ -39,11 +39,11 @@ class TestAPI(unittest.TestCase):
         print("test0", b_cur)
 
         # Manually advance timestamp of streamer
-        stream.timestamp = stream.timestamp + dt.timedelta(minutes=1)
+        stream.stats.timestamp = stream.stats.timestamp + dt.timedelta(minutes=1)
 
         # Only send data for A
         data = gen_data("A", 1)
-        data.index = [stream.timestamp + dt.timedelta(minutes=1)]
+        data.index = [stream.stats.timestamp + dt.timedelta(minutes=1)]
         data = {"A": data}
         stream.main(data)
 
@@ -69,6 +69,11 @@ class TestAPI(unittest.TestCase):
             0,
             t.storage.load("B", Interval.MIN_1)["B"]["close"][-1],
         )
+
+        try:
+            t._delete_account()
+        except:
+            pass
 
     def test_timeout_cancel(self):
         stream = StreamAPI()
@@ -124,10 +129,15 @@ class TestAPI(unittest.TestCase):
             t.storage.load("B", Interval.MIN_1)["B"]["close"][-1],
         )
 
+        try:
+            t._delete_account()
+        except:
+            pass
+
     def test_exceptions(self):
         api = API()
 
-        self.assertEqual(api.create_secret("I dont exists"), False)
+        self.assertEqual(api.create_secret("I dont exist"), None)
 
         try:
             api.fetch_price_history("A", Interval.MIN_1, now(), now())
@@ -147,7 +157,7 @@ class TestAPI(unittest.TestCase):
             )
 
         try:
-            api.fetch_chain_data("A")
+            api.fetch_chain_data("A", now())
             self.assertTrue(False)
         except NotImplementedError as e:
             self.assertEqual(
@@ -254,10 +264,6 @@ class TestAPI(unittest.TestCase):
         wrapper = API._run_once(fn)
         self.assertEqual(wrapper(5), 6)
         self.assertTrue(wrapper(5) is None)
-
-    def test_timestamp(self):
-        api = API()
-        self.assertTrue(now() >= api.current_timestamp())
 
 
 if __name__ == "__main__":

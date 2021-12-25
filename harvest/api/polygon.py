@@ -16,6 +16,7 @@ from harvest.utils import *
 class PolygonStreamer(API):
 
     interval_list = [Interval.MIN_1, Interval.MIN_5, Interval.HR_1, Interval.DAY_1]
+    req_keys = ["polygon_api_key"]
 
     def __init__(self, path: str = None, is_basic_account: bool = False):
         super().__init__(path)

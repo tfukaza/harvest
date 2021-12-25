@@ -63,14 +63,14 @@ class YahooStreamer(API):
         df_dict = {}
         combo = [
             self.fmt_symbol(sym)
-            for sym in self.interval
-            if is_freq(self.timestamp, self.interval[sym]["interval"])
+            for sym in self.stats.watchlist_cfg
+            if is_freq(self.timestamp, self.stats.watchlist_cfg[sym]["interval"])
         ]
 
         if len(combo) == 1:
             s = combo[0]
             interval_fmt = self.fmt_interval(
-                self.interval[self.unfmt_symbol(s)]["interval"]
+                self.stats.watchlist_cfg[self.unfmt_symbol(s)]["interval"]
             )
             df = yf.download(s, period="1d", interval=interval_fmt, prepost=True)
             debugger.debug(f"From yfinance got: {df}")
@@ -84,7 +84,7 @@ class YahooStreamer(API):
             df = None
             required_intervals = {}
             for s in combo:
-                i = self.interval[self.unfmt_symbol(s)]["interval"]
+                i = self.stats.watchlist_cfg[self.unfmt_symbol(s)]["interval"]
                 if i in required_intervals:
                     required_intervals[i].append(s)
                 else:

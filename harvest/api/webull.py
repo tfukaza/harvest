@@ -14,6 +14,11 @@ from harvest.utils import *
 
 
 class Webull(API):
+
+    interval_list = [Interval.SEC_15, Interval.MIN_5, Interval.HR_1, Interval.DAY_1]
+    exchange = "NASDAQ"
+    req_keys = ["wb_username", "wb_password", "wb_trade_pin"]
+
     def __init__(self, path: str = None, paper_trader: bool = False):
         super().__init__(path)
 
@@ -74,19 +79,19 @@ class Webull(API):
             return
         return self.api.get_trade_token(self.config["wb_trade_pin"])
 
-    def setup(self, interval: Dict, trader_main=None):
-        super().setup(interval, trader_main)
+    def setup(self, stats, account, trader_main=None):
+        super().setup(stats, account, trader_main)
         self.watch_stock = []
         self.watch_crypto = []
         self.watch_crypto_fmt = []
 
         val, unit = expand_interval(self.poll_interval)
         if unit == "MIN":
-            self.interval_fmt = f"m{val}"
+            self.poll_interval_fmt = f"m{val}"
         elif unit == "HR":
-            self.interval_fmt = f"h{val}"
+            self.poll_interval_fmt = f"h{val}"
 
-        for s in interval:
+        for s in stats.watchlist_cfg:
             if is_crypto(s):
                 self.watch_crypto_fmt.append(s[1:])
                 self.watch_crypto.append(s)
@@ -98,36 +103,36 @@ class Webull(API):
     def exit(self):
         pass
 
-    def main(self):
-        df_dict = {}
-        df_dict.update(self.fetch_latest_stock_price())
-        df_dict.update(self.fetch_latest_crypto_price())
+    # def main(self):
+    #     df_dict = {}
+    #     df_dict.update(self.fetch_latest_stock_price())
+    #     df_dict.update(self.fetch_latest_crypto_price())
 
-        self.trader_main(df_dict)
+    #     self.trader_main(df_dict)
 
-    @API._exception_handler
-    def fetch_latest_stock_price(self):
-        df = {}
-        for s in self.watch_stock:
-            ret = self.api.get_bars(stock=s, interval=self.interval_fmt)
-            if len(ret) == 0:
-                continue
-            df_tmp = pd.DataFrame.from_dict(ret)
-            df_tmp = self._format_df(df_tmp, [s], self.interval).iloc[[-1]]
-            df[s] = df_tmp
+    # @API._exception_handler
+    # def fetch_latest_stock_price(self):
+    #     df = {}
+    #     for s in self.watch_stock:
+    #         ret = self.api.get_bars(stock=s, interval=self.poll_interval_fmt)
+    #         if len(ret) == 0:
+    #             continue
+    #         df_tmp = pd.DataFrame.from_dict(ret)
+    #         df_tmp = self._format_df(df_tmp, [s], self.poll_interval).iloc[[-1]]
+    #         df[s] = df_tmp
 
-        return df
+    #     return df
 
-    @API._exception_handler
-    def fetch_latest_crypto_price(self):
-        df = {}
-        for s in self.watch_crypto_fmt:
-            ret = self.api.get_bars(stock=s, interval=self.interval_fmt)
-            df_tmp = pd.DataFrame.from_dict(ret)
-            df_tmp = self._format_df(df_tmp, ["@" + s], self.interval).iloc[[-1]]
-            df["@" + s] = df_tmp
+    # @API._exception_handler
+    # def fetch_latest_crypto_price(self):
+    #     df = {}
+    #     for s in self.watch_crypto_fmt:
+    #         ret = self.api.get_bars(stock=s, interval=self.poll_interval_fmt)
+    #         df_tmp = pd.DataFrame.from_dict(ret)
+    #         df_tmp = self._format_df(df_tmp, ["@" + s], self.poll_interval).iloc[[-1]]
+    #         df["@" + s] = df_tmp
 
-        return df
+    #     return df
 
     # -------------- Streamer methods -------------- #
 
@@ -152,9 +157,9 @@ class Webull(API):
 
         val, unit = expand_interval(interval)
         if unit == "MIN":
-            self.interval_fmt = f"m{val}"
+            interval_fmt = f"m{val}"
         elif unit == "HR":
-            self.interval_fmt = f"h{val}"
+            interval_fmt = f"h{val}"
 
         delta = end - start
         delta = delta.total_seconds()
@@ -167,9 +172,9 @@ class Webull(API):
             span = "hour"
             period = 1
             timeframe = 1
-        elif delta >= 1 and delta < 24 or interval in ["5MIN", "15MIN", "30MIN", "1HR"]:
+        elif delta < 24 or interval in ["5MIN", "15MIN", "30MIN", "1HR"]:
             span = "day"
-        elif delta >= 24 and delta < 24 * 28:
+        elif delta < 24 * 28:
             span = "month"
         elif delta < 24 * 300:
             span = "year"
@@ -179,13 +184,13 @@ class Webull(API):
         if is_crypto(symbol):
             df = self.api.get_bars(
                 symbol[1:],
-                interval=self.interval_fmt,
+                interval=interval_fmt,
                 count=int((390 * int(period)) / int(timeframe)),
             )
         else:
             df = self.api.get_bars(
                 symbol,
-                interval=self.interval_fmt,
+                interval=interval_fmt,
                 count=int((390 * int(period)) / int(timeframe)),
             )
 
@@ -684,13 +689,4 @@ class Webull(API):
         wb.logout()
         w.println(f"All steps are complete now 🎉. Generating secret.yml...")
 
-        d = {"wb_username": username, "wb_password": password, "wb_trade_pin": pin}
-
-        with open(path, "w") as file:
-            yml = yaml.dump(d, file)
-
-        w.println(
-            f"secret.yml has been created! Make sure you keep this file somewhere secure and never share it with other people."
-        )
-
-        return True
+        return {"wb_username": username, "wb_password": password, "wb_trade_pin": pin}

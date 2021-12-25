@@ -19,6 +19,7 @@ class Robinhood(API):
 
     interval_list = [Interval.SEC_15, Interval.MIN_5, Interval.HR_1, Interval.DAY_1]
     exchange = "NASDAQ"
+    req_keys = ["robin_username", "robin_password", "robin_mfa"]
 
     def __init__(self, path=None):
         super().__init__(path)
@@ -48,15 +49,18 @@ class Robinhood(API):
         debugger.debug("Logged into Robinhood...")
 
     # @API._run_once
-    def setup(self, stats, trader_main=None):
+    def setup(self, stats, account, trader_main=None):
 
-        super().setup(stats, trader_main)
+        super().setup(stats, account, trader_main)
 
         # Robinhood only supports 15SEC, 1MIN interval for crypto
         for sym in self.stats.watchlist_cfg:
-            if not is_crypto(sym) and self.interval[sym]["interval"] < Interval.MIN_5:
+            if (
+                not is_crypto(sym)
+                and self.stats.watchlist_cfg[sym]["interval"] < Interval.MIN_5
+            ):
                 raise Exception(
-                    f'Interval {self.interval[sym]["interval"]} is only supported for crypto'
+                    f'Interval {self.stats.watchlist_cfg[sym]["interval"]} is only supported for crypto'
                 )
 
         # self.__watch_stock = []
@@ -87,7 +91,7 @@ class Robinhood(API):
     #         if 'error' in ret or ret == None or (type(ret) == list and len(ret) == 0):
     #             continue
     #         df_tmp = pd.DataFrame.from_dict(ret)
-    #         df_tmp = self._format_df(df_tmp, [s], self.interval).iloc[[-1]]
+    #         df_tmp = self._format_df(df_tmp, [s], self.stats.watchlist_cfg).iloc[[-1]]
     #         df[s] = df_tmp
 
     #     return df
@@ -102,7 +106,7 @@ class Robinhood(API):
     #             span='hour',
     #             )
     #         df_tmp = pd.DataFrame.from_dict(ret)
-    #         df_tmp = self._format_df(df_tmp, ['@'+s], self.interval).iloc[[-1]]
+    #         df_tmp = self._format_df(df_tmp, ['@'+s], self.stats.watchlist_cfg).iloc[[-1]]
     #         df['@'+s] = df_tmp
 
     #     return df
@@ -650,7 +654,7 @@ class Robinhood(API):
         date_str = date_str[:-3] + date_str[-2:]
         return dt.datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%S.%f%z")
 
-    def create_secret(self, path):
+    def create_secret(self):
         import harvest.wizard as wizard
 
         w = wizard.Wizard()
@@ -750,17 +754,8 @@ class Robinhood(API):
 
         w.println(f"All steps are complete now 🎉. Generating secret.yml...")
 
-        d = {
+        return {
             "robin_mfa": f"{mfa}",
             "robin_username": f"{username}",
             "robin_password": f"{password}",
         }
-
-        with open(path, "w") as file:
-            yml = yaml.dump(d, file)
-
-        w.println(
-            f"secret.yml has been created! Make sure you keep this file somewhere secure and never share it with other people."
-        )
-
-        return True
