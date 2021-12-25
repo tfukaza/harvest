@@ -137,7 +137,7 @@ class TestAPI(unittest.TestCase):
     def test_exceptions(self):
         api = API()
 
-        self.assertEqual(api.create_secret("I dont exists"), False)
+        self.assertEqual(api.create_secret("I dont exist"), None)
 
         try:
             api.fetch_price_history("A", Interval.MIN_1, now(), now())
