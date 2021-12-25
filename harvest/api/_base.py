@@ -6,6 +6,7 @@ import yaml
 import traceback
 import threading
 from typing import List, Dict, Any
+from os.path import exists
 
 # External libraries
 import pandas as pd
@@ -58,7 +59,7 @@ class API:
         if path is None:
             path = "./secret.yaml"
         # Check if file exists. If not, create a secret file
-        if not Path(path):
+        if not exists(path):
             config = self.create_secret(path)
         else:
             # Open file
@@ -80,7 +81,7 @@ class API:
         """
         # raise Exception(f"{path} was not found.")
         debugger.warning("Assuming API does not need account information.")
-        return False
+        return None
 
     def refresh_cred(self):
         """

@@ -37,7 +37,7 @@ class DummyStreamer(API):
         realistic_times: bool = False,
     ):
 
-        super().__init__(None)
+        # super().__init__(None)
 
         self.trader_main = None
         self.realistic_times = realistic_times
