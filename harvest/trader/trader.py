@@ -261,11 +261,12 @@ class LiveTrader:
         """
         Main loop of the Trader.
         """
-        # Periodically refresh access tokens
-        if self.stats.timestamp.hour % 12 == 0 and self.stats.timestamp.minute == 0:
-            self.streamer.refresh_cred()
-
+        # # Periodically refresh access tokens
+        # if self.stats.timestamp.hour % 12 == 0 and self.stats.timestamp.minute == 0:
+        #     self.streamer.refresh_cred()
+    
         self.storage.add_performance_data(self.account.equity, self.stats.timestamp)
+        #self.storage.add_calendar_data(self.streamer.fetch_market_hours())
 
         # Save the data locally
         for sym in df_dict:
@@ -543,6 +544,23 @@ class LiveTrader:
             It can either be a string, or a list of strings.
         """
         self.watchlist = symbol if isinstance(symbol, list) else [symbol]
+    
+    def day_trade_count(self):
+        # Get the 5-day trading window
+        calendar = self.storage.load_calendar()
+        open_days = calendar.loc[self.calendar["is_open"] == True]
+        if len(open_days) == 0:
+            return 0
+        elif len(open_days) < 5:
+            window_start = open_days.index[0]
+        else:
+            window_start = open_days.index[-5]
+
+        # Check how many daytrades occurred in the last 5 trading days
+        day_trades = self.storage.load_daytrade()
+        day_trades = day_trades.loc[day_trades["timestamp"] >= window_start]
+
+        return len(day_trades)
 
     def exit(self, signum, frame):
         # TODO: Gracefully exit

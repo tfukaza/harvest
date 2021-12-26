@@ -98,9 +98,12 @@ class BaseStorage:
             ]
         )
         self.storage_daytrade = pd.DataFrame(
-                columns=["timestamp", "symbol"]
-            )
-
+            columns=["timestamp", "symbol"]
+        )
+        self.storage_calendar = pd.DataFrame(
+            columns=["is_open", "open_at", "close_at"],
+            index=[]
+        )
 
         self.storage_performance = {}
         for interval, _ in self.performance_history_intervals:
@@ -220,6 +223,14 @@ class BaseStorage:
 
         self.storage_lock.release()
         return data.loc[start:end]
+    
+    def add_calendar_data(self, data):
+        timestamp = self.stats.timestamp.date()
+        is_open = data["is_open"]
+        open_at = data["open_at"]
+        close_at = data["close_at"]
+        df = pd.DataFrame([[is_open, open_at, close_at]], columns=["is_open", "open_at", "close_at"], index=[timestamp])
+        self._append(self.storage_calendar, df, remove_duplicate=True)
 
     def store_transaction(
         self,
@@ -262,6 +273,9 @@ class BaseStorage:
 
     def load_daytrade(self) -> pd.DataFrame:
         return self.storage_daytrade
+    
+    def load_calendar(self) -> pd.DataFrame:
+        return self.storage_calendar
 
     def reset(self, symbol: str, interval: Interval):
         """
