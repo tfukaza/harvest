@@ -344,8 +344,9 @@ class API:
         Hours are based on the exchange specified in the class's 'exchange' attribute.
 
         :returns: A dictionary with the following keys and values:
-            - open: Time the market opens in UTC timezone.
-            - close: Time the market closes in UTC timezone.
+            - is_open: Boolean indicating whether the market is open or closed
+            - open_at: Time the market opens in UTC timezone.
+            - close_at: Time the market closes in UTC timezone.
         """
         raise NotImplementedError(
             f"{type(self).__name__} does not support this broker method: `fetch_market_hours`."
