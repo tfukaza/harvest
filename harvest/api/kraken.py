@@ -123,10 +123,10 @@ class Kraken(API):
             self.config["kraken_api_key"], self.config["kraken_secret_key"]
         )
 
-    def setup(self, interval: Dict, trader_main=None):
-        super().setup(interval, trader_main)
+    def setup(self, stats, account, trader_main=None):
+        super().setup(stats, account, trader_main)
         self.watch_crypto = []
-        for sym in interval:
+        for sym in self.stats.watchlist_cfg:
             if is_crypto(sym):
                 self.watch_crypto.append(sym)
             else:
