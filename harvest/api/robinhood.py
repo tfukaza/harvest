@@ -224,7 +224,7 @@ class Robinhood(API):
             option_type.append(entry["type"])
             option_id.append(entry["id"])
 
-            occ.append(self.data_to_occ(symbol, date, type[-1], price))
+            occ.append(data_to_occ(symbol, date, option_type[-1], price))
 
         df = pd.DataFrame(
             {

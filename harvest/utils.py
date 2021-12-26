@@ -317,7 +317,7 @@ class Positions:
         for p in self._stock + self._option:
             setattr(self, p.symbol, p)
         for p in self._crypto:
-            setattr(self, "_" + p.symbol, p)
+            setattr(self, "c_" + p.symbol[1:], p)
 
     def update(self, stock=None, option=None, crypto=None):
         current_symbols = [p.symbol for p in self.all]
@@ -333,7 +333,7 @@ class Positions:
         deleted_symbols = list(set(current_symbols) - set(new_symbols))
         for s in deleted_symbols:
             if symbol_type(s) == "CRYPTO":
-                delattr(self, "_" + s)
+                delattr(self, "c_" + s[1:])
             else:
                 delattr(self, s)
 
@@ -533,7 +533,7 @@ def symbol_type(symbol):
     """
     if len(symbol) > 6:
         return "OPTION"
-    elif symbol[0] == "@":
+    elif symbol[0] == "@" or symbol[:2] == "c_":
         return "CRYPTO"
     else:
         return "STOCK"
@@ -541,28 +541,30 @@ def symbol_type(symbol):
 
 def occ_to_data(symbol: str):
     original_symbol = symbol
-    debugger.debug(f"Converting {symbol} to data")
     try:
-        sym = ""
         symbol = symbol.replace(" ", "")
-        i = 0
-        while symbol[i].isalpha():
-            i += 1
+        i = re.search(r'[^A-Z ]', symbol).start()
         sym = symbol[:i]
         symbol = symbol[i:]
-        debugger.debug(f"{sym}, {symbol}")
-
         date = dt.datetime.strptime(symbol[:6], "%y%m%d")
-        debugger.debug(f"{date}, {symbol}")
         option_type = "call" if symbol[6] == "C" else "put"
-        debugger.debug(f"{option_type}, {symbol}")
         price = float(symbol[7:]) / 1000
-        debugger.debug(f"{price}, {symbol}")
+       
         return sym, date, option_type, price
     except Exception as e:
-        debugger.error(f"Error parsing OCC symbol: {original_symbol}, {e}")
-        # return None, None, None, None
         raise Exception(f"Error parsing OCC symbol: {original_symbol}, {e}")
+
+def data_to_occ(
+    symbol: str, date: dt.datetime, option_type: str, price: float
+    ):
+    """
+    Converts data into a OCC format string
+    """
+    occ = symbol #+ ((6 - len(symbol)) * " ")
+    occ += date.strftime("%y%m%d")
+    occ = occ + "C" if option_type == "call" else occ + "P"
+    occ += f"{int(price*1000):08}"
+    return occ
 
 
 # =========== DataFrame utils ===========
@@ -739,7 +741,7 @@ def mark_down(x):
 
 
 def is_crypto(symbol: str) -> bool:
-    return symbol[0] == "@"
+    return symbol_type(symbol) == "CRYPTO"
 
 
 ############ Functions used for testing #################
