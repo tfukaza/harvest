@@ -312,13 +312,25 @@ class Positions:
         self._option = option
         self._crypto = crypto
 
+        for p in self.all:
+            setattr(self, p.symbol, p)
+
     def update(self, stock=None, option=None, crypto=None):
-        if stock is not None:
-            self._stock = stock
-        if option is not None:
-            self._option = option
-        if crypto is not None:
-            self._crypto = crypto
+        current_symbols = [p.symbol for p in self.all]
+        self._stock = stock
+        self._option = option
+        self._crypto = crypto
+        new_symbols = [p.symbol for p in self.all]
+        for p in self.all:
+            setattr(self, p.symbol, p)
+        deleted_symbols = list(set(current_symbols) - set(new_symbols))
+        for s in deleted_symbols:
+            delattr(self, s)
+    
+    def get(self, symbol):
+        for p in self.all:
+            if p.symbol == symbol:
+                return p 
 
     @property
     def stock(self):
@@ -394,6 +406,22 @@ class Position:
     @property
     def avg_price(self):
         return self._avg_price
+    
+    @property
+    def asset_type(self):
+        return symbol_type(self._symbol)
+
+    @property
+    def current_price(self):
+        return self._current_price
+    
+    @property
+    def profit(self):
+        return self._profit
+    
+    @property
+    def profit_percent(self):
+        return self._profit_percent
 
     def __str__(self):
         return (
@@ -418,6 +446,10 @@ class OptionPosition(Position):
         self._expiration = expiration
         self._option_type = option_type
         self._multiplier = multiplier
+
+    @property
+    def symbol(self):
+        return self._symbol.replace(' ', '')
 
     @property
     def base_symbol(self):
@@ -715,10 +747,3 @@ def gen_data(symbol: str, points: int = 50) -> pd.DataFrame:
 
     return df
 
-
-def not_gh_action(func):
-    def wrapper(*args, **kwargs):
-        if "GITHUB_ACTIONS" in os.environ:
-            return
-        func(*args, **kwargs)
-        return wrapper
