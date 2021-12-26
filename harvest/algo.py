@@ -469,11 +469,13 @@ class BaseAlgo:
         """
         if symbol is None:
             symbol = self.watchlist[0]
-        symbol = symbol.replace(" ", "")
-        asset = self.positions.get(symbol)
-        if asset is None:
-            raise Exception(f"{symbol} is not currently owned")
-        return asset.current_price
+        if symbol_type(symbol) != "OPTION":
+            return self.func.load(symbol, self.interval)[symbol]["close"][-1]
+
+        for p in self.positions.option:
+            if p.symbol == symbol:
+                return p.current_price * p.multiplier
+        return self.func.fetch_option_market_data(symbol)["price"] * 100
 
     def get_asset_price_list(
         self, symbol: str = None, interval: str = None, ref: str = "close"
@@ -675,10 +677,6 @@ class BaseAlgo:
     #     if len(history) < 3:
     #         return False
         
-
-    
-        
-       
 
     # Used for testing
     def add_symbol(self, symbol: str):
