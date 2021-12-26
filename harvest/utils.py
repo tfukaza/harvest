@@ -543,24 +543,23 @@ def occ_to_data(symbol: str):
     original_symbol = symbol
     try:
         symbol = symbol.replace(" ", "")
-        i = re.search(r'[^A-Z ]', symbol).start()
+        i = re.search(r"[^A-Z ]", symbol).start()
         sym = symbol[:i]
         symbol = symbol[i:]
         date = dt.datetime.strptime(symbol[:6], "%y%m%d")
         option_type = "call" if symbol[6] == "C" else "put"
         price = float(symbol[7:]) / 1000
-       
+
         return sym, date, option_type, price
     except Exception as e:
         raise Exception(f"Error parsing OCC symbol: {original_symbol}, {e}")
 
-def data_to_occ(
-    symbol: str, date: dt.datetime, option_type: str, price: float
-    ):
+
+def data_to_occ(symbol: str, date: dt.datetime, option_type: str, price: float):
     """
     Converts data into a OCC format string
     """
-    occ = symbol #+ ((6 - len(symbol)) * " ")
+    occ = symbol  # + ((6 - len(symbol)) * " ")
     occ += date.strftime("%y%m%d")
     occ = occ + "C" if option_type == "call" else occ + "P"
     occ += f"{int(price*1000):08}"

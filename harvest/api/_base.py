@@ -822,7 +822,7 @@ class API:
     def data_to_occ(
         self, symbol: str, date: dt.datetime, option_type: str, price: float
     ):
-        return data_to_occ(symbol, date, option_type, price)   
+        return data_to_occ(symbol, date, option_type, price)
 
     def occ_to_data(self, symbol: str):
         return occ_to_data(symbol)
