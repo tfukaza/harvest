@@ -313,8 +313,10 @@ class Positions:
         self._option = option
         self._crypto = crypto
 
-        for p in self.all:
+        for p in self._stock + self._option:
             setattr(self, p.symbol, p)
+        for p in self._crypto:
+            setattr(self, "_"+p.symbol, p)
 
     def update(self, stock=None, option=None, crypto=None):
         current_symbols = [p.symbol for p in self.all]
@@ -322,11 +324,17 @@ class Positions:
         self._option = option
         self._crypto = crypto
         new_symbols = [p.symbol for p in self.all]
-        for p in self.all:
+        for p in self._stock + self._option:
             setattr(self, p.symbol, p)
+        for p in self._crypto:
+            setattr(self, "_"+p.symbol, p)
+
         deleted_symbols = list(set(current_symbols) - set(new_symbols))
         for s in deleted_symbols:
-            delattr(self, s)
+            if symbol_type(s) == "CRYPTO":
+                delattr(self, "_"+s)
+            else:
+                delattr(self, s)
     
     def get(self, symbol):
         for p in self.all:
