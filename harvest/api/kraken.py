@@ -198,6 +198,14 @@ class Kraken(API):
     def fetch_option_market_data(self, occ_symbol: str):
         raise NotImplementedError("Kraken does not support options.")
 
+    def fetch_market_hours(self, date: datetime.date):
+        # Crypto markets are always open.
+        return {
+            "is_open": True,
+            "open_at": None,
+            "close_at": None,
+        }
+
     # ------------- Broker methods ------------- #
 
     @API._exception_handler
@@ -293,7 +301,7 @@ class Kraken(API):
 
         return [fmt(order) for order in open_orders]
 
-    def order_limit(
+    def order_crypto_limit(
         self,
         side: str,
         symbol: str,
@@ -302,11 +310,6 @@ class Kraken(API):
         in_force: str = "gtc",
         extended: bool = False,
     ):
-        if is_crypto(symbol):
-            symbol = ticker_to_kraken(symbol)
-        else:
-            raise Exception("Kraken does not support stocks.")
-
         order = self.get_result(
             self.api.query_private(
                 "AddOrder",
@@ -325,19 +328,9 @@ class Kraken(API):
             "symbol": symbol,
             "kraken": order,
         }
-
-    def order_option_limit(
-        self,
-        side: str,
-        symbol: str,
-        quantity: int,
-        limit_price: float,
-        option_type,
-        exp_date: dt.datetime,
-        strike,
-        in_force: str = "gtc",
-    ):
-        raise NotImplementedError("Kraken does not support options.")
+    
+    def cancel_crypto_order(self, order_id):
+        self.api.query_private("CancelOrder", {"txid": order_id})
 
     # ------------- Helper methods ------------- #
 
