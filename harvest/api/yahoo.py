@@ -14,8 +14,6 @@ import yfinance as yf
 from harvest.api._base import API
 from harvest.utils import *
 
- 
-
 
 class YahooStreamer(API):
 
@@ -228,15 +226,16 @@ class YahooStreamer(API):
             "ask": float(df["ask"].iloc[0]),
             "bid": float(df["bid"].iloc[0]),
         }
-    
+
     @API._exception_handler
     def fetch_market_hours(self, date: datetime.date):
         # yfinance does not support getting market hours,
         # so use the free Tradier API instead.
         # See documentation.tradier.com/brokerage-api/markets/get-clock
-        response = requests.get('https://api.tradier.com/v1/markets/clock',
-            params={'delayed': 'false'},
-            headers={'Authorization': '123', 'Accept': 'application/json'}
+        response = requests.get(
+            "https://api.tradier.com/v1/markets/clock",
+            params={"delayed": "false"},
+            headers={"Authorization": "123", "Accept": "application/json"},
         )
         ret = response.json()
         debugger.debug(f"Market hours: {ret}")
@@ -244,11 +243,10 @@ class YahooStreamer(API):
         desc = ret["description"]
         state = ret["state"]
         if state == "open":
-            times = re.sub(r'[^0-9:]', '', desc)
+            times = re.sub(r"[^0-9:]", "", desc)
             open_at = convert_input_to_datetime(
                 dt.datetime.strptime(times[:5], "%H:%M"),
                 ZoneInfo("America/New_York"),
-
             )
             close_at = convert_input_to_datetime(
                 dt.datetime.strptime(times[5:], "%H:%M"),
@@ -257,7 +255,7 @@ class YahooStreamer(API):
         else:
             open_at = None
             close_at = None
-        
+
         return {
             "is_open": state == "open",
             "open_at": open_at,

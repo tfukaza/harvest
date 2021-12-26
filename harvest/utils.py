@@ -108,6 +108,7 @@ class Functions:
         self.save = save
         self.load_daytrade = load_daytrade
 
+
 class Account:
     def __init__(self, account_name=None):
         self._account_name = account_name
@@ -316,7 +317,7 @@ class Positions:
         for p in self._stock + self._option:
             setattr(self, p.symbol, p)
         for p in self._crypto:
-            setattr(self, "_"+p.symbol, p)
+            setattr(self, "_" + p.symbol, p)
 
     def update(self, stock=None, option=None, crypto=None):
         current_symbols = [p.symbol for p in self.all]
@@ -327,19 +328,19 @@ class Positions:
         for p in self._stock + self._option:
             setattr(self, p.symbol, p)
         for p in self._crypto:
-            setattr(self, "_"+p.symbol, p)
+            setattr(self, "_" + p.symbol, p)
 
         deleted_symbols = list(set(current_symbols) - set(new_symbols))
         for s in deleted_symbols:
             if symbol_type(s) == "CRYPTO":
-                delattr(self, "_"+s)
+                delattr(self, "_" + s)
             else:
                 delattr(self, s)
-    
+
     def get(self, symbol):
         for p in self.all:
             if p.symbol == symbol:
-                return p 
+                return p
         return None
 
     @property
@@ -416,7 +417,7 @@ class Position:
     @property
     def avg_price(self):
         return self._avg_price
-    
+
     @property
     def asset_type(self):
         return symbol_type(self._symbol)
@@ -424,11 +425,11 @@ class Position:
     @property
     def current_price(self):
         return self._current_price
-    
+
     @property
     def profit(self):
         return self._profit
-    
+
     @property
     def profit_percent(self):
         return self._profit_percent
@@ -459,12 +460,12 @@ class OptionPosition(Position):
 
     @property
     def symbol(self):
-        return self._symbol.replace(' ', '')
+        return self._symbol.replace(" ", "")
 
     @property
     def base_symbol(self):
         return self._base_symbol
-    
+
     @property
     def value(self):
         return self._value * self._multiplier
@@ -758,4 +759,3 @@ def gen_data(symbol: str, points: int = 50) -> pd.DataFrame:
     df.columns = pd.MultiIndex.from_product([[symbol], df.columns])
 
     return df
-

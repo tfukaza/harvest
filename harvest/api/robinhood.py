@@ -255,8 +255,8 @@ class Robinhood(API):
             "ask": float(ret["ask_price"]),
             "bid": float(ret["bid_price"]),
         }
-    
-    @API._exception_handler 
+
+    @API._exception_handler
     def fetch_market_hours(self, date: datetime.date):
         ret = rh.get_market_hours(date.strftime("%Y-%m-%d"))
 

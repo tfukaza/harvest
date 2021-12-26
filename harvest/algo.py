@@ -16,6 +16,7 @@ from harvest.plugin._base import Plugin
 Algo class is the main interface between users and the program.
 """
 
+
 class BaseAlgo:
     """The BaseAlgo class is an abstract class defining the interface for users to
     track assets, monitor their accounts, and place orders.
@@ -23,9 +24,9 @@ class BaseAlgo:
     """
 
     def __init__(self):
-        self.interval = None        # Interval to run the algorithm
-        self.aggregations = None    # Intervals to aggregate data
-        self.watchlist = []         # List of assets this algorithm tracks
+        self.interval = None  # Interval to run the algorithm
+        self.aggregations = None  # Intervals to aggregate data
+        self.watchlist = []  # List of assets this algorithm tracks
 
     def init(self, stats, func, account):
         self.stats = stats
@@ -46,18 +47,15 @@ class BaseAlgo:
         self.watchlist = []
 
     def setup(self):
-        """Method called right before algorithm begins.
-        """
+        """Method called right before algorithm begins."""
         pass
 
     def main(self):
-        """Main method to run the algorithm.
-        """
+        """Main method to run the algorithm."""
         pass
 
     def add_plugin(self, plugin: Plugin):
-        """Adds a plugin to the algorithm.
-        """
+        """Adds a plugin to the algorithm."""
         value = getattr(self, plugin.name, None)
         if value is None:
             setattr(self, plugin.name, plugin)
@@ -84,7 +82,7 @@ class BaseAlgo:
         :param float? quantity: Quantity of asset to buy. defaults to buys as many as possible
         :param str? in_force: Duration the order is in force. '{gtc}' or '{gtd}'. defaults to 'gtc'
         :param str? extended: Whether to trade in extended hours or not. defaults to False
-        
+
         :returns: The following Python dictionary
             - id: str, ID of order
             - symbol: str, symbol of asset
@@ -115,7 +113,7 @@ class BaseAlgo:
         :param float? quantity:  Quantity of asset to sell defaults to sells all
         :param str? in_force:  Duration the order is in force. '{gtc}' or '{gtd}'. defaults to 'gtc'
         :param str? extended:  Whether to trade in extended hours or not. defaults to False
-        
+
         :returns: A dictionary with the following keys:
             - id: str, ID of order
             - symbol: str, symbol of asset
@@ -568,7 +566,6 @@ class BaseAlgo:
         if asset is None:
             raise Exception(f"{symbol} is not currently owned")
         return asset.profit_percent
-        
 
     def get_asset_max_quantity(self, symbol=None):
         """Calculates the maximum quantity of an asset that can be bought given the current buying power.
@@ -582,7 +579,7 @@ class BaseAlgo:
 
         power = self.get_account_buying_power()
         price = self.get_asset_current_price(symbol)
-       
+
         if symbol_type(symbol) == "CRYPTO":
             price = mark_up(price)
             return math.floor(power / price * 10 ** 5) / 10 ** 5
@@ -665,18 +662,16 @@ class BaseAlgo:
         """
         return datetime_utc_to_local(self.stats.timestamp, self.stats.timezone)
 
-
     # def is_day_trade(self, symbol=None, action="buy") -> bool:
     #     """
     #     Checks if performing a buy or sell will be considered day trading.
     #     """
-     
+
     #     # Get transaction history
     #     history = self.func.load_daytrade()
     #     # False if less than 3 transactions
     #     if len(history) < 3:
     #         return False
-        
 
     # Used for testing
     def add_symbol(self, symbol: str):

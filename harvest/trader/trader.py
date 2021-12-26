@@ -264,9 +264,9 @@ class LiveTrader:
         # # Periodically refresh access tokens
         # if self.stats.timestamp.hour % 12 == 0 and self.stats.timestamp.minute == 0:
         #     self.streamer.refresh_cred()
-    
+
         self.storage.add_performance_data(self.account.equity, self.stats.timestamp)
-        #self.storage.add_calendar_data(self.streamer.fetch_market_hours())
+        # self.storage.add_calendar_data(self.streamer.fetch_market_hours())
 
         # Save the data locally
         for sym in df_dict:
@@ -544,7 +544,7 @@ class LiveTrader:
             It can either be a string, or a list of strings.
         """
         self.watchlist = symbol if isinstance(symbol, list) else [symbol]
-    
+
     def day_trade_count(self):
         # Get the 5-day trading window
         calendar = self.storage.load_calendar()
