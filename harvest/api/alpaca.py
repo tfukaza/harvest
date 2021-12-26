@@ -144,6 +144,11 @@ class Alpaca(StreamAPI):
     def fetch_option_market_data(self, occ_symbol: str):
         raise NotImplementedError("Alpaca does not support options.")
 
+    @API._exception_handler
+    def fetch_market_hours(self, date: datetime.date):
+        ret = self.api.get_clock()
+        return ret.__dict__["_raw"]
+
     # ------------- Broker methods ------------- #
 
     @API._exception_handler
@@ -237,7 +242,7 @@ class Alpaca(StreamAPI):
         extended: bool = False,
     ):
 
-        return self.api.submit_order(
+        order = self.api.submit_order(
             symbol,
             quantity,
             side=side,
@@ -245,7 +250,14 @@ class Alpaca(StreamAPI):
             limit_price=limit_price,
             time_in_force=in_force,
             extended_hours=extended,
-        )
+        ).__dict__["_raw"]
+
+        return {
+            "type": "CRYPTO",
+            "id": order["id"],
+            "symbol": symbol,
+            "alpaca": order,
+        }
 
     def order_crypto_limit(
         self,
@@ -262,7 +274,7 @@ class Alpaca(StreamAPI):
         symbol = symbol[1:]
 
         order = self.api.submit_order(
-            asset,
+            symbol,
             quantity,
             side=side,
             type="limit",
@@ -272,7 +284,7 @@ class Alpaca(StreamAPI):
         ).__dict__["_raw"]
 
         return {
-            "type": "CRYPTO" if is_crypto(symbol) else "STOCK",
+            "type": "CRYPTO",
             "id": order["id"],
             "symbol": symbol,
             "alpaca": order,
@@ -289,6 +301,19 @@ class Alpaca(StreamAPI):
         strike,
         in_force: str = "gtc",
     ):
+        raise NotImplementedError("Alpaca does not support options.")
+
+    def cancel_stock_order(self, order_id):
+        ret = self.api.cancel_order(order_id)
+        return ret.__dict__["_raw"]
+    
+    def cancel_crypto_order(self, order_id):
+        if self.basic:
+            raise Exception("Alpaca basic accounts do not support crypto.")
+        ret = self.api.cancel_order(order_id)
+        return ret.__dict__["_raw"]
+    
+    def cancel_option_order(self, order_id):
         raise NotImplementedError("Alpaca does not support options.")
 
     # ------------- Helper methods ------------- #
