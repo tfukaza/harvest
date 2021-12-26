@@ -13,32 +13,19 @@ from harvest.utils import *
 from harvest.plugin._base import Plugin
 
 """
-Methods that perform an action should follow this naming convention:
-    [action]_[target]_[returns]
-    - action: The action taken by the method, such as 'get', 'buy'
-    - target: The entity the method operates on, such as 'stock', 'option', 'account'
-    - returns: What the method returns, such as 'list', 'price'
-
-Algo class is the main interface between users and the program, so
-remember the following guidelines for handling inputs and outputs:
--   Date inputs can be a string, a naive DateTime object, or a Timestamp object.
-    These must be converted to UTC timezone DateTime objects using convert_input_to_datetime()
-    before being passed onto other parts of the code. The same applies for timedelta inputs.
--   Conversely, date outputs must be converted to a naive DateTime object set to the user's timezone.
+Algo class is the main interface between users and the program.
 """
 
-
 class BaseAlgo:
-    """
-    The BaseAlgo class is an abstract class defining the interface for users to
+    """The BaseAlgo class is an abstract class defining the interface for users to
     track assets, monitor their accounts, and place orders.
     It also provides function for technical analysis.
     """
 
     def __init__(self):
-        self.interval = None  # Interval to run the algorithm
-        self.aggregations = None  # Intervals to aggregate data
-        self.watchlist = []  # List of assets this algorithm tracks
+        self.interval = None        # Interval to run the algorithm
+        self.aggregations = None    # Intervals to aggregate data
+        self.watchlist = []         # List of assets this algorithm tracks
 
     def init(self, stats, func, account):
         self.stats = stats
@@ -47,8 +34,7 @@ class BaseAlgo:
         self.positions = account.positions
 
     def config(self):
-        """
-        This method is called before any other methods (except for __init__),
+        """This method is called before any other methods (except for __init__),
         and initializes parameters for this class.
         -  interval: The interval to run the algorithm.
         -  aggregations: Intervals to aggregate data.
@@ -60,20 +46,17 @@ class BaseAlgo:
         self.watchlist = []
 
     def setup(self):
-        """
-        Method called right before algorithm begins.
+        """Method called right before algorithm begins.
         """
         pass
 
     def main(self):
-        """
-        Main method to run the algorithm.
+        """Main method to run the algorithm.
         """
         pass
 
     def add_plugin(self, plugin: Plugin):
-        """
-        Adds a plugin to the algorithm.
+        """Adds a plugin to the algorithm.
         """
         value = getattr(self, plugin.name, None)
         if value is None:
@@ -101,8 +84,8 @@ class BaseAlgo:
         :param float? quantity: Quantity of asset to buy. defaults to buys as many as possible
         :param str? in_force: Duration the order is in force. '{gtc}' or '{gtd}'. defaults to 'gtc'
         :param str? extended: Whether to trade in extended hours or not. defaults to False
+        
         :returns: The following Python dictionary
-
             - id: str, ID of order
             - symbol: str, symbol of asset
 
@@ -132,8 +115,8 @@ class BaseAlgo:
         :param float? quantity:  Quantity of asset to sell defaults to sells all
         :param str? in_force:  Duration the order is in force. '{gtc}' or '{gtd}'. defaults to 'gtc'
         :param str? extended:  Whether to trade in extended hours or not. defaults to False
+        
         :returns: A dictionary with the following keys:
-
             - id: str, ID of order
             - symbol: str, symbol of asset
 
@@ -148,11 +131,10 @@ class BaseAlgo:
         return self.func.sell(symbol, quantity, in_force, extended)
 
     def sell_all_options(self, symbol: str = None, in_force: str = "gtc"):
-        """Sells all options of a stock
+        """Sells all owned options based on the specified stock
 
         :param str? symbol: symbol of stock. defaults to first symbol in watchlist
         :returns: A list of dictionaries with the following keys:
-
             - id: str, ID of order
             - symbol: str, symbol of asset
         """
@@ -178,16 +160,14 @@ class BaseAlgo:
         lower_strike=None,
         upper_strike=None,
     ):
-        """
-        Automatically buys an option that satisfies the criteria specified.
+        """Returns a DataFrame of options that satisfies the criteria specified.
 
         :param str? symbol: Symbol of stock. defaults to first symbol in watchlist
         :param str? type: 'call' or 'put'
-        :param lower_exp: Minimum expiration date of the option.
-        :param upper_exp: Maximum expiration date of the option.
-        :param float lower_strike: The minimum strike price of the option
-        :param float upper_strike: The maximum strike price of the option
-
+        :param lower_exp: Minimum expiration date of the option, inclusive.
+        :param upper_exp: Maximum expiration date of the option, inclusive.
+        :param float lower_strike: The minimum strike price of the option, inclusive.
+        :param float upper_strike: The maximum strike price of the option, inclusive.
         """
         if symbol is None:
             symbol = self.watchlist[0]
@@ -237,11 +217,12 @@ class BaseAlgo:
         :param dt.datetime date: date of option expiration
         :returns: A dataframe with the follwing columns:
 
-            - exp_date(datetime.datetime): The expiration date
+            - exp_date(datetime.datetime): The expiration date, as offset-naive DateTime object
+            *with timezone adjusted to the timezone of the exchange being used*
             - strike(float): Strike price
             - type(str): 'call' or 'put'
 
-        The index is the {OCC} symbol of the option.
+        The index is the OCC symbol of the option.
         Note that the expiration date is not adjusted to the local time zone.
         """
         if symbol is None:
@@ -253,13 +234,11 @@ class BaseAlgo:
     def get_option_market_data(self, symbol: str):
         """Retrieves data of specified option.
 
-        :param str? symbol: {OCC} symbol of option
+        :param str? symbol: OCC symbol of option
         :returns: A dictionary:
-
             - price: price of option
             - ask: ask price
             - bid: bid price
-
         """
         if symbol is None:
             symbol = self.watchlist[0]
@@ -453,9 +432,9 @@ class BaseAlgo:
     ) -> float:
         """Returns the quantity owned of a specified asset.
 
-        Assets that are currently pending to be sold are not counted.
-
         :param str? symbol:  Symbol of asset. defaults to first symbol in watchlist
+        :param bool? include_pending_buy:  Include pending buy orders in quantity. defaults to True
+        :param bool? include_pending_sell:  Include pending sell orders in quantity. defaults to False
         :returns: Quantity of asset as float. 0 if quantity is not owned.
         :raises:
         """
@@ -466,7 +445,7 @@ class BaseAlgo:
             symbol, include_pending_buy, include_pending_sell
         )
 
-    def get_asset_cost(self, symbol: str = None) -> float:
+    def get_asset_avg_cost(self, symbol: str = None) -> float:
         """Returns the average cost of a specified asset.
 
         :param str? symbol:  Symbol of asset. defaults to first symbol in watchlist
@@ -475,19 +454,13 @@ class BaseAlgo:
         """
         if symbol is None:
             symbol = self.watchlist[0]
-        if len(symbol) <= 6:
-            search = self.positions.stock_crypto
-            for p in search:
-                if p.symbol == symbol:
-                    return p.avg_price
-        else:
-            for p in self.positions.option:
-                if p["occ_symbol"].replace(" ", "") == symbol.replace(" ", ""):
-                    return p.avg_price
+        symbol = symbol.replace(" ", "")
+        asset = self.positions.get(symbol)
+        if asset is None:
+            raise Exception(f"{symbol} is not currently owned")
+        return asset.avg_price
 
-        raise Exception(f"{symbol} is not currently owned")
-
-    def get_asset_price(self, symbol: str = None) -> float:
+    def get_asset_current_price(self, symbol: str = None) -> float:
         """Returns the current price of a specified asset.
 
         :param str? symbol: Symbol of asset. defaults to first symbol in watchlist
@@ -496,12 +469,11 @@ class BaseAlgo:
         """
         if symbol is None:
             symbol = self.watchlist[0]
-        if len(symbol) <= 6:
-            return self.func.load(symbol, self.interval)[symbol]["close"][-1]
-        for p in self.positions.option:
-            if p["occ_symbol"] == symbol:
-                return p["current_price"] * p["multiplier"]
-        return self.func.fetch_option_market_data(symbol)["price"] * 100
+        symbol = symbol.replace(" ", "")
+        asset = self.positions.get(symbol)
+        if asset is None:
+            raise Exception(f"{symbol} is not currently owned")
+        return asset.current_price
 
     def get_asset_price_list(
         self, symbol: str = None, interval: str = None, ref: str = "close"
@@ -521,12 +493,12 @@ class BaseAlgo:
             interval = self.interval
         else:
             interval = interval_string_to_enum(interval)
-        if len(symbol) <= 6:
+        if symbol_type(symbol) != "OPTION":
             return list(self.func.load(symbol, interval)[symbol][ref])
         debugger.warning("Price list not available for options")
         return None
 
-    def get_asset_candle(self, symbol: str, interval=None) -> pd.DataFrame():
+    def get_asset_current_candle(self, symbol: str, interval=None) -> pd.DataFrame():
         """Returns the most recent candle as a pandas DataFrame
 
         This function is not compatible with options.
@@ -550,7 +522,6 @@ class BaseAlgo:
             interval = self.interval
         if len(symbol) <= 6:
             df = self.func.load(symbol, interval).iloc[[-1]][symbol]
-            print(self.func.load(symbol, interval))
             return pandas_timestamp_to_local(df, self.stats.timezone)
         debugger.warning("Candles not available for options")
         return None
@@ -582,7 +553,7 @@ class BaseAlgo:
         df = self.func.load(symbol, interval)[symbol]
         return pandas_timestamp_to_local(df, self.stats.timezone)
 
-    def get_asset_returns(self, symbol=None) -> float:
+    def get_asset_profit_percent(self, symbol=None) -> float:
         """Returns the return of a specified asset.
 
         :param str? symbol:  Symbol of stock, crypto, or option. Options should be in {OCC} format.
@@ -591,12 +562,11 @@ class BaseAlgo:
         """
         if symbol is None:
             symbol = self.watchlist[0]
-        cost = self.get_asset_cost(symbol)
-        # For options, apply the multiplier
-        if len(symbol) > 6:
-            cost = cost * 100
-        price = self.get_asset_price(symbol)
-        return (price - cost) / cost
+        asset = self.positions.get(symbol)
+        if asset is None:
+            raise Exception(f"{symbol} is not currently owned")
+        return asset.profit_percent
+        
 
     def get_asset_max_quantity(self, symbol=None):
         """Calculates the maximum quantity of an asset that can be bought given the current buying power.
@@ -609,9 +579,9 @@ class BaseAlgo:
             symbol = self.watchlist[0]
 
         power = self.get_account_buying_power()
-        price = self.get_asset_price(symbol)
-        debugger.debug(f"{symbol} price: {price}, buying power: {power}")
-        if is_crypto(symbol):
+        price = self.get_asset_current_price(symbol)
+       
+        if symbol_type(symbol) == "CRYPTO":
             price = mark_up(price)
             return math.floor(power / price * 10 ** 5) / 10 ** 5
         else:
@@ -635,40 +605,23 @@ class BaseAlgo:
     def get_account_stock_positions(self) -> List:
         """Returns the current stock positions.
 
-        :returns: A list of dictionaries with the following keys:
-            - symbol
-            - quantity
-            - avg_price
+        :returns: A list of Position objects for all currently owned stocks.
         """
         return self.positions.stock
 
     def get_account_crypto_positions(self) -> List:
         """Returns the current crypto positions.
 
-        :returns: A list of dictionaries with the following keys:
-            - symbol
-            - quantity
-            - avg_price
+        :returns: A list of Position objects for all currently owned crypto.
         """
         return self.positions.crypto
 
     def get_account_option_positions(self) -> List:
         """Returns the current option positions.
 
-        :returns: A list of dictionaries with the following keys:
-            - symbol
-            - quantity
-            - avg_price
+        :returns: A list of OptionPosition objects for all currently owned options.
         """
-        return [
-            {
-                "symbol": p.symbol,
-                "base_symbol": p.base_symbol,
-                "quantity": p.quantity,
-                "avg_price": p.avg_price,
-            }
-            for p in self.positions.option
-        ]
+        return self.positions.option
 
     def get_watchlist(self) -> List:
         """Returns the current watchlist."""
@@ -676,18 +629,18 @@ class BaseAlgo:
 
     def get_stock_watchlist(self) -> List:
         """Returns the current watchlist."""
-        return [s for s in self.watchlist if not is_crypto(s)]
+        return [s for s in self.watchlist if symbol_type(s) == "STOCK"]
 
     def get_crypto_watchlist(self) -> List:
         """Returns the current watchlist."""
-        return [s for s in self.watchlist if is_crypto(s)]
+        return [s for s in self.watchlist if symbol_type(s) == "CRYPTO"]
 
     def get_time(self):
         """Returns the current hour and minute.
 
         This returns the current time, which is different from the timestamp
-        on a ticker. For example, if you are running an algorithm every 5 minutes,
-        at 11:30am you will get a ticker for 11:25am. This function will return
+        of stock prices. For example, if you are running an algorithm every 5 minutes,
+        at 11:30am you will get price data with a timestamp of 11:25am. This function will return
         11:30am.
 
         :returns: The current time as a datetime object
@@ -704,43 +657,28 @@ class BaseAlgo:
     def get_datetime(self):
         """Returns the current date and time.
 
-        This returns the current time, which is different from the timestamp
-        on a ticker. For example, if you are running an algorithm every 5 minutes,
-        at 11:30am you will get a ticker for 11:25am. This function will return
-        11:30am.
+        The returned datetime object is offset-naive, adjusted to the local timezone.
 
         :returns: The current date and time as a datetime object
         """
         return datetime_utc_to_local(self.stats.timestamp, self.stats.timezone)
 
-    def get_option_position_quantity(self, symbol: str = None) -> bool:
-        """Returns the number of types of options held for a stock.
 
-        :param str symbol:  Symbol of the stock to check
-        :returns: True if the user has an option for the specified symbol.
-        """
-        if symbol is None:
-            symbol = self.watchlist[0]
-        pos = [p for p in self.positions.option if p.symbol == symbol]
-        return len(pos)
+    # def is_day_trade(self, symbol=None, action="buy") -> bool:
+    #     """
+    #     Checks if performing a buy or sell will be considered day trading.
+    #     """
+     
+    #     # Get transaction history
+    #     history = self.func.load_daytrade()
+    #     # False if less than 3 transactions
+    #     if len(history) < 3:
+    #         return False
+        
 
-    def is_day_trade(self, action, symbol=None) -> bool:
-        """
-        Checks if performing a buy or sell will be considered day trading
-        """
-        if symbol is None:
-            symbol = self.watchlist[0]
-
-        history = self.trader.logger.get_transactions()
-        if len(history) < 1:
-            return False
-        recent = history.loc[self.get_date() :]
-        recent = recent[recent["symbol"] == symbol]
-        if action == "buy":
-            return False
-        if action == "sell":
-            recent = recent.loc[recent["action"] == "buy"]
-            return len(recent.index) > 0
+    
+        
+       
 
     # Used for testing
     def add_symbol(self, symbol: str):

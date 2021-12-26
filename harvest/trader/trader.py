@@ -86,6 +86,7 @@ class LiveTrader:
             self.get_asset_quantity,
             self.storage.load,
             self.storage.store,
+            self.storage.load_daytrade,
         )
 
         self.account = Account()

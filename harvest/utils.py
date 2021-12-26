@@ -96,6 +96,7 @@ class Functions:
         get_asset_quantity=None,
         load=None,
         save=None,
+        load_daytrade=None,
     ):
         self.buy = buy
         self.sell = sell
@@ -105,7 +106,7 @@ class Functions:
         self.get_asset_quantity = get_asset_quantity
         self.load = load
         self.save = save
-
+        self.load_daytrade = load_daytrade
 
 class Account:
     def __init__(self, account_name=None):
@@ -331,6 +332,7 @@ class Positions:
         for p in self.all:
             if p.symbol == symbol:
                 return p 
+        return None
 
     @property
     def stock(self):
@@ -454,6 +456,10 @@ class OptionPosition(Position):
     @property
     def base_symbol(self):
         return self._base_symbol
+    
+    @property
+    def value(self):
+        return self._value * self._multiplier
 
 
 def interval_enum_to_string(enum):
@@ -582,8 +588,6 @@ def aggregate_df(df, interval: Interval) -> pd.DataFrame:
 
 
 # ========== Date utils ==========
-
-
 def now() -> dt.datetime:
     """
     Returns the current time precise to the minute in the UTC timezone
