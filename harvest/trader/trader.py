@@ -266,7 +266,7 @@ class LiveTrader:
         #     self.streamer.refresh_cred()
 
         self.storage.add_performance_data(self.account.equity, self.stats.timestamp)
-        # self.storage.add_calendar_data(self.streamer.fetch_market_hours())
+        self.storage.add_calendar_data(self.streamer.fetch_market_hours())
 
         # Save the data locally
         for sym in df_dict:
