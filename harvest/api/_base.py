@@ -320,7 +320,7 @@ class API:
 
                     exp_date strike  type
             OCC
-            ---     ---      ---     ---    
+            ---     ---      ---     ---
         exp_date should be a timezone-aware datetime object localized to UTC
         """
         raise NotImplementedError(
@@ -354,11 +354,7 @@ class API:
         # raise NotImplementedError(
         #     f"{type(self).__name__} does not support this broker method: `fetch_market_hours`."
         # )
-        return {
-            "is_open": True,
-            "open_at": None,
-            "close_at": None
-        }
+        return {"is_open": True, "open_at": None, "close_at": None}
 
     # ------------- Broker methods ------------- #
 

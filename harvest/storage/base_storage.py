@@ -255,7 +255,7 @@ class BaseStorage:
         # For stocks and options, check for daytrades.
         # First, check the transaction history for this asset in the current day.
         history = self.storage_transaction.copy()
-        #history.set_index("timestamp", inplace=True)
+        # history.set_index("timestamp", inplace=True)
         history = history[history["symbol"] == symbol]
         history = history[history["timestamp"] == timestamp.date()]
 
@@ -270,7 +270,10 @@ class BaseStorage:
         if side == "sell":
             if buy_sell[-1] == "buy":
                 # TODO: Check if this sell sells all quantity.
-                data = pd.DataFrame([timestamp, symbol], ignore_index=True,)
+                data = pd.DataFrame(
+                    [timestamp, symbol],
+                    ignore_index=True,
+                )
                 self.storage_daytrade.append(data)
 
     def load_transaction(self) -> pd.DataFrame:
