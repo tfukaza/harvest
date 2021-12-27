@@ -35,7 +35,7 @@ class API:
         Interval.DAY_1,
     ]
     exchange = ""
-    req_keys = []
+    req_keys = ["alpaca_api_key", "alpaca_secret_key"]
 
     def __init__(self, path: str = None):
         """
@@ -315,9 +315,9 @@ class API:
         :param date: Expiration date.
         :returns: A dataframe in the following format:
 
-                    exp_date strike  type
+                    exp_date strike  type   id
             OCC
-            ---     ---      ---     ---
+            ---     ---      ---     ---    ---
         exp_date should be a timezone-aware datetime object localized to UTC
         """
         raise NotImplementedError(

@@ -19,6 +19,7 @@ class Alpaca(StreamAPI):
     interval_list = [
         Interval.MIN_1,
     ]
+    req_keys = ["alpaca_api_key", "alpaca_secret_key"]
 
     def __init__(
         self,
@@ -84,14 +85,14 @@ class Alpaca(StreamAPI):
         else:
             self.data_lock.release()
 
-    def setup(self, interval: Dict, trader_main=None):
-        super().setup(interval, trader_main)
+    def setup(self, stats, account, trader_main=None):
+        super().setup(stats, account, trader_main)
 
         self.watch_stock = []
         self.watch_crypto = []
         cryptos = []
 
-        for s in interval:
+        for s in self.stats.watchlist_cfg:
             if is_crypto(s):
                 self.watch_crypto.append(s)
                 cryptos.append(s[1:])
@@ -440,15 +441,7 @@ class Alpaca(StreamAPI):
 
         w.println(f"All steps are complete now 🎉. Generating {path}...")
 
-        d = {"alpaca_api_key": f"{api_key_id}", "alpaca_secret_key": f"{secret_key}"}
+        return {"alpaca_api_key": f"{api_key_id}", "alpaca_secret_key": f"{secret_key}"}
 
-        with open(path, "w") as f:
-            yml = yaml.load(f, Loader=yaml.SafeLoader)
-            yml.update(d)
-            yaml.dump(yml, f)
 
-        w.println(
-            f"{path} has been created! Make sure you keep this file somewhere secure and never share it with other people."
-        )
-
-        return True
+   

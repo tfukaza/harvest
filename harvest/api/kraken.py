@@ -15,6 +15,7 @@ from harvest.utils import *
 class Kraken(API):
 
     interval_list = [Interval.MIN_1, Interval.MIN_5, Interval.HR_1, Interval.DAY_1]
+    req_keys = ["kraken_api_key", "kraken_secret_key"]
 
     crypto_ticker_to_kraken_names = {
         "BTC": "XXBTZ",
@@ -443,13 +444,4 @@ class Kraken(API):
 
         w.println(f"All steps are complete now 🎉. Generating {path}...")
 
-        d = {"kraken_api_key": f"{api_key_id}", "kraken_secret_key": f"{secret_key}"}
-
-        with open(path, "w") as file:
-            yml = yaml.dump(d, file)
-
-        w.println(
-            f"{path} has been created! Make sure you keep this file somewhere secure and never share it with other people."
-        )
-
-        return True
+        return {"kraken_api_key": f"{api_key_id}", "kraken_secret_key": f"{secret_key}"}

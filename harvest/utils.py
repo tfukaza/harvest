@@ -494,7 +494,6 @@ def symbol_type(symbol):
 
 def occ_to_data(symbol: str):
     original_symbol = symbol
-    debugger.debug(f"Converting {symbol} to data")
     try:
         sym = ""
         symbol = symbol.replace(" ", "")
@@ -503,14 +502,14 @@ def occ_to_data(symbol: str):
             i += 1
         sym = symbol[:i]
         symbol = symbol[i:]
-        debugger.debug(f"{sym}, {symbol}")
+       
 
         date = dt.datetime.strptime(symbol[:6], "%y%m%d")
-        debugger.debug(f"{date}, {symbol}")
+     
         option_type = "call" if symbol[6] == "C" else "put"
-        debugger.debug(f"{option_type}, {symbol}")
+    
         price = float(symbol[7:]) / 1000
-        debugger.debug(f"{price}, {symbol}")
+      
         return sym, date, option_type, price
     except Exception as e:
         debugger.error(f"Error parsing OCC symbol: {original_symbol}, {e}")
