@@ -351,9 +351,14 @@ class API:
             - open_at: Time the market opens in UTC timezone.
             - close_at: Time the market closes in UTC timezone.
         """
-        raise NotImplementedError(
-            f"{type(self).__name__} does not support this broker method: `fetch_market_hours`."
-        )
+        # raise NotImplementedError(
+        #     f"{type(self).__name__} does not support this broker method: `fetch_market_hours`."
+        # )
+        return {
+            "is_open": True,
+            "open_at": None,
+            "close_at": None
+        }
 
     # ------------- Broker methods ------------- #
 

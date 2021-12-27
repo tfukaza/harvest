@@ -6,7 +6,6 @@ import os
 
 from harvest.api.paper import PaperBroker
 from harvest.api.webull import Webull
-from harvest.utils import not_gh_action
 from harvest.utils import *
 
 

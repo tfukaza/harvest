@@ -4,7 +4,6 @@ from harvest.api.webull import Webull
 from harvest.api.alpaca import Alpaca
 from harvest.api.kraken import Kraken
 from harvest.api.yahoo import YahooStreamer
-from harvest.api.polygon import Polygon
 
 from harvest.utils import *
 import time

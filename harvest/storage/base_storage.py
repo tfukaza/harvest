@@ -108,6 +108,9 @@ class BaseStorage:
                 columns=["equity"], index=[]
             )
 
+    def setup(self, stats):
+        self.stats = stats
+
     def store(
         self, symbol: str, interval: Interval, data: pd.DataFrame, remove_duplicate=True
     ) -> None:
@@ -251,9 +254,10 @@ class BaseStorage:
 
         # For stocks and options, check for daytrades.
         # First, check the transaction history for this asset in the current day.
-        history = self.storage_transaction
+        history = self.storage_transaction.copy()
+        #history.set_index("timestamp", inplace=True)
         history = history[history["symbol"] == symbol]
-        history = history[history["timestamp"].date() == timestamp.date()]
+        history = history[history["timestamp"] == timestamp.date()]
 
         # If there is no history, this cannot be a daytrade.
         if history.empty:
