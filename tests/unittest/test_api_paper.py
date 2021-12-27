@@ -107,7 +107,7 @@ class TestPaperBroker(unittest.TestCase):
         self.assertEqual(status["filled_qty"], 2)
         self.assertEqual(status["side"], "sell")
         self.assertEqual(status["time_in_force"], "gtc")
-        self.assertEqual(status["status"], "filled")    
+        self.assertEqual(status["status"], "filled")
         dummy._delete_account()
 
     def test_sell(self):

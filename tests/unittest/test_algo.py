@@ -226,7 +226,7 @@ class TestAlgo(unittest.TestCase):
         s.tick()
 
         cost = s.fetch_price_history("A", Interval.MIN_5).iloc[-1]["A"]["close"]
-        get_cost = t.algo[0].get_asset_cost("A")
+        get_cost = t.algo[0].get_asset_avg_cost("A")
 
         self.assertEqual(get_cost, cost)
         t.broker._delete_account()
@@ -248,7 +248,7 @@ class TestAlgo(unittest.TestCase):
         s.tick()
         price = s.fetch_latest_stock_price()["A"]["A"]["close"]
 
-        get_price = t.algo[0].get_asset_price("A")
+        get_price = t.algo[0].get_asset_current_price("A")
 
         self.assertEqual(get_price, price)
         t.broker._delete_account()
@@ -329,7 +329,7 @@ class TestAlgo(unittest.TestCase):
         streamer.tick()
 
         p = t.positions.option[0]
-        self.assertEqual(p.symbol, "X     110101C01000000")
+        self.assertEqual(p.symbol, "X110101C01000000")
 
         t.algo[0].sell_all_options()
         streamer.tick()
