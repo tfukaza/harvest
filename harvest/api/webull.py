@@ -273,7 +273,7 @@ class Webull(API):
         option_df = self.__option_cache[sym][date][
             self.__option_cache[sym][date].index == symbol
         ]
-      
+
         oc_id = option_df["id"][0]
 
         ret = self.api.get_option_quote(stock=sym, optionId=oc_id)
@@ -572,11 +572,9 @@ class Webull(API):
         ret = None
         sym = self.data_to_occ(symbol, exp_date, side, strike)
         date = str_to_date(date_to_str(exp_date))
-        oc_id = (
-            self.__option_cache[symbol][date][
-                self.__option_cache[symbol][date].index == sym
-            ]["id"][0].item()
-        )
+        oc_id = self.__option_cache[symbol][date][
+            self.__option_cache[symbol][date].index == sym
+        ]["id"][0].item()
 
         if not isinstance(oc_id, int):
             debugger.error(

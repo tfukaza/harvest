@@ -24,12 +24,13 @@ def decorator_repeat_test(api_list):
             for api in api_list:
                 print(f"Testing {api}")
                 func(self, api)
+
         return wrapper_repeat
+
     return decorator_test
 
 
 class TestLiveStreamer(unittest.TestCase):
-
     @decorator_repeat_test([Robinhood, YahooStreamer])
     def test_setup(self, api):
         """
@@ -53,7 +54,7 @@ class TestLiveStreamer(unittest.TestCase):
         intervals = api.interval_list
         if isinstance(api, Robinhood):
             intervals = intervals[1:]
-        
+
         interval = {
             "TWTR": {"interval": intervals[0], "aggregations": intervals[1:]},
         }
@@ -68,7 +69,7 @@ class TestLiveStreamer(unittest.TestCase):
                 sorted(list(df.columns.values)),
                 sorted(["open", "high", "low", "close", "volume"]),
             )
-    
+
     @decorator_repeat_test([Robinhood, YahooStreamer])
     def test_fetch_crypto_prices(self, api):
         """
@@ -152,8 +153,7 @@ class TestLiveStreamer(unittest.TestCase):
 
     @decorator_repeat_test([Robinhood, YahooStreamer])
     def test_option_market_data(self, api):
-        """
-        """
+        """ """
         api = api(secret_path)
         interval = {
             "TWTR": {"interval": Interval.MIN_5, "aggregations": []},
@@ -167,6 +167,7 @@ class TestLiveStreamer(unittest.TestCase):
         df = api.fetch_option_market_data(sym)
         debugger.debug(f"{api} fetch_option_market_data {sym} returned {df}")
         self.assertTrue(True)
+
 
 if __name__ == "__main__":
     unittest.main()

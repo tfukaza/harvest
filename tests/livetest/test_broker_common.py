@@ -3,6 +3,7 @@ from harvest.api.robinhood import Robinhood
 from harvest.api.webull import Webull
 from harvest.api.alpaca import Alpaca
 from harvest.api.kraken import Kraken
+
 # from harvest.api.paper import PaperBroker
 from harvest.api.yahoo import YahooStreamer
 
@@ -24,12 +25,13 @@ def decorator_repeat_test(api_list):
             for api in api_list:
                 print(f"Testing {api}")
                 func(self, api)
+
         return wrapper_repeat
+
     return decorator_test
 
 
 class TestLiveBroker(unittest.TestCase):
-
     @decorator_repeat_test([Robinhood])
     def test_buy_option(self, api):
         api = api(secret_path)
@@ -74,7 +76,7 @@ class TestLiveBroker(unittest.TestCase):
         time.sleep(5)
 
         api.cancel_stock_order(ret["order_id"])
-    
+
     @decorator_repeat_test([Robinhood])
     def test_buy_crypto(self, api):
         """

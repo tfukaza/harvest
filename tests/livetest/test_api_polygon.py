@@ -9,5 +9,7 @@ from harvest.api.polygon import PolygonStreamer
 
 class TestPolygonStreamer(unittest.TestCase):
     pass
+
+
 if __name__ == "__main__":
     unittest.main()

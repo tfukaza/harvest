@@ -307,13 +307,13 @@ class Alpaca(StreamAPI):
     def cancel_stock_order(self, order_id):
         ret = self.api.cancel_order(order_id)
         return ret.__dict__["_raw"]
-    
+
     def cancel_crypto_order(self, order_id):
         if self.basic:
             raise Exception("Alpaca basic accounts do not support crypto.")
         ret = self.api.cancel_order(order_id)
         return ret.__dict__["_raw"]
-    
+
     def cancel_option_order(self, order_id):
         raise NotImplementedError("Alpaca does not support options.")
 
@@ -442,6 +442,3 @@ class Alpaca(StreamAPI):
         w.println(f"All steps are complete now 🎉. Generating {path}...")
 
         return {"alpaca_api_key": f"{api_key_id}", "alpaca_secret_key": f"{secret_key}"}
-
-
-   

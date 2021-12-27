@@ -329,7 +329,7 @@ class Kraken(API):
             "symbol": symbol,
             "kraken": order,
         }
-    
+
     def cancel_crypto_order(self, order_id):
         self.api.query_private("CancelOrder", {"txid": order_id})
 

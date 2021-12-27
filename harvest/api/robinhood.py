@@ -165,9 +165,13 @@ class Robinhood(API):
         # 1MIN, 5MIN interval must be capped to 1 day.
         elif interval in [Interval.MIN_1, Interval.MIN_5]:
             span = "day"
-            span = "day" 
+            span = "day"
         # Other intervals have varying spans
-        elif interval in [Interval.MIN_15, Interval.MIN_30, Interval.HR_1,]:
+        elif interval in [
+            Interval.MIN_15,
+            Interval.MIN_30,
+            Interval.HR_1,
+        ]:
             if delta_hours <= 24:
                 span = "day"
             else:
@@ -236,7 +240,7 @@ class Robinhood(API):
                 "exp_date": exp_date,
                 "strike": strike,
                 "type": option_type,
-                #"id": option_id,
+                # "id": option_id,
             }
         )
         df = df.set_index("occ_symbol")
@@ -576,7 +580,9 @@ class Robinhood(API):
                 "symbol": "@" + symbol,
             }
         except:
-            debugger.error(f"Error while placing order.\nReturned: {ret}", exc_info=True)
+            debugger.error(
+                f"Error while placing order.\nReturned: {ret}", exc_info=True
+            )
             raise Exception(f"Error while placing order.")
 
     def order_option_limit(
