@@ -399,7 +399,7 @@ class PaperBroker(API):
         symbol: str,
         quantity: float,
         limit_price: float,
-        type: str,
+        option_type: str,
         exp_date: dt.datetime,
         strike: float,
         in_force: str = "gtc",
@@ -407,7 +407,7 @@ class PaperBroker(API):
 
         data = {
             "type": "OPTION",
-            "symbol": self.data_to_occ(symbol, exp_date, type, strike),
+            "symbol": data_to_occ(symbol, exp_date, option_type, strike),
             "quantity": quantity,
             "filled_qty": 0,
             "order_id": self.order_id,

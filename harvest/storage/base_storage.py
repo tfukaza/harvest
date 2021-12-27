@@ -97,6 +97,10 @@ class BaseStorage:
                 "price",
             ]
         )
+        self.storage_daytrade = pd.DataFrame(columns=["timestamp", "symbol"])
+        self.storage_calendar = pd.DataFrame(
+            columns=["is_open", "open_at", "close_at"], index=[]
+        )
 
         self.storage_performance = {}
         for interval, _ in self.performance_history_intervals:
@@ -217,6 +221,18 @@ class BaseStorage:
         self.storage_lock.release()
         return data.loc[start:end]
 
+    def add_calendar_data(self, data):
+        timestamp = self.stats.timestamp.date()
+        is_open = data["is_open"]
+        open_at = data["open_at"]
+        close_at = data["close_at"]
+        df = pd.DataFrame(
+            [[is_open, open_at, close_at]],
+            columns=["is_open", "open_at", "close_at"],
+            index=[timestamp],
+        )
+        self._append(self.storage_calendar, df, remove_duplicate=True)
+
     def store_transaction(
         self,
         timestamp: dt.datetime,
@@ -230,6 +246,37 @@ class BaseStorage:
             [timestamp, algorithm_name, symbol, side, quantity, price],
             ignore_index=True,
         )
+        # if symbol_type(symbol) == "CRYPTO":
+        #     return
+
+        # # For stocks and options, check for daytrades.
+        # # First, check the transaction history for this asset in the current day.
+        # history = self.storage_transaction
+        # history = history[history["symbol"] == symbol]
+        # history = history[history["timestamp"].date() == timestamp.date()]
+
+        # # If there is no history, this cannot be a daytrade.
+        # if history.empty:
+        #     return
+
+        # # If there is history, check if this transaction is a daytrade.
+        # # Note that we don't support shorting, so a sell always closes a position.
+        # buy_sell = list(history["side"])[:-1]
+
+        # if side == "sell":
+        #     if buy_sell[-1] == "buy":
+        #         # TODO: Check if this sell sells all quantity.
+        #         data = pd.DataFrame([timestamp, symbol], ignore_index=True,)
+        #         self.storage_daytrade.append(data)
+
+    def load_transaction(self) -> pd.DataFrame:
+        return self.storage_transaction
+
+    def load_daytrade(self) -> pd.DataFrame:
+        return self.storage_daytrade
+
+    def load_calendar(self) -> pd.DataFrame:
+        return self.storage_calendar
 
     def reset(self, symbol: str, interval: Interval):
         """

@@ -344,8 +344,9 @@ class API:
         Hours are based on the exchange specified in the class's 'exchange' attribute.
 
         :returns: A dictionary with the following keys and values:
-            - open: Time the market opens in UTC timezone.
-            - close: Time the market closes in UTC timezone.
+            - is_open: Boolean indicating whether the market is open or closed
+            - open_at: Time the market opens in UTC timezone.
+            - close_at: Time the market closes in UTC timezone.
         """
         raise NotImplementedError(
             f"{type(self).__name__} does not support this broker method: `fetch_market_hours`."
@@ -821,39 +822,10 @@ class API:
     def data_to_occ(
         self, symbol: str, date: dt.datetime, option_type: str, price: float
     ):
-        """
-        Converts data into a OCC format string
-        """
-        occ = symbol + ((6 - len(symbol)) * " ")
-        occ = occ + date.strftime("%y%m%d")
-        occ = occ + "C" if option_type == "call" else occ + "P"
-        occ = occ + f"{int(price*1000):08}"
-        return occ
+        return data_to_occ(symbol, date, option_type, price)
 
     def occ_to_data(self, symbol: str):
-        original_symbol = symbol
-        debugger.debug(f"Converting {symbol} to data")
-        try:
-            sym = ""
-            symbol = symbol.replace(" ", "")
-            i = 0
-            while symbol[i].isalpha():
-                i += 1
-            sym = symbol[0:i]
-            symbol = symbol[i:]
-            debugger.debug(f"{sym}, {symbol}")
-
-            date = dt.datetime.strptime(symbol[0:6], "%y%m%d")
-            debugger.debug(f"{date}, {symbol}")
-            option_type = "call" if symbol[6] == "C" else "put"
-            debugger.debug(f"{option_type}, {symbol}")
-            price = float(symbol[7:]) / 1000
-            debugger.debug(f"{price}, {symbol}")
-            return sym, date, option_type, price
-        except Exception as e:
-            debugger.error(f"Error parsing OCC symbol: {original_symbol}, {e}")
-            # return None, None, None, None
-            raise Exception(f"Error parsing OCC symbol: {original_symbol}, {e}")
+        return occ_to_data(symbol)
 
     def current_timestamp(self):
         return self.timestamp

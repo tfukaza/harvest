@@ -96,6 +96,7 @@ class Functions:
         get_asset_quantity=None,
         load=None,
         save=None,
+        load_daytrade=None,
     ):
         self.buy = buy
         self.sell = sell
@@ -105,6 +106,7 @@ class Functions:
         self.get_asset_quantity = get_asset_quantity
         self.load = load
         self.save = save
+        self.load_daytrade = load_daytrade
 
 
 class Account:
@@ -312,13 +314,34 @@ class Positions:
         self._option = option
         self._crypto = crypto
 
+        for p in self._stock + self._option:
+            setattr(self, p.symbol, p)
+        for p in self._crypto:
+            setattr(self, "c_" + p.symbol[1:], p)
+
     def update(self, stock=None, option=None, crypto=None):
-        if stock is not None:
-            self._stock = stock
-        if option is not None:
-            self._option = option
-        if crypto is not None:
-            self._crypto = crypto
+        current_symbols = [p.symbol for p in self.all]
+        self._stock = stock
+        self._option = option
+        self._crypto = crypto
+        new_symbols = [p.symbol for p in self.all]
+        for p in self._stock + self._option:
+            setattr(self, p.symbol, p)
+        for p in self._crypto:
+            setattr(self, "_" + p.symbol, p)
+
+        deleted_symbols = list(set(current_symbols) - set(new_symbols))
+        for s in deleted_symbols:
+            if symbol_type(s) == "CRYPTO":
+                delattr(self, "c_" + s[1:])
+            else:
+                delattr(self, s)
+
+    def get(self, symbol):
+        for p in self.all:
+            if p.symbol == symbol:
+                return p
+        return None
 
     @property
     def stock(self):
@@ -395,6 +418,22 @@ class Position:
     def avg_price(self):
         return self._avg_price
 
+    @property
+    def asset_type(self):
+        return symbol_type(self._symbol)
+
+    @property
+    def current_price(self):
+        return self._current_price
+
+    @property
+    def profit(self):
+        return self._profit
+
+    @property
+    def profit_percent(self):
+        return self._profit_percent
+
     def __str__(self):
         return (
             f"\n[{self._symbol}]\n"
@@ -420,8 +459,16 @@ class OptionPosition(Position):
         self._multiplier = multiplier
 
     @property
+    def symbol(self):
+        return self._symbol.replace(" ", "")
+
+    @property
     def base_symbol(self):
         return self._base_symbol
+
+    @property
+    def value(self):
+        return self._value * self._multiplier
 
 
 def interval_enum_to_string(enum):
@@ -486,7 +533,7 @@ def symbol_type(symbol):
     """
     if len(symbol) > 6:
         return "OPTION"
-    elif symbol[0] == "@":
+    elif symbol[0] == "@" or symbol[:2] == "c_":
         return "CRYPTO"
     else:
         return "STOCK"
@@ -494,28 +541,29 @@ def symbol_type(symbol):
 
 def occ_to_data(symbol: str):
     original_symbol = symbol
-    debugger.debug(f"Converting {symbol} to data")
     try:
-        sym = ""
         symbol = symbol.replace(" ", "")
-        i = 0
-        while symbol[i].isalpha():
-            i += 1
+        i = re.search(r"[^A-Z ]", symbol).start()
         sym = symbol[:i]
         symbol = symbol[i:]
-        debugger.debug(f"{sym}, {symbol}")
-
         date = dt.datetime.strptime(symbol[:6], "%y%m%d")
-        debugger.debug(f"{date}, {symbol}")
         option_type = "call" if symbol[6] == "C" else "put"
-        debugger.debug(f"{option_type}, {symbol}")
         price = float(symbol[7:]) / 1000
-        debugger.debug(f"{price}, {symbol}")
+
         return sym, date, option_type, price
     except Exception as e:
-        debugger.error(f"Error parsing OCC symbol: {original_symbol}, {e}")
-        # return None, None, None, None
         raise Exception(f"Error parsing OCC symbol: {original_symbol}, {e}")
+
+
+def data_to_occ(symbol: str, date: dt.datetime, option_type: str, price: float):
+    """
+    Converts data into a OCC format string
+    """
+    occ = symbol  # + ((6 - len(symbol)) * " ")
+    occ += date.strftime("%y%m%d")
+    occ = occ + "C" if option_type == "call" else occ + "P"
+    occ += f"{int(price*1000):08}"
+    return occ
 
 
 # =========== DataFrame utils ===========
@@ -550,8 +598,6 @@ def aggregate_df(df, interval: Interval) -> pd.DataFrame:
 
 
 # ========== Date utils ==========
-
-
 def now() -> dt.datetime:
     """
     Returns the current time precise to the minute in the UTC timezone
@@ -694,7 +740,7 @@ def mark_down(x):
 
 
 def is_crypto(symbol: str) -> bool:
-    return symbol[0] == "@"
+    return symbol_type(symbol) == "CRYPTO"
 
 
 ############ Functions used for testing #################
@@ -714,11 +760,3 @@ def gen_data(symbol: str, points: int = 50) -> pd.DataFrame:
     df.columns = pd.MultiIndex.from_product([[symbol], df.columns])
 
     return df
-
-
-def not_gh_action(func):
-    def wrapper(*args, **kwargs):
-        if "GITHUB_ACTIONS" in os.environ:
-            return
-        func(*args, **kwargs)
-        return wrapper
