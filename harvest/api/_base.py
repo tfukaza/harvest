@@ -26,6 +26,7 @@ class API:
     :exchange: The market the API trades on. Ignored if the API is not a broker.
     """
 
+    # List of supported intervals
     interval_list = [
         Interval.MIN_1,
         Interval.MIN_5,
@@ -34,8 +35,10 @@ class API:
         Interval.HR_1,
         Interval.DAY_1,
     ]
+    # Name of the exchange this API trades on
     exchange = ""
-    req_keys = ["alpaca_api_key", "alpaca_secret_key"]
+    # List of attributes that are required to be in the secret file
+    req_keys = []
 
     def __init__(self, path: str = None):
         """
@@ -315,9 +318,9 @@ class API:
         :param date: Expiration date.
         :returns: A dataframe in the following format:
 
-                    exp_date strike  type   id
+                    exp_date strike  type
             OCC
-            ---     ---      ---     ---    ---
+            ---     ---      ---     ---    
         exp_date should be a timezone-aware datetime object localized to UTC
         """
         raise NotImplementedError(
