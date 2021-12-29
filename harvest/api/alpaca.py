@@ -19,6 +19,7 @@ class Alpaca(StreamAPI):
     interval_list = [
         Interval.MIN_1,
     ]
+    req_keys = ["alpaca_api_key", "alpaca_secret_key"]
 
     def __init__(
         self,
@@ -84,14 +85,14 @@ class Alpaca(StreamAPI):
         else:
             self.data_lock.release()
 
-    def setup(self, interval: Dict, trader_main=None):
-        super().setup(interval, trader_main)
+    def setup(self, stats, account, trader_main=None):
+        super().setup(stats, account, trader_main)
 
         self.watch_stock = []
         self.watch_crypto = []
         cryptos = []
 
-        for s in interval:
+        for s in self.stats.watchlist_cfg:
             if is_crypto(s):
                 self.watch_crypto.append(s)
                 cryptos.append(s[1:])
@@ -143,6 +144,11 @@ class Alpaca(StreamAPI):
     @API._exception_handler
     def fetch_option_market_data(self, occ_symbol: str):
         raise NotImplementedError("Alpaca does not support options.")
+
+    @API._exception_handler
+    def fetch_market_hours(self, date: datetime.date):
+        ret = self.api.get_clock()
+        return ret.__dict__["_raw"]
 
     # ------------- Broker methods ------------- #
 
@@ -237,7 +243,7 @@ class Alpaca(StreamAPI):
         extended: bool = False,
     ):
 
-        return self.api.submit_order(
+        order = self.api.submit_order(
             symbol,
             quantity,
             side=side,
@@ -245,7 +251,14 @@ class Alpaca(StreamAPI):
             limit_price=limit_price,
             time_in_force=in_force,
             extended_hours=extended,
-        )
+        ).__dict__["_raw"]
+
+        return {
+            "type": "CRYPTO",
+            "id": order["id"],
+            "symbol": symbol,
+            "alpaca": order,
+        }
 
     def order_crypto_limit(
         self,
@@ -262,7 +275,7 @@ class Alpaca(StreamAPI):
         symbol = symbol[1:]
 
         order = self.api.submit_order(
-            asset,
+            symbol,
             quantity,
             side=side,
             type="limit",
@@ -272,7 +285,7 @@ class Alpaca(StreamAPI):
         ).__dict__["_raw"]
 
         return {
-            "type": "CRYPTO" if is_crypto(symbol) else "STOCK",
+            "type": "CRYPTO",
             "id": order["id"],
             "symbol": symbol,
             "alpaca": order,
@@ -289,6 +302,19 @@ class Alpaca(StreamAPI):
         strike,
         in_force: str = "gtc",
     ):
+        raise NotImplementedError("Alpaca does not support options.")
+
+    def cancel_stock_order(self, order_id):
+        ret = self.api.cancel_order(order_id)
+        return ret.__dict__["_raw"]
+
+    def cancel_crypto_order(self, order_id):
+        if self.basic:
+            raise Exception("Alpaca basic accounts do not support crypto.")
+        ret = self.api.cancel_order(order_id)
+        return ret.__dict__["_raw"]
+
+    def cancel_option_order(self, order_id):
         raise NotImplementedError("Alpaca does not support options.")
 
     # ------------- Helper methods ------------- #
@@ -415,15 +441,4 @@ class Alpaca(StreamAPI):
 
         w.println(f"All steps are complete now 🎉. Generating {path}...")
 
-        d = {"alpaca_api_key": f"{api_key_id}", "alpaca_secret_key": f"{secret_key}"}
-
-        with open(path, "w") as f:
-            yml = yaml.load(f, Loader=yaml.SafeLoader)
-            yml.update(d)
-            yaml.dump(yml, f)
-
-        w.println(
-            f"{path} has been created! Make sure you keep this file somewhere secure and never share it with other people."
-        )
-
-        return True
+        return {"alpaca_api_key": f"{api_key_id}", "alpaca_secret_key": f"{secret_key}"}

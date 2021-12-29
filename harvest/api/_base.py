@@ -26,6 +26,7 @@ class API:
     :exchange: The market the API trades on. Ignored if the API is not a broker.
     """
 
+    # List of supported intervals
     interval_list = [
         Interval.MIN_1,
         Interval.MIN_5,
@@ -34,7 +35,9 @@ class API:
         Interval.HR_1,
         Interval.DAY_1,
     ]
+    # Name of the exchange this API trades on
     exchange = ""
+    # List of attributes that are required to be in the secret file
     req_keys = []
 
     def __init__(self, path: str = None):
@@ -348,9 +351,10 @@ class API:
             - open_at: Time the market opens in UTC timezone.
             - close_at: Time the market closes in UTC timezone.
         """
-        raise NotImplementedError(
-            f"{type(self).__name__} does not support this broker method: `fetch_market_hours`."
-        )
+        # raise NotImplementedError(
+        #     f"{type(self).__name__} does not support this broker method: `fetch_market_hours`."
+        # )
+        return {"is_open": True, "open_at": None, "close_at": None}
 
     # ------------- Broker methods ------------- #
 

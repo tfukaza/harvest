@@ -77,6 +77,8 @@ class LiveTrader:
 
         self.stats = Stats(None, tzlocal.get_localzone(), None)
 
+        self.storage.setup(self.stats)
+
         self.func = Functions(
             self.buy,
             self.sell,
@@ -266,7 +268,9 @@ class LiveTrader:
         #     self.streamer.refresh_cred()
 
         self.storage.add_performance_data(self.account.equity, self.stats.timestamp)
-        # self.storage.add_calendar_data(self.streamer.fetch_market_hours())
+        self.storage.add_calendar_data(
+            self.streamer.fetch_market_hours(self.stats.timestamp.date())
+        )
 
         # Save the data locally
         for sym in df_dict:

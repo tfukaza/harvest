@@ -157,24 +157,32 @@ class Robinhood(API):
 
         delta = end - start
         delta = delta.total_seconds()
-        delta = delta / 3600
-        if interval == Interval.DAY_1 and delta < 24:
-            return df
-        if delta < 1 and interval in [Interval.SEC_15, Interval.MIN_1]:
+        delta_hours = int(delta / 3600)
+
+        # 15SEC interval must be capped to 1 hour.
+        if interval == Interval.SEC_15:
             span = "hour"
-        elif delta < 24 or interval in [
-            Interval.MIN_5,
+        # 1MIN, 5MIN interval must be capped to 1 day.
+        elif interval in [Interval.MIN_1, Interval.MIN_5]:
+            span = "day"
+            span = "day"
+        # Other intervals have varying spans
+        elif interval in [
             Interval.MIN_15,
             Interval.MIN_30,
             Interval.HR_1,
         ]:
-            span = "day"
-        elif delta < 24 * 28:
-            span = "month"
-        elif delta < 24 * 300:
-            span = "year"
-        else:
-            span = "5year"
+            if delta_hours <= 24:
+                span = "day"
+            else:
+                span = "month"
+        elif interval in [Interval.DAY_1]:
+            if delta_hours <= 24:
+                span = "day"
+            elif delta_hours <= 720:
+                span = "month"
+            else:
+                span = "year"
 
         if symbol[0] == "@":
             ret = rh.get_crypto_historicals(
@@ -232,6 +240,7 @@ class Robinhood(API):
                 "exp_date": exp_date,
                 "strike": strike,
                 "type": option_type,
+                # "id": option_id,
             }
         )
         df = df.set_index("occ_symbol")
@@ -550,6 +559,7 @@ class Robinhood(API):
         extended: bool = False,
     ):
         ret = None
+        symbol = symbol[1:]
         try:
             if side == "buy":
                 ret = rh.order_buy_crypto_limit(
@@ -570,8 +580,10 @@ class Robinhood(API):
                 "symbol": "@" + symbol,
             }
         except:
-            debugger.error("Error while placing order.\nReturned: {ret}", exc_info=True)
-            raise Exception("Error while placing order.")
+            debugger.error(
+                f"Error while placing order.\nReturned: {ret}", exc_info=True
+            )
+            raise Exception(f"Error while placing order.")
 
     def order_option_limit(
         self,

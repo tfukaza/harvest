@@ -27,7 +27,7 @@ class YahooStreamer(API):
     exchange = "NASDAQ"
 
     def __init__(self, path=None):
-        self.timestamp = now()
+        pass
 
     def setup(self, stats, account, trader_main=None):
         super().setup(stats, account, trader_main)
@@ -67,7 +67,7 @@ class YahooStreamer(API):
         combo = [
             self.fmt_symbol(sym)
             for sym in self.stats.watchlist_cfg
-            if is_freq(self.timestamp, self.stats.watchlist_cfg[sym]["interval"])
+            if is_freq(self.stats.timestamp, self.stats.watchlist_cfg[sym]["interval"])
         ]
 
         if len(combo) == 1:
@@ -92,6 +92,7 @@ class YahooStreamer(API):
                     required_intervals[i].append(s)
                 else:
                     required_intervals[i] = [s]
+            debugger.debug(f"Required intervals: {required_intervals}")
             for i in required_intervals:
                 names = " ".join(required_intervals[i])
                 df_tmp = yf.download(

@@ -108,6 +108,9 @@ class BaseStorage:
                 columns=["equity"], index=[]
             )
 
+    def setup(self, stats):
+        self.stats = stats
+
     def store(
         self, symbol: str, interval: Interval, data: pd.DataFrame, remove_duplicate=True
     ) -> None:
@@ -246,28 +249,32 @@ class BaseStorage:
             [timestamp, algorithm_name, symbol, side, quantity, price],
             ignore_index=True,
         )
-        # if symbol_type(symbol) == "CRYPTO":
-        #     return
+        if symbol_type(symbol) == "CRYPTO":
+            return
 
-        # # For stocks and options, check for daytrades.
-        # # First, check the transaction history for this asset in the current day.
-        # history = self.storage_transaction
-        # history = history[history["symbol"] == symbol]
-        # history = history[history["timestamp"].date() == timestamp.date()]
+        # For stocks and options, check for daytrades.
+        # First, check the transaction history for this asset in the current day.
+        history = self.storage_transaction.copy()
+        # history.set_index("timestamp", inplace=True)
+        history = history[history["symbol"] == symbol]
+        history = history[history["timestamp"] == timestamp.date()]
 
-        # # If there is no history, this cannot be a daytrade.
-        # if history.empty:
-        #     return
+        # If there is no history, this cannot be a daytrade.
+        if history.empty:
+            return
 
-        # # If there is history, check if this transaction is a daytrade.
-        # # Note that we don't support shorting, so a sell always closes a position.
-        # buy_sell = list(history["side"])[:-1]
+        # If there is history, check if this transaction is a daytrade.
+        # Note that we don't support shorting, so a sell always closes a position.
+        buy_sell = list(history["side"])[:-1]
 
-        # if side == "sell":
-        #     if buy_sell[-1] == "buy":
-        #         # TODO: Check if this sell sells all quantity.
-        #         data = pd.DataFrame([timestamp, symbol], ignore_index=True,)
-        #         self.storage_daytrade.append(data)
+        if side == "sell":
+            if buy_sell[-1] == "buy":
+                # TODO: Check if this sell sells all quantity.
+                data = pd.DataFrame(
+                    [timestamp, symbol],
+                    ignore_index=True,
+                )
+                self.storage_daytrade.append(data)
 
     def load_transaction(self) -> pd.DataFrame:
         return self.storage_transaction

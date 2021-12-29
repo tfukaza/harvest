@@ -15,7 +15,7 @@ from harvest.utils import *
 
 class Webull(API):
 
-    interval_list = [Interval.SEC_15, Interval.MIN_5, Interval.HR_1, Interval.DAY_1]
+    interval_list = [Interval.MIN_1, Interval.MIN_5, Interval.HR_1, Interval.DAY_1]
     exchange = "NASDAQ"
     req_keys = ["wb_username", "wb_password", "wb_trade_pin"]
 
@@ -160,39 +160,42 @@ class Webull(API):
             interval_fmt = f"m{val}"
         elif unit == "HR":
             interval_fmt = f"h{val}"
+        elif unit == "DAY":
+            interval_fmt = f"d{val}"
+        else:
+            raise Exception(f"Invalid interval: {interval}")
 
         delta = end - start
         delta = delta.total_seconds()
-        delta = delta / 3600
-        period = 1
-        timeframe = 1
-        if interval == "DAY" and delta < 24:
-            return df
-        if delta < 1 or interval == "15SEC" or interval == "1MIN":
-            span = "hour"
-            period = 1
-            timeframe = 1
-        elif delta < 24 or interval in ["5MIN", "15MIN", "30MIN", "1HR"]:
-            span = "day"
-        elif delta < 24 * 28:
-            span = "month"
-        elif delta < 24 * 300:
-            span = "year"
-        else:
-            span = "5year"
+        delta_hours = delta / 3600
+        count = 1
 
-        if is_crypto(symbol):
-            df = self.api.get_bars(
-                symbol[1:],
-                interval=interval_fmt,
-                count=int((390 * int(period)) / int(timeframe)),
-            )
+        # When interval is a day but the requested range is less than a day,
+        # return empty dataframe
+        if interval == "DAY" and delta_hours < 24:
+            return df
+        # If the requested range is short or interval is high,
+        # limit the number of bars to fetch
+        if delta < 1 or interval == "15SEC" or interval == "1MIN":
+            count = 300
+        # If the requested range is less than a day or interval is somewhat high,
+        # limit the number of bars to fetch
+        elif delta < 24 or interval in ["5MIN", "15MIN", "30MIN", "1HR"]:
+            count = 1200
+        elif delta < 24 * 28:
+            count = 1200
+        elif delta < 24 * 300:
+            count = 1200
         else:
-            df = self.api.get_bars(
-                symbol,
-                interval=interval_fmt,
-                count=int((390 * int(period)) / int(timeframe)),
-            )
+            count = 1200
+
+        symbol_fmt = symbol[1:] if is_crypto(symbol) else symbol
+
+        df = self.api.get_bars(
+            symbol_fmt,
+            interval=interval_fmt,
+            count=count,
+        )
 
         df = self._format_df(df, [symbol], interval)
 
@@ -215,7 +218,9 @@ class Webull(API):
             and symbol in self.__option_cache
             and date in self.__option_cache[symbol]
         ):
-            return self.__option_cache[symbol][date]
+            df = self.__option_cache[symbol][date]
+            df.drop("id", axis=1, inplace=True)
+            return df
 
         ret = self.api.get_options(stock=symbol, expireDate=date_to_str(date))
         exp_date = []
@@ -255,21 +260,32 @@ class Webull(API):
             self.__option_cache[symbol] = {}
         self.__option_cache[symbol][date] = df
 
-        return df
+        return df.drop(["id"], axis=1)
 
     @API._exception_handler
     def fetch_option_market_data(self, symbol: str):
         sym, date, _, price = self.occ_to_data(symbol)
         date = str_to_date(date_to_str(date))
 
-        oc_id = self.__option_cache[sym][date][
+        if sym not in self.__option_cache or date not in self.__option_cache[sym]:
+            self.fetch_chain_data(sym, date)
+
+        option_df = self.__option_cache[sym][date][
             self.__option_cache[sym][date].index == symbol
-        ].id[0]
+        ]
+
+        oc_id = option_df["id"][0]
 
         ret = self.api.get_option_quote(stock=sym, optionId=oc_id)
         if not ret.get("data"):
-            debugger.error(f"Error in fetch_option_market_data.\nReturned: {ret}")
-            raise Exception(f"Error in fetch_option_market_data.\nReturned: {ret}")
+            if ret["code"] == "417":
+                err_msg = "Unauthorized request. It is likely you are not subscribed to WeBull's realtime option price service."
+                debugger.error(err_msg)
+                raise Exception(err_msg)
+            else:
+                err_msg = "Error in fetch_option_market_data.\nReturned: {ret}"
+                debugger.error(err_msg)
+                raise Exception(err_msg)
         try:
             price = float(ret["data"][0]["close"])
         except:
@@ -347,18 +363,18 @@ class Webull(API):
             )
         return pos
 
-    @API._exception_handler
-    def update_option_positions(self, positions: List[Any]):
-        for r in positions:
-            sym, date, _, price = self.occ_to_data(r["occ_symbol"])
-            oc_id = self.__option_cache[sym][date][
-                self.__option_cache[sym][date].index == symbol
-            ].id[0]
-            ret = self.api.get_option_quote(stock=sym, optionId=oc_id)
+    # @API._exception_handler
+    # def update_option_positions(self, positions: List[Any]):
+    #     for r in positions:
+    #         sym, date, _, price = self.occ_to_data(r["occ_symbol"])
+    #         oc_id = self.__option_cache[sym][date][
+    #             self.__option_cache[sym][date].index == symbol
+    #         ].id[0]
+    #         ret = self.api.get_option_quote(stock=sym, optionId=oc_id)
 
-            r["current_price"] = float(ret["data"][0]["close"])
-            r["market_value"] = float(ret["data"][0]["close"]) * r["quantity"]
-            r["cost_basis"] = r["avg_price"] * r["quantity"]
+    #         r["current_price"] = float(ret["data"][0]["close"])
+    #         r["market_value"] = float(ret["data"][0]["close"]) * r["quantity"]
+    #         r["cost_basis"] = r["avg_price"] * r["quantity"]
 
     def fmt_fetch_account(self, val, data):
         for line in data:
@@ -556,13 +572,9 @@ class Webull(API):
         ret = None
         sym = self.data_to_occ(symbol, exp_date, side, strike)
         date = str_to_date(date_to_str(exp_date))
-        oc_id = (
-            self.__option_cache[symbol][date][
-                self.__option_cache[symbol][date].index == sym
-            ]
-            .id[0]
-            .item()
-        )
+        oc_id = self.__option_cache[symbol][date][
+            self.__option_cache[symbol][date].index == sym
+        ]["id"][0].item()
 
         if not isinstance(oc_id, int):
             debugger.error(

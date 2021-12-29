@@ -15,6 +15,7 @@ from harvest.utils import *
 class Kraken(API):
 
     interval_list = [Interval.MIN_1, Interval.MIN_5, Interval.HR_1, Interval.DAY_1]
+    req_keys = ["kraken_api_key", "kraken_secret_key"]
 
     crypto_ticker_to_kraken_names = {
         "BTC": "XXBTZ",
@@ -123,10 +124,10 @@ class Kraken(API):
             self.config["kraken_api_key"], self.config["kraken_secret_key"]
         )
 
-    def setup(self, interval: Dict, trader_main=None):
-        super().setup(interval, trader_main)
+    def setup(self, stats, account, trader_main=None):
+        super().setup(stats, account, trader_main)
         self.watch_crypto = []
-        for sym in interval:
+        for sym in self.stats.watchlist_cfg:
             if is_crypto(sym):
                 self.watch_crypto.append(sym)
             else:
@@ -197,6 +198,14 @@ class Kraken(API):
 
     def fetch_option_market_data(self, occ_symbol: str):
         raise NotImplementedError("Kraken does not support options.")
+
+    def fetch_market_hours(self, date: datetime.date):
+        # Crypto markets are always open.
+        return {
+            "is_open": True,
+            "open_at": None,
+            "close_at": None,
+        }
 
     # ------------- Broker methods ------------- #
 
@@ -293,7 +302,7 @@ class Kraken(API):
 
         return [fmt(order) for order in open_orders]
 
-    def order_limit(
+    def order_crypto_limit(
         self,
         side: str,
         symbol: str,
@@ -302,11 +311,6 @@ class Kraken(API):
         in_force: str = "gtc",
         extended: bool = False,
     ):
-        if is_crypto(symbol):
-            symbol = ticker_to_kraken(symbol)
-        else:
-            raise Exception("Kraken does not support stocks.")
-
         order = self.get_result(
             self.api.query_private(
                 "AddOrder",
@@ -326,18 +330,8 @@ class Kraken(API):
             "kraken": order,
         }
 
-    def order_option_limit(
-        self,
-        side: str,
-        symbol: str,
-        quantity: int,
-        limit_price: float,
-        option_type,
-        exp_date: dt.datetime,
-        strike,
-        in_force: str = "gtc",
-    ):
-        raise NotImplementedError("Kraken does not support options.")
+    def cancel_crypto_order(self, order_id):
+        self.api.query_private("CancelOrder", {"txid": order_id})
 
     # ------------- Helper methods ------------- #
 
@@ -450,13 +444,4 @@ class Kraken(API):
 
         w.println(f"All steps are complete now 🎉. Generating {path}...")
 
-        d = {"kraken_api_key": f"{api_key_id}", "kraken_secret_key": f"{secret_key}"}
-
-        with open(path, "w") as file:
-            yml = yaml.dump(d, file)
-
-        w.println(
-            f"{path} has been created! Make sure you keep this file somewhere secure and never share it with other people."
-        )
-
-        return True
+        return {"kraken_api_key": f"{api_key_id}", "kraken_secret_key": f"{secret_key}"}
