@@ -279,7 +279,7 @@ class Robinhood(API):
 
             if self.stats.timestamp < open_at or self.stats.timestamp > close_at:
                 is_open = False
-        
+
         if not is_open:
             open_at = None
             close_at = None
