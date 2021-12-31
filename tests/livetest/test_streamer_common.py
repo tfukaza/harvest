@@ -8,6 +8,7 @@ from harvest.api.yahoo import YahooStreamer
 from harvest.utils import *
 import time
 import os
+import datetime as dt
 
 secret_path = os.environ["SECRET_PATH"]
 debugger.setLevel("DEBUG")
@@ -166,6 +167,29 @@ class TestLiveStreamer(unittest.TestCase):
         df = api.fetch_option_market_data(sym)
         debugger.debug(f"{api} fetch_option_market_data {sym} returned {df}")
         self.assertTrue(True)
+
+    @decorator_repeat_test([Robinhood, YahooStreamer])
+    def test_fetch_market_hours(self, api):
+        """
+        Test if market hours can be fetched
+        """
+        api = api(secret_path)
+        interval = {
+            "TWTR": {"interval": Interval.MIN_5, "aggregations": []},
+            "@DOGE": {"interval": Interval.MIN_5, "aggregations": []},
+        }
+        stats = Stats(watchlist_cfg=interval)
+        api.setup(stats, Account())
+
+        data = api.fetch_market_hours(dt.datetime.now().date())
+        debugger.debug(f"{api} fetch_market_hours returned {data}")
+        self.assertTrue("is_open" in data)
+        if data["is_open"]:
+            self.assertIsInstance(data["open_at"], dt.datetime)
+            self.assertIsInstance(data["close_at"], dt.datetime)
+        else:
+            self.assertIsNone(data["open_at"])
+            self.assertIsNone(data["close_at"])
 
 
 if __name__ == "__main__":

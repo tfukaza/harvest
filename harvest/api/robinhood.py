@@ -268,11 +268,26 @@ class Robinhood(API):
     @API._exception_handler
     def fetch_market_hours(self, date: datetime.date):
         ret = rh.get_market_hours("XNAS", date.strftime("%Y-%m-%d"))
+        is_open = ret["is_open"]
+        if is_open:
+            open_at = ret["opens_at"]
+            open_at = dt.datetime.strptime(open_at, "%Y-%m-%dT%H:%M:%SZ")
+            open_at = convert_input_to_datetime(open_at, tz.utc)
+            close_at = ret["closes_at"]
+            close_at = dt.datetime.strptime(close_at, "%Y-%m-%dT%H:%M:%SZ")
+            close_at = convert_input_to_datetime(close_at, tz.utc)
+
+            if self.stats.timestamp < open_at or self.stats.timestamp > close_at:
+                is_open = False
+        
+        if not is_open:
+            open_at = None
+            close_at = None
 
         return {
-            "is_open": ret["is_open"],
-            "open_at": ret["opens_at"],
-            "close_at": ret["closes_at"],
+            "is_open": is_open,
+            "open_at": open_at,
+            "close_at": close_at,
         }
 
     # ------------- Broker methods ------------- #
