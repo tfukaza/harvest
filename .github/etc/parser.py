@@ -28,6 +28,10 @@ a_func = [
     a.get_asset_quantity,
     a.get_asset_profit_percent,
     a.get_time,
+    a.get_account_stock_positions,
+    a.get_account_crypto_positions,
+    a.get_account_option_positions,
+    a.get_watchlist
 ]
 
 t_func = [
