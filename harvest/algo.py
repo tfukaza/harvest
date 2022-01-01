@@ -87,7 +87,7 @@ class BaseAlgo:
         price 5% higher than the current price. This is a general function that can
         be used to buy stocks, crypto, and options. When buying cryptos, the symbol
         must be prepended with a '@' symbol. When buying options, the symbol must be
-        formatted in OCC format, with any empty spaces removed. 
+        formatted in OCC format, with any empty spaces removed.
 
         :param str? symbol: Symbol of the asset to buy. defaults to first symbol in watchlist
         :param float? quantity: Quantity of asset to buy. defaults to buys as many as possible
@@ -121,7 +121,7 @@ class BaseAlgo:
         price 5% lower than the current price. This is a general function that can
         be used to sell stocks, crypto, and options. When buying cryptos, the symbol
         must be prepended with a '@' symbol. When buying options, the symbol must be
-        formatted in OCC format, with any empty spaces removed. 
+        formatted in OCC format, with any empty spaces removed.
 
         :param str? symbol:    Symbol of the asset to sell. defaults to first symbol in watchlist
         :param float? quantity:  Quantity of asset to sell defaults to sells all
@@ -146,7 +146,7 @@ class BaseAlgo:
         """Sells all options based on the specified stock.
 
         For example, if you call this function with `symbol` set to "TWTR", it will sell
-        all options you own that is related to TWTR.  
+        all options you own that is related to TWTR.
 
         :param str? symbol: symbol of stock. defaults to first symbol in watchlist
         :returns: A list of dictionaries with the following keys:
@@ -224,10 +224,10 @@ class BaseAlgo:
     def get_option_chain_info(self, symbol: str = None):
         """Returns data of a stock's option chain.
 
-        Given a stock's symbol, this function returns a dictionary with two data. 
-        The first is a list indicating the available expiration dates of the option. 
-        The second is the multiplier, which indicates how many contracts are in a single option. 
-        For example, if you buy an option priced at $1.20 and the multiplier is 100, 
+        Given a stock's symbol, this function returns a dictionary with two data.
+        The first is a list indicating the available expiration dates of the option.
+        The second is the multiplier, which indicates how many contracts are in a single option.
+        For example, if you buy an option priced at $1.20 and the multiplier is 100,
         you will need to pay $120 to buy one option.
 
         This function is often used in conjunction with the get_option_chain function.
@@ -268,7 +268,7 @@ class BaseAlgo:
     def get_option_market_data(self, symbol: str):
         """Retrieves data of specified option.
 
-        Note that the price returned by this function returns the price per contract, 
+        Note that the price returned by this function returns the price per contract,
         not the total price of the option.
 
         :param str? symbol: OCC symbol of option
