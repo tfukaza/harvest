@@ -8,9 +8,7 @@ PATH = "./tmp"
 
 a_func = [
     a.buy,
-    a.buy_option,
     a.sell,
-    a.sell_option,
     a.get_option_market_data,
     a.get_option_chain,
     a.get_option_chain_info,
@@ -28,7 +26,7 @@ a_func = [
     a.get_asset_price,
     a.get_asset_price_list,
     a.get_asset_quantity,
-    a.get_asset_returns,
+    a.get_asset_profit_percent,
     a.get_time,
 ]
 
