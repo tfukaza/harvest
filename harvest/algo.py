@@ -186,7 +186,7 @@ class BaseAlgo:
         :param float lower_strike: The minimum strike price of the option, inclusive.
         :param float upper_strike: The maximum strike price of the option, inclusive.
 
-        :returns: A DataFrame, with an index of strings representing the OCC symbol of stocks, and the following columns:
+        :returns: A DataFrame, with an index of strings representing the OCC symbol of options, and the following columns:
             - type: 'call' or 'put'
             - strike: float, strike price
             - exp_date: datetime.datetime, expiration date
@@ -268,7 +268,8 @@ class BaseAlgo:
     def get_option_market_data(self, symbol: str):
         """Retrieves data of specified option.
 
-        Note that the price returned by this function returns the price per contract, not the total price.
+        Note that the price returned by this function returns the price per contract, 
+        not the total price of the option.
 
         :param str? symbol: OCC symbol of option
         :returns: A dictionary:
