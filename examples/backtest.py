@@ -20,6 +20,8 @@ class BackTest(BaseAlgo):
             self.buy(quantity=1)
         elif self.crossover(sma_short, sma_long):
             self.sell(quantity=1)
+        
+        self.filter_option_chain()
 
 
 if __name__ == "__main__":
