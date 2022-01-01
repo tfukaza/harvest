@@ -20,7 +20,7 @@ a_func = [
     a.get_account_equity,
     a.get_asset_current_candle,
     a.get_asset_candle_list,
-    a.get_asset_average_cost,
+    a.get_asset_avg_cost,
     a.get_date,
     a.get_datetime,
     a.get_asset_current_price,
