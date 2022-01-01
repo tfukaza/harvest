@@ -125,7 +125,7 @@ class BaseAlgo:
 
         :param str? symbol:    Symbol of the asset to sell. defaults to first symbol in watchlist
         :param float? quantity:  Quantity of asset to sell defaults to sells all
-        :param str? in_force:  Duration the order is in force. '{gtc}' or '{gtd}'. defaults to 'gtc'
+        :param str? in_force:  Duration the order is in force. 'gtc' or 'gtd'. defaults to 'gtc'
         :param str? extended:  Whether to trade in extended hours or not. defaults to False
 
         :returns: A dictionary with the following keys:
