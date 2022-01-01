@@ -7,6 +7,9 @@ import json
 PATH = "./tmp"
 
 a_func = [
+    a.config,
+    a.setup,
+    a.main,
     a.buy,
     a.sell,
     a.get_option_market_data,

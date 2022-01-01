@@ -35,12 +35,20 @@ class BaseAlgo:
         self.positions = account.positions
 
     def config(self):
-        """This method is called before any other methods (except for __init__),
+        """This method is called before all other methods (except for __init__),
         and initializes parameters for this class.
-        -  interval: The interval to run the algorithm.
-        -  aggregations: Intervals to aggregate data.
-        -  watchlist: List of assets this algorithm tracks.
+        -  interval: The string specifying the interval to run the algorithm. Choose from "15SEC", "1MIN", "5MIN", "15MIN", "30MIN", "1HR", "1DAY".
+        -  aggregations: A List of strings specifying the intervals to aggregate data. Choose from "1MIN", "5MIN", "15MIN", "30MIN", "1HR", "1DAY".
+        -  watchlist: A List of strings specifying the stock/crypto assets this algorithm tracks. Crypto assets must be prepended with a '@' symbol.
         Any parameters set to None or an empty List will fall back to respective paramters set in the Trader class.
+
+        Example:
+        ```
+        def config(self):
+            self.interval = "5MIN"
+            self.aggregations = ["15MIN", "30MIN", "1DAY"]
+            self.watchlist = ["AAPL", "@BTC"]
+        ```
         """
         self.interval = None
         self.aggregations = None
