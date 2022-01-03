@@ -610,7 +610,7 @@ class Webull(API):
         df.columns = pd.MultiIndex.from_product([watch, df.columns])
         return df.dropna()
 
-    def create_secret(self, path):
+    def create_secret(self):
         import harvest.wizard as wizard
 
         w = wizard.Wizard()

@@ -31,7 +31,7 @@ class Alpaca(StreamAPI):
 
         if self.config is None:
             raise Exception(
-                f"Account credentials not found! Expected file path: {path}"
+                f"Account credentials not found! Expected file path: {path} with keys {req_keys}"
             )
 
         self.basic = is_basic_account
@@ -133,22 +133,23 @@ class Alpaca(StreamAPI):
         df = self.get_data_from_alpaca(symbol, interval, start, end)
         return df
 
-    @API._exception_handler
     def fetch_chain_info(self, symbol: str):
         raise NotImplementedError("Alpaca does not support options.")
 
-    @API._exception_handler
     def fetch_chain_data(self, symbol: str, date: dt.datetime):
         raise NotImplementedError("Alpaca does not support options.")
 
-    @API._exception_handler
     def fetch_option_market_data(self, occ_symbol: str):
         raise NotImplementedError("Alpaca does not support options.")
 
     @API._exception_handler
     def fetch_market_hours(self, date: datetime.date):
-        ret = self.api.get_clock()
-        return ret.__dict__["_raw"]
+        ret = self.api.get_clock().__dict__["_raw"]
+        return {
+            "is_open": ret["is_open"],
+            "open": ret["next_open"],
+            "close": ret["next_close"]
+        }
 
     # ------------- Broker methods ------------- #
 
@@ -254,7 +255,7 @@ class Alpaca(StreamAPI):
         ).__dict__["_raw"]
 
         return {
-            "type": "CRYPTO",
+            "type": "STOCK",
             "id": order["id"],
             "symbol": symbol,
             "alpaca": order,
@@ -272,7 +273,7 @@ class Alpaca(StreamAPI):
         if self.basic:
             raise Exception("Alpaca basic accounts do not support crypto.")
 
-        symbol = symbol[1:]
+        symbol = symbol[1:] + "USD"
 
         order = self.api.submit_order(
             symbol,
@@ -369,11 +370,12 @@ class Alpaca(StreamAPI):
         start_str = start.isoformat()
         end_str = end.isoformat()
 
-        temp_symbol = symbol[1:] if is_crypto(symbol) else symbol
+        temp_symbol = symbol[1:] + "USD" if is_crypto(symbol) else symbol
         bars = self.api.get_bars(
             temp_symbol, TimeFrame(timespan), start_str, end_str, adjustment="raw"
         )
         df = pd.DataFrame((bar.__dict__["_raw"] for bar in bars))
+        print(df)
         df = self._format_df(df, symbol)
         df = aggregate_df(df, interval)
         return df
@@ -399,7 +401,7 @@ class Alpaca(StreamAPI):
 
         return df.dropna()
 
-    def create_secret(self, path: str) -> bool:
+    def create_secret(self):
         import harvest.wizard as wizard
 
         w = wizard.Wizard()

@@ -67,7 +67,7 @@ if __name__ == "__main__":
     csv_storage = CSVStorage(save_dir="em_storage")
     # Our streamer and broker will be Alpaca. My secret keys are stored in `alpaca_secret.yaml`
     alpaca = Alpaca(
-        path="accounts/alpaca-secret.yaml", is_basic_account=True, paper_trader=True
+        path="etc/secret.yaml", is_basic_account=True, paper_trader=True
     )
     em_algo = EMAlgo()
     trader = LiveTrader(streamer=alpaca, broker=alpaca, storage=csv_storage, debug=True)

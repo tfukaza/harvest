@@ -76,60 +76,40 @@ class PolygonStreamer(API):
         val, unit = expand_interval(interval)
         return self.get_data_from_polygon(symbol, val, unit, start, end)
 
-    @API._exception_handler
+
     def fetch_chain_info(self, symbol: str):
-        return {
-            "id": "n/a",
-            "exp_dates": [str_to_date(s) for s in self.watch_ticker[symbol].options],
-            "multiplier": 100,
-        }
+        raise NotImplementedError("Polygon does not support options.")
 
-    @API._exception_handler
     def fetch_chain_data(self, symbol: str, date: dt.datetime):
+        raise NotImplementedError("Polygon does not support options.")
 
-        if (
-            bool(self.option_cache)
-            and symbol in self.option_cache
-            and date in self.option_cache[symbol]
-        ):
-            return self.option_cache[symbol][date]
+    def fetch_option_market_data(self, symbol: str):
+        if self.basic:
+            raise NotImplementedError("Polygon does not support options.")
 
-        df = pd.DataFrame(columns=["contractSymbol", "exp_date", "strike", "type"])
-
-        chain = self.watch_ticker[symbol].option_chain(date_to_str(date))
-        puts = chain.puts
-        puts["type"] = "put"
-        calls = chain.calls
-        calls["type"] = "call"
-        df = df.append(puts)
-        df = df.append(calls)
-
-        df = df.rename(columns={"contractSymbol": "occ_symbol"})
-        df["exp_date"] = df.apply(
-            lambda x: self.occ_to_data(x["occ_symbol"])[1], axis=1
+        sym, date, type, price = self.occ_to_data(symbol)
+        request_form = "https://api.polygon.io/v3/snapshot/options/{symbol}/{occ}?apiKey={api_key}"
+        request = request_form.format(
+            symbol=symbol,
+            occ=symbol,
+            api_key=self.config["polygon_api_key"],
         )
-        df = df[["occ_symbol", "exp_date", "strike", "type"]]
-        df.set_index("occ_symbol", inplace=True)
 
-        if symbol not in self.option_cache:
-            self.option_cache[symbol] = {}
-        self.option_cache[symbol][date] = df
+        response = json.load(urllib.request.urlopen(request))
 
-        return df
+        if response["status"] != "ERROR":
+            return {
+                "price": response["results"]["underlying_asset"]["price"],
+                "ask": response["results"]["last_quote"]["ask"],
+                "bid": response["results"]["last_quote"]["bid"]
+            }
+        else:
+            raise Exception(f"Failed to option data, got {response}")
+
 
     @API._exception_handler
-    def fetch_option_market_data(self, occ_symbol: str):
-        occ_symbol = occ_symbol.replace(" ", "")
-        symbol, date, typ, _ = self.occ_to_data(occ_symbol)
-        chain = self.watch_ticker[symbol].option_chain(date_to_str(date))
-        chain = chain.calls if typ == "call" else chain.puts
-        df = chain[chain["contractSymbol"] == occ_symbol]
-        debugger.debug(occ_symbol, df)
-        return {
-            "price": float(df["lastPrice"].iloc[0]),
-            "ask": float(df["ask"].iloc[0]),
-            "bid": float(df["bid"].iloc[0]),
-        }
+    def fetch_market_hours(self, date: datetime.date):
+        pass
 
     # ------------- Broker methods ------------- #
 
@@ -221,7 +201,7 @@ class PolygonStreamer(API):
 
         return df.dropna()
 
-    def create_secret(self, path: str) -> bool:
+    def create_secret(self):
         import harvest.wizard as wizard
 
         w = wizard.Wizard()
@@ -249,15 +229,6 @@ class PolygonStreamer(API):
 
         w.println(f"All steps are complete now 🎉. Generating {path}...")
 
-        d = {
-            "polygon_api_key": f"{api_key}",
-        }
+        
 
-        with open(path, "w") as file:
-            yml = yaml.dump(d, file)
-
-        w.println(
-            f"{path} has been created! Make sure you keep this file somewhere secure and never share it with other people."
-        )
-
-        return True
+        return { "polygon_api_key": f"{api_key}" }

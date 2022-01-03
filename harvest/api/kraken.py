@@ -408,7 +408,7 @@ class Kraken(API):
             raise Exception("\n".join(response["error"]))
         return response.get("result", None)
 
-    def create_secret(self, path: str) -> bool:
+    def create_secret(self):
         import harvest.wizard as wizard
 
         w = wizard.Wizard()

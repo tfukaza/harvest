@@ -524,7 +524,7 @@ class BaseAlgo:
             df = self.func.load(symbol, interval).iloc[[-1]][symbol]
             return pandas_timestamp_to_local(df, self.stats.timezone)
         debugger.warning("Candles not available for options")
-        return None
+        return Nones
 
     def get_asset_candle_list(
         self, symbol: str = None, interval=None

@@ -63,26 +63,25 @@ class API:
             path = "./secret.yaml"
         # Check if file exists. If not, create a secret file
         if not exists(path):
-            config = self.create_secret(path)
+            config = self.create_secret()
         else:
             # Open file
             with open(path, "r") as stream:
                 config = yaml.safe_load(stream)
                 # Check if the file contains all the required parameters
                 if any(key not in config for key in self.req_keys):
-                    config.update(self.create_secret(path))
+                    config.update(self.create_secret())
 
         with open(path, "w") as f:
             yaml.dump(config, f)
 
         self.config = config
 
-    def create_secret(self, path: str):
+    def create_secret(self):
         """
         This method is called when the yaml file with credentials
         is not found. It returns a dictionary containing the necessary credentials.
         """
-        # raise Exception(f"{path} was not found.")
         debugger.warning("Assuming API does not need account information.")
         return None
 
@@ -205,7 +204,7 @@ class API:
                 debugger.debug(f"{sym} price fetch returned: {latest}")
                 if latest is None or latest.empty:
                     continue
-                df_dict[sym] = latest.iloc[-1]
+                df_dict[sym] = latest.iloc[[-1]]
 
         self.trader_main(df_dict)
 
