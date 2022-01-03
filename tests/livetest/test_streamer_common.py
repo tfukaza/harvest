@@ -4,11 +4,11 @@ from harvest.api.webull import Webull
 from harvest.api.alpaca import Alpaca
 from harvest.api.kraken import Kraken
 from harvest.api.yahoo import YahooStreamer
-from harvest.api.polygon import PolygonStreamer
 
 from harvest.utils import *
 import time
 import os
+import datetime as dt
 
 secret_path = os.environ["SECRET_PATH"]
 debugger.setLevel("DEBUG")
@@ -31,7 +31,7 @@ def decorator_repeat_test(api_list):
 
 
 class TestLiveStreamer(unittest.TestCase):
-    @decorator_repeat_test([YahooStreamer, PolygonStreamer])
+    @decorator_repeat_test([Robinhood, YahooStreamer])
     def test_setup(self, api):
         """
         Assuming that secret.yml is already created with proper parameters, test if the broker can read its contents and establish a connection with the server.
@@ -45,7 +45,7 @@ class TestLiveStreamer(unittest.TestCase):
         api.setup(stats, Account())
         self.assertTrue(True)
 
-    @decorator_repeat_test([YahooStreamer, PolygonStreamer])
+    @decorator_repeat_test([Robinhood, YahooStreamer])
     def test_fetch_stock_prices(self, api):
         """
         Test if stock price history can be properly fetched for every interval supported
@@ -70,7 +70,7 @@ class TestLiveStreamer(unittest.TestCase):
                 sorted(["open", "high", "low", "close", "volume"]),
             )
 
-    @decorator_repeat_test([YahooStreamer, PolygonStreamer])
+    @decorator_repeat_test([Robinhood, YahooStreamer])
     def test_fetch_crypto_prices(self, api):
         """
         Test if crypro price history can be properly fetched for every interval supported
@@ -92,7 +92,7 @@ class TestLiveStreamer(unittest.TestCase):
                 sorted(["open", "high", "low", "close", "volume"]),
             )
 
-    @decorator_repeat_test([YahooStreamer, PolygonStreamer])
+    @decorator_repeat_test([Robinhood, YahooStreamer])
     def test_main_mix(self, api):
         """
         Test if latest prices can be fetched when there are both
@@ -115,7 +115,7 @@ class TestLiveStreamer(unittest.TestCase):
         stats.timestamp = epoch_zero()
         api.main()
 
-    @decorator_repeat_test([YahooStreamer])
+    @decorator_repeat_test([Robinhood, YahooStreamer])
     def test_chain_info(self, api):
         """
         Test if chain info can be fetched
@@ -131,7 +131,7 @@ class TestLiveStreamer(unittest.TestCase):
         debugger.debug(f"{api} fetch_chain_info TWTR returned {info}")
         self.assertGreater(len(info["exp_dates"]), 0)
 
-    @decorator_repeat_test([YahooStreamer])
+    @decorator_repeat_test([Robinhood, YahooStreamer])
     def test_chain_data(self, api):
         """
         Test if chain data can be fetched
@@ -151,7 +151,7 @@ class TestLiveStreamer(unittest.TestCase):
         self.assertGreater(len(data), 0)
         self.assertListEqual(list(data.columns), ["exp_date", "strike", "type"])
 
-    @decorator_repeat_test([YahooStreamer])
+    @decorator_repeat_test([Robinhood, YahooStreamer])
     def test_option_market_data(self, api):
         """ """
         api = api(secret_path)
@@ -167,6 +167,29 @@ class TestLiveStreamer(unittest.TestCase):
         df = api.fetch_option_market_data(sym)
         debugger.debug(f"{api} fetch_option_market_data {sym} returned {df}")
         self.assertTrue(True)
+
+    @decorator_repeat_test([Robinhood, YahooStreamer])
+    def test_fetch_market_hours(self, api):
+        """
+        Test if market hours can be fetched
+        """
+        api = api(secret_path)
+        interval = {
+            "TWTR": {"interval": Interval.MIN_5, "aggregations": []},
+            "@DOGE": {"interval": Interval.MIN_5, "aggregations": []},
+        }
+        stats = Stats(watchlist_cfg=interval)
+        api.setup(stats, Account())
+
+        data = api.fetch_market_hours(dt.datetime.now().date())
+        debugger.debug(f"{api} fetch_market_hours returned {data}")
+        self.assertTrue("is_open" in data)
+        if data["is_open"]:
+            self.assertIsInstance(data["open_at"], dt.datetime)
+            self.assertIsInstance(data["close_at"], dt.datetime)
+        else:
+            self.assertIsNone(data["open_at"])
+            self.assertIsNone(data["close_at"])
 
 
 if __name__ == "__main__":

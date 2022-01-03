@@ -81,17 +81,17 @@ class TestLiveBroker(unittest.TestCase):
     def test_buy_crypto(self, api):
         """
         Test that it can buy crypto
-        """
+         """
         api = api(secret_path)
         interval = {
-            "@BTC": {"interval": Interval.MIN_5, "aggregations": []},
+            "@DOGE": {"interval": Interval.MIN_5, "aggregations": []},
         }
         stats = Stats(watchlist_cfg=interval)
         api.setup(stats, Account())
 
-        # Limit order BTC at an extremely low limit price
+        # Limit order DOGE at an extremely low limit price
         # to ensure the order is not actually filled.
-        ret = api.order_crypto_limit("buy", "@BTC", 1, 0.10)
+        ret = api.order_crypto_limit("buy", "@DOGE", 1, 0.10)
 
         time.sleep(5)
 
