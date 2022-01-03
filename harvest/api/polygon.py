@@ -76,7 +76,6 @@ class PolygonStreamer(API):
         val, unit = expand_interval(interval)
         return self.get_data_from_polygon(symbol, val, unit, start, end)
 
-
     def fetch_chain_info(self, symbol: str):
         raise NotImplementedError("Polygon does not support options.")
 
@@ -88,7 +87,9 @@ class PolygonStreamer(API):
             raise NotImplementedError("Polygon does not support options.")
 
         sym, date, type, price = self.occ_to_data(symbol)
-        request_form = "https://api.polygon.io/v3/snapshot/options/{symbol}/{occ}?apiKey={api_key}"
+        request_form = (
+            "https://api.polygon.io/v3/snapshot/options/{symbol}/{occ}?apiKey={api_key}"
+        )
         request = request_form.format(
             symbol=symbol,
             occ=symbol,
@@ -101,11 +102,10 @@ class PolygonStreamer(API):
             return {
                 "price": response["results"]["underlying_asset"]["price"],
                 "ask": response["results"]["last_quote"]["ask"],
-                "bid": response["results"]["last_quote"]["bid"]
+                "bid": response["results"]["last_quote"]["bid"],
             }
         else:
             raise Exception(f"Failed to option data, got {response}")
-
 
     @API._exception_handler
     def fetch_market_hours(self, date: datetime.date):
@@ -229,6 +229,4 @@ class PolygonStreamer(API):
 
         w.println(f"All steps are complete now 🎉. Generating {path}...")
 
-        
-
-        return { "polygon_api_key": f"{api_key}" }
+        return {"polygon_api_key": f"{api_key}"}

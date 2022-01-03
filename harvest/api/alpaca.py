@@ -148,7 +148,7 @@ class Alpaca(StreamAPI):
         return {
             "is_open": ret["is_open"],
             "open": ret["next_open"],
-            "close": ret["next_close"]
+            "close": ret["next_close"],
         }
 
     # ------------- Broker methods ------------- #
