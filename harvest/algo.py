@@ -16,7 +16,6 @@ from harvest.plugin._base import Plugin
 Algo class is the main interface between users and the program.
 """
 
-
 class BaseAlgo:
     """The BaseAlgo class is an abstract class defining the interface for users to
     track assets, monitor their accounts, and place orders.
@@ -35,36 +34,35 @@ class BaseAlgo:
         self.positions = account.positions
 
     def config(self):
-        """This method is called before all other methods (except for __init__) and initializes parameters for this class.
+        """
+        This method is called before all other methods (except for __init__) and initializes parameters for this class.
 
         - interval: The string specifying the interval to run the algorithm. Choose from "15SEC", "1MIN", "5MIN", "15MIN", "30MIN", "1HR", "1DAY".
         - aggregations: A List of strings specifying the intervals to aggregate data. Choose from "1MIN", "5MIN", "15MIN", "30MIN", "1HR", "1DAY".
         - watchlist: A List of strings specifying the stock/crypto assets this algorithm tracks. Crypto assets must be prepended with a '@' symbol.
-        
-        Any parameters set to None or an empty List will fall back to respective paramters set in the Trader class.
 
-        Example
-        ```python
-            def config(self):
-                self.interval = "5MIN"
-                self.aggregations = ["15MIN", "30MIN", "1DAY"]
-                self.watchlist = ["AAPL", "@BTC"]
-        ```
+        Any parameters set to None or an empty List will fall back to respective paramters set in the Trader class.
         """
         self.interval = None
         self.aggregations = None
         self.watchlist = []
 
     def setup(self):
-        """Method called right before algorithm begins."""
+        """
+        Method called right before algorithm begins.
+        """
         pass
 
     def main(self):
-        """Main method to run the algorithm."""
+        """
+        Main method to run the algorithm.
+        """
         pass
 
     def add_plugin(self, plugin: Plugin):
-        """Adds a plugin to the algorithm."""
+        """
+        Adds a plugin to the algorithm.
+        """
         value = getattr(self, plugin.name, None)
         if value is None:
             setattr(self, plugin.name, plugin)
@@ -82,18 +80,22 @@ class BaseAlgo:
         in_force: str = "gtc",
         extended: bool = False,
     ):
-        """Buys the specified asset.
+        """
+        Buys the specified asset.
 
         When called, a limit buy order is placed with a limit
         price 5% higher than the current price. This is a general function that can
-        be used to buy stocks, crypto, and options. When buying cryptos, the symbol
-        must be prepended with a '@' symbol. When buying options, the symbol must be
-        formatted in OCC format, with any empty spaces removed.
+        be used to buy stocks, crypto, and options. 
 
-        :param str? symbol: Symbol of the asset to buy. defaults to first symbol in watchlist
-        :param float? quantity: Quantity of asset to buy. defaults to buys as many as possible
-        :param str? in_force: Duration the order is in force. '{gtc}' or '{gtd}'. defaults to 'gtc'
-        :param str? extended: Whether to trade in extended hours or not. defaults to False
+        :param str? symbol: Symbol of the asset to buy. 
+            If not specified, defaults to first symbol in watchlist. 
+            Crypto assets must be prepended with a '@' symbol. 
+            When buying options, the symbol must be formatted in OCC format.
+        :param float? quantity: Quantity of asset to buy. If not specified, 
+            it will buys as many as possible given the current buying power.
+        :param str? in_force: Duration the order is in force. 
+            Choose from 'gtc' (Good 'til canceled) or 'gtd' (). defaults to 'gtc'
+        :param str? extended: Whether to trade in extended hours or not. Defaults to False
 
         :returns: The following Python dictionary
             - order_id: str, ID of order
