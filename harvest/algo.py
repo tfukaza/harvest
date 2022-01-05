@@ -43,6 +43,14 @@ class BaseAlgo:
         - watchlist: A List of strings specifying the stock/crypto assets this algorithm tracks. Crypto assets must be prepended with a '@' symbol.
 
         Any parameters set to None or an empty List will fall back to respective paramters set in the Trader class.
+
+        Example
+        ```python
+        def config(self):
+            self.interval = "5MIN"
+            self.aggregations = ["15MIN", "30MIN", "1DAY"]
+            self.watchlist = ["AAPL", "@BTC"]
+        ```
         """
         self.interval = None
         self.aggregations = None
