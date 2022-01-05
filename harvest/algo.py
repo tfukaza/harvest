@@ -126,10 +126,15 @@ class BaseAlgo:
         must be prepended with a '@' symbol. When buying options, the symbol must be
         formatted in OCC format, with any empty spaces removed.
 
-        :param str? symbol:    Symbol of the asset to sell. defaults to first symbol in watchlist
-        :param float? quantity:  Quantity of asset to sell defaults to sells all
-        :param str? in_force:  Duration the order is in force. 'gtc' or 'gtd'. defaults to 'gtc'
-        :param str? extended:  Whether to trade in extended hours or not. defaults to False
+        :param str? symbol: Symbol of the asset to sell. 
+            If not specified, defaults to first symbol in watchlist. 
+            Crypto assets must be prepended with a '@' symbol. 
+            When buying options, the symbol must be formatted in OCC format.
+        :param float? quantity: Quantity of asset to sell. If not specified, 
+            it will sell all currently owned quantity.
+        :param str? in_force: Duration the order is in force. 
+            Choose from 'gtc' (Good 'til canceled) or 'gtd' (). Defaults to 'gtc'
+        :param str? extended: Whether to trade in extended hours or not. Defaults to False
 
         :returns: A dictionary with the following keys:
             - order_id: str, ID of order
@@ -237,8 +242,8 @@ class BaseAlgo:
 
         :param str? symbol: symbol of stock. defaults to first symbol in watchlist
         :returns: A dict with the following keys:
-            - exp_dates: List of expiration dates
-            - multiplier: Multiplier of the option, usually 100
+            - exp_dates: List of expiration dates as strings in the format "YYYY-MM-DD"
+            - multiplier: float. Multiplier of the option, usually 100
         """
         if symbol is None:
             symbol = self.watchlist[0]
