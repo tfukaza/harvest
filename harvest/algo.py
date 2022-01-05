@@ -92,7 +92,7 @@ class BaseAlgo:
             Crypto assets must be prepended with a '@' symbol. 
             When buying options, the symbol must be formatted in OCC format.
         :param float? quantity: Quantity of asset to buy. If not specified, 
-            it will buys as many as possible given the current buying power.
+            it will buy as many as possible given the current buying power.
         :param str? in_force: Duration the order is in force. 
             Choose from 'gtc' (Good 'til canceled) or 'gtd' (). defaults to 'gtc'
         :param str? extended: Whether to trade in extended hours or not. Defaults to False
@@ -122,14 +122,12 @@ class BaseAlgo:
 
         When called, a limit sell order is placed with a limit
         price 5% lower than the current price. This is a general function that can
-        be used to sell stocks, crypto, and options. When buying cryptos, the symbol
-        must be prepended with a '@' symbol. When buying options, the symbol must be
-        formatted in OCC format, with any empty spaces removed.
+        be used to sell stocks, crypto, and options. 
 
         :param str? symbol: Symbol of the asset to sell. 
             If not specified, defaults to first symbol in watchlist. 
             Crypto assets must be prepended with a '@' symbol. 
-            When buying options, the symbol must be formatted in OCC format.
+            When selling options, the symbol must be formatted in OCC format.
         :param float? quantity: Quantity of asset to sell. If not specified, 
             it will sell all currently owned quantity.
         :param str? in_force: Duration the order is in force. 
