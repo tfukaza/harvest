@@ -186,10 +186,10 @@ class BaseAlgo:
 
         The lower_exp and upper_exp input can either be a string in the format "YYYY-MM-DD" or a datetime object.
 
-        :param symbol: Symbol of stock. defaults to first symbol in watchlist.
+        :param str symbol: Symbol of stock. defaults to first symbol in watchlist.
         :param str? type: 'call' or 'put'
-        :param lower_exp: Minimum expiration date of the option, inclusive.
-        :param upper_exp: Maximum expiration date of the option, inclusive.
+        :param str? lower_exp: Minimum expiration date of the option, inclusive.
+        :param str? upper_exp: Maximum expiration date of the option, inclusive.
         :param float lower_strike: The minimum strike price of the option, inclusive.
         :param float upper_strike: The maximum strike price of the option, inclusive.
 
