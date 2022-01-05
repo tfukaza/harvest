@@ -15,6 +15,7 @@ a_func = [
     a.get_option_market_data,
     a.get_option_chain,
     a.get_option_chain_info,
+    a.filter_option_chain,
     a.ema,
     a.rsi,
     a.sma,

@@ -35,15 +35,17 @@ class BaseAlgo:
         self.positions = account.positions
 
     def config(self):
-        """This method is called before all other methods (except for __init__),
-        and initializes parameters for this class.
-        -  interval: The string specifying the interval to run the algorithm. Choose from "15SEC", "1MIN", "5MIN", "15MIN", "30MIN", "1HR", "1DAY".
-        -  aggregations: A List of strings specifying the intervals to aggregate data. Choose from "1MIN", "5MIN", "15MIN", "30MIN", "1HR", "1DAY".
-        -  watchlist: A List of strings specifying the stock/crypto assets this algorithm tracks. Crypto assets must be prepended with a '@' symbol.
+        """
+        This method is called before all other methods (except for __init__) and initializes parameters for this class.
+
+        - interval: The string specifying the interval to run the algorithm. Choose from "15SEC", "1MIN", "5MIN", "15MIN", "30MIN", "1HR", "1DAY".
+        - aggregations: A List of strings specifying the intervals to aggregate data. Choose from "1MIN", "5MIN", "15MIN", "30MIN", "1HR", "1DAY".
+        - watchlist: A List of strings specifying the stock/crypto assets this algorithm tracks. Crypto assets must be prepended with a '@' symbol.
+
         Any parameters set to None or an empty List will fall back to respective paramters set in the Trader class.
 
-        Example:
-        ```
+        Example
+        ```python
         def config(self):
             self.interval = "5MIN"
             self.aggregations = ["15MIN", "30MIN", "1DAY"]
@@ -55,15 +57,21 @@ class BaseAlgo:
         self.watchlist = []
 
     def setup(self):
-        """Method called right before algorithm begins."""
+        """
+        Method called right before algorithm begins.
+        """
         pass
 
     def main(self):
-        """Main method to run the algorithm."""
+        """
+        Main method to run the algorithm.
+        """
         pass
 
     def add_plugin(self, plugin: Plugin):
-        """Adds a plugin to the algorithm."""
+        """
+        Adds a plugin to the algorithm.
+        """
         value = getattr(self, plugin.name, None)
         if value is None:
             setattr(self, plugin.name, plugin)
@@ -81,18 +89,22 @@ class BaseAlgo:
         in_force: str = "gtc",
         extended: bool = False,
     ):
-        """Buys the specified asset.
+        """
+        Buys the specified asset.
 
         When called, a limit buy order is placed with a limit
         price 5% higher than the current price. This is a general function that can
-        be used to buy stocks, crypto, and options. When buying cryptos, the symbol
-        must be prepended with a '@' symbol. When buying options, the symbol must be
-        formatted in OCC format, with any empty spaces removed.
+        be used to buy stocks, crypto, and options.
 
-        :param str? symbol: Symbol of the asset to buy. defaults to first symbol in watchlist
-        :param float? quantity: Quantity of asset to buy. defaults to buys as many as possible
-        :param str? in_force: Duration the order is in force. '{gtc}' or '{gtd}'. defaults to 'gtc'
-        :param str? extended: Whether to trade in extended hours or not. defaults to False
+        :param str? symbol: Symbol of the asset to buy.
+            If not specified, defaults to first symbol in watchlist.
+            Crypto assets must be prepended with a '@' symbol.
+            When buying options, the symbol must be formatted in OCC format.
+        :param float? quantity: Quantity of asset to buy. If not specified,
+            it will buy as many as possible given the current buying power.
+        :param str? in_force: Duration the order is in force.
+            Choose from 'gtc' (Good 'til canceled) or 'gtd' (). defaults to 'gtc'
+        :param str? extended: Whether to trade in extended hours or not. Defaults to False
 
         :returns: The following Python dictionary
             - order_id: str, ID of order
@@ -119,14 +131,17 @@ class BaseAlgo:
 
         When called, a limit sell order is placed with a limit
         price 5% lower than the current price. This is a general function that can
-        be used to sell stocks, crypto, and options. When buying cryptos, the symbol
-        must be prepended with a '@' symbol. When buying options, the symbol must be
-        formatted in OCC format, with any empty spaces removed.
+        be used to sell stocks, crypto, and options.
 
-        :param str? symbol:    Symbol of the asset to sell. defaults to first symbol in watchlist
-        :param float? quantity:  Quantity of asset to sell defaults to sells all
-        :param str? in_force:  Duration the order is in force. 'gtc' or 'gtd'. defaults to 'gtc'
-        :param str? extended:  Whether to trade in extended hours or not. defaults to False
+        :param str? symbol: Symbol of the asset to sell.
+            If not specified, defaults to first symbol in watchlist.
+            Crypto assets must be prepended with a '@' symbol.
+            When selling options, the symbol must be formatted in OCC format.
+        :param float? quantity: Quantity of asset to sell. If not specified,
+            it will sell all currently owned quantity.
+        :param str? in_force: Duration the order is in force.
+            Choose from 'gtc' (Good 'til canceled) or 'gtd' (). Defaults to 'gtc'
+        :param str? extended: Whether to trade in extended hours or not. Defaults to False
 
         :returns: A dictionary with the following keys:
             - order_id: str, ID of order
@@ -179,17 +194,17 @@ class BaseAlgo:
 
         The lower_exp and upper_exp input can either be a string in the format "YYYY-MM-DD" or a datetime object.
 
-        :param str? symbol: Symbol of stock. defaults to first symbol in watchlist
+        :param str symbol: Symbol of stock. defaults to first symbol in watchlist.
         :param str? type: 'call' or 'put'
-        :param lower_exp: Minimum expiration date of the option, inclusive.
-        :param upper_exp: Maximum expiration date of the option, inclusive.
+        :param str? lower_exp: Minimum expiration date of the option, inclusive.
+        :param str? upper_exp: Maximum expiration date of the option, inclusive.
         :param float lower_strike: The minimum strike price of the option, inclusive.
         :param float upper_strike: The maximum strike price of the option, inclusive.
 
-        :returns: A DataFrame, with an index of strings representing the OCC symbol of options, and the following columns:
-            - type: 'call' or 'put'
-            - strike: float, strike price
-            - exp_date: datetime.datetime, expiration date
+        :returns: A DataFrame, with an index of strings representing the OCC symbol of options, and the following columns
+        |symbol | type | strike
+        |-------|------|-------
+        |(str) ticker of stock | 'call' or 'put' | (float) strike price
 
         """
         if symbol is None:
@@ -234,8 +249,8 @@ class BaseAlgo:
 
         :param str? symbol: symbol of stock. defaults to first symbol in watchlist
         :returns: A dict with the following keys:
-            - exp_dates: List of expiration dates
-            - multiplier: Multiplier of the option, usually 100
+            - exp_dates: List of expiration dates as strings in the format "YYYY-MM-DD"
+            - multiplier: float. Multiplier of the option, usually 100
         """
         if symbol is None:
             symbol = self.watchlist[0]

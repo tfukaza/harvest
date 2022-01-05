@@ -574,7 +574,6 @@ class Robinhood(API):
         extended: bool = False,
     ):
         ret = None
-        symbol = symbol[1:]
         try:
             if side == "buy":
                 ret = rh.order_buy_crypto_limit(
