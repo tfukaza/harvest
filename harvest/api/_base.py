@@ -63,7 +63,7 @@ class API:
             path = "./secret.yaml"
         # Check if file exists. If not, create a secret file
         if not exists(path):
-            config = self.create_secret(path)
+            config = self.create_secret()
         else:
             # Open file
             with open(path, "r") as stream:
