@@ -221,7 +221,18 @@ class Order:
         self._filled_quantity = None
 
     def __str__(self):
-        return f"{self.order_id} {self.status} {self.symbol} {self.type} {self.filled_quantity}/{self.quantity} {self.time_in_force} {self.filled_time} {self.filled_price}"
+        return f"""
+        order_id:   {self.order_id} 
+        symbol:     {self.symbol}
+        type:       {self.type}
+        side:       {self.side}
+        quantity:   {self.quantity}
+        time_in_force: {self.time_in_force}
+        status:     {self.status}
+        filled_time: {self.filled_time}
+        filled_price: {self.filled_price}
+        filled_quantity: {self.filled_quantity}
+        """
 
     @property
     def symbol(self):
@@ -585,7 +596,7 @@ def aggregate_df(df, interval: Interval) -> pd.DataFrame:
     }
     val, unit = expand_interval(interval)
     val = str(val)
-    if unit == "1HR":
+    if unit == "HR":
         val = "H"
     elif unit == "MIN":
         val += "T"

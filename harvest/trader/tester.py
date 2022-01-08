@@ -48,7 +48,7 @@ class BackTester(trader.PaperTrader):
         """Runs backtesting.
 
         The interface is very similar to the Trader class, with some additional parameters for specifying
-        backtesting configurations.
+        backtesting configurations. One notable difference is that it can only run a single algorithm at a time.
 
         :param str? interval: The interval to run the algorithm on. defaults to '5MIN'.
         :param List[str]? aggregations: The aggregations to run. defaults to [].
@@ -62,17 +62,19 @@ class BackTester(trader.PaperTrader):
         """
 
         debugger.debug(f"Storing asset data in {path}")
-        for a in self.algo:
-            a.config()
+
+        self.algo = [self.algo[0]]
+        debugger.debug(f"Running algorithm {self.algo[0]}")
+        self.algo[0].config()
 
         self._setup(source, interval, aggregations, path, start, end, period)
         self.broker.setup(self.stats, self.main)
+        self.broker.setup_backtest(self.storage)
         self.streamer.setup(self.stats, self.main)
 
-        for a in self.algo:
-            a.init(self.stats, self.func, self.account)
-            a.setup()
-            a.trader = self
+        self.algo[0].init(self.stats, self.func, self.account)
+        self.algo[0].setup()
+        self.algo[0].trader = self
 
         self.run_backtest()
 
@@ -90,23 +92,7 @@ class BackTester(trader.PaperTrader):
         self._setup_account()
 
         self.df = {}
-
         self.storage.limit_size = False
-
-        start = convert_input_to_datetime(start, self.stats.timezone)
-        end = convert_input_to_datetime(end, self.stats.timezone)
-        period = convert_input_to_timedelta(period)
-
-        if start is None:
-            if end is None:
-                start = "MAX" if period is None else "PERIOD"
-            else:
-                start = end - period
-        if end is None:
-            if start == "MAX" or start == "PERIOD" or period is None:
-                end = "MAX"
-            else:
-                end = start + period
 
         if source == "CSV":
             self.read_csv_data(path)
@@ -115,45 +101,20 @@ class BackTester(trader.PaperTrader):
         else:
             raise Exception(f"Invalid source {source}. Must be 'PICKLE' or 'CSV'")
 
-        common_start = None
-        common_end = None
+        self.common_start, self.common_end = self._setup_start_end(start, end, period) 
+
         for s in self.stats.watchlist_cfg:
-            for i in [
-                self.stats.watchlist_cfg[s]["interval"]
-            ] + self.stats.watchlist_cfg[s]["aggregations"]:
+            # Trim the data to the common start and end, so they 
+            # start and end at the same time.
+            i = self.stats.watchlist_cfg[s]["interval"]
+            df = self.storage.load(s, i)
+            df = df.loc[self.common_start:self.common_end]
+            self.storage.store(s, i, df)
+            # For aggregated data, trim off the data at the common start.
+            # The data between the common start and common end is generated later.
+            for i in self.stats.watchlist_cfg[s]["aggregations"]:
                 df = self.storage.load(s, i)
-                df = pandas_datetime_to_utc(df, self.stats.timezone)
-                if common_start is None or df.index[0] > common_start:
-                    common_start = df.index[0]
-                if common_end is None or df.index[-1] < common_end:
-                    common_end = df.index[-1]
-
-        if start != "MAX" and start != "PERIOD" and start < common_start:
-            raise Exception(f"Not enough data is available for a start time of {start}")
-        if end != "MAX" and end > common_end:
-            raise Exception(
-                f"Not enough data is available for an end time of {end}: \nLast datapoint is {common_end}"
-            )
-
-        if start == "MAX":
-            start = common_start
-        elif start == "PERIOD":
-            start = common_end - period
-        if end == "MAX":
-            end = common_end
-
-        self.common_start = start
-        self.common_end = end
-
-        print(f"Common start: {start}, common end: {end}")
-
-        for s in self.stats.watchlist_cfg:
-            for i in [
-                self.stats.watchlist_cfg[s]["interval"]
-            ] + self.stats.watchlist_cfg[s]["aggregations"]:
-                df = self.storage.load(s, i).copy()
-                df = df.loc[start:end]
-                self.storage.reset(s, i)
+                df = df.loc[:self.common_start]
                 self.storage.store(s, i, df)
 
         conv = {
@@ -212,6 +173,16 @@ class BackTester(trader.PaperTrader):
                     remove_duplicate=False,
                 )
 
+        # Print all the data
+        for sym in self.stats.watchlist_cfg:
+            for agg in self.stats.watchlist_cfg[sym]["aggregations"] + [self.stats.watchlist_cfg[sym]["interval"]]:
+                data = self.storage.load(sym, agg)
+                debugger.debug(f"{sym}@{agg}: {data}")
+                if agg != self.stats.watchlist_cfg[sym]["interval"]:
+                    data = self.storage.load(sym, int(agg) - 16)
+                    debugger.debug(f"{sym} {agg}: {data}")
+
+
         # Move all data to a cached dataframe
         for sym in self.stats.watchlist_cfg:
             self.df[sym] = {}
@@ -227,6 +198,51 @@ class BackTester(trader.PaperTrader):
                 self.df[sym][int(agg) - 16] = df.copy()
 
         self.load_watch = True
+    
+    def _setup_start_end(self, start, end, period):
+        start = convert_input_to_datetime(start, self.stats.timezone)
+        end = convert_input_to_datetime(end, self.stats.timezone)
+        period = convert_input_to_timedelta(period)
+        if start is None:
+            if end is None:
+                start = "MAX" if period is None else "PERIOD"
+            else:
+                start = end - period
+        if end is None:
+            if start == "MAX" or start == "PERIOD" or period is None:
+                end = "MAX"
+            else:
+                end = start + period
+
+        common_start = None
+        common_end = None
+        for s in self.stats.watchlist_cfg:
+            i = self.stats.watchlist_cfg[s]["interval"]
+            df = self.storage.load(s, i)
+            df = pandas_datetime_to_utc(df, self.stats.timezone)
+            if common_start is None or df.index[0] > common_start:
+                common_start = df.index[0]
+            if common_end is None or df.index[-1] < common_end:
+                common_end = df.index[-1]
+
+        if start != "MAX" and start != "PERIOD" and start < common_start:
+            raise Exception(f"Not enough data is available for a start time of {start}")
+        if end != "MAX" and end > common_end:
+            raise Exception(
+                f"Not enough data is available for an end time of {end}: \nLast datapoint is {common_end}"
+            )
+
+        if start == "MAX":
+            start = common_start
+        elif start == "PERIOD":
+            start = common_end - period
+        if end == "MAX":
+            end = common_end
+        
+        print(f"Common start: {start}, common end: {end}")
+        return start, end
+
+        
 
     def read_pickle_data(self):
         """Function to read backtesting data from a local file.
@@ -286,9 +302,7 @@ class BackTester(trader.PaperTrader):
         # Reset them
 
         for s in self.stats.watchlist_cfg:
-            for i in [
-                self.stats.watchlist_cfg[s]["interval"]
-            ] + self.stats.watchlist_cfg[s]["aggregations"]:
+            for i in [self.stats.watchlist_cfg[s]["interval"]]: 
                 self.storage.reset(s, i)
 
         self.storage.limit_size = True
@@ -306,7 +320,7 @@ class BackTester(trader.PaperTrader):
         self.timestamp = common_start.to_pydatetime()
         print(f"Starting backtest from {common_start}")
 
-        while self.timestamp <= common_end:
+        while self.timestamp < common_end:
             df_dict = {}
             for sym in self.stats.watchlist_cfg:
                 inter = self.stats.watchlist_cfg[sym]["interval"]
@@ -316,7 +330,9 @@ class BackTester(trader.PaperTrader):
                 ):
                     df_dict[sym] = self.df[sym][inter].loc[self.timestamp]
 
-            update = self._update_order_queue()
+            is_order_filled = self._update_order_queue()
+            if is_order_filled:
+                self._fetch_account_data()
             self._update_local_cache(df_dict)
             for sym in self.stats.watchlist_cfg:
                 inter = self.stats.watchlist_cfg[sym]["interval"]

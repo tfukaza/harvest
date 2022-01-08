@@ -334,8 +334,6 @@ class LiveTrader:
             debugger.debug(f"Updating status of order {order.order_id}")
             order.update(stat)
 
-        debugger.debug(f"Updated order queue: {self.orders}")
-
         order_filled = False
         for order in self.orders.orders:
             # TODO: handle cancelled orders
@@ -353,6 +351,7 @@ class LiveTrader:
                     order.filled_price,
                 )
         self.orders.remove_non_open()
+        debugger.debug(f"Updated order queue: {self.orders}")
 
         # if an order was processed, update the positions and account info
         return order_filled
@@ -387,6 +386,7 @@ class LiveTrader:
         debugger.debug(f"Updated positions: {self.positions}")
 
     def _fetch_account_data(self):
+        debugger.debug(f"Fetching account data")
         stock_pos = [
             Position(p["symbol"], p["quantity"], p["avg_price"])
             for p in self.broker.fetch_stock_positions()

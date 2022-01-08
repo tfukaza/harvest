@@ -80,6 +80,8 @@ class PaperBroker(API):
         self.buying_power = self.config["paper_buying_power"]
         self.multiplier = self.config["paper_multiplier"]
 
+        debugger.debug("Broker state: {}".format(self.config))   
+
     def _load_account(self):
         with open(self.save_path, "rb") as stream:
             save_data = pickle.load(stream)
@@ -129,6 +131,11 @@ class PaperBroker(API):
 
     def setup(self, stats, account, trader_main=None):
         super().setup(stats, account, trader_main)
+        self.backtest = False 
+    
+    def setup_backtest(self, storage):
+        self.backtest = True
+        self.storage = storage
 
     # -------------- Streamer methods -------------- #
 
@@ -172,12 +179,19 @@ class PaperBroker(API):
         ret = next(r for r in self.orders if r["order_id"] == order_id)
         sym = ret["symbol"]
 
-        price = self.streamer.fetch_price_history(
-            sym,
-            self.stats.watchlist_cfg[sym]["interval"],
-            self.streamer.get_current_time() - dt.timedelta(days=7),
-            self.streamer.get_current_time(),
-        )[sym]["close"][-1]
+        debugger.debug(f"Backtest: {self.backtest}")
+       
+        if self.backtest:
+            price = self.storage.load(sym, self.stats.watchlist_cfg[sym]["interval"])[sym]["close"][-1]
+        else:
+            price = self.streamer.fetch_price_history(
+                sym,
+                self.stats.watchlist_cfg[sym]["interval"],
+                self.streamer.get_current_time() - dt.timedelta(days=7),
+                self.streamer.get_current_time(),
+            )[sym]["close"][-1]
+        
+        debugger.debug(f"Price of {sym} is {price}")
 
         qty = ret["quantity"]
         original_price = price * qty
@@ -187,10 +201,12 @@ class PaperBroker(API):
             pos = next((r for r in lst if r["symbol"] == sym), None)
             if ret["side"] == "buy":
                 # Check to see if user has enough funds to buy the stock
+                debugger.debug(f"Original price: {original_price}")
                 actual_price = self.apply_commission(
-                    original_price, self.commission_fee, "sell"
+                    original_price, self.commission_fee, "buy"
                 )
-                if self.buying_power < actual_price:
+                # Check if user has enough buying power
+                if self.buying_power+ ret['limit_price'] * qty < actual_price:
                     debugger.error(
                         f"""Not enough buying power.\n Total price ({actual_price}) exceeds buying power {self.buying_power}.\n Reduce purchase quantity or increase buying power."""
                     )
@@ -210,6 +226,7 @@ class PaperBroker(API):
                         pos["quantity"] = pos["quantity"] + qty
 
                     self.cash -= actual_price
+                    self.buying_power += ret['limit_price'] * qty
                     self.buying_power -= actual_price
                     ret_1 = ret.copy()
                     self.orders.remove(ret)
@@ -365,6 +382,9 @@ class PaperBroker(API):
         self.orders.append(data)
         self.order_id += 1
         ret = {"order_id": data["order_id"], "symbol": data["symbol"]}
+
+        self.buying_power -= quantity * limit_price
+
         return ret
 
     def order_crypto_limit(
@@ -391,6 +411,7 @@ class PaperBroker(API):
         self.orders.append(data)
         self.order_id += 1
         ret = {"order_id": data["order_id"], "symbol": data["symbol"]}
+        self.buying_power -= quantity * limit_price
         return ret
 
     def order_option_limit(
@@ -420,6 +441,7 @@ class PaperBroker(API):
 
         self.orders.append(data)
         self.order_id += 1
+        self.buying_power -= quantity * limit_price
         return {"order_id": data["order_id"], "symbol": data["symbol"]}
 
     # ------------- Helper methods ------------- #
