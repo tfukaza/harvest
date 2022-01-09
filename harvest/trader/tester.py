@@ -69,8 +69,10 @@ class BackTester(trader.PaperTrader):
 
         self._setup(source, interval, aggregations, path, start, end, period)
         self.broker.setup(self.stats, self.main)
-        self.broker.setup_backtest(self.storage)
         self.streamer.setup(self.stats, self.main)
+
+        # Backtesting specific setup
+        self.broker.setup_backtest(self.storage)
 
         self.algo[0].init(self.stats, self.func, self.account)
         self.algo[0].setup()
@@ -109,14 +111,25 @@ class BackTester(trader.PaperTrader):
             i = self.stats.watchlist_cfg[s]["interval"]
             df = self.storage.load(s, i)
             df = df.loc[self.common_start:self.common_end]
-            self.storage.store(s, i, df)
+            #self.storage.store(s, i, df)
+            cutoff_common = self.common_start
             # For aggregated data, trim off the data at the common start.
             # The data between the common start and common end is generated later.
-            for i in self.stats.watchlist_cfg[s]["aggregations"]:
-                df = self.storage.load(s, i)
-                df = df.loc[:self.common_start]
-                self.storage.store(s, i, df)
-
+            for a in self.stats.watchlist_cfg[s]["aggregations"]:
+                #                               10:25 10:30 10:35 10:40 10:45 10:50 10:55 11:00
+                #                   10:15             10:30             10:45             11:00
+                # 10:00                               10:30                               11:00
+                cutoff = floor_trim_df(df, i, a)
+                if cutoff > cutoff_common:
+                    cutoff_common = cutoff
+            for a in self.stats.watchlist_cfg[s]["aggregations"]:
+                df_agg = self.storage.load(s, a)
+                df_agg = df_agg.loc[:cutoff_common]
+                self.storage.store(s, i, df_agg)
+            
+            df = df.loc[cutoff_common:]
+            self.storage.store(s, i, df)
+        
         conv = {
             Interval.MIN_1: 1,
             Interval.MIN_5: 5,
