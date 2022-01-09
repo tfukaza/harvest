@@ -460,6 +460,9 @@ class LiveTrader:
     def sell(self, symbol: str, quantity: int, in_force: str, extended: bool):
         # Check how many of the given asset we currently own
         owned_qty = self.get_asset_quantity(symbol, True, False)
+        if owned_qty == 0:
+            debugger.error(f"You do not own any {symbol}")
+            return None
         if quantity > owned_qty:
             debugger.debug(
                 "SELL failed: More quantities are being sold than currently owned."

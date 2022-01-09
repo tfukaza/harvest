@@ -102,6 +102,12 @@ class BackTester(trader.PaperTrader):
             self.read_pickle_data()
         else:
             raise Exception(f"Invalid source {source}. Must be 'PICKLE' or 'CSV'")
+        
+        # Print all the data
+        for sym in self.stats.watchlist_cfg:
+            for agg in self.stats.watchlist_cfg[sym]["aggregations"] + [self.stats.watchlist_cfg[sym]["interval"]]:
+                data = self.storage.load(sym, agg)
+                debugger.debug(f"{sym}@{agg}: {data}")
 
         self.common_start, self.common_end = self._setup_start_end(start, end, period) 
 
@@ -122,12 +128,19 @@ class BackTester(trader.PaperTrader):
                 cutoff = floor_trim_df(df, i, a)
                 if cutoff > cutoff_common:
                     cutoff_common = cutoff
+           
             for a in self.stats.watchlist_cfg[s]["aggregations"]:
                 df_agg = self.storage.load(s, a)
                 df_agg = df_agg.loc[:cutoff_common]
-                self.storage.store(s, i, df_agg)
+                debugger.debug(f"Trimmed {s}@{a} to {cutoff_common}: {df_agg}")
+                self.storage.reset(s, a)
+                self.storage.store(s, a, df_agg)
+            
+            if cutoff_common > self.common_start:
+                self.common_start = cutoff_common
             
             df = df.loc[cutoff_common:]
+            self.storage.reset(s, i)
             self.storage.store(s, i, df)
         
         conv = {
@@ -138,6 +151,13 @@ class BackTester(trader.PaperTrader):
             Interval.HR_1: 60,
             Interval.DAY_1: 1440,
         }
+
+        # Print all the data
+        for sym in self.stats.watchlist_cfg:
+            for agg in self.stats.watchlist_cfg[sym]["aggregations"] + [self.stats.watchlist_cfg[sym]["interval"]]:
+                data = self.storage.load(sym, agg)
+                debugger.debug(f"{sym}@{agg}: {data}")
+                
 
         # Generate the "simulated aggregation" data
         for sym in self.stats.watchlist_cfg:
@@ -174,11 +194,21 @@ class BackTester(trader.PaperTrader):
                         remove_duplicate=False,
                         save_pickle=False,
                     )
+        
+        # Print all the data
+        for sym in self.stats.watchlist_cfg:
+            for agg in self.stats.watchlist_cfg[sym]["aggregations"] + [self.stats.watchlist_cfg[sym]["interval"]]:
+                data = self.storage.load(sym, agg)
+                debugger.debug(f"{sym}@{agg}: {data}")
+                if agg != self.stats.watchlist_cfg[sym]["interval"]:
+                    data = self.storage.load(sym, int(agg) - 16)
+                    debugger.debug(f"{sym} {agg}: {data}")
+                    
         debugger.debug("Formatting complete")
         for sym in self.stats.watchlist_cfg:
             for agg in self.stats.watchlist_cfg[sym]["aggregations"]:
                 data = self.storage.load(sym, int(agg) - 16)
-                data = pandas_datetime_to_utc(data, self.stats.timezone)
+                data = pandas_datetime_to_utc(data, pytz.utc)
                 self.storage.store(
                     sym,
                     int(agg) - 16,
@@ -232,7 +262,7 @@ class BackTester(trader.PaperTrader):
         for s in self.stats.watchlist_cfg:
             i = self.stats.watchlist_cfg[s]["interval"]
             df = self.storage.load(s, i)
-            df = pandas_datetime_to_utc(df, self.stats.timezone)
+            df = pandas_datetime_to_utc(df, pytz.utc)
             if common_start is None or df.index[0] > common_start:
                 common_start = df.index[0]
             if common_end is None or df.index[-1] < common_end:
@@ -331,10 +361,10 @@ class BackTester(trader.PaperTrader):
             counter[s] = 0
 
         self.timestamp = common_start.to_pydatetime()
-        print(f"Starting backtest from {common_start}")
 
         while self.timestamp < common_end:
             df_dict = {}
+            data_exists = False
             for sym in self.stats.watchlist_cfg:
                 inter = self.stats.watchlist_cfg[sym]["interval"]
                 if (
@@ -342,6 +372,10 @@ class BackTester(trader.PaperTrader):
                     and self.timestamp in self.df[sym][inter].index
                 ):
                     df_dict[sym] = self.df[sym][inter].loc[self.timestamp]
+                    data_exists = True
+            if not data_exists:
+                self.timestamp += interval_to_timedelta(self.streamer.poll_interval)
+                continue
 
             is_order_filled = self._update_order_queue()
             if is_order_filled:

@@ -612,6 +612,8 @@ def floor_trim_df(df, base_interval, agg_interval):
     This function takes a dataframe, and trims off rows
     from the beginning so that the timestamp of the first row is a multiple of agg_interval
     """
+    _, val = expand_interval(base_interval)
+
     y = None
     def f(x):
         nonlocal y
@@ -620,7 +622,6 @@ def floor_trim_df(df, base_interval, agg_interval):
         r = x.date() != y.date()
         y = x
         return r
-    _, val = expand_interval(base_interval)
     if agg_interval == Interval.MIN_5:
         g = lambda x: x.minute - val % 5 == 0
     elif agg_interval == Interval.MIN_15:
