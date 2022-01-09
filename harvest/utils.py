@@ -222,16 +222,16 @@ class Order:
 
     def __str__(self):
         return f"""
-        order_id:   {self.order_id} 
-        symbol:     {self.symbol}
-        type:       {self.type}
-        side:       {self.side}
-        quantity:   {self.quantity}
-        time_in_force: {self.time_in_force}
-        status:     {self.status}
-        filled_time: {self.filled_time}
-        filled_price: {self.filled_price}
-        filled_quantity: {self.filled_quantity}
+        order_id:       {self._order_id} 
+        symbol:         {self._symbol}
+        type:           {self._type}
+        side:           {self._side}
+        quantity:       {self._quantity}
+        time_in_force:  {self._time_in_force}
+        status:         {self._status}
+        filled_time:    {self._filled_time}
+        filled_price:   {self._filled_price}
+        filled_quantity:{self._filled_quantity}
         """
 
     @property
