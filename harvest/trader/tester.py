@@ -103,11 +103,11 @@ class BackTester(trader.PaperTrader):
         else:
             raise Exception(f"Invalid source {source}. Must be 'PICKLE' or 'CSV'")
         
-        # Print all the data
-        for sym in self.stats.watchlist_cfg:
-            for agg in self.stats.watchlist_cfg[sym]["aggregations"] + [self.stats.watchlist_cfg[sym]["interval"]]:
-                data = self.storage.load(sym, agg)
-                debugger.debug(f"{sym}@{agg}: {data}")
+        # # Print all the data
+        # for sym in self.stats.watchlist_cfg:
+        #     for agg in self.stats.watchlist_cfg[sym]["aggregations"] + [self.stats.watchlist_cfg[sym]["interval"]]:
+        #         data = self.storage.load(sym, agg)
+        #         debugger.debug(f"{sym}@{agg}: {data}")
 
         self.common_start, self.common_end = self._setup_start_end(start, end, period) 
 
@@ -152,11 +152,11 @@ class BackTester(trader.PaperTrader):
             Interval.DAY_1: 1440,
         }
 
-        # Print all the data
-        for sym in self.stats.watchlist_cfg:
-            for agg in self.stats.watchlist_cfg[sym]["aggregations"] + [self.stats.watchlist_cfg[sym]["interval"]]:
-                data = self.storage.load(sym, agg)
-                debugger.debug(f"{sym}@{agg}: {data}")
+        # # Print all the data
+        # for sym in self.stats.watchlist_cfg:
+        #     for agg in self.stats.watchlist_cfg[sym]["aggregations"] + [self.stats.watchlist_cfg[sym]["interval"]]:
+        #         data = self.storage.load(sym, agg)
+        #         debugger.debug(f"{sym}@{agg}: {data}")
                 
 
         # Generate the "simulated aggregation" data
@@ -195,14 +195,14 @@ class BackTester(trader.PaperTrader):
                         save_pickle=False,
                     )
         
-        # Print all the data
-        for sym in self.stats.watchlist_cfg:
-            for agg in self.stats.watchlist_cfg[sym]["aggregations"] + [self.stats.watchlist_cfg[sym]["interval"]]:
-                data = self.storage.load(sym, agg)
-                debugger.debug(f"{sym}@{agg}: {data}")
-                if agg != self.stats.watchlist_cfg[sym]["interval"]:
-                    data = self.storage.load(sym, int(agg) - 16)
-                    debugger.debug(f"{sym} {agg}: {data}")
+        # # Print all the data
+        # for sym in self.stats.watchlist_cfg:
+        #     for agg in self.stats.watchlist_cfg[sym]["aggregations"] + [self.stats.watchlist_cfg[sym]["interval"]]:
+        #         data = self.storage.load(sym, agg)
+        #         debugger.debug(f"{sym}@{agg}: {data}")
+        #         if agg != self.stats.watchlist_cfg[sym]["interval"]:
+        #             data = self.storage.load(sym, int(agg) - 16)
+        #             debugger.debug(f"{sym} {agg}: {data}")
                     
         debugger.debug("Formatting complete")
         for sym in self.stats.watchlist_cfg:
@@ -216,14 +216,14 @@ class BackTester(trader.PaperTrader):
                     remove_duplicate=False,
                 )
 
-        # Print all the data
-        for sym in self.stats.watchlist_cfg:
-            for agg in self.stats.watchlist_cfg[sym]["aggregations"] + [self.stats.watchlist_cfg[sym]["interval"]]:
-                data = self.storage.load(sym, agg)
-                debugger.debug(f"{sym}@{agg}: {data}")
-                if agg != self.stats.watchlist_cfg[sym]["interval"]:
-                    data = self.storage.load(sym, int(agg) - 16)
-                    debugger.debug(f"{sym} {agg}: {data}")
+        # # Print all the data
+        # for sym in self.stats.watchlist_cfg:
+        #     for agg in self.stats.watchlist_cfg[sym]["aggregations"] + [self.stats.watchlist_cfg[sym]["interval"]]:
+        #         data = self.storage.load(sym, agg)
+        #         debugger.debug(f"{sym}@{agg}: {data}")
+        #         if agg != self.stats.watchlist_cfg[sym]["interval"]:
+        #             data = self.storage.load(sym, int(agg) - 16)
+        #             debugger.debug(f"{sym} {agg}: {data}")
 
 
         # Move all data to a cached dataframe
@@ -361,8 +361,10 @@ class BackTester(trader.PaperTrader):
             counter[s] = 0
 
         self.timestamp = common_start.to_pydatetime()
+        
 
         while self.timestamp < common_end:
+            self.stats.timestamp = self.timestamp
             df_dict = {}
             data_exists = False
             for sym in self.stats.watchlist_cfg:

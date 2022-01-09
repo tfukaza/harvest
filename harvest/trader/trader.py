@@ -410,9 +410,9 @@ class LiveTrader:
         self.positions.update(stock_pos, option_pos, crypto_pos)
 
         ret = self.broker.fetch_account()
-        print("fetched account", ret)
+      
         self.account.init(ret)
-        print(f"Now: {self.account}")
+       
 
     # --------------------- Interface Functions -----------------------
 

@@ -639,7 +639,7 @@ def floor_trim_df(df, base_interval, agg_interval):
     for i in range(len(df)):
         if g(df.index[i]):
             return df.index[i]
-    return None
+    return df.index[0]
     
 
 
