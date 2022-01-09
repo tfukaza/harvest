@@ -35,7 +35,7 @@ a_func = [
     a.get_account_stock_positions,
     a.get_account_crypto_positions,
     a.get_account_option_positions,
-    a.get_watchlist
+    a.get_watchlist,
 ]
 
 t_func = [

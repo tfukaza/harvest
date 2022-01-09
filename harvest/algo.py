@@ -220,7 +220,7 @@ class BaseAlgo:
         exp_dates = sorted(exp_dates)
 
         exp_date = exp_dates[0]
-     
+
         chain = self.get_option_chain(symbol, exp_date)
         if lower_strike is not None:
             chain = chain[chain["strike"] >= lower_strike]
@@ -277,7 +277,7 @@ class BaseAlgo:
         if symbol is None:
             symbol = self.watchlist[0]
         date = convert_input_to_datetime(date, self.stats.timezone)
-       
+
         return self.func.fetch_chain_data(symbol, date)
 
     def get_option_market_data(self, symbol: str):

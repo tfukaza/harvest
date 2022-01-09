@@ -607,6 +607,7 @@ def aggregate_df(df, interval: Interval) -> pd.DataFrame:
 
     return df.dropna()
 
+
 def floor_trim_df(df, base_interval, agg_interval):
     """
     This function takes a dataframe, and trims off rows
@@ -615,6 +616,7 @@ def floor_trim_df(df, base_interval, agg_interval):
     val, _ = expand_interval(base_interval)
 
     y = None
+
     def f(x):
         nonlocal y
         if y is None:
@@ -622,6 +624,7 @@ def floor_trim_df(df, base_interval, agg_interval):
         r = x.date() != y.date()
         y = x
         return r
+
     if agg_interval == Interval.MIN_5:
         g = lambda x: (x.minute - val) % 5 == 0
     elif agg_interval == Interval.MIN_15:
@@ -632,16 +635,14 @@ def floor_trim_df(df, base_interval, agg_interval):
         g = lambda x: (x.minute - val) % 60 == 0
     elif agg_interval == Interval.DAY_1:
         g = f
-    else:   
+    else:
         raise Exception("Unsupported interval")
-    
+
     # Get the index of the first row that satisfies the condition g
     for i in range(len(df)):
         if g(df.index[i]):
             return df.index[i]
     return df.index[0]
-    
-
 
 
 # ========== Date utils ==========

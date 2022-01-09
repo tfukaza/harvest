@@ -102,22 +102,22 @@ class BackTester(trader.PaperTrader):
             self.read_pickle_data()
         else:
             raise Exception(f"Invalid source {source}. Must be 'PICKLE' or 'CSV'")
-        
+
         # # Print all the data
         # for sym in self.stats.watchlist_cfg:
         #     for agg in self.stats.watchlist_cfg[sym]["aggregations"] + [self.stats.watchlist_cfg[sym]["interval"]]:
         #         data = self.storage.load(sym, agg)
         #         debugger.debug(f"{sym}@{agg}: {data}")
 
-        self.common_start, self.common_end = self._setup_start_end(start, end, period) 
+        self.common_start, self.common_end = self._setup_start_end(start, end, period)
 
         for s in self.stats.watchlist_cfg:
-            # Trim the data to the common start and end, so they 
+            # Trim the data to the common start and end, so they
             # start and end at the same time.
             i = self.stats.watchlist_cfg[s]["interval"]
             df = self.storage.load(s, i)
-            df = df.loc[self.common_start:self.common_end]
-            #self.storage.store(s, i, df)
+            df = df.loc[self.common_start : self.common_end]
+            # self.storage.store(s, i, df)
             cutoff_common = self.common_start
             # For aggregated data, trim off the data at the common start.
             # The data between the common start and common end is generated later.
@@ -128,22 +128,22 @@ class BackTester(trader.PaperTrader):
                 cutoff = floor_trim_df(df, i, a)
                 if cutoff > cutoff_common:
                     cutoff_common = cutoff
-           
+
             for a in self.stats.watchlist_cfg[s]["aggregations"]:
                 df_agg = self.storage.load(s, a)
                 df_agg = df_agg.loc[:cutoff_common]
                 debugger.debug(f"Trimmed {s}@{a} to {cutoff_common}: {df_agg}")
                 self.storage.reset(s, a)
                 self.storage.store(s, a, df_agg)
-            
+
             if cutoff_common > self.common_start:
                 self.common_start = cutoff_common
-            
+
             df = df.loc[cutoff_common:]
             debugger.debug(f"Trimmed {s}@{i} to {cutoff_common}: {df}")
             self.storage.reset(s, i)
             self.storage.store(s, i, df)
-        
+
         conv = {
             Interval.MIN_1: 1,
             Interval.MIN_5: 5,
@@ -158,7 +158,6 @@ class BackTester(trader.PaperTrader):
         #     for agg in self.stats.watchlist_cfg[sym]["aggregations"] + [self.stats.watchlist_cfg[sym]["interval"]]:
         #         data = self.storage.load(sym, agg)
         #         debugger.debug(f"{sym}@{agg}: {data}")
-                
 
         # Generate the "simulated aggregation" data
         for sym in self.stats.watchlist_cfg:
@@ -195,7 +194,7 @@ class BackTester(trader.PaperTrader):
                         remove_duplicate=False,
                         save_pickle=False,
                     )
-        
+
         # # Print all the data
         # for sym in self.stats.watchlist_cfg:
         #     for agg in self.stats.watchlist_cfg[sym]["aggregations"] + [self.stats.watchlist_cfg[sym]["interval"]]:
@@ -204,7 +203,7 @@ class BackTester(trader.PaperTrader):
         #         if agg != self.stats.watchlist_cfg[sym]["interval"]:
         #             data = self.storage.load(sym, int(agg) - 16)
         #             debugger.debug(f"{sym} {agg}: {data}")
-                    
+
         debugger.debug("Formatting complete")
         for sym in self.stats.watchlist_cfg:
             for agg in self.stats.watchlist_cfg[sym]["aggregations"]:
@@ -226,7 +225,6 @@ class BackTester(trader.PaperTrader):
         #             data = self.storage.load(sym, int(agg) - 16)
         #             debugger.debug(f"{sym} {agg}: {data}")
 
-
         # Move all data to a cached dataframe
         for sym in self.stats.watchlist_cfg:
             self.df[sym] = {}
@@ -242,7 +240,7 @@ class BackTester(trader.PaperTrader):
                 self.df[sym][int(agg) - 16] = df.copy()
 
         self.load_watch = True
-    
+
     def _setup_start_end(self, start, end, period):
         start = convert_input_to_datetime(start, self.stats.timezone)
         end = convert_input_to_datetime(end, self.stats.timezone)
@@ -282,11 +280,9 @@ class BackTester(trader.PaperTrader):
             start = common_end - period
         if end == "MAX":
             end = common_end
-        
+
         print(f"Common start: {start}, common end: {end}")
         return start, end
-
-        
 
     def read_pickle_data(self):
         """Function to read backtesting data from a local file.
@@ -346,7 +342,7 @@ class BackTester(trader.PaperTrader):
         # Reset them
 
         for s in self.stats.watchlist_cfg:
-            for i in [self.stats.watchlist_cfg[s]["interval"]]: 
+            for i in [self.stats.watchlist_cfg[s]["interval"]]:
                 self.storage.reset(s, i)
 
         self.storage.limit_size = True
@@ -362,7 +358,6 @@ class BackTester(trader.PaperTrader):
             counter[s] = 0
 
         self.timestamp = common_start.to_pydatetime()
-        
 
         while self.timestamp < common_end:
             self.stats.timestamp = self.timestamp
@@ -438,7 +433,7 @@ class BackTester(trader.PaperTrader):
             "buying_power": 1000000.0,
             "multiplier": 1,
         }
-        #self.account = Account()
+        # self.account = Account()
         self.account.init(account)
 
     def fetch_position(self, key):

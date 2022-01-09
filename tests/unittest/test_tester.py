@@ -43,7 +43,9 @@ class TestTester(unittest.TestCase):
         t.start("1MIN", ["1DAY"], period="2DAY")
 
         minutes = list(t.storage.load("A", Interval.MIN_1)["A"]["close"])[:10]
-        days_agg = list(t.storage.load("A", int(Interval.DAY_1) - 16)["A"]["close"])[:10]
+        days_agg = list(t.storage.load("A", int(Interval.DAY_1) - 16)["A"]["close"])[
+            :10
+        ]
 
         self.assertListEqual(minutes, days_agg)
 
