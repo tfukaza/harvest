@@ -140,6 +140,7 @@ class BackTester(trader.PaperTrader):
                 self.common_start = cutoff_common
             
             df = df.loc[cutoff_common:]
+            debugger.debug(f"Trimmed {s}@{i} to {cutoff_common}: {df}")
             self.storage.reset(s, i)
             self.storage.store(s, i, df)
         
@@ -171,8 +172,8 @@ class BackTester(trader.PaperTrader):
                 agg_txt = interval_enum_to_string(agg)
                 # tmp_path = f"{path}/{sym}-{interval_txt}+{agg_txt}.pickle"
                 tmp_path = f"{path}/{sym}@{int(agg)-16}.pickle"
-                file = Path(tmp_path)
-                if file.is_file():
+                f = Path(tmp_path)
+                if f.is_file():
                     data = self.storage.open(sym, int(agg) - 16)
                     self.storage.store(sym, int(agg) - 16, data, save_pickle=False)
                     continue
