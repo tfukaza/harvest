@@ -111,7 +111,7 @@ class Functions:
 
 class Account:
     def __init__(self, account_name=None):
-        self._account_name = account_name
+        self._account_name = account_name or "default"
         self._positions = Positions()
         self._orders = Orders()
 
@@ -124,13 +124,13 @@ class Account:
 
     def __str__(self):
         return (
-            f"Account:\t{self.account_name}\n"
-            + f"Cash:\t{self.cash}\n"
-            + f"Equity:\t{self.equity}\n"
-            + f"Buying Power:\t{self.buying_power}\n"
-            + f"Multiplier:\t{self.multiplier}\n\n"
-            + f"Positions:\n{self.positions}\n\n"
-            + f"Orders:\n{self.orders}"
+            f"Account:\t{self._account_name}\n"
+            + f"Cash:\t{self._cash}\n"
+            + f"Equity:\t{self._equity}\n"
+            + f"Buying Power:\t{self._buying_power}\n"
+            + f"Multiplier:\t{self._multiplier}\n\n"
+            + f"Positions:\n{self._positions}\n\n"
+            + f"Orders:\n{self._orders}"
         )
 
     def init(self, dict):

@@ -410,7 +410,9 @@ class LiveTrader:
         self.positions.update(stock_pos, option_pos, crypto_pos)
 
         ret = self.broker.fetch_account()
+        print("fetched account", ret)
         self.account.init(ret)
+        print(f"Now: {self.account}")
 
     # --------------------- Interface Functions -----------------------
 
@@ -448,6 +450,7 @@ class LiveTrader:
             )
             return None
         ret = self.broker.buy(symbol, quantity, limit_price, in_force, extended)
+        print(f"Account info after buy: {self.account}") 
 
         if ret is None:
             debugger.debug("BUY failed")

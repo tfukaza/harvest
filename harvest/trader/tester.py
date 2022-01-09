@@ -435,7 +435,7 @@ class BackTester(trader.PaperTrader):
             "buying_power": 1000000.0,
             "multiplier": 1,
         }
-        self.account = Account()
+        #self.account = Account()
         self.account.init(account)
 
     def fetch_position(self, key):

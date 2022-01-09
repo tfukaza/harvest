@@ -168,6 +168,8 @@ class PaperBroker(API):
     def fetch_account(self) -> Dict[str, Any]:
         self.equity = self._calc_equity()
         self._save_account()
+        print(f"fetch_account:{self.equity}, {self.cash}, {self.buying_power}")
+       
         return {
             "equity": self.equity,
             "cash": self.cash,
@@ -382,8 +384,8 @@ class PaperBroker(API):
         self.orders.append(data)
         self.order_id += 1
         ret = {"order_id": data["order_id"], "symbol": data["symbol"]}
-
-        self.buying_power -= quantity * limit_price
+        if side == "buy":
+            self.buying_power -= quantity * limit_price
 
         return ret
 
@@ -411,7 +413,9 @@ class PaperBroker(API):
         self.orders.append(data)
         self.order_id += 1
         ret = {"order_id": data["order_id"], "symbol": data["symbol"]}
-        self.buying_power -= quantity * limit_price
+
+        if side == "buy":
+            self.buying_power -= quantity * limit_price
         return ret
 
     def order_option_limit(
@@ -441,7 +445,9 @@ class PaperBroker(API):
 
         self.orders.append(data)
         self.order_id += 1
-        self.buying_power -= quantity * limit_price
+        if side == "buy":
+            self.buying_power -= quantity * limit_price
+      
         return {"order_id": data["order_id"], "symbol": data["symbol"]}
 
     # ------------- Helper methods ------------- #
@@ -452,6 +458,7 @@ class PaperBroker(API):
         worth of all stocks, cryptos, options and cash in the broker.
         """
         e = 0
+        # Add value of current assets
         for asset in self.stocks + self.cryptos + self.options:
             add = asset["avg_price"] * asset["quantity"]
             if "multiplier" in asset:
