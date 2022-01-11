@@ -31,3 +31,4 @@ package-lock.json
 *.log
 
 .python-version
+env
