@@ -29,3 +29,6 @@ package-lock.json
 .DS_Store
 
 *.log
+
+.python-version
+env

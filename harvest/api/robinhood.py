@@ -165,7 +165,6 @@ class Robinhood(API):
         # 1MIN, 5MIN interval must be capped to 1 day.
         elif interval in [Interval.MIN_1, Interval.MIN_5]:
             span = "day"
-            span = "day"
         # Other intervals have varying spans
         elif interval in [
             Interval.MIN_15,
