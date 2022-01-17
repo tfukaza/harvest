@@ -204,7 +204,7 @@ class API:
                 debugger.debug(f"{sym} price fetch returned: {latest}")
                 if latest is None or latest.empty:
                     continue
-                df_dict[sym] = latest.iloc[[-1]]
+                df_dict[sym] = latest.iloc[-1]
 
         self.trader_main(df_dict)
 

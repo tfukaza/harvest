@@ -68,7 +68,10 @@ class LiveTrader:
 
     def _init_attributes(self):
 
-        signal(SIGINT, self.exit)
+        try:
+            signal(SIGINT, self.exit)
+        except:
+            debugger.info("signal not supported, must be running in a non-main thread.")
 
         self.watchlist = []  # List of securities specified in this class
         self.algo = []  # List of algorithms to run.

@@ -37,9 +37,9 @@ class DummyStreamer(API):
         realistic_times: bool = False,
     ):
 
-        # super().__init__(None)
+        super().__init__(None)
 
-        self.trader_main = None
+        # self.trader_main = None
         self.realistic_times = realistic_times
 
         # Set the current time
@@ -49,50 +49,6 @@ class DummyStreamer(API):
         # Store random values and generates for each asset tot make `fetch_price_history` fixed
         self.randomness = {}
 
-    def start(self) -> None:
-        pass
-
-    def main(self):
-        df_dict = {}
-        df_dict.update(self.fetch_latest_stock_price())
-        df_dict.update(self.fetch_latest_crypto_price())
-
-        self.trader_main(df_dict)
-
-    def fetch_latest_stock_price(self) -> Dict[str, pd.DataFrame]:
-        """
-        Gets fake stock data in the last three day interval and returns the last
-        value. The reason the last three days are needed is because no data is returned
-        when the stock market is closed, e.g. weekends.
-        """
-
-        results = {}
-        today = self.timestamp
-        last = today - dt.timedelta(days=3)
-
-        for symbol in self.stats.watchlist_cfg:
-            if not is_crypto(symbol):
-                results[symbol] = self.fetch_price_history(
-                    symbol, self.stats.watchlist_cfg[symbol]["interval"], last, today
-                ).iloc[-1]
-        return results
-
-    def fetch_latest_crypto_price(self) -> Dict[str, pd.DataFrame]:
-        """
-        Gets fake crypto data in the last three day interval and  returns the last
-        value. The reason the last three days are needed is because no data is returned
-        when the stock market is closed, e.g. weekends.
-        """
-
-        results = {}
-        today = self.timestamp
-        last = today - dt.timedelta(days=3)
-        for symbol in self.stats.watchlist_cfg:
-            if is_crypto(symbol):
-                results[symbol] = self.fetch_price_history(
-                    symbol, self.stats.watchlist_cfg[symbol]["interval"], last, today
-                ).iloc[-1]
-        return results
 
     # -------------- Streamer methods -------------- #
 
