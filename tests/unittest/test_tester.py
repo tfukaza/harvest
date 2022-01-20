@@ -27,6 +27,8 @@ class TestTester(unittest.TestCase):
         to ensure it can run without crashing.
         """
         s = DummyStreamer()
+        # Prevent streamer from running which will cause an infinite loop
+        s.start = lambda: None
         t = BackTester(s, True)
         t.set_symbol("A")
         t.set_algo(BaseAlgo())
@@ -37,7 +39,10 @@ class TestTester(unittest.TestCase):
     @tear_up_down
     def test_check_aggregation(self):
         """ """
-        t = BackTester(DummyStreamer(), True)
+        s = DummyStreamer()
+        # Prevent streamer from running which will cause an infinite loop
+        s.start = lambda: None
+        t = BackTester(s, True)
         t.set_symbol("A")
         t.set_algo(BaseAlgo())
         t.start("1MIN", ["1DAY"], period="2DAY")
@@ -57,7 +62,10 @@ class TestTester(unittest.TestCase):
             def main(self):
                 print(self.get_datetime())
 
-        t = BackTester(DummyStreamer())
+        s = DummyStreamer()
+        # Prevent streamer from running which will cause an infinite loop
+        s.start = lambda: None
+        t = BackTester()
         t.set_symbol("A")
         t.set_algo(TestAlgo())
         t.start("1MIN", ["1DAY"], period="2DAY")

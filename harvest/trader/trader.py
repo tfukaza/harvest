@@ -68,7 +68,12 @@ class LiveTrader:
 
     def _init_attributes(self):
 
-        signal(SIGINT, self.exit)
+        try:
+            signal(SIGINT, self.exit)
+        except:
+            debugger.warning(
+                "Can't use signal, Harvest is running in a non-main thread."
+            )
 
         self.watchlist = []  # List of securities specified in this class
         self.algo = []  # List of algorithms to run.
