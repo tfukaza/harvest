@@ -721,7 +721,12 @@ def pandas_timestamp_to_local(df: pd.DataFrame, timezone: ZoneInfo) -> pd.DataFr
     """
     Converts the timestamp of a Pandas dataframe to a timezone naive DateTime object in local time.
     """
-    df.index = df.index.map(lambda x: datetime_utc_to_local(x, timezone))
+    df.index = pd.DatetimeIndex(
+        map(
+            lambda x: x.astimezone(timezone).replace(tzinfo=None),
+            df.index.to_pydatetime(),
+        )
+    )
     return df
 
 

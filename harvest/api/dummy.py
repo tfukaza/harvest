@@ -37,8 +37,6 @@ class DummyStreamer(API):
         realistic_times: bool = False,
     ):
 
-        # super().__init__(None)
-
         self.trader_main = None
         self.realistic_times = realistic_times
 
@@ -50,7 +48,7 @@ class DummyStreamer(API):
         self.randomness = {}
 
     def start(self) -> None:
-        pass
+        super().start()
 
     def main(self):
         df_dict = {}

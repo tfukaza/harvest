@@ -37,6 +37,8 @@ class TestAlgo(unittest.TestCase):
         algo2 = Algo2()
 
         s = DummyStreamer()
+        # Prevent streamer from running which will cause an infinite loop
+        s.start = lambda: None
         t = PaperTrader(s)
         t.set_algo([algo1, algo2])
         t.set_symbol(["1", "2", "3"])
@@ -80,6 +82,8 @@ class TestAlgo(unittest.TestCase):
         algo2 = Algo2()
 
         s = DummyStreamer()
+        # Prevent streamer from running which will cause an infinite loop
+        s.start = lambda: None
         t = PaperTrader(s)
         t.set_algo([algo1, algo2])
 
@@ -179,6 +183,8 @@ class TestAlgo(unittest.TestCase):
         Test that bband values are calculated correctly based on data in PaperTrader's Storage class.
         """
         streamer = DummyStreamer()
+        # Prevent streamer from running which will cause an infinite loop
+        streamer.start = lambda: None
         t = PaperTrader(streamer)
         t.set_symbol("DUMMY")
         t.set_algo(BaseAlgo())
@@ -196,6 +202,8 @@ class TestAlgo(unittest.TestCase):
 
     def test_get_asset_quantity(self):
         s = DummyStreamer()
+        # Prevent streamer from running which will cause an infinite loop
+        s.start = lambda: None
         t = PaperTrader(s)
         t.set_symbol("A")
         t.set_algo(BaseAlgo())
@@ -217,6 +225,8 @@ class TestAlgo(unittest.TestCase):
 
     def test_get_asset_cost(self):
         s = DummyStreamer()
+        # Prevent streamer from running which will cause an infinite loop
+        s.start = lambda: None
         t = PaperTrader(s)
         t.set_symbol("A")
         t.set_algo(BaseAlgo())
@@ -238,6 +248,8 @@ class TestAlgo(unittest.TestCase):
 
     def test_get_asset_price(self):
         s = DummyStreamer()
+        # Prevent streamer from running which will cause an infinite loop
+        s.start = lambda: None
         t = PaperTrader(s)
         t.set_symbol("A")
         t.set_algo(BaseAlgo())
@@ -260,6 +272,8 @@ class TestAlgo(unittest.TestCase):
 
     def test_buy_sell(self):
         s = DummyStreamer()
+        # Prevent streamer from running which will cause an infinite loop
+        s.start = lambda: None
         t = PaperTrader(s)
         t.set_symbol("A")
         t.set_algo(BaseAlgo())
@@ -289,6 +303,8 @@ class TestAlgo(unittest.TestCase):
 
     def test_buy_sell_auto(self):
         s = DummyStreamer()
+        # Prevent streamer from running which will cause an infinite loop
+        s.start = lambda: None
         t = PaperTrader(s)
         t.set_symbol("A")
         t.set_algo(BaseAlgo())
@@ -319,6 +335,8 @@ class TestAlgo(unittest.TestCase):
         mock_mark_up.return_value = 10
 
         streamer = DummyStreamer()
+        # Prevent streamer from running which will cause an infinite loop
+        streamer.start = lambda: None
         t = PaperTrader(streamer, debug=True)
         t.set_symbol("X")
         t.set_algo(BaseAlgo())
