@@ -1,12 +1,15 @@
 # Builtins
 import json
+from urllib import response
 import yaml
 import datetime as dt
 import urllib.request
 from typing import Any, Dict, List, Tuple
+import requests
 
 # External libraries
 import pandas as pd
+import pytz
 
 # Submodule imports
 from harvest.api._base import API
@@ -16,28 +19,30 @@ from harvest.utils import *
 class PolygonStreamer(API):
 
     interval_list = [Interval.MIN_1, Interval.MIN_5, Interval.HR_1, Interval.DAY_1]
-    req_keys = ["polygon_api_key"]
 
     def __init__(self, path: str = None, is_basic_account: bool = False):
         super().__init__(path)
-
-        if self.config is None:
-            raise Exception(
-                f"Account credentials not found! Expected file path: {path}"
-            )
-
         self.basic = is_basic_account
 
-    def setup(self, stats, account, trader_main=None):
-        super().setup(stats, account, trader_main)
+    def setup(self, interval, trader_main=None):
+        self.watch_stock = []
+        self.watch_crypto = []
+
+        for sym in interval:
+            if is_crypto(sym):
+                self.watch_crypto.append(sym)
+            else:
+                self.watch_stock.append(sym)
+
         self.option_cache = {}
+        super().setup(interval, trader_main)
 
     def exit(self):
         self.option_cache = {}
 
     def main(self):
         df_dict = {}
-        combo = self.stats.watchlist_cfg.keys()
+        combo = self.watch_stock + self.watch_crypto
         if self.basic and len(combo) > 5:
             debugger.error(
                 "Basic accounts only allow for 5 API calls per minute, trying to get data for more than 5 assets! Aborting."
@@ -78,9 +83,14 @@ class PolygonStreamer(API):
 
     @API._exception_handler
     def fetch_chain_info(self, symbol: str):
+        key = self.config["polygon_api_key"]
+        request = f"https://api.polygon.io/v3/reference/options/contracts?underlying_ticker={symbol}&apiKey={key}"
+        response = requests.get(request)
+        ret = response.json()
+        dates = {contract["expiration"] for contract in ret["results"]}
         return {
             "id": "n/a",
-            "exp_dates": [str_to_date(s) for s in self.watch_ticker[symbol].options],
+            "exp_dates": list(dates),
             "multiplier": 100,
         }
 
@@ -94,20 +104,22 @@ class PolygonStreamer(API):
         ):
             return self.option_cache[symbol][date]
 
-        df = pd.DataFrame(columns=["contractSymbol", "exp_date", "strike", "type"])
+        exp_date = date.strftime("%Y-%m-%d")
+        key = self.config['polygon_api_key']
+        request = f"https://api.polygon.io/v3/reference/options/contracts?underlying_ticker={symbol}&expiration_date={exp_date}&apiKey={key}"
+        response = requests.get(request)
+        ret = response.json()
 
-        chain = self.watch_ticker[symbol].option_chain(date_to_str(date))
-        puts = chain.puts
-        puts["type"] = "put"
-        calls = chain.calls
-        calls["type"] = "call"
-        df = df.append(puts)
-        df = df.append(calls)
+        df = pd.DataFrame.from_dict(ret["results"])
 
-        df = df.rename(columns={"contractSymbol": "occ_symbol"})
-        df["exp_date"] = df.apply(
-            lambda x: self.occ_to_data(x["occ_symbol"])[1], axis=1
-        )
+        df = df.rename(columns={"contract_type": "type", "strike_price": "strike", "ticker": "occ_symbol"})
+        # Remove the "O:" prefix from the option ticker symbol
+        df["occ_symbol"] = df["occ_symbol"].str.replace("O:", "")
+        # Convert the string timestamps of dataframe to datetime objects
+        df["exp_date"] = pd.to_datetime(df["expiration"])
+        df["exp_date"] =  pandas_datetime_to_utc(df["exp_date"], pytz.utc)
+
+        
         df = df[["occ_symbol", "exp_date", "strike", "type"]]
         df.set_index("occ_symbol", inplace=True)
 
@@ -119,16 +131,51 @@ class PolygonStreamer(API):
 
     @API._exception_handler
     def fetch_option_market_data(self, occ_symbol: str):
-        occ_symbol = occ_symbol.replace(" ", "")
-        symbol, date, typ, _ = self.occ_to_data(occ_symbol)
-        chain = self.watch_ticker[symbol].option_chain(date_to_str(date))
-        chain = chain.calls if typ == "call" else chain.puts
-        df = chain[chain["contractSymbol"] == occ_symbol]
-        debugger.debug(occ_symbol, df)
+        key = self.config["polygon_api_key"]
+        occ_symbol.replace(" ", "")
+        symbol = occ_to_data(occ_symbol)[0]
+        request = f"https://api.polygon.io/v3/snapshot/options/{symbol}/O:{occ_symbol}?apiKey={key}"
+        response = requests.get(request)
+        ret = response.json()
         return {
-            "price": float(df["lastPrice"].iloc[0]),
-            "ask": float(df["ask"].iloc[0]),
-            "bid": float(df["bid"].iloc[0]),
+            "price": ret["results"]["day"]["close"],
+            "ask": ret["results"]["last_quote"]["ask"],
+            "bid": ret["results"]["last_quote"]["bid"],
+        }
+    
+    @API._exception_handler
+    def fetch_market_hours(self, date: datetime.date):
+        # Polygon does not support getting market hours,
+        # so use the free Tradier API instead.
+        # See documentation.tradier.com/brokerage-api/markets/get-clock
+        response = requests.get(
+            "https://api.tradier.com/v1/markets/clock",
+            params={"delayed": "false"},
+            headers={"Authorization": "123", "Accept": "application/json"},
+        )
+        ret = response.json()
+        debugger.debug(f"Market hours: {ret}")
+        ret = ret["clock"]
+        desc = ret["description"]
+        state = ret["state"]
+        if state == "open":
+            times = re.sub(r"[^0-9:]", "", desc)
+            open_at = convert_input_to_datetime(
+                dt.datetime.strptime(times[:5], "%H:%M"),
+                ZoneInfo("America/New_York"),
+            )
+            close_at = convert_input_to_datetime(
+                dt.datetime.strptime(times[5:], "%H:%M"),
+                ZoneInfo("America/New_York"),
+            )
+        else:
+            open_at = None
+            close_at = None
+
+        return {
+            "is_open": state == "open",
+            "open_at": open_at,
+            "close_at": close_at,
         }
 
     # ------------- Broker methods ------------- #
@@ -187,7 +234,7 @@ class PolygonStreamer(API):
             timespan=timespan,
             start=start_str,
             end=end_str,
-            api_key=self.config["polygon_api_key"],
+            api_key=self.config["api_key"],
         )
 
         response = json.load(urllib.request.urlopen(request))
@@ -250,7 +297,7 @@ class PolygonStreamer(API):
         w.println(f"All steps are complete now 🎉. Generating {path}...")
 
         d = {
-            "polygon_api_key": f"{api_key}",
+            "api_key": f"{api_key}",
         }
 
         with open(path, "w") as file:
