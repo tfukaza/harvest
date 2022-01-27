@@ -102,18 +102,24 @@ class PolygonStreamer(API):
             return self.option_cache[symbol][date]
 
         exp_date = date.strftime("%Y-%m-%d")
-        key = self.config['polygon_api_key']
+        key = self.config["polygon_api_key"]
         request = f"https://api.polygon.io/v3/reference/options/contracts?underlying_ticker={symbol}&expiration_date={exp_date}&apiKey={key}"
         response = requests.get(request)
         ret = response.json()
         df = pd.DataFrame.from_dict(ret["results"])
 
-        df = df.rename(columns={"contract_type": "type", "strike_price": "strike", "ticker": "occ_symbol"})
+        df = df.rename(
+            columns={
+                "contract_type": "type",
+                "strike_price": "strike",
+                "ticker": "occ_symbol",
+            }
+        )
         # Remove the "O:" prefix from the option ticker symbol
         df["occ_symbol"] = df["occ_symbol"].str.replace("O:", "")
         # Convert the string timestamps of dataframe to datetime objects
         df["exp_date"] = pd.to_datetime(df["expiration"])
-        df["exp_date"] =  pandas_datetime_to_utc(df["exp_date"], pytz.utc)
+        df["exp_date"] = pandas_datetime_to_utc(df["exp_date"], pytz.utc)
         df = df[["occ_symbol", "exp_date", "strike", "type"]]
         df.set_index("occ_symbol", inplace=True)
 
@@ -165,7 +171,7 @@ class PolygonStreamer(API):
         else:
             open_at = None
             close_at = None
-        
+
         return {
             "is_open": state == "open",
             "open_at": open_at,
