@@ -32,6 +32,7 @@ class PickleStorage(BaseStorage):
         makedirs(self.save_dir, exist_ok=True)
 
         files = [f for f in listdir(self.save_dir) if isfile(join(self.save_dir, f))]
+        print(f"Found {files} in {self.save_dir}")
 
         for file in files:
             symbol, interval = file.split("@")

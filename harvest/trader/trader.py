@@ -68,7 +68,12 @@ class LiveTrader:
 
     def _init_attributes(self):
 
-        signal(SIGINT, self.exit)
+        try:
+            signal(SIGINT, self.exit)
+        except:
+            debugger.warning(
+                "Can't use signal, Harvest is running in a non-main thread."
+            )
 
         self.watchlist = []  # List of securities specified in this class
         self.algo = []  # List of algorithms to run.
@@ -334,8 +339,6 @@ class LiveTrader:
             debugger.debug(f"Updating status of order {order.order_id}")
             order.update(stat)
 
-        debugger.debug(f"Updated order queue: {self.orders}")
-
         order_filled = False
         for order in self.orders.orders:
             # TODO: handle cancelled orders
@@ -353,6 +356,7 @@ class LiveTrader:
                     order.filled_price,
                 )
         self.orders.remove_non_open()
+        debugger.debug(f"Updated order queue: {self.orders}")
 
         # if an order was processed, update the positions and account info
         return order_filled
@@ -387,6 +391,7 @@ class LiveTrader:
         debugger.debug(f"Updated positions: {self.positions}")
 
     def _fetch_account_data(self):
+        debugger.debug(f"Fetching account data")
         stock_pos = [
             Position(p["symbol"], p["quantity"], p["avg_price"])
             for p in self.broker.fetch_stock_positions()
@@ -410,6 +415,7 @@ class LiveTrader:
         self.positions.update(stock_pos, option_pos, crypto_pos)
 
         ret = self.broker.fetch_account()
+
         self.account.init(ret)
 
     # --------------------- Interface Functions -----------------------
@@ -448,6 +454,7 @@ class LiveTrader:
             )
             return None
         ret = self.broker.buy(symbol, quantity, limit_price, in_force, extended)
+        print(f"Account info after buy: {self.account}")
 
         if ret is None:
             debugger.debug("BUY failed")
@@ -460,6 +467,9 @@ class LiveTrader:
     def sell(self, symbol: str, quantity: int, in_force: str, extended: bool):
         # Check how many of the given asset we currently own
         owned_qty = self.get_asset_quantity(symbol, True, False)
+        if owned_qty == 0:
+            debugger.error(f"You do not own any {symbol}")
+            return None
         if quantity > owned_qty:
             debugger.debug(
                 "SELL failed: More quantities are being sold than currently owned."

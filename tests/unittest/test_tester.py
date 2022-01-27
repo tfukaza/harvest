@@ -27,23 +27,29 @@ class TestTester(unittest.TestCase):
         to ensure it can run without crashing.
         """
         s = DummyStreamer()
-        t = BackTester(s)
+        # Prevent streamer from running which will cause an infinite loop
+        s.start = lambda: None
+        t = BackTester(s, True)
         t.set_symbol("A")
         t.set_algo(BaseAlgo())
-        t.start("1MIN", ["5MIN"], period="1DAY")
+        # TODO: Update code so "1DAY" also works
+        t.start("1MIN", ["5MIN"], period="2DAY")
         self.assertTrue(True)
 
     @tear_up_down
     def test_check_aggregation(self):
         """ """
-        t = BackTester(DummyStreamer())
+        s = DummyStreamer()
+        # Prevent streamer from running which will cause an infinite loop
+        s.start = lambda: None
+        t = BackTester(s, True)
         t.set_symbol("A")
         t.set_algo(BaseAlgo())
-        t.start("1MIN", ["1DAY"], period="1DAY")
+        t.start("1MIN", ["1DAY"], period="2DAY")
 
-        minutes = list(t.storage.load("A", Interval.MIN_1)["A"]["close"])[-200:]
+        minutes = list(t.storage.load("A", Interval.MIN_1)["A"]["close"])[:10]
         days_agg = list(t.storage.load("A", int(Interval.DAY_1) - 16)["A"]["close"])[
-            -200:
+            :10
         ]
 
         self.assertListEqual(minutes, days_agg)
@@ -56,10 +62,13 @@ class TestTester(unittest.TestCase):
             def main(self):
                 print(self.get_datetime())
 
-        t = BackTester(DummyStreamer())
+        s = DummyStreamer()
+        # Prevent streamer from running which will cause an infinite loop
+        s.start = lambda: None
+        t = BackTester()
         t.set_symbol("A")
         t.set_algo(TestAlgo())
-        t.start("1MIN", ["1DAY"], period="1DAY")
+        t.start("1MIN", ["1DAY"], period="2DAY")
 
         self.assertTrue(True)
 

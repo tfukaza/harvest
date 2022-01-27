@@ -27,7 +27,10 @@ class TestPaperTrader(unittest.TestCase):
             pass
 
     def test_start_do_nothing(self):
-        t = PaperTrader(DummyStreamer())
+        s = DummyStreamer()
+        # Prevent streamer from running which will cause an infinite loop
+        s.start = lambda: None
+        t = PaperTrader(s)
         t.set_symbol("A")
         t.set_algo(BaseAlgo())
         t.start("1MIN")
@@ -44,6 +47,7 @@ class TestPaperTrader(unittest.TestCase):
         If streamer is not specified, by default
         it should be set to DummyStreamer, and broker set to
         """
+
         t = PaperTrader(DummyStreamer())
 
         self.assertIsInstance(t.streamer, DummyStreamer)
@@ -76,7 +80,10 @@ class TestPaperTrader(unittest.TestCase):
 
     def test_invalid_aggregation(self):
         """If invalid aggregation is set, it should raise an error"""
-        t = PaperTrader(DummyStreamer())
+        s = DummyStreamer()
+        # Prevent streamer from running which will cause an infinite loop
+        s.start = lambda: None
+        t = PaperTrader(s)
         with self.assertRaises(Exception):
             t.start("30MIN", ["5MIN", "1DAY"])
 

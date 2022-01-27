@@ -111,7 +111,7 @@ class Functions:
 
 class Account:
     def __init__(self, account_name=None):
-        self._account_name = account_name
+        self._account_name = account_name or "default"
         self._positions = Positions()
         self._orders = Orders()
 
@@ -124,13 +124,13 @@ class Account:
 
     def __str__(self):
         return (
-            f"Account:\t{self.account_name}\n"
-            + f"Cash:\t{self.cash}\n"
-            + f"Equity:\t{self.equity}\n"
-            + f"Buying Power:\t{self.buying_power}\n"
-            + f"Multiplier:\t{self.multiplier}\n\n"
-            + f"Positions:\n{self.positions}\n\n"
-            + f"Orders:\n{self.orders}"
+            f"Account:\t{self._account_name}\n"
+            + f"Cash:\t{self._cash}\n"
+            + f"Equity:\t{self._equity}\n"
+            + f"Buying Power:\t{self._buying_power}\n"
+            + f"Multiplier:\t{self._multiplier}\n\n"
+            + f"Positions:\n{self._positions}\n\n"
+            + f"Orders:\n{self._orders}"
         )
 
     def init(self, dict):
@@ -221,7 +221,18 @@ class Order:
         self._filled_quantity = None
 
     def __str__(self):
-        return f"{self.order_id} {self.status} {self.symbol} {self.type} {self.filled_quantity}/{self.quantity} {self.time_in_force} {self.filled_time} {self.filled_price}"
+        return f"""
+        order_id:       {self._order_id} 
+        symbol:         {self._symbol}
+        type:           {self._type}
+        side:           {self._side}
+        quantity:       {self._quantity}
+        time_in_force:  {self._time_in_force}
+        status:         {self._status}
+        filled_time:    {self._filled_time}
+        filled_price:   {self._filled_price}
+        filled_quantity:{self._filled_quantity}
+        """
 
     @property
     def symbol(self):
@@ -585,7 +596,7 @@ def aggregate_df(df, interval: Interval) -> pd.DataFrame:
     }
     val, unit = expand_interval(interval)
     val = str(val)
-    if unit == "1HR":
+    if unit == "HR":
         val = "H"
     elif unit == "MIN":
         val += "T"
@@ -595,6 +606,43 @@ def aggregate_df(df, interval: Interval) -> pd.DataFrame:
     df.columns = pd.MultiIndex.from_product([[sym], df.columns])
 
     return df.dropna()
+
+
+def floor_trim_df(df, base_interval, agg_interval):
+    """
+    This function takes a dataframe, and trims off rows
+    from the beginning so that the timestamp of the first row is a multiple of agg_interval
+    """
+    val, _ = expand_interval(base_interval)
+
+    y = None
+
+    def f(x):
+        nonlocal y
+        if y is None:
+            y = x
+        r = x.date() != y.date()
+        y = x
+        return r
+
+    if agg_interval == Interval.MIN_5:
+        g = lambda x: (x.minute - val) % 5 == 0
+    elif agg_interval == Interval.MIN_15:
+        g = lambda x: (x.minute - val) % 15 == 0
+    elif agg_interval == Interval.MIN_30:
+        g = lambda x: (x.minute - val) % 30 == 0
+    elif agg_interval == Interval.HR_1:
+        g = lambda x: (x.minute - val) % 60 == 0
+    elif agg_interval == Interval.DAY_1:
+        g = f
+    else:
+        raise Exception("Unsupported interval")
+
+    # Get the index of the first row that satisfies the condition g
+    for i in range(len(df)):
+        if g(df.index[i]):
+            return df.index[i]
+    return df.index[0]
 
 
 # ========== Date utils ==========
@@ -673,7 +721,12 @@ def pandas_timestamp_to_local(df: pd.DataFrame, timezone: ZoneInfo) -> pd.DataFr
     """
     Converts the timestamp of a Pandas dataframe to a timezone naive DateTime object in local time.
     """
-    df.index = df.index.map(lambda x: datetime_utc_to_local(x, timezone))
+    df.index = pd.DatetimeIndex(
+        map(
+            lambda x: x.astimezone(timezone).replace(tzinfo=None),
+            df.index.to_pydatetime(),
+        )
+    )
     return df
 
 

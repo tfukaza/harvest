@@ -35,27 +35,43 @@ class BaseAlgo:
         self.positions = account.positions
 
     def config(self):
-        """This method is called before any other methods (except for __init__),
-        and initializes parameters for this class.
-        -  interval: The interval to run the algorithm.
-        -  aggregations: Intervals to aggregate data.
-        -  watchlist: List of assets this algorithm tracks.
+        """
+        This method is called before all other methods (except for __init__) and initializes parameters for this class.
+
+        - interval: The string specifying the interval to run the algorithm. Choose from "15SEC", "1MIN", "5MIN", "15MIN", "30MIN", "1HR", "1DAY".
+        - aggregations: A List of strings specifying the intervals to aggregate data. Choose from "1MIN", "5MIN", "15MIN", "30MIN", "1HR", "1DAY".
+        - watchlist: A List of strings specifying the stock/crypto assets this algorithm tracks. Crypto assets must be prepended with a '@' symbol.
+
         Any parameters set to None or an empty List will fall back to respective paramters set in the Trader class.
+
+        Example
+        ```python
+        def config(self):
+            self.interval = "5MIN"
+            self.aggregations = ["15MIN", "30MIN", "1DAY"]
+            self.watchlist = ["AAPL", "@BTC"]
+        ```
         """
         self.interval = None
         self.aggregations = None
         self.watchlist = []
 
     def setup(self):
-        """Method called right before algorithm begins."""
+        """
+        Method called right before algorithm begins.
+        """
         pass
 
     def main(self):
-        """Main method to run the algorithm."""
+        """
+        Main method to run the algorithm.
+        """
         pass
 
     def add_plugin(self, plugin: Plugin):
-        """Adds a plugin to the algorithm."""
+        """
+        Adds a plugin to the algorithm.
+        """
         value = getattr(self, plugin.name, None)
         if value is None:
             setattr(self, plugin.name, plugin)
@@ -73,18 +89,25 @@ class BaseAlgo:
         in_force: str = "gtc",
         extended: bool = False,
     ):
-        """Buys the specified asset.
+        """
+        Buys the specified asset.
 
         When called, a limit buy order is placed with a limit
-        price 5% higher than the current price.
+        price 5% higher than the current price. This is a general function that can
+        be used to buy stocks, crypto, and options.
 
-        :param str? symbol: Symbol of the asset to buy. defaults to first symbol in watchlist
-        :param float? quantity: Quantity of asset to buy. defaults to buys as many as possible
-        :param str? in_force: Duration the order is in force. '{gtc}' or '{gtd}'. defaults to 'gtc'
-        :param str? extended: Whether to trade in extended hours or not. defaults to False
+        :param str? symbol: Symbol of the asset to buy.
+            If not specified, defaults to first symbol in watchlist.
+            Crypto assets must be prepended with a '@' symbol.
+            When buying options, the symbol must be formatted in OCC format.
+        :param float? quantity: Quantity of asset to buy. If not specified,
+            it will buy as many as possible given the current buying power.
+        :param str? in_force: Duration the order is in force.
+            Choose from 'gtc' (Good 'til canceled) or 'gtd' (). defaults to 'gtc'
+        :param str? extended: Whether to trade in extended hours or not. Defaults to False
 
         :returns: The following Python dictionary
-            - id: str, ID of order
+            - order_id: str, ID of order
             - symbol: str, symbol of asset
 
         :raises Exception: There is an error in the order process.
@@ -107,15 +130,21 @@ class BaseAlgo:
         """Sells the specified asset.
 
         When called, a limit sell order is placed with a limit
-        price 5% lower than the current price.
+        price 5% lower than the current price. This is a general function that can
+        be used to sell stocks, crypto, and options.
 
-        :param str? symbol:    Symbol of the asset to sell. defaults to first symbol in watchlist
-        :param float? quantity:  Quantity of asset to sell defaults to sells all
-        :param str? in_force:  Duration the order is in force. '{gtc}' or '{gtd}'. defaults to 'gtc'
-        :param str? extended:  Whether to trade in extended hours or not. defaults to False
+        :param str? symbol: Symbol of the asset to sell.
+            If not specified, defaults to first symbol in watchlist.
+            Crypto assets must be prepended with a '@' symbol.
+            When selling options, the symbol must be formatted in OCC format.
+        :param float? quantity: Quantity of asset to sell. If not specified,
+            it will sell all currently owned quantity.
+        :param str? in_force: Duration the order is in force.
+            Choose from 'gtc' (Good 'til canceled) or 'gtd' (). Defaults to 'gtc'
+        :param str? extended: Whether to trade in extended hours or not. Defaults to False
 
         :returns: A dictionary with the following keys:
-            - id: str, ID of order
+            - order_id: str, ID of order
             - symbol: str, symbol of asset
 
         :raises Exception: There is an error in the order process.
@@ -129,11 +158,14 @@ class BaseAlgo:
         return self.func.sell(symbol, quantity, in_force, extended)
 
     def sell_all_options(self, symbol: str = None, in_force: str = "gtc"):
-        """Sells all owned options based on the specified stock
+        """Sells all options based on the specified stock.
+
+        For example, if you call this function with `symbol` set to "TWTR", it will sell
+        all options you own that is related to TWTR.
 
         :param str? symbol: symbol of stock. defaults to first symbol in watchlist
         :returns: A list of dictionaries with the following keys:
-            - id: str, ID of order
+            - order_id: str, ID of order
             - symbol: str, symbol of asset
         """
         if symbol is None:
@@ -160,12 +192,20 @@ class BaseAlgo:
     ):
         """Returns a DataFrame of options that satisfies the criteria specified.
 
-        :param str? symbol: Symbol of stock. defaults to first symbol in watchlist
+        The lower_exp and upper_exp input can either be a string in the format "YYYY-MM-DD" or a datetime object.
+
+        :param str symbol: Symbol of stock. defaults to first symbol in watchlist.
         :param str? type: 'call' or 'put'
-        :param lower_exp: Minimum expiration date of the option, inclusive.
-        :param upper_exp: Maximum expiration date of the option, inclusive.
+        :param str? lower_exp: Minimum expiration date of the option, inclusive.
+        :param str? upper_exp: Maximum expiration date of the option, inclusive.
         :param float lower_strike: The minimum strike price of the option, inclusive.
         :param float upper_strike: The maximum strike price of the option, inclusive.
+
+        :returns: A DataFrame, with an index of strings representing the OCC symbol of options, and the following columns
+        |symbol | type | strike
+        |-------|------|-------
+        |(str) ticker of stock | 'call' or 'put' | (float) strike price
+
         """
         if symbol is None:
             symbol = self.watchlist[0]
@@ -180,7 +220,7 @@ class BaseAlgo:
         exp_dates = sorted(exp_dates)
 
         exp_date = exp_dates[0]
-        print(f"Exp date: {exp_date}\n")
+
         chain = self.get_option_chain(symbol, exp_date)
         if lower_strike is not None:
             chain = chain[chain["strike"] >= lower_strike]
@@ -197,12 +237,20 @@ class BaseAlgo:
     # ------------------ Functions to trade options ----------------------
 
     def get_option_chain_info(self, symbol: str = None):
-        """Returns metadata about a stock's option chain
+        """Returns data of a stock's option chain.
+
+        Given a stock's symbol, this function returns a dictionary with two data.
+        The first is a list indicating the available expiration dates of the option.
+        The second is the multiplier, which indicates how many contracts are in a single option.
+        For example, if you buy an option priced at $1.20 and the multiplier is 100,
+        you will need to pay $120 to buy one option.
+
+        This function is often used in conjunction with the get_option_chain function.
 
         :param str? symbol: symbol of stock. defaults to first symbol in watchlist
         :returns: A dict with the following keys:
-            - exp_dates: List of expiration dates
-            - multiplier: Multiplier of the option, usually 100
+            - exp_dates: List of expiration dates as strings in the format "YYYY-MM-DD"
+            - multiplier: float. Multiplier of the option, usually 100
         """
         if symbol is None:
             symbol = self.watchlist[0]
@@ -211,8 +259,12 @@ class BaseAlgo:
     def get_option_chain(self, symbol: str, date):
         """Returns the option chain for the specified symbol and expiration date.
 
+        The date parameter can either be a string in the format "YYYY-MM-DD" or a datetime object.
+        This function is often used in conjunction with the get_option_chain_info function in order to
+        retrieve the available expiration dates.
+
         :param str symbol: symbol of stock
-        :param dt.datetime date: date of option expiration
+        :param date: date of option expiration
         :returns: A dataframe with the follwing columns:
 
             - exp_date(datetime.datetime): The expiration date, as offset-naive DateTime object
@@ -221,16 +273,18 @@ class BaseAlgo:
             - type(str): 'call' or 'put'
 
         The index is the OCC symbol of the option.
-        Note that the expiration date is not adjusted to the local time zone.
         """
         if symbol is None:
             symbol = self.watchlist[0]
         date = convert_input_to_datetime(date, self.stats.timezone)
-        print(f"Date: {date}\n")
+
         return self.func.fetch_chain_data(symbol, date)
 
     def get_option_market_data(self, symbol: str):
         """Retrieves data of specified option.
+
+        Note that the price returned by this function returns the price per contract,
+        not the total price of the option.
 
         :param str? symbol: OCC symbol of option
         :returns: A dictionary:
@@ -505,7 +559,6 @@ class BaseAlgo:
 
         :param str? symbol:  Symbol of stock or crypto asset. defaults to first symbol in watchlist
         :returns: Price of asset as a dataframe with the following columns:
-
             - open
             - high
             - low
@@ -535,7 +588,6 @@ class BaseAlgo:
 
         :param str? symbol:  Symbol of stock or crypto asset. defaults to first symbol in watchlist
         :returns: Prices of asset as a dataframe with the following columns:
-
             - open
             - high
             - low
@@ -556,7 +608,7 @@ class BaseAlgo:
     def get_asset_profit_percent(self, symbol=None) -> float:
         """Returns the return of a specified asset.
 
-        :param str? symbol:  Symbol of stock, crypto, or option. Options should be in {OCC} format.
+        :param str? symbol:  Symbol of stock, crypto, or option. Options should be in OCC format.
                         defaults to first symbol in watchlist
         :returns: Return of asset, expressed as a decimal.
         """
@@ -570,7 +622,7 @@ class BaseAlgo:
     def get_asset_max_quantity(self, symbol=None):
         """Calculates the maximum quantity of an asset that can be bought given the current buying power.
 
-        :param str? symbol:  Symbol of stock, crypto, or option. Options should be in {OCC} format.
+        :param str? symbol:  Symbol of stock, crypto, or option. Options should be in OCC format.
             defaults to first symbol in watchlist
         :returns: Quantity that can be bought.
         """
@@ -588,7 +640,7 @@ class BaseAlgo:
             return math.floor(power / price)
 
     def get_account_buying_power(self) -> float:
-        """Returns the current buying power of the user
+        """Returns the current buying power of the user.
 
         :returns: The current buying power as a float.
         """

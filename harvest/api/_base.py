@@ -63,21 +63,21 @@ class API:
             path = "./secret.yaml"
         # Check if file exists. If not, create a secret file
         if not exists(path):
-            config = self.create_secret(path)
+            config = self.create_secret()
         else:
             # Open file
             with open(path, "r") as stream:
                 config = yaml.safe_load(stream)
                 # Check if the file contains all the required parameters
                 if any(key not in config for key in self.req_keys):
-                    config.update(self.create_secret(path))
+                    config.update(self.create_secret())
 
         with open(path, "w") as f:
             yaml.dump(config, f)
 
         self.config = config
 
-    def create_secret(self, path: str):
+    def create_secret(self):
         """
         This method is called when the yaml file with credentials
         is not found. It returns a dictionary containing the necessary credentials.
