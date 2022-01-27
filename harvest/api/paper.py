@@ -168,7 +168,6 @@ class PaperBroker(API):
     def fetch_account(self) -> Dict[str, Any]:
         self.equity = self._calc_equity()
         self._save_account()
-
         return {
             "equity": self.equity,
             "cash": self.cash,
