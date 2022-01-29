@@ -4,17 +4,17 @@ trader.start()
 
 streamer.start() <- infinite loop
 
-  streamer.main()
+&emsp;streamer.main()
 
-  trader.main()
+&emsp;trader.main()
 
-  algo1.main()
+&emsp;algo1.main()
 
-  broker.fns()
+&emsp;broker.fns()
 
-  algo2.main()
+&emsp;algo2.main()
 
-  broker.fns()
+&emsp;broker.fns()
 
 
 ## APIs
