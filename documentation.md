@@ -1,20 +1,15 @@
 ### Main Loop
 
+```python
 trader.start()
-
-streamer.start() <- infinite loop
-
-&emsp;streamer.main()
-
-&emsp;trader.main()
-
-&emsp;algo1.main()
-
-&emsp;broker.fns()
-
-&emsp;algo2.main()
-
-&emsp;broker.fns()
+streamer.start() # infinite loop
+  streamer.main()
+  trader.main()
+  algo1.main()
+  broker.fns()
+  algo2.main()
+  broker.fns()
+```
 
 
 ## APIs
