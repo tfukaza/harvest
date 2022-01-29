@@ -1,5 +1,6 @@
 # Builtins
 import yaml
+import asyncio
 import threading
 import datetime as dt
 from typing import Any, Dict, List, Tuple
@@ -99,6 +100,7 @@ class Alpaca(StreamAPI):
             else:
                 self.watch_stock.append(s)
 
+        asyncio.set_event_loop(asyncio.new_event_loop())
         self.stream.on_bar(*(self.watch_stock + cryptos))(self.update_data)
 
         self.option_cache = {}

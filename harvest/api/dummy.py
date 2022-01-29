@@ -12,7 +12,6 @@ import numpy as np
 from harvest.api._base import API
 from harvest.utils import *
 
-
 class DummyStreamer(API):
     """DummyStreamer, as its name implies, is a dummy broker class that can
     be useful for testing algorithms. When used as a streamer, it will return
@@ -65,7 +64,7 @@ class DummyStreamer(API):
         """
 
         results = {}
-        today = self.timestamp
+        today = now() # self.timestamp
         last = today - dt.timedelta(days=3)
 
         for symbol in self.stats.watchlist_cfg:
@@ -83,7 +82,7 @@ class DummyStreamer(API):
         """
 
         results = {}
-        today = self.timestamp
+        today = now() # self.timestamp
         last = today - dt.timedelta(days=3)
         for symbol in self.stats.watchlist_cfg:
             if is_crypto(symbol):
@@ -142,16 +141,15 @@ class DummyStreamer(API):
                 # Get the rng for this symbol
                 rng = self.randomness[symbol + "_rng"]
 
-                # Generate a bunch of random numbers from -0.5 to 0.5
-                increments = (
-                    rng.random(num_of_random - len(self.randomness[symbol])) - 0.499
-                )
+                # Update the number of random data points 
+                num_of_random -= len(self.randomness[symbol])
 
-                # Get sum of the previous price changes
-                latest_price_change = self.randomness[symbol][-1]
+                # Generate a bunch of random numbers using Geometric Brownian Motion
+                returns = rng.normal(loc=0.0001, scale=0.0001, size=num_of_random) - rng.random(num_of_random) / 500.0
+
 
                 # Calculate the change in price since the first price
-                new_price_changes = latest_price_change + np.cumsum(increments)
+                new_price_changes = np.append(self.randomness[symbol], 1+returns).cumprod()
 
                 # Store the new prices
                 self.randomness[symbol] = np.append(
@@ -164,10 +162,12 @@ class DummyStreamer(API):
             # Create an rng using the asset's symbol as a seed
             rng = np.random.default_rng(int.from_bytes(symbol.encode("ascii"), "big"))
             num_of_random = 1 + end_index
-            increments = rng.random(num_of_random) - 0.499
+
+            # Generate a bunch of random numbers using Geometric Brownian Motion
+            returns = rng.normal(loc=0.0001, scale=0.0001, size=num_of_random) - rng.random(num_of_random) / 500.0
 
             # Store the price change since the first price
-            self.randomness[symbol] = np.cumsum(increments)
+            self.randomness[symbol] = (1+returns).cumprod()
             self.randomness[symbol + "_rng"] = rng
 
         # The inital price is arbitarly calculated from the first change in price
@@ -177,15 +177,15 @@ class DummyStreamer(API):
         current_time = start
 
         # Get the prices for the current interval
-        prices = start_price + self.randomness[symbol][start_index:end_index]
+        prices = start_price * self.randomness[symbol][start_index:end_index]
         # Prevent prices from going negative
         prices[prices < 0] = 0.01
 
         # Calculate olhcv from the prices
-        open_s = 0.95 * prices
-        low = 0.8 * prices
-        high = 1.2 * prices
-        close = 1.05 * prices
+        open_s = prices - 50
+        low = prices - 100
+        high = prices + 100
+        close = prices + 50
         volume = (1000 * (prices + 20)).astype(int)
 
         # Fake the timestamps
