@@ -5,10 +5,15 @@ trader.start()
 streamer.start() <- infinite loop
 
   streamer.main()
+
   trader.main()
+
   algo1.main()
+
   broker.fns()
+
   algo2.main()
+
   broker.fns()
 
 
@@ -18,17 +23,25 @@ streamer.start() <- infinite loop
   
 Real-time, seeded, fake stock generator with data going back 30 years from the point when the Harvest instance is started with minute precision. 
 
-  intervals*: the intervals supported, these are 1 minute,  minutes, 15 minutes, 30 minutes, 1 hour, 1 day.
-  req_keys*                            super: what keys are required in the provided secret file; since dummy_streamer needs no credentials, this is not used and is initialized to be an empty list.
+  intervals\*: the intervals supported, these are 1 minute,  minutes, 15 minutes, 30 minutes, 1 hour, 1 day.
+
+  req_keys\*                            super: what keys are required in the provided secret file; since dummy_streamer needs no credentials, this is not used and is initialized to be an empty list.
   
-  void       init*
-  dictionary create_secret*            super: does nothing since no secret keys are needed.
-  void       setup*                    super: 
-  void       start*                    super: tuns an infinite loop, calling main on interval.
-  void       main*: gets the asset data the user wants and calls the trader's main function.
-  datetime   get_current_time*
-  dataframe  fetch_price_history*
-  dictionary fetch_option_market_data*
+  void       init\*
+
+  dictionary create_secret\*            super: does nothing since no secret keys are needed.
+
+  void       setup\*                    super: 
+
+  void       start\*                    super: tuns an infinite loop, calling main on interval.
+
+  void       main\*: gets the asset data the user wants and calls the trader's main function.
+
+  datetime   get_current_time\*
+
+  dataframe  fetch_price_history\*
+
+  dictionary fetch_option_market_data\*
 
 
 ### Polygon Streamer
