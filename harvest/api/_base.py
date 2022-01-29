@@ -82,7 +82,6 @@ class API:
         This method is called when the yaml file with credentials
         is not found. It returns a dictionary containing the necessary credentials.
         """
-        # raise Exception(f"{path} was not found.")
         debugger.warning("Assuming API does not need account information.")
         return None
 

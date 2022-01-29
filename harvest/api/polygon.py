@@ -1,12 +1,12 @@
 # Builtins
 import json
-import yaml
 import datetime as dt
-import urllib.request
 from typing import Any, Dict, List, Tuple
 
 # External libraries
 import pandas as pd
+from polygon import RESTClient
+
 
 # Submodule imports
 from harvest.api._base import API
@@ -27,6 +27,7 @@ class PolygonStreamer(API):
             )
 
         self.basic = is_basic_account
+        self.api = RESTClient(self.config["polygon_api_key"])
 
     def setup(self, stats, account, trader_main=None):
         super().setup(stats, account, trader_main)
@@ -46,13 +47,16 @@ class PolygonStreamer(API):
 
         for s in combo:
             df = self.fetch_price_history(
-                s, Interval.MIN_1, now() - dt.timedelta(days=1), now()
-            ).iloc[-1]
+                s, Interval.MIN_1, now() - dt.timedelta(days=3), now()
+            ).iloc[[-1]]
             df_dict[s] = df
             debugger.debug(df)
         self.trader_main(df_dict)
 
     # -------------- Streamer methods -------------- #
+
+    def get_current_time(self) -> dt.datetime:
+        return now()
 
     @API._exception_handler
     def fetch_price_history(
@@ -74,7 +78,7 @@ class PolygonStreamer(API):
             return pd.DataFrame()
 
         val, unit = expand_interval(interval)
-        return self.get_data_from_polygon(symbol, val, unit, start, end)
+        return self._get_data_from_polygon(symbol, val, unit, start, end)
 
     @API._exception_handler
     def fetch_chain_info(self, symbol: str):
@@ -152,76 +156,7 @@ class PolygonStreamer(API):
 
     # ------------- Helper methods ------------- #
 
-    def get_data_from_polygon(
-        self,
-        symbol: str,
-        multipler: int,
-        timespan: str,
-        start: dt.datetime,
-        end: dt.datetime,
-    ) -> pd.DataFrame:
-        if self.basic and start < now() - dt.timedelta(days=365 * 2):
-            debugger.warning(
-                "Start time is over two years old! Only data from the past two years will be returned for basic accounts."
-            )
-
-        if timespan == "MIN":
-            timespan = "minute"
-        elif timespan == "HR":
-            timespan = "hour"
-        elif timespan == "DAY":
-            timespan = "day"
-
-        start_str = start.strftime("%Y-%m-%d")
-        end_str = end.strftime("%Y-%m-%d")
-
-        crypto = False
-        if is_crypto(symbol):
-            temp_symbol = "X:" + symbol[1:] + "USD"
-            crypto = True
-
-        request_form = "https://api.polygon.io/v2/aggs/ticker/{symbol}/range/{multiplier}/{timespan}/{start}/{end}?adjusted=true&sort=desc&apiKey={api_key}"
-        request = request_form.format(
-            symbol=temp_symbol if crypto else symbol,
-            multiplier=multipler,
-            timespan=timespan,
-            start=start_str,
-            end=end_str,
-            api_key=self.config["polygon_api_key"],
-        )
-
-        response = json.load(urllib.request.urlopen(request))
-
-        if response["status"] != "ERROR":
-            df = pd.DataFrame(response["results"]).iloc[::-1]
-        else:
-            debugger.error(f"Request error! Returning empty dataframe. \n {response}")
-            return pd.DataFrame()
-
-        df = self._format_df(df, symbol)
-        df = df.loc[start:end]
-
-        return df
-
-    def _format_df(self, df: pd.DataFrame, symbol: str):
-        df = df.rename(
-            columns={
-                "t": "timestamp",
-                "o": "open",
-                "c": "close",
-                "h": "high",
-                "l": "low",
-                "v": "volume",
-            }
-        )
-        df = df[["timestamp", "open", "high", "low", "close", "volume"]].astype(float)
-        df.index = pd.to_datetime(df["timestamp"], unit="ms", utc=True)
-        df.drop(columns=["timestamp"], inplace=True)
-        df.columns = pd.MultiIndex.from_product([[symbol], df.columns])
-
-        return df.dropna()
-
-    def create_secret(self, path: str) -> bool:
+    def create_secret(self) -> Dict[str, str]:
         import harvest.wizard as wizard
 
         w = wizard.Wizard()
@@ -253,11 +188,74 @@ class PolygonStreamer(API):
             "polygon_api_key": f"{api_key}",
         }
 
-        with open(path, "w") as file:
-            yml = yaml.dump(d, file)
-
         w.println(
             f"{path} has been created! Make sure you keep this file somewhere secure and never share it with other people."
         )
 
-        return True
+        return d
+
+    def _get_data_from_polygon(
+        self,
+        symbol: str,
+        multiplier: int,
+        timespan: str,
+        start: dt.datetime,
+        end: dt.datetime,
+    ) -> pd.DataFrame:
+        if self.basic and start < now() - dt.timedelta(days=365 * 2):
+            debugger.warning(
+                "Start time is over two years old! Only data from the past two years will be returned for basic accounts."
+            )
+
+        if timespan == "MIN":
+            timespan = "minute"
+        elif timespan == "HR":
+            timespan = "hour"
+        elif timespan == "DAY":
+            timespan = "day"
+
+        start_str = start.strftime("%Y-%m-%d")
+        end_str = end.strftime("%Y-%m-%d")
+
+        if is_crypto(symbol):
+            response = self.api.crypto_aggregates(
+                "X:" + symbol[1:] + "USD", multiplier, timespan, start_str, end_str
+            )
+        else:
+            response = self.api.stocks_equities_aggregates(
+                symbol, multiplier, timespan, start_str, end_str
+            )
+
+        if response.status != "ERROR":
+            df = pd.DataFrame(response.results)
+        else:
+            debugger.error(
+                f"Request error! Returning empty dataframe. \n {response.error}"
+            )
+            return pd.DataFrame()
+
+        df = self._format_df(df, symbol)
+        df = df.loc[start:end]
+
+        return df
+
+    def _format_df(self, df: pd.DataFrame, symbol: str):
+        df = df.rename(
+            columns={
+                "t": "timestamp",
+                "o": "open",
+                "c": "close",
+                "h": "high",
+                "l": "low",
+                "v": "volume",
+            }
+        )
+
+        df = df[["timestamp", "open", "high", "low", "close", "volume"]].astype(float)
+        df.index = pd.DatetimeIndex(
+            pd.to_datetime(df["timestamp"], unit="ms", utc=True), tz=dt.timezone.utc
+        )
+        df.drop(columns=["timestamp"], inplace=True)
+        df.columns = pd.MultiIndex.from_product([[symbol], df.columns])
+
+        return df.dropna()

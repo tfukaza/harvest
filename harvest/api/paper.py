@@ -30,10 +30,11 @@ class PaperBroker(API):
         Interval.HR_1,
         Interval.DAY_1,
     ]
-    req_keys = []
 
     def __init__(self, path: str = None, streamer=None, commission_fee=0, save=False):
         """
+        :path: Path to a configuration file holding account information for the user.
+        :streamer: A streamer to get asset prices and the current time.
         :commission_fee: When this is a number it is assumed to be a flat price
             on all buys and sells of assets. When this is a string formatted as
             'XX%' then it is assumed that commission fees are that percent of the
