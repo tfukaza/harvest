@@ -13,6 +13,7 @@ import datetime as dt
 import tzlocal
 
 # Submodule imports
+from harvest.definitions import *
 from harvest.utils import *
 from harvest.storage import BaseStorage
 from harvest.api.yahoo import YahooStreamer

@@ -50,7 +50,7 @@ class DummyStreamer(API):
             self.current_time = now()
 
         # Fake the epoch so the difference between the time Harvest starts and the epoch is fixed
-        self.epoch = now() - dt.timedelta(years=30)
+        self.epoch = now() - dt.timedelta(days=365 * 30)
 
         # Store random values and generates for each asset to make `fetch_price_history` fixed
         self.randomness = {}
@@ -117,11 +117,11 @@ class DummyStreamer(API):
                 Interval.MIN_15,
                 Interval.MIN_30,
             ]:
-                start = self.timestamp - dt.timedelta(days=2)
+                start = self.get_current_time() - dt.timedelta(days=2)
             elif interval == Interval.HR_1:
-                start = self.timestamp - dt.timedelta(days=14)
+                start = self.get_current_time() - dt.timedelta(days=14)
             else:
-                start = self.timestamp - dt.timedelta(days=365)
+                start = self.get_current_time() - dt.timedelta(days=365)
 
         if end is None:
             end = self.get_current_time()
@@ -132,7 +132,7 @@ class DummyStreamer(API):
         if end.tzinfo is None or end.tzinfo.utcoffset(end) is None:
             end = pytz.utc.localize(end)
 
-        results = self._generate_history(symbol, start, end)
+        results = self._generate_history(symbol, interval, start, end)
 
         if self.stock_market_times:
             debugger.debug(
@@ -197,11 +197,11 @@ class DummyStreamer(API):
 
     # ------------- Helper methods ------------- #
 
-    def tick() -> None:
+    def tick(self) -> None:
         self.current_time += interval_to_timedelta(self.poll_interval)
 
     def _generate_history(
-        self, symbol: str, start: dt.datetime, end: dt.datetime
+        self, symbol: str, interval: Interval, start: dt.datetime, end: dt.datetime
     ) -> pd.DataFrame:
         # Convert datetime to indices
 
@@ -287,9 +287,10 @@ class DummyStreamer(API):
             "volume": volume,
         }
 
-        results = self._format_df(pd.DataFrame(data=d))
+        results = pd.DataFrame(data=d)
         results.index = pd.DatetimeIndex(results["timestamp"], tz=dt.timezone.utc)
         results.drop(columns=["timestamp"], inplace=True)
         results.columns = pd.MultiIndex.from_product([[symbol], results.columns])
         results = aggregate_df(results, interval)
+        results = results.loc[start:end]
         return results

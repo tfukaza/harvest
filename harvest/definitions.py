@@ -1,4 +1,4 @@
-from utils import symbol_type
+from harvest.utils import symbol_type
 
 
 class Stats:
