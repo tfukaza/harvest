@@ -1,4 +1,4 @@
-from harvest.utils import symbol_type
+from harvest.utils import symbol_type, occ_to_data
 
 
 class Stats:

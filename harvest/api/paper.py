@@ -261,8 +261,7 @@ class PaperBroker(API):
             self.equity = self._calc_equity()
 
         debugger.debug(f"Returning status: {ret}")
-        stocks, cryptos = self.stocks, self.cryptos
-        debugger.debug(f"Positions:\n{stocks}\n=========\n{cryptos}")
+        debugger.debug(f"Positions:\n{self.stocks}\n=========\n{self.cryptos}")
         debugger.debug(f"Equity:{self._calc_equity()}")
         self._save_account()
         return ret
@@ -290,8 +289,8 @@ class PaperBroker(API):
                     )
                 elif ret["limit_price"] < price:
                     limit_price = ret["limit_price"]
-                    debugger.info(
-                        f"Limit price for {sym} is less than current price ({limit_price} < {price})."
+                    debugger.warn(
+                        f"Limit price for {sym} is less than current price ({limit_price} < {price}). Cannot buy {sym}!"
                     )
                 else:
                     # If asset already exists, buy more. If not, add a new entry
@@ -349,8 +348,7 @@ class PaperBroker(API):
             self.equity = self._calc_equity()
 
         debugger.debug(f"Returning status: {ret}")
-        stocks, cryptos = self.stocks, self.cryptos
-        debugger.debug(f"Positions:\n{stocks}\n{self.options}\n{cryptos}")
+        debugger.debug(f"Positions:\n{self.stocks}\n{self.options}\n{self.cryptos}")
         debugger.debug(f"Equity:{self._calc_equity()}")
         self._save_account()
         return ret

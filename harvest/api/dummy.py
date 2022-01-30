@@ -43,9 +43,7 @@ class DummyStreamer(API):
         self.realistic_simulation = realistic_simulation
 
         # The current_time is used to let users go back in time.
-        self.current_time = convert_input_to_datetime(
-            current_time
-        )  # TODO: add timezone
+        self.current_time = convert_input_to_datetime(current_time)
         if self.current_time is None:
             self.current_time = now()
 
@@ -82,16 +80,8 @@ class DummyStreamer(API):
                 time.sleep(sleep)
 
     def main(self) -> None:
-        df_dict = {}
         self.tick()
-        end = self.get_current_time()
-        start = end - dt.timedelta(days=3)
-
-        for symbol in self.stats.watchlist_cfg:
-            df_dict[symbol] = self.fetch_price_history(
-                symbol, self.stats.watchlist_cfg[symbol]["interval"], start, end
-            ).iloc[[-1]]
-
+        df_dict = self.fetch_latest_ohlc()
         self.trader_main(df_dict)
 
     # -------------- Streamer methods -------------- #
@@ -155,12 +145,18 @@ class DummyStreamer(API):
 
     def fetch_option_market_data(self, symbol: str) -> Dict[str, float]:
         # This is a placeholder so Trader doesn't crash
-        message = hashlib.sha256()
-        message.update(symbol.encode("utf-8"))
-        message.update(str(self.get_current_time()).encode("utf-8"))
-        hsh = message.digest()
-        price = int.from_bytes(hsh[:4], "big") / (2 ** 32)
-        price = (price + 1) * 1.5
+        # message = hashlib.sha256()
+        # message.update(symbol.encode("utf-8"))
+        # message.update(str(self.get_current_time()).encode("utf-8"))
+        # hsh = message.digest()
+        # price = int.from_bytes(hsh[:4], "big") / (2 ** 32)
+        # price = (price + 1) * 1.5
+        price = (
+            self.fetch_price_history(symbol, self.poll_interval)[symbol].iloc[-1][
+                "close"
+            ]
+            / 100
+        )
         debugger.debug(
             f"Dummy Streamer fake fetch option market data price for {symbol}: {price}"
         )
@@ -197,6 +193,18 @@ class DummyStreamer(API):
 
     # ------------- Helper methods ------------- #
 
+    def fetch_latest_ohlc(self) -> Dict[str, pd.DataFrame]:
+        df_dict = {}
+        end = self.get_current_time()
+        start = end - dt.timedelta(days=3)
+
+        for symbol in self.stats.watchlist_cfg:
+            df_dict[symbol] = self.fetch_price_history(
+                symbol, self.stats.watchlist_cfg[symbol]["interval"], start, end
+            ).iloc[[-1]]
+
+        return df_dict
+
     def tick(self) -> None:
         self.current_time += interval_to_timedelta(self.poll_interval)
 
@@ -222,16 +230,10 @@ class DummyStreamer(API):
                 # Update the number of random data points
                 num_of_random -= len(self.randomness[symbol])
 
-                # Generate a bunch of random numbers using Geometric Brownian Motion
-                returns = (
-                    rng.normal(loc=0.0001, scale=0.0001, size=num_of_random)
-                    - rng.random(num_of_random) / 500.0
-                )
+                returns = rng.normal(loc=1e-12, scale=1e-12, size=num_of_random)
 
                 # Calculate the change in price since the first price
-                new_price_changes = np.append(
-                    self.randomness[symbol], 1 + returns
-                ).cumprod()
+                new_price_changes = np.append(self.randomness[symbol], returns).cumsum()
 
                 # Store the new prices
                 self.randomness[symbol] = np.append(
@@ -246,23 +248,20 @@ class DummyStreamer(API):
             num_of_random = 1 + end_index
 
             # Generate a bunch of random numbers using Geometric Brownian Motion
-            returns = (
-                rng.normal(loc=0.0001, scale=0.0001, size=num_of_random)
-                - rng.random(num_of_random) / 500.0
-            )
+            returns = rng.normal(loc=1e-12, scale=1e-12, size=num_of_random)
 
             # Store the price change since the first price
-            self.randomness[symbol] = (1 + returns).cumprod()
+            self.randomness[symbol] = returns.cumsum()
             self.randomness[symbol + "_rng"] = rng
 
         # The inital price is arbitarly calculated from the first change in price
-        start_price = 1000 * (self.randomness[symbol][0] + 0.501)
+        start_price = 100 * (self.randomness[symbol][0] + 1)
 
         times = []
         current_time = start
 
         # Get the prices for the current interval
-        prices = start_price * self.randomness[symbol][start_index:end_index]
+        prices = start_price + self.randomness[symbol][start_index:end_index]
         # Prevent prices from going negative
         prices[prices < 0] = 0.01
 

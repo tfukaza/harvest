@@ -55,9 +55,6 @@ class PolygonStreamer(API):
 
     # -------------- Streamer methods -------------- #
 
-    def get_current_time(self) -> dt.datetime:
-        return now()
-
     @API._exception_handler
     def fetch_price_history(
         self,
@@ -272,12 +269,10 @@ class PolygonStreamer(API):
         response = requests.get(request)
         ret = response.json()
 
-        if ret.["status"] != "ERROR":
+        if ret["status"] != "ERROR":
             df = pd.DataFrame(ret["results"])
         else:
-            debugger.error(
-                f"Request error! Returning empty dataframe. \n {ret}"
-            )
+            debugger.error(f"Request error! Returning empty dataframe. \n {ret}")
             return pd.DataFrame()
 
         df = self._format_df(df, symbol)
