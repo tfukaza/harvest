@@ -14,18 +14,19 @@ from harvest.utils import *
 class TestDummyStreamer(unittest.TestCase):
     def test_fetch_prices(self):
         streamer = DummyStreamer(current_time="2000-01-01 00:00")
+        current_time = dt.datetime(2000, 1, 1, 0, 0, tzinfo=get_local_timezone()).astimezone(dt.timezone.utc)
         # Get per-minute data
         df_1 = streamer.fetch_price_history("A", Interval.MIN_1)["A"]
         # Check that the last date is 1/1/2020-00:00:00
         self.assertEqual(
-            df_1.index[-1], pd.Timestamp(dt.datetime(2000, 1, 1, 0, 0), tz=dt.timezone.utc)
+            df_1.index[-1], pd.Timestamp(current_time)
         )
         # Advance the time by 1 minute
         streamer.tick()
         df_2 = streamer.fetch_price_history("A", Interval.MIN_1)["A"]
         # Check that the last date is 1/1/2020-00:01:00
         self.assertEqual(
-            df_2.index[-1], pd.Timestamp(dt.datetime(2000, 1, 1, 0, 0), tz=dt.timezone.utc)
+            df_2.index[-1], pd.Timestamp(current_time + dt.timedelta(minutes=1))
         )
 
         # Check that the two dataframes are the same
