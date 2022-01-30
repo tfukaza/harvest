@@ -61,7 +61,7 @@ class DummyStreamer(API):
     def setup(self, stats: Stats, account: Account, trader_main=None) -> None:
         super().setup(stats, account, trader_main)
         # Override the time set in the base class with the user specified time
-        self.stats.timestamp = self.current_time
+        self.stats.timestamp = self.get_current_time()
 
     def start(self) -> None:
         val, unit = expand_interval(self.poll_interval)
@@ -157,7 +157,7 @@ class DummyStreamer(API):
         # This is a placeholder so Trader doesn't crash
         message = hashlib.sha256()
         message.update(symbol.encode("utf-8"))
-        message.update(str(self.timestamp).encode("utf-8"))
+        message.update(str(self.get_current_time()).encode("utf-8"))
         hsh = message.digest()
         price = int.from_bytes(hsh[:4], "big") / (2 ** 32)
         price = (price + 1) * 1.5
