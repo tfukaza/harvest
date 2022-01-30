@@ -5,6 +5,7 @@ import pandas as pd
 from pandas.testing import assert_frame_equal
 
 from harvest.storage import BaseStorage
+from harvest.definitions import *
 from harvest.utils import *
 
 

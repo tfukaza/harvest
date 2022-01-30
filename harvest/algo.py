@@ -9,6 +9,7 @@ from finta import TA
 import numpy as np
 import pandas as pd
 
+from harvest.definitions import *
 from harvest.utils import *
 from harvest.plugin._base import Plugin
 

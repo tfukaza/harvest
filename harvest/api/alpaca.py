@@ -12,6 +12,7 @@ from alpaca_trade_api import Stream
 
 # Submodule imports
 from harvest.api._base import StreamAPI, API
+from harvest.definitions import *
 from harvest.utils import *
 
 

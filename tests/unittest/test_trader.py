@@ -12,6 +12,7 @@ from harvest.api.paper import PaperBroker
 
 import datetime as dt
 
+from harvest.definitions import *
 from harvest.utils import gen_data
 
 

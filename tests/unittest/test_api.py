@@ -12,6 +12,7 @@ from harvest.algo import BaseAlgo
 from harvest.api._base import API, StreamAPI
 from harvest.api.dummy import DummyStreamer
 from harvest.trader import PaperTrader
+from harvest.definitions import *
 from harvest.utils import *
 
 

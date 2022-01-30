@@ -8,6 +8,7 @@ from harvest.trader import PaperTrader
 from harvest.api.dummy import DummyStreamer
 from harvest.algo import BaseAlgo
 
+from harvest.definitions import *
 from harvest.utils import *
 
 import logging

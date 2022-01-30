@@ -6,6 +6,7 @@ import datetime as dt
 from typing import Tuple
 
 from harvest.storage import BaseStorage
+from harvest.definitions import *
 from harvest.utils import *
 
 """

@@ -1,6 +1,6 @@
 # Builtins
 import datetime as dt
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Union
 import hashlib
 
 # External libraries
@@ -10,6 +10,7 @@ import numpy as np
 
 # Submodule imports
 from harvest.api._base import API
+from harvest.definitions import *
 from harvest.utils import *
 
 
@@ -30,21 +31,26 @@ class DummyStreamer(API):
 
     def __init__(
         self,
+        current_time: Union[str, dt.datetime]
         realistic_times: bool = False,
     ) -> None:
 
         self.realistic_times = realistic_times
+        self.current_time = convert_input_to_datetime(current_time) # TODO: add timezone
+        # Fake the epoch so the difference between the current time and the epoch is fixed
+        self.epoch = now() - dt.timedelta(years=30)
         # Store random values and generates for each asset to make `fetch_price_history` fixed
         self.randomness = {}
 
     def main(self) -> None:
         df_dict = {}
-        today = now()
-        last = today - dt.timedelta(days=3)
+        self.tick()
+        end = self.get_current_time()
+        start = end - dt.timedelta(days=3)
 
         for symbol in self.stats.watchlist_cfg:
             df_dict[symbol] = self.fetch_price_history(
-                symbol, self.stats.watchlist_cfg[symbol]["interval"], last, today
+                symbol, self.stats.watchlist_cfg[symbol]["interval"], start, end
             ).iloc[[-1]]
 
         self.trader_main(df_dict)
@@ -52,14 +58,14 @@ class DummyStreamer(API):
     # -------------- Streamer methods -------------- #
 
     def get_current_time(self) -> dt.datetime:
-        return now()
+        return self.current_time
 
     def fetch_price_history(
         self,
         symbol: str,
         interval: Interval,
-        start: dt.datetime = None,
-        end: dt.datetime = None,
+        start: Union[str, dt.datetime] = None,
+        end: Union[str, dt.datetime] = None,
     ) -> pd.DataFrame:
 
         if start is None:
@@ -76,7 +82,7 @@ class DummyStreamer(API):
                 start = self.timestamp - dt.timedelta(days=365)
 
         if end is None:
-            end = self.timestamp
+            end = self.get_current_time()
 
         if start.tzinfo is None or start.tzinfo.utcoffset(start) is None:
             start = pytz.utc.localize(start)
@@ -101,8 +107,6 @@ class DummyStreamer(API):
                 (results.index.dayofweek != 5) & (results.index.dayofweek != 6)
             ]
 
-        results.columns = pd.MultiIndex.from_product([[symbol], results.columns])
-        results = aggregate_df(results, interval)
         return results
 
     # TODO: Generate dummy option data
@@ -151,12 +155,16 @@ class DummyStreamer(API):
 
     # ------------- Helper methods ------------- #
 
+    def tick() -> None:
+        self.current_time += dt.timedelta(minutes=1)
+
     def _generate_history(
         self, symbol: str, start: dt.datetime, end: dt.datetime
     ) -> pd.DataFrame:
         # Convert datetime to indices
-        start_index = int((start - epoch_zero()).total_seconds() // 60)
-        end_index = 1 + int((end - epoch_zero()).total_seconds() // 60)
+
+        start_index = int((start - self.epoch).total_seconds() // 60)
+        end_index = 1 + int((end - self.epoch).total_seconds() // 60)
 
         if symbol in self.randomness:
             # If we already generated data from this asset
@@ -237,5 +245,9 @@ class DummyStreamer(API):
             "volume": volume,
         }
 
-        results = pd.DataFrame(data=d).set_index("timestamp")
+        results = self._format_df(pd.DataFrame(data=d))
+        results.index = pd.DatetimeIndex(results["timestamp"], tz=dt.timezone.utc)
+        results.drop(columns=["timestamp"], inplace=True)
+        results.columns = pd.MultiIndex.from_product([[symbol], results.columns])
+        results = aggregate_df(results, interval)
         return results

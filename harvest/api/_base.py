@@ -12,6 +12,7 @@ from os.path import exists
 import pandas as pd
 
 # Submodule imports
+from harvest.definitions import *
 from harvest.utils import *
 
 
