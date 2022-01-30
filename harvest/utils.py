@@ -257,9 +257,9 @@ def get_local_timezone():
 def convert_input_to_datetime(datetime, timezone: ZoneInfo = None):
     """
     Converts the input to a datetime object with a UTC timezone.
-    Sets the datetime object's timezone to the given timezone and 
-    then covert it to UTC. If timezone is None then the system's 
-    local timezone is used. 
+    Sets the datetime object's timezone to the given timezone and
+    then covert it to UTC. If timezone is None then the system's
+    local timezone is used.
     """
     if datetime is None:
         return None
@@ -269,7 +269,7 @@ def convert_input_to_datetime(datetime, timezone: ZoneInfo = None):
         raise ValueError(f"Cannot convert {datetime} to datetime.")
 
     if timezone is not None:
-        timezone = get_local_timezone()    
+        timezone = get_local_timezone()
 
     datetime = datetime.replace(tzinfo=timezone)
     datetime = datetime.astimezone(tz.utc)

@@ -33,7 +33,7 @@ class DummyStreamer(API):
         self,
         current_time: Union[str, dt.datetime] = None,
         stock_market_times: bool = False,
-        realistic_simulation: bool = True
+        realistic_simulation: bool = True,
     ) -> None:
 
         # Whether or not to include time outside of the typical time that US stock market operates.
@@ -46,7 +46,7 @@ class DummyStreamer(API):
         self.current_time = convert_input_to_datetime(
             current_time
         )  # TODO: add timezone
-        if self.current_time is None
+        if self.current_time is None:
             self.current_time = now()
 
         # Fake the epoch so the difference between the time Harvest starts and the epoch is fixed
@@ -80,7 +80,6 @@ class DummyStreamer(API):
             if self.realistic_simulation:
                 # Simulate realistic wait times
                 time.sleep(sleep)
-
 
     def main(self) -> None:
         df_dict = {}
