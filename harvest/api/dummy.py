@@ -31,18 +31,56 @@ class DummyStreamer(API):
 
     def __init__(
         self,
-        current_time: Union[str, dt.datetime],
-        realistic_times: bool = False,
+        current_time: Union[str, dt.datetime] = None,
+        stock_market_times: bool = False,
+        realistic_simulation: bool = True
     ) -> None:
 
-        self.realistic_times = realistic_times
+        # Whether or not to include time outside of the typical time that US stock market operates.
+        self.stock_market_times = stock_market_times
+
+        # `True` means a one minute interval will take one minute in real time, and `False` will make a one minute interval run as fast as possible.
+        self.realistic_simulation = realistic_simulation
+
+        # The current_time is used to let users go back in time.
         self.current_time = convert_input_to_datetime(
             current_time
         )  # TODO: add timezone
-        # Fake the epoch so the difference between the current time and the epoch is fixed
+        if self.current_time is None
+            self.current_time = now()
+
+        # Fake the epoch so the difference between the time Harvest starts and the epoch is fixed
         self.epoch = now() - dt.timedelta(years=30)
+
         # Store random values and generates for each asset to make `fetch_price_history` fixed
         self.randomness = {}
+
+        # Set a default poll interval in case `setup` is not called.
+        self.poll_interval = Interval.MIN_1
+
+    def setup(self, stats: Stats, account: Account, trader_main=None) -> None:
+        super().setup(stats, account, trader_main)
+        # Override the time set in the base class with the user specified time
+        self.stats.timestamp = self.current_time
+
+    def start(self) -> None:
+        val, unit = expand_interval(self.poll_interval)
+
+        debugger.debug(f"{type(self).__name__} started...")
+        while True:
+            if unit == "MIN":
+                sleep = val * 60
+            elif unit == "HR":
+                sleep = val * 3600
+            elif unit == "DAY":
+                sleep == val * 86400
+
+            self.stats.timestamp = self.get_current_time()
+            self.main()
+            if self.realistic_simulation:
+                # Simulate realistic wait times
+                time.sleep(sleep)
+
 
     def main(self) -> None:
         df_dict = {}
@@ -70,6 +108,9 @@ class DummyStreamer(API):
         end: Union[str, dt.datetime] = None,
     ) -> pd.DataFrame:
 
+        start = convert_input_to_datetime(start)
+        end = convert_input_to_datetime(end)
+
         if start is None:
             if interval in [
                 Interval.MIN_1,
@@ -94,7 +135,7 @@ class DummyStreamer(API):
 
         results = self._generate_history(symbol, start, end)
 
-        if self.realistic_times:
+        if self.stock_market_times:
             debugger.debug(
                 "Dummy Broker excluding information when the stock market is closed."
             )
@@ -158,7 +199,7 @@ class DummyStreamer(API):
     # ------------- Helper methods ------------- #
 
     def tick() -> None:
-        self.current_time += dt.timedelta(minutes=1)
+        self.current_time += interval_to_timedelta(self.poll_interval)
 
     def _generate_history(
         self, symbol: str, start: dt.datetime, end: dt.datetime

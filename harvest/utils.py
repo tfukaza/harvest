@@ -246,10 +246,20 @@ def str_to_datetime(date: str) -> dt.datetime:
     return dt.datetime.strptime(date, "%Y-%m-%d %H:%M")
 
 
-def convert_input_to_datetime(datetime, timezone: ZoneInfo):
+def get_local_timezone():
     """
-    Converts input to a datetime object, with timezone set to the given timezone.
-    If timezone is None, the returned datetime object will be offset-naive.
+    Returns a datetime timezone instance for the user's current timezone
+    using their system time.
+    """
+    return dt.datetime.now(tz.utc).astimezone().tzinfo
+
+
+def convert_input_to_datetime(datetime, timezone: ZoneInfo = None):
+    """
+    Converts the input to a datetime object with a UTC timezone.
+    Sets the datetime object's timezone to the given timezone and 
+    then covert it to UTC. If timezone is None then the system's 
+    local timezone is used. 
     """
     if datetime is None:
         return None
@@ -259,8 +269,10 @@ def convert_input_to_datetime(datetime, timezone: ZoneInfo):
         raise ValueError(f"Cannot convert {datetime} to datetime.")
 
     if timezone is not None:
-        datetime = datetime.replace(tzinfo=timezone)
-        datetime = datetime.astimezone(tz.utc)
+        timezone = get_local_timezone()    
+
+    datetime = datetime.replace(tzinfo=timezone)
+    datetime = datetime.astimezone(tz.utc)
 
     return datetime
 
