@@ -232,6 +232,7 @@ def epoch_zero() -> dt.datetime:
 def date_to_str(day) -> str:
     return day.strftime("%Y-%m-%d")
 
+
 def str_to_date(day) -> str:
     return dt.datetime.strptime(day, "%Y-%m-%d")
 

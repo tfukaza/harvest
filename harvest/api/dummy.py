@@ -31,12 +31,14 @@ class DummyStreamer(API):
 
     def __init__(
         self,
-        current_time: Union[str, dt.datetime]
+        current_time: Union[str, dt.datetime],
         realistic_times: bool = False,
     ) -> None:
 
         self.realistic_times = realistic_times
-        self.current_time = convert_input_to_datetime(current_time) # TODO: add timezone
+        self.current_time = convert_input_to_datetime(
+            current_time
+        )  # TODO: add timezone
         # Fake the epoch so the difference between the current time and the epoch is fixed
         self.epoch = now() - dt.timedelta(years=30)
         # Store random values and generates for each asset to make `fetch_price_history` fixed

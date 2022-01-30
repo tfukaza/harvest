@@ -1,5 +1,6 @@
 from utils import symbol_type
 
+
 class Stats:
     def __init__(self, timestamp=None, timezone=None, watchlist_cfg=None):
         self._timestamp = timestamp
