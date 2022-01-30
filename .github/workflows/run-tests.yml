@@ -31,12 +31,6 @@ jobs:
         python setup.py install
         python -m pip install .[Dev]
 
-    # - name: Store polygon secret in file
-    #   run: 'echo "api_key: $POLYGON_API_KEY" > poly_secret.yaml'
-    #   shell: bash
-    #   env:
-    #     POLYGON_API_KEY: ${{secrets.POLYGON_API_KEY}} 
-
     - name: Run linter
       run: python setup.py lint -c True
     

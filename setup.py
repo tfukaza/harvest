@@ -18,7 +18,7 @@ class LintCMD(Command):
         self.check = self.check == "True"
 
     def run(self):
-        command = ["black", "harvest"]
+        command = ["black", "harvest", "-v"]
 
         if self.check:
             command.append("--check")
