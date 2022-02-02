@@ -56,7 +56,9 @@ class DummyStreamer(API):
         # Set a default poll interval in case `setup` is not called.
         self.poll_interval = Interval.MIN_1
 
-    def setup(self, stats: Stats, account: Account, trader_main: Callable=None) -> None:
+    def setup(
+        self, stats: Stats, account: Account, trader_main: Callable = None
+    ) -> None:
         super().setup(stats, account, trader_main)
         # Override the time set in the base class with the user specified time
         self.stats.timestamp = self.get_current_time()

@@ -92,7 +92,9 @@ class API:
         """
         debugger.info(f"Refreshing credentials for {type(self).__name__}.")
 
-    def setup(self, stats: Stats, account: Account, trader_main: Callable=None) -> None:
+    def setup(
+        self, stats: Stats, account: Account, trader_main: Callable = None
+    ) -> None:
         """
         This function is called right before the algorithm begins,
         and initializes several runtime parameters like
@@ -263,7 +265,9 @@ class API:
             f"{type(self).__name__} does not support this streamer method: `fetch_chain_info`."
         )
 
-    def fetch_chain_data(self, symbol: str, date: Union[str, dt.datetime]) -> pd.DataFrame:
+    def fetch_chain_data(
+        self, symbol: str, date: Union[str, dt.datetime]
+    ) -> pd.DataFrame:
         """
         Returns the option chain for the specified symbol.
 
@@ -841,7 +845,7 @@ class StreamAPI(API):
         super().__init__(path)
 
         # Lock for streams that receive data asynchronously.
-        self.block_lock = threading.Lock()  
+        self.block_lock = threading.Lock()
         self.block_queue = {}
         self.first = True
 
