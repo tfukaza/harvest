@@ -11,7 +11,8 @@ streamer.start() # infinite loop
   broker.fns()
 ```
 
-
+---
+ 
 ## APIs
 
 ### API
@@ -31,20 +32,26 @@ An abstract streamer and broker.
 
 #### General Methods
 
-`__init__(self, path: str = None) -> None`:
+```python
+__init__(self, path: str = None) -> None
+```
 
 Creates an `API` instance.
 
 * `self`(API): A reference to the instance.
 * `path`(str): The path to a secret file holding API keys. 
 
-`create_secret(self) -> Dict[str, str]`:
+```python
+create_secret(self) -> Dict[str, str]
+```
 
 Warns the user's that this API does not need credentials.
 
 * `self`(API): A reference to the instance.
 
-`refresh_cred(self) -> None`:
+```python
+refresh_cred(self) -> None
+```
 
 Informs the user that credentials are being refreshed.
 
@@ -52,7 +59,9 @@ Informs the user that credentials are being refreshed.
 
 Returns a dictionary where the keys are the ones in the `req_keys` and the values are the API keys.
 
-`setup(self, stats: Stats, account: Account, trader_main: Callable=None) -> None`:
+```python
+setup(self, stats: Stats, account: Account, trader_main: Callable=None) -> None
+```
 
 Setups the API with data coming from the Trader and ultimately the user.
 
@@ -61,19 +70,25 @@ Setups the API with data coming from the Trader and ultimately the user.
 * `account`(Account): Holds the user's cash, equity, positions, orders, etc.
 * `trader_main`(Callable): reference to the trader's main function.
 
-`start(self) -> None`:
+```python
+start(self) -> None
+```
 
 Runs an infinite loop and calls the API's `main` function every `poll_interval`.
 
 * `self`(API): A reference to the instance.
 
-`main(self) -> None`:
+```python
+main(self) -> None
+```
 
 Gets the OHLC data for the assets at the requested interval and passes it to the trader's `main` function.
 
 * `self`(API): A reference to the instance.
 
-`exit(self) -> None`:
+```python
+exit(self) -> None
+```
 
 Informs the user that the trader's `main` function has ended.
 
@@ -81,7 +96,9 @@ Informs the user that the trader's `main` function has ended.
 
 #### Streamer Methods
 
-`get_current_time(self) -> dt.datetime`:
+```python
+get_current_time(self) -> dt.datetime
+```
 
 Returns the current time according to the API
 
@@ -89,9 +106,11 @@ Returns the current time according to the API
 
 Returns a `datetime` object with at least minute precision with a UTC timezone.
 
-`fetch_price_history(self, symbol: str, interval: Interval, start: Union[str, dt.datetime] = None, end: Union[str, dt.datetime] = None) -> pd.DataFrame`
+```python
+fetch_price_history(self, symbol: str, interval: Interval, start: Union[str, dt.datetime] = None, end: Union[str, dt.datetime] = None) -> pd.DataFrame
+```
 
-Get OHLC data.
+Gets OHLC data.
 
 * `self`(API): A reference to the instance.
 * `symbol`(str): The asset's ticker. Crypto assets should have an `@` prepended to them.
@@ -101,7 +120,9 @@ Get OHLC data.
 
 Throws `NotImplementedError`.
 
-`fetch_latest_price(self, symbol: str) -> float`:
+```python
+fetch_latest_price(self, symbol: str) -> float
+```
 
 Gets the most recent `close` value from OHLC data.
 
@@ -110,7 +131,9 @@ Gets the most recent `close` value from OHLC data.
 
 Returns a float.
 
-`fetch_chain_info(self, symbol: str) -> Dict[str, Any]`:
+```python
+fetch_chain_info(self, symbol: str) -> Dict[str, Any]
+```
 
 Returns information about the symbol's options.
 
@@ -119,7 +142,9 @@ Returns information about the symbol's options.
 
 Throw `NotImplemenedError`.
 
-`fetch_chain_data(self, symbol: str, date) -> pd.DataFrame`:
+```python
+fetch_chain_data(self, symbol: str, date) -> pd.DataFrame
+```
 
 * `self`(API): A reference to the instance.
 * `symbol`(str): The asset's ticker. Crypto assets should have an `@` prepended to them.
@@ -127,7 +152,9 @@ Throw `NotImplemenedError`.
 
 Throws `NotImplementedError`.
 
-`fetch_option_market_data(self, symbol: str) -> Dict[str, Any]`:
+```python
+fetch_option_market_data(self, symbol: str) -> Dict[str, Any]
+```
 
 Fetches data for a particular option.
 
@@ -136,7 +163,9 @@ Fetches data for a particular option.
 
 Throws `NotImplementedError`.
 
-`fetch_market_hours(self, date: dt.date) -> Dict[str, Any]`:
+```python
+fetch_market_hours(self, date: dt.date) -> Dict[str, Any]
+```
 
 Gets whether the market is open, the next time it opens, and the next time it closes.
 
@@ -147,7 +176,9 @@ Return a python dictionary.
 
 #### Broker Methods
 
-`fetch_stock_positions(self) -> List`:
+```python
+fetch_stock_positions(self) -> List
+```
 
 Gets all current stock positions.
 
@@ -155,7 +186,9 @@ Gets all current stock positions.
 
 Returns an empty list.
 
-`fetch_option_positions(self) -> List`:
+```python
+fetch_option_positions(self) -> List
+```
 
 Gets all current option positions.
 
@@ -163,7 +196,9 @@ Gets all current option positions.
 
 Returns an empty list.
 
-`fetch_crypto_positions(self) -> List`:
+```python
+fetch_crypto_positions(self) -> List
+```
 
 Gets all current crypto positions.
 
@@ -171,7 +206,9 @@ Gets all current crypto positions.
 
 Returns an empty list.
 
-`fetch_account(self) -> Dict[str, float]`:
+```python
+fetch_account(self) -> Dict[str, float]
+```
 
 Gets the user's account information.
 
@@ -179,7 +216,9 @@ Gets the user's account information.
 
 Throws `NotImplementedError`.
 
-`fetch_stock_order_status(self, id) -> Dict[str, Any]`:
+```python
+fetch_stock_order_status(self, id) -> Dict[str, Any]
+```
 
 Returns the stock order with the given `id`.
 
@@ -188,7 +227,9 @@ Returns the stock order with the given `id`.
 
 Throws `NotImplemedtedError`.
 
-`fetch_option_order_status(self, id) -> Dict[str, Any]`:
+```python
+fetch_option_order_status(self, id) -> Dict[str, Any]
+```
 
 Returns the option order with the given `id`.
 
@@ -197,7 +238,9 @@ Returns the option order with the given `id`.
 
 Throws `NotImplemedtedError`.
 
-`fetch_crypto_order_status(self, id) -> Dict[str, Any]`:
+```python
+fetch_crypto_order_status(self, id) -> Dict[str, Any]
+```
 
 Returns the crypto order with the given `id`.
 
@@ -206,7 +249,9 @@ Returns the crypto order with the given `id`.
 
 Throws `NotImplemedtedError`.
 
-`fetch_order_queue(self) -> List`:
+```python
+fetch_order_queue(self) -> List
+```
 
 Returns all current pending orders.
 
@@ -216,7 +261,9 @@ Returns an empty list.
 
 #### Trading Methods
 
-`order_stock_limit(self, side: str, symbol: str, quantity: float, limit_price: float, in_force: str = "gtc", extended: bool = False) -> Dict[str, Any]`:
+```python
+order_stock_limit(self, side: str, symbol: str, quantity: float, limit_price: float, in_force: str = "gtc", extended: bool = False) -> Dict[str, Any]
+```
 
 Places a limit order for stocks.
 
@@ -230,7 +277,9 @@ Places a limit order for stocks.
 
 Throws `NotImplemedtedError`. 
 
-`order_crypto_limit(self, side: str, symbol: str, quantity: float, limit_price: float, in_force: str = "gtc", extended: bool = False) -> Dict[str, Any]`:
+```python
+order_crypto_limit(self, side: str, symbol: str, quantity: float, limit_price: float, in_force: str = "gtc", extended: bool = False) -> Dict[str, Any]
+```
 
 Places a limit order for cryptos.
 
@@ -244,7 +293,9 @@ Places a limit order for cryptos.
 
 Throws `NotImplemedtedError`. 
 
-`order_stock_limit(self, side: str, symbol: str, quantity: float, limit_price: float, in_force: str = "gtc", extended: bool = False) -> Dict[str, Any]`:
+```python
+order_stock_limit(self, side: str, symbol: str, quantity: float, limit_price: float, in_force: str = "gtc", extended: bool = False) -> Dict[str, Any]
+```
 
 Places a limit order for options.
 
@@ -258,7 +309,9 @@ Places a limit order for options.
 
 Throws `NotImplemedtedError`. 
 
-`cancel_stock_order(self, order_id) -> None`:
+```python
+cancel_stock_order(self, order_id) -> None
+```
 
 Cancels a stock order.
 
@@ -267,7 +320,9 @@ Cancels a stock order.
 
 Throws `NotImplemedtedError`. 
 
-`cancel_stock_order(self, order_id) -> None`:
+```python
+cancel_stock_order(self, order_id) -> None`
+```
 
 Cancels a crypto order.
 
@@ -276,7 +331,9 @@ Cancels a crypto order.
 
 Throws `NotImplemedtedError`. 
 
-`cancel_stock_order(self, order_id) -> None`:
+```python
+cancel_stock_order(self, order_id) -> None
+```
 
 Cancels a option order.
 
@@ -285,7 +342,9 @@ Cancels a option order.
 
 Throws `NotImplemedtedError`. 
 
-`buy(self, side: str, symbol: str, quantity: float, limit_price: float, in_force: str = "gtc", extended: bool = False) -> Dict[str, Any]`:
+```python
+buy(self, side: str, symbol: str, quantity: float, limit_price: float, in_force: str = "gtc", extended: bool = False) -> Dict[str, Any]
+```
 
 Buys the asset with the given `symbol`.
 
@@ -298,7 +357,9 @@ Buys the asset with the given `symbol`.
 
 Returns a python dictionary with the order id.
 
-`sell(self, side: str, symbol: str, quantity: float, limit_price: float, in_force: str = "gtc", extended: bool = False) -> Dict[str, Any]`:
+```python
+sell(self, side: str, symbol: str, quantity: float, limit_price: float, in_force: str = "gtc", extended: bool = False) -> Dict[str, Any]
+```
 
 Sells the asset with the given `symbol`.
 
@@ -311,7 +372,9 @@ Sells the asset with the given `symbol`.
 
 Returns a python dictionary with the order id.
 
-`cancel(self, order_id) -> None`:
+```python
+cancel(self, order_id) -> None
+```
 
 Cancels an order.
 
@@ -320,7 +383,9 @@ Cancels an order.
 
 #### Helper Methods
 
-`has_interval(self, interval: Interval) -> bool`:
+```python
+has_interval(self, interval: Interval) -> bool
+```
 
 Checks that the given `interval` is supported by the API.
 
@@ -329,7 +394,9 @@ Checks that the given `interval` is supported by the API.
 
 Returns true if the interval is supported by the API and false otherwise.
 
-`data_to_occ(self, symbol: str, date: dt.datetime, option_type: str, price: float) -> str`
+```python
+data_to_occ(self, symbol: str, date: dt.datetime, option_type: str, price: float) -> str
+```
 
 Converts the given data into the OCC format.
 
@@ -341,14 +408,18 @@ Converts the given data into the OCC format.
 
 Returns a string representation of the OCC.
 
-`occ_to_data(self, symbol: str) -> Tuple[str, dt.datetime, str, float]`:
+```python
+occ_to_data(self, symbol: str) -> Tuple[str, dt.datetime, str, float]
+```
 
 * `self`(API): A reference to the instance.
 * `symbol`(str): An OCC formatted string.
 
 Returns the symbol, date, option_type, and price.
 
-`current_timestamp(self) -> dt.datetime`:
+```python
+current_timestamp(self) -> dt.datetime
+```
 
 Gets the current time.
 
@@ -356,7 +427,9 @@ Gets the current time.
 
 Returns a python `datetime.datetime` object with the current time with minute precision and in the UTC timezone.
 
-`_exception_handler(func: Callable) -> Callable`:
+```python
+_exception_handler(func: Callable) -> Callable
+```
 
 Wrapper on other functions so, if the error, will rerun the function two more times. Also prevents exceptions from stopping Harvest.
 
@@ -364,7 +437,9 @@ Wrapper on other functions so, if the error, will rerun the function two more ti
 
 Returns a wrapped function.
 
-`_run_once(func: Callable) -> Callable`:
+```python
+_run_once(func: Callable) -> Callable
+```
 
 Wrapper on other functions so that function will only run once.
 
@@ -382,7 +457,9 @@ An abstract child class of the `API` with handling for APIs with streaming servi
 
 #### General Methods
 
-`__init__(self, path: str = None) -> None`:
+```python
+__init__(self, path: str = None) -> None
+```
 
 Calls its parent method. Initializes a lock and queue.
 
@@ -395,20 +472,26 @@ Logs that the function has been called.
 
 * `self`(StreamAPI): A reference to the instance.
 
-`main(self, df_dict: Dict[str, Any]) -> None`:
+```python
+main(self, df_dict: Dict[str, Any]) -> None
+```
 
 Waits for data and when it gets all asset OHLC data, calls the trader `main` method.
 
 * `self`(StreamAPI): A reference to the instance.
 * `df_dict`(Dict[str, Any]): A dictionary where the keys are asset tickers and the values are `pd.DataFrames` with OHLC data.
 
-`timeout(self) -> None`:
+```python
+timeout(self) -> None
+```
 
 Waits one second for any missing OHLC data and if none is recieved populate the OHLC data with zeros.
 
 * `self`(StreamAPI): A reference to the instance.
 
-`flush(self) -> None`:
+```python
+flush(self) -> None
+```
 
 * `self`(StreamAPI): A reference to the instance.
 
@@ -416,24 +499,19 @@ For all assets that have no OHLC data, create a `pd.DataFrame` with all OHLC val
 
 ### Dummy Streamer
   
-Real-time, seeded, fake stock generator with data going back 30 years from the point when the Harvest instance is started with minute precision. 
+Child class of `API`. Real-time, seeded, fake stock generator with data going back 30 years from the point when the Harvest instance is started with minute precision. 
 
-`intervals`:
+`intervals`: See parent class.
 
-* 1 minute
-* 5 minutes
-* 15 minutes
-* 30 minutes
-* 1 hour
-* 1 day
+`req_keys`: See parent class.
 
-`req_keys`: 
-
-* None
+#### General Methods
   
 public functions:
 
-`__init__(self, current_time: Union[str, dt.datetime] = None, stock_market_times: bool = False, realistic_simulation: bool = True) -> None`
+```python
+__init__(self, current_time: Union[str, dt.datetime] = None, stock_market_times: bool = False, realistic_simulation: bool = True) -> None
+```
 
 Creates a `DummyStreamer` instance.
 
@@ -442,43 +520,42 @@ Creates a `DummyStreamer` instance.
 * `stock_market_times`(bool): If true, only show results when the US stock market is open. If false, results will span 24/7 without gaps.
 * `realistic_simulation`(bool): If true, the main loop will pause for the smallest interval that an asset is being updated on. If false, no pause will occur.
 
-`setup(self, stats: Stats, account: Account, trader_main: Callable=None) -> None`
+```python
+setup(self, stats: Stats, account: Account, trader_main: Callable=None) -> None
+```
 
-Called by the trader to setup watchlists.
+Calls the parent method. Called by the trader to setup watchlists.
 
 * `self`(DummyStreamer): A reference to the instance.
 * `stats`(Stats):  Holds the timestamp, timezone, and watchlist.
 * `account`(Account): Holds the user's cash, equity, positions, orders, etc.
 * `trader_main`(Callable): reference to the trader's main function.
 
-`start(self) -> None`
+```python
+start(self) -> None
+```
 
 Starts an infinite loop and calls `main` on the smallest interval in watchlist. Can simulate real intervals by waiting or ignore the interval and loop as fast as possible.
 
 * `self`(DummyStreamer): A reference to the instance.
 
-`main(self) -> None`
+```python
+main(self) -> None
+```
 
 Advances the streamer's `current_time` by the smallest interval in the watchlist. Fetches the most recent OHLC data for the assets in the watchlists passes those values to the trader's `main` function.
 
 * `self`(DummyStreamer): A reference to the instance.
 
-`get_current_time(self) -> dt.datetime`
+```python
+get_current_time(self) -> dt.datetime
+```
 
-Return the streamer's `current_time`
+Gets the streamer's `current_time`
 
 * `self`(DummyStreamer): A reference to the instance.
 
-  req_keys\*                            super: 
-  
-
-  dictionary create_secret\*            super: does nothing since no secret keys are needed.
-
-
-
-  dataframe  fetch_price_history\*
-
-  dictionary fetch_option_market_data\*
+Returns a `dt.datetime` object of the current time. Will not be the actual current time.
 
 
 ### Polygon Streamer
@@ -498,7 +575,9 @@ A streamer using Polygon to get market data. Uses the `requests` python package.
 
 public functions:
 
-`__init__(self, path: str = None, is_basic_account: bool = False) -> None`
+```python
+__init__(self, path: str = None, is_basic_account: bool = False) -> None
+```
 
 Creates a `PolygonStreamer` instance.
 
@@ -507,7 +586,9 @@ Creates a `PolygonStreamer` instance.
 * `is_basic_account`(boolean): Whether the account is basic or not. [Here](https://polygon.io/pricing) are the difference between basic and pro accounts.
 
 
-`setup(self, stats: Stats, account: Account, trader_main: Callable=None) -> None`
+```python
+setup(self, stats: Stats, account: Account, trader_main: Callable=None) -> None
+```
 
 Called by the trader to setup watchlists.
 
@@ -516,22 +597,28 @@ Called by the trader to setup watchlists.
 * `account`(Account): Holds the user's cash, equity, positions, orders, etc.
 * `trader_main`(Callable): reference to the trader's main function.
 
-`exit(self) -> None`
+```python
+exit(self) -> None
+```
 
 Clears any cached information after the all the algorithms finish running.
 
 * `self`(PolygonStreamer): A reference to the instance.
 
-`main(self) -> None`
+```python
+main(self) -> None
+```
 
-Get the most recent asset data from the given watchlist and pass it to the trader's `main` function.
+Gets the most recent asset data from the given watchlist and pass it to the trader's `main` function.
 
 * `self`(PolygonStreamer): A reference to the instance.
 
 
-`fetch_price_history(self, symbol: str, interval: Interval, start: dt.datetime = None, end: dt.datetime = None) -> pd.DataFrame`
+```python
+fetch_price_history(self, symbol: str, interval: Interval, start: dt.datetime = None, end: dt.datetime = None) -> pd.DataFrame
+```
 
-Get the asset OHLC data for the given symbol.
+Gets the asset OHLC data for the given symbol.
 
 * `self`(PolygonStreamer): A reference to the instance.
 * `symbol`(str): Either a stock symbol or a crypto symbol. For crypto symbols, prepend an `@` symbol.
@@ -541,7 +628,9 @@ Get the asset OHLC data for the given symbol.
 
 Returns a pandas multi-index dataframe of OHLC data where the first index is the asset name and the second index contains `open`, `high`, `low`, `close`, `volume`. The index is a `pd.DatetimeIndex`. The dataframe is sorted with oldest timestamps at the top and the most recent timestamps at the bottom. 
 
-`create_secret(self) -> Dict[str, str]`
+```python
+create_secret(self) -> Dict[str, str]
+```
 
 Creates a dictionary with the `req_keys` for polygon.
 
@@ -571,7 +660,9 @@ A fake broker with configurations to account for commission fees.
 * Dataframes that get asset data must return multi-index dataframes where the first index is the asset symbol, and the second index contains `open`, `high`, `low`, `close`, and `volume`. The index must be `pd.DatetimeIndex` object with a UTC timezone. The dataframe must be sorted in ascending order, where the oldest data is at the top and the most recent data is at the bottom.  
 * The time source of truth should be the streamer's `get_current_time` function.
 * Users should be able to enter ISO 8601 compliant string, or datetimes with or without timezones. If timezones are not provided, we should assume it is in their local timezones.
-* All shown time should be in ISO 8601 format localized to the user's timezone. The timezone should not be displayed.
+* All shown time should be in ISO 8601 format localized to the user's timezone. 
+
+---
 
 
 ### TESTING PIPLINE
