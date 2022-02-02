@@ -15,6 +15,7 @@ from harvest.storage import PickleStorage
 import harvest.trader.trader as trader
 from harvest.api.yahoo import YahooStreamer
 from harvest.api.paper import PaperBroker
+from harvest.definitions import *
 from harvest.utils import *
 
 

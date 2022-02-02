@@ -13,6 +13,7 @@ import yaml
 # Submodule imports
 from harvest.api._base import API
 from harvest.api.dummy import DummyStreamer
+from harvest.definitions import *
 from harvest.utils import *
 
 
@@ -30,10 +31,11 @@ class PaperBroker(API):
         Interval.HR_1,
         Interval.DAY_1,
     ]
-    req_keys = []
 
     def __init__(self, path: str = None, streamer=None, commission_fee=0, save=False):
         """
+        :path: Path to a configuration file holding account information for the user.
+        :streamer: A streamer to get asset prices and the current time.
         :commission_fee: When this is a number it is assumed to be a flat price
             on all buys and sells of assets. When this is a string formatted as
             'XX%' then it is assumed that commission fees are that percent of the
@@ -259,8 +261,7 @@ class PaperBroker(API):
             self.equity = self._calc_equity()
 
         debugger.debug(f"Returning status: {ret}")
-        stocks, cryptos = self.stocks, self.cryptos
-        debugger.debug(f"Positions:\n{stocks}\n=========\n{cryptos}")
+        debugger.debug(f"Positions:\n{self.stocks}\n=========\n{self.cryptos}")
         debugger.debug(f"Equity:{self._calc_equity()}")
         self._save_account()
         return ret
@@ -288,8 +289,8 @@ class PaperBroker(API):
                     )
                 elif ret["limit_price"] < price:
                     limit_price = ret["limit_price"]
-                    debugger.info(
-                        f"Limit price for {sym} is less than current price ({limit_price} < {price})."
+                    debugger.warn(
+                        f"Limit price for {sym} is less than current price ({limit_price} < {price}). Cannot buy {sym}!"
                     )
                 else:
                     # If asset already exists, buy more. If not, add a new entry
@@ -347,8 +348,7 @@ class PaperBroker(API):
             self.equity = self._calc_equity()
 
         debugger.debug(f"Returning status: {ret}")
-        stocks, cryptos = self.stocks, self.cryptos
-        debugger.debug(f"Positions:\n{stocks}\n{self.options}\n{cryptos}")
+        debugger.debug(f"Positions:\n{self.stocks}\n{self.options}\n{self.cryptos}")
         debugger.debug(f"Equity:{self._calc_equity()}")
         self._save_account()
         return ret

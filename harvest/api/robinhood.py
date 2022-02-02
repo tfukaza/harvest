@@ -12,6 +12,7 @@ import yaml
 
 # Submodule imports
 from harvest.api._base import API
+from harvest.definitions import *
 from harvest.utils import *
 
 

@@ -8,6 +8,7 @@ from sqlalchemy import Column, Integer, String, DateTime, Float, String
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 from harvest.storage import BaseStorage
+from harvest.definitions import *
 from harvest.utils import *
 
 """

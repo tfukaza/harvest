@@ -9,6 +9,7 @@ from finta import TA
 import numpy as np
 import pandas as pd
 
+from harvest.definitions import *
 from harvest.utils import *
 from harvest.plugin._base import Plugin
 
@@ -634,7 +635,7 @@ class BaseAlgo:
 
         if symbol_type(symbol) == "CRYPTO":
             price = mark_up(price)
-            return math.floor(power / price * 10 ** 5) / 10 ** 5
+            return math.floor(power / price * 10**5) / 10**5
         else:
             price = mark_up(price)
             return math.floor(power / price)

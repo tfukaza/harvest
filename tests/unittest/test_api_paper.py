@@ -6,6 +6,7 @@ import datetime as dt
 
 from harvest.api.paper import PaperBroker
 
+from harvest.definitions import *
 from harvest.utils import *
 
 

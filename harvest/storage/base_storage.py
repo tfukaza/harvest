@@ -5,6 +5,7 @@ from threading import Lock
 from typing import Tuple
 import re
 
+from harvest.definitions import *
 from harvest.utils import *
 
 """

@@ -5,6 +5,7 @@ from harvest.api.alpaca import Alpaca
 from harvest.api.kraken import Kraken
 from harvest.api.yahoo import YahooStreamer
 
+from harvest.definitions import *
 from harvest.utils import *
 import time
 import os

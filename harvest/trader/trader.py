@@ -13,6 +13,7 @@ import datetime as dt
 import tzlocal
 
 # Submodule imports
+from harvest.definitions import *
 from harvest.utils import *
 from harvest.storage import BaseStorage
 from harvest.api.yahoo import YahooStreamer
@@ -373,7 +374,7 @@ class LiveTrader:
         for p in self.positions.stock_crypto:
             symbol = p.symbol
             if symbol in df_dict:
-                price = df_dict[symbol][symbol]["close"]
+                price = df_dict[symbol].iloc[0][symbol]["close"]
             elif (
                 symbol not in self.watchlist
             ):  # handle cases when user has an asset not in watchlist
@@ -521,16 +522,16 @@ class LiveTrader:
 
         if include_pending_buy:
             owned_qty += sum(
-                o["quantity"]
+                o.quantity
                 for o in self.orders.orders
-                if o["symbol"] == symbol and o["side"] == "buy"
+                if o.symbol == symbol and o.side == "buy"
             )
 
         if not include_pending_sell:
             owned_qty -= sum(
-                o["quantity"]
+                o.quantity
                 for o in self.orders.orders
-                if o["symbol"] == symbol and o["side"] == "sell"
+                if o.symbol == symbol and o.side == "sell"
             )
 
         return owned_qty
