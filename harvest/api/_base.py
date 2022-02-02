@@ -5,7 +5,7 @@ from pathlib import Path
 import yaml
 import traceback
 import threading
-from typing import List, Dict, Any
+from typing import Any, Callable, Dict, List, Tuple, Union
 from os.path import exists
 
 # External libraries
@@ -41,7 +41,7 @@ class API:
     # List of attributes that are required to be in the secret file
     req_keys = []
 
-    def __init__(self, path: str = None):
+    def __init__(self, path: str = None) -> None:
         """
         Performs initializations of the class, such as setting the
         timestamp and loading credentials.
@@ -78,22 +78,21 @@ class API:
 
         self.config = config
 
-    def create_secret(self):
+    def create_secret(self) -> Dict[str, str]:
         """
         This method is called when the yaml file with credentials
         is not found. It returns a dictionary containing the necessary credentials.
         """
         debugger.warning("Assuming API does not need account information.")
-        return None
 
-    def refresh_cred(self):
+    def refresh_cred(self) -> None:
         """
         Most API endpoints, for security reasons, require a refresh of the access token
         every now and then. This method should perform a refresh of the access token.
         """
         debugger.info(f"Refreshing credentials for {type(self).__name__}.")
 
-    def setup(self, stats: Stats, account: Account, trader_main=None) -> None:
+    def setup(self, stats: Stats, account: Account, trader_main: Callable=None) -> None:
         """
         This function is called right before the algorithm begins,
         and initializes several runtime parameters like
@@ -132,7 +131,7 @@ class API:
         debugger.debug(f"Poll Interval: {self.poll_interval}")
         debugger.debug(f"{type(self).__name__} setup finished")
 
-    def start(self):
+    def start(self) -> None:
         """
         This method begins streaming data from the API.
 
@@ -176,7 +175,7 @@ class API:
                     time.sleep(80000)
                 cur_min = minutes
 
-    def main(self):
+    def main(self) -> None:
         """
         This method is called at the interval specified by the user.
         It should create a dictionary where each key is the symbol for an asset,
@@ -209,70 +208,24 @@ class API:
 
         self.trader_main(df_dict)
 
-    def exit(self):
+    def exit(self) -> None:
         """
         This function is called after every invocation of algo's handler.
         The intended purpose is for brokers to clear any cache it may have created.
         """
         debugger.debug(f"{type(self).__name__} exited")
 
-    def _exception_handler(func):
-        """
-        Wrapper to handle unexpected errors in the wrapped function.
-        Most functions should be wrapped with this to properly handle errors, such as
-        when internet connection is lost.
-
-        :func: Function to wrap.
-        :returns: The returned value of func if func runs properly. Raises an Exception if func fails.
-        """
-
-        def wrapper(*args, **kwargs):
-            tries = 3
-            while tries > 0:
-                try:
-                    return func(*args, **kwargs)
-                except Exception as e:
-                    self = args[0]
-                    debugger.error(f"Error: {e}")
-                    traceback.print_exc()
-                    debugger.error("Logging out and back in...")
-                    args[0].refresh_cred()
-                    tries -= 1
-                    debugger.error("Retrying...")
-                    continue
-
-        return wrapper
-
-    def _run_once(func):
-        """
-        Wrapper to only allows wrapped functions to be run once.
-
-        :func: Function to wrap.
-        :returns: The return of the inputted function if it has not been run before and None otherwise.
-        """
-
-        ran = False
-
-        def wrapper(*args, **kwargs):
-            nonlocal ran
-            if not ran:
-                ran = True
-                return func(*args, **kwargs)
-            return None
-
-        return wrapper
-
     # -------------- Streamer methods -------------- #
 
-    def get_current_time(self):
+    def get_current_time(self) -> dt.datetime:
         return now()
 
     def fetch_price_history(
         self,
         symbol: str,
         interval: Interval,
-        start: dt.datetime = None,
-        end: dt.datetime = None,
+        start: Union[str, dt.datetime] = None,
+        end: Union[str, dt.datetime] = None,
     ) -> pd.DataFrame:
         """
         Fetches historical price data for the specified asset and period
@@ -296,7 +249,7 @@ class API:
         price = self.fetch_price_history(symbol, interval, start, end)
         return price[symbol]["close"][-1]
 
-    def fetch_chain_info(self, symbol: str):
+    def fetch_chain_info(self, symbol: str) -> Dict[str, Any]:
         """
         Returns information about the symbol's options
 
@@ -310,7 +263,7 @@ class API:
             f"{type(self).__name__} does not support this streamer method: `fetch_chain_info`."
         )
 
-    def fetch_chain_data(self, symbol: str, date):
+    def fetch_chain_data(self, symbol: str, date: Union[str, dt.datetime]) -> pd.DataFrame:
         """
         Returns the option chain for the specified symbol.
 
@@ -327,7 +280,7 @@ class API:
             f"{type(self).__name__} does not support this streamer method: `fetch_chain_data`."
         )
 
-    def fetch_option_market_data(self, symbol: str):
+    def fetch_option_market_data(self, symbol: str) -> Dict[str, Any]:
         """
         Retrieves data of specified option.
 
@@ -341,7 +294,7 @@ class API:
             f"{type(self).__name__} does not support this streamer method: `fetch_option_market_data`."
         )
 
-    def fetch_market_hours(self, date: datetime.date):
+    def fetch_market_hours(self, date: dt.date) -> Dict[str, Any]:
         """
         Returns the market hours for a given day.
         Hours are based on the exchange specified in the class's 'exchange' attribute.
@@ -358,7 +311,7 @@ class API:
 
     # ------------- Broker methods ------------- #
 
-    def fetch_stock_positions(self):
+    def fetch_stock_positions(self) -> List:
         """
         Returns all current stock positions
 
@@ -372,7 +325,7 @@ class API:
         )
         return []
 
-    def fetch_option_positions(self):
+    def fetch_option_positions(self) -> List:
         """
         Returns all current option positions
 
@@ -391,7 +344,7 @@ class API:
         )
         return []
 
-    def fetch_crypto_positions(self):
+    def fetch_crypto_positions(self) -> List:
         """
         Returns all current crypto positions
 
@@ -418,7 +371,7 @@ class API:
     #         f"{type(self).__name__} does not support this broker method: `update_option_positions`. Doing nothing."
     #     )
 
-    def fetch_account(self):
+    def fetch_account(self) -> Dict[str, float]:
         """
         Returns current account information from the brokerage.
 
@@ -432,7 +385,7 @@ class API:
             f"{type(self).__name__} does not support this broker method: `fetch_account`."
         )
 
-    def fetch_stock_order_status(self, id):
+    def fetch_stock_order_status(self, id) -> Dict[str, Any]:
         """
         Returns the status of a stock order with the given id.
 
@@ -453,7 +406,7 @@ class API:
             f"{type(self).__name__} does not support this broker method: `fetch_stock_order_status`."
         )
 
-    def fetch_option_order_status(self, id):
+    def fetch_option_order_status(self, id) -> Dict[str, Any]:
         """
         Returns the status of a option order with the given id.
 
@@ -474,7 +427,7 @@ class API:
             f"{type(self).__name__} does not support this broker method: `fetch_option_order_status`."
         )
 
-    def fetch_crypto_order_status(self, id):
+    def fetch_crypto_order_status(self, id) -> Dict[str, Any]:
         """
         Returns the status of a crypto order with the given id.
 
@@ -495,7 +448,7 @@ class API:
             f"{type(self).__name__} does not support this broker method: `fetch_crypto_order_status`."
         )
 
-    def fetch_order_queue(self):
+    def fetch_order_queue(self) -> List:
         """
         Returns all current pending orders
 
@@ -540,7 +493,7 @@ class API:
         limit_price: float,
         in_force: str = "gtc",
         extended: bool = False,
-    ):
+    ) -> Dict[str, Any]:
         """
         Places a limit order.
 
@@ -568,7 +521,7 @@ class API:
         limit_price: float,
         in_force: str = "gtc",
         extended: bool = False,
-    ):
+    ) -> Dict[str, Any]:
         """
         Places a limit order.
 
@@ -598,7 +551,7 @@ class API:
         exp_date: dt.datetime,
         strike: float,
         in_force: str = "gtc",
-    ):
+    ) -> Dict[str, Any]:
         """
         Order an option.
 
@@ -620,17 +573,17 @@ class API:
             f"{type(self).__name__} does not support this broker method: `order_option_limit`."
         )
 
-    def cancel_stock_order(self, order_id):
+    def cancel_stock_order(self, order_id) -> None:
         raise NotImplementedError(
             f"{type(self).__name__} does not support this broker method: `cancel_stock_order`."
         )
 
-    def cancel_crypto_order(self, order_id):
+    def cancel_crypto_order(self, order_id) -> None:
         raise NotImplementedError(
             f"{type(self).__name__} does not support this broker method: `cancel_crypto_order`."
         )
 
-    def cancel_option_order(self, order_id):
+    def cancel_option_order(self, order_id) -> None:
         raise NotImplementedError(
             f"{type(self).__name__} does not support this broker method: `cancel_option_order`."
         )
@@ -645,7 +598,7 @@ class API:
         limit_price: float,
         in_force: str = "gtc",
         extended: bool = False,
-    ):
+    ) -> Dict[str, Any]:
         """
         Buys the specified asset.
 
@@ -728,7 +681,7 @@ class API:
         else:
             debugger.error(f"Invalid asset type for {symbol}")
 
-    def cancel(self, order_id):
+    def cancel(self, order_id) -> None:
         for o in self.account.orders.orders:
             if o.order_id == order_id:
                 asset_type = symbol_type(o.symbol)
@@ -820,41 +773,82 @@ class API:
 
     # -------------- Helper methods -------------- #
 
-    def has_interval(self, interval: str):
+    def has_interval(self, interval: Interval) -> bool:
         return interval in self.interval_list
 
     def data_to_occ(
         self, symbol: str, date: dt.datetime, option_type: str, price: float
-    ):
+    ) -> str:
         return data_to_occ(symbol, date, option_type, price)
 
-    def occ_to_data(self, symbol: str):
+    def occ_to_data(self, symbol: str) -> Tuple[str, dt.datetime, str, float]:
         return occ_to_data(symbol)
 
-    def current_timestamp(self):
-        return self.timestamp
+    def current_timestamp(self) -> dt.datetime:
+        return now()
+
+    def _exception_handler(func: Callable) -> Callable:
+        """
+        Wrapper to handle unexpected errors in the wrapped function.
+        Most functions should be wrapped with this to properly handle errors, such as
+        when internet connection is lost.
+
+        :func: Function to wrap.
+        :returns: The returned value of func if func runs properly. Raises an Exception if func fails.
+        """
+
+        def wrapper(*args, **kwargs):
+            tries = 3
+            while tries > 0:
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    self = args[0]
+                    debugger.error(f"Error: {e}")
+                    traceback.print_exc()
+                    debugger.error("Logging out and back in...")
+                    args[0].refresh_cred()
+                    tries -= 1
+                    debugger.error("Retrying...")
+                    continue
+
+        return wrapper
+
+    def _run_once(func: Callable) -> Callable:
+        """
+        Wrapper to only allows wrapped functions to be run once.
+
+        :func: Function to wrap.
+        :returns: The return of the inputted function if it has not been run before and None otherwise.
+        """
+
+        ran = False
+
+        def wrapper(*args, **kwargs):
+            nonlocal ran
+            if not ran:
+                ran = True
+                return func(*args, **kwargs)
+            return None
+
+        return wrapper
 
 
 class StreamAPI(API):
     """ """
 
-    def __init__(self, path: str = None):
+    def __init__(self, path: str = None) -> None:
         super().__init__(path)
 
-        self.block_lock = (
-            threading.Lock()
-        )  # Lock for streams that receive data asynchronously.
+        # Lock for streams that receive data asynchronously.
+        self.block_lock = threading.Lock()  
         self.block_queue = {}
         self.first = True
 
-    def setup(self, stats, account, trader_main=None) -> None:
-        super().setup(stats, account, trader_main)
-        self.blocker = {}
-
-    def start(self):
+    def start(self) -> None:
         debugger.debug(f"{type(self).__name__} started...")
 
-    def main(self, df_dict):
+    def main(self, df_dict: Dict[str, Any]) -> None:
         """
         Streaming is event driven, so sometimes not all data comes in at once.
         StreamAPI class
@@ -900,14 +894,14 @@ class StreamAPI(API):
         self.got = got
         self.block_lock.release()
 
-    def timeout(self):
+    def timeout(self) -> None:
         debugger.debug("Begin timeout timer")
         time.sleep(1)
         if not self.all_recv:
             debugger.debug("Force flush")
             self.flush()
 
-    def flush(self):
+    def flush(self) -> None:
         # For missing data, return a OHLC with all zeroes.
         self.block_lock.acquire()
         for n in self.needed:
