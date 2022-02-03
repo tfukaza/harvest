@@ -2,6 +2,19 @@
 
 Because Harvest is an extensive framework it can be hard to understand how the system works at times. This document server to provide a high-level overview of just how Harvests works after a user starts the trader.
 
+### Main Loop
+
+```python
+trader.start()
+streamer.start() # infinite loop
+  streamer.main()
+  trader.main()
+  algo1.main()
+  broker.fns()
+  algo2.main()
+  broker.fns()
+```
+
 ## Fetching Data
 
 After the user starts the trader Harvest will fetch data from the streamer and update its storage on interval.

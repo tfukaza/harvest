@@ -1,19 +1,6 @@
-### Main Loop
-
-```python
-trader.start()
-streamer.start() # infinite loop
-  streamer.main()
-  trader.main()
-  algo1.main()
-  broker.fns()
-  algo2.main()
-  broker.fns()
-```
-
----
- 
 ## APIs
+
+Note that the `datetime` module is imported as `dt` and the `pandas` module is impored as `pd`.
 
 ### API
 
@@ -40,24 +27,6 @@ Creates an `API` instance.
 
 * `self`(API): A reference to the instance.
 * `path`(str): The path to a secret file holding API keys. 
-
-```python
-create_secret(self) -> Dict[str, str]
-```
-
-Warns the user's that this API does not need credentials.
-
-* `self`(API): A reference to the instance.
-
-```python
-refresh_cred(self) -> None
-```
-
-Informs the user that credentials are being refreshed.
-
-* `self`(API): A reference to the instance.
-
-Returns a dictionary where the keys are the ones in the `req_keys` and the values are the API keys.
 
 ```python
 setup(self, stats: Stats, account: Account, trader_main: Callable=None) -> None
@@ -93,6 +62,24 @@ exit(self) -> None
 Informs the user that the trader's `main` function has ended.
 
 * `self`(API): A reference to the instance.
+
+```python
+create_secret(self) -> Dict[str, str]
+```
+
+Warns the user's that this API does not need credentials.
+
+* `self`(API): A reference to the instance.
+
+```python
+refresh_cred(self) -> None
+```
+
+Informs the user that credentials are being refreshed.
+
+* `self`(API): A reference to the instance.
+
+Returns a dictionary where the keys are the ones in the `req_keys` and the values are the API keys.
 
 #### Streamer Methods
 

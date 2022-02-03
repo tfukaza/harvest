@@ -18,10 +18,10 @@ class LintCMD(Command):
         self.check = self.check == "True"
 
     def run(self):
-        command = ["black", "harvest", "-v", "--diff"]
+        command = ["black", "harvest"]
 
         if self.check:
-            command.append("--check")
+            command.extend(["--check", "-v", "--diff"])
 
         exit(subprocess.run(command).returncode)
 
