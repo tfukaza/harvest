@@ -653,4 +653,9 @@ class MY_API(API):
         raise NotImplementedError(
             f"{type(self).__name__} does not support this broker method: `cancel_option_order`."
         )
+
+    # --------------- Helper Methods --------------- #
+
+    # Place any helper and prive methods here.
+
 ```
