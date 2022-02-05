@@ -656,6 +656,6 @@ class MY_API(API):
 
     # --------------- Helper Methods --------------- #
 
-    # Place any helper and prive methods here.
+    # Place any helper and private methods here.
 
 ```
