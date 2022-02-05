@@ -5,6 +5,7 @@ import time
 import random
 import logging
 import datetime as dt
+from typing import Any, Dict, List, Tuple, Union
 from datetime import datetime, timezone as tz
 from enum import IntEnum, auto
 from zoneinfo import ZoneInfo
@@ -254,7 +255,7 @@ def get_local_timezone():
     return dt.datetime.now(tz.utc).astimezone().tzinfo
 
 
-def convert_input_to_datetime(datetime, timezone: ZoneInfo = None):
+def convert_input_to_datetime(datetime: Union[str, dt.datetime], timezone: ZoneInfo = None):
     """
     Converts the input to a datetime object with a UTC timezone.
     If the datetime object does not have a timezone sets the
@@ -265,7 +266,7 @@ def convert_input_to_datetime(datetime, timezone: ZoneInfo = None):
     if datetime is None:
         return None
     elif isinstance(datetime, str):
-        datetime = str_to_datetime(datetime)
+        datetime = dt.datetime.fromisoformat(datetime)
     elif not isinstance(datetime, dt.datetime):
         raise ValueError(f"Cannot convert {datetime} to datetime.")
 

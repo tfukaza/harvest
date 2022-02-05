@@ -1,7 +1,7 @@
 # Builtins
 import json
 import datetime as dt
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Union
 import requests
 
 # External libraries
@@ -33,9 +33,6 @@ class PolygonStreamer(API):
         super().setup(stats, account, trader_main)
         self.option_cache = {}
 
-    def exit(self):
-        self.option_cache = {}
-
     def main(self):
         df_dict = {}
         combo = self.stats.watchlist_cfg.keys()
@@ -53,7 +50,18 @@ class PolygonStreamer(API):
             debugger.debug(df)
         self.trader_main(df_dict)
 
+    def exit(self):
+        self.option_cache = {}
+
     # -------------- Streamer methods -------------- #
+
+    @API._exception_handler
+    def get_current_time(self) -> dt.datetime:
+        key = self.config["polygon_api_key"]
+        request = f"https://api.polygon.io/v1/marketstatus/now?apiKey={key}"
+        response = requests.get(request)
+        ret = response.json()
+        return dt.datetime.fromisoformat(ret["serverTime"])
 
     @API._exception_handler
     def fetch_price_history(
@@ -74,6 +82,9 @@ class PolygonStreamer(API):
         if start >= end:
             return pd.DataFrame()
 
+
+        start = convert_input_to_datetime(start)
+        end = convert_input_to_datetime(end)
         val, unit = expand_interval(interval)
         return self._get_data_from_polygon(symbol, val, unit, start, end)
 
@@ -258,14 +269,13 @@ class PolygonStreamer(API):
 
         start_str = start.strftime("%Y-%m-%d")
         end_str = end.strftime("%Y-%m-%d")
-
         key = self.config["polygon_api_key"]
-        request = f"https://api.polygon.io/v2/aggs/ticker/{{ temp_symbol }}/range/{{ multiplier }}/{{ timespan }}/{{ start_str }}/{{ end_str }}?adjusted=true&sort=asc&apiKey={{ key }}"
-
         temp_symbol = symbol
         if is_crypto(symbol):
             temp_symbol = "X:" + temp_symbol[1:] + "USD"
 
+        request = f"https://api.polygon.io/v2/aggs/ticker/{ temp_symbol }/range/{ multiplier }/{ timespan }/{ start_str }/{ end_str }?adjusted=true&sort=asc&apiKey={ key }"
+        
         response = requests.get(request)
         ret = response.json()
 
