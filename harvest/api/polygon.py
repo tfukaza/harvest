@@ -92,7 +92,10 @@ class PolygonStreamer(API):
         if response is None:
             raise Exception(f"Failed to fech chain info for {symbol}.")
 
-        dates = {dt.datetime.strptime(contract["expiration_date"], "%Y-%m-%d") for contract in response}
+        dates = {
+            dt.datetime.strptime(contract["expiration_date"], "%Y-%m-%d")
+            for contract in response
+        }
         return {
             "id": "n/a",
             "exp_dates": list(dates),
@@ -114,7 +117,9 @@ class PolygonStreamer(API):
         request = f"https://api.polygon.io/v3/reference/options/contracts?underlying_ticker={symbol}&expiration_date={exp_date}&apiKey={key}"
         response = self._handle_request_response(request)
         if response is None:
-            debugger.error(f"Failed to get chain data for {symbol} at {date}. Returning an empty dataframe.")
+            debugger.error(
+                f"Failed to get chain data for {symbol} at {date}. Returning an empty dataframe."
+            )
             return pd.DataFrame()
 
         df = pd.DataFrame.from_dict(response)
@@ -284,7 +289,7 @@ class PolygonStreamer(API):
             debugger.error(f"Request error! Returning empty dataframe.")
             return pd.DataFrame()
 
-        df = pd.DataFrame(response) 
+        df = pd.DataFrame(response)
         df = self._format_df(df, symbol)
         df = df.loc[start:end]
 
@@ -317,4 +322,4 @@ class PolygonStreamer(API):
             return response["results"]
         message = response["message"]
         debugger.error(f"Request Error!\nRequest: {request}\nResponse: {message}")
-        return None 
+        return None

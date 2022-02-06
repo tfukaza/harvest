@@ -88,8 +88,8 @@ class Alpaca(StreamAPI):
     def get_current_time(self) -> dt.datetime:
         ret = self.api.get_clock().__dict__["_raw"]
         # Convert to ISO 8601 by removing nanoseconds
-        index = ret["timestamp"].index('.')
-        timestamp = ret["timestamp"][:index] + ret["timestamp"][index + 9:]
+        index = ret["timestamp"].index(".")
+        timestamp = ret["timestamp"][:index] + ret["timestamp"][index + 9 :]
         return dt.datetime.fromisoformat(timestamp)
 
     @API._exception_handler
