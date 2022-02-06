@@ -255,7 +255,9 @@ def get_local_timezone():
     return dt.datetime.now(tz.utc).astimezone().tzinfo
 
 
-def convert_input_to_datetime(datetime: Union[str, dt.datetime], timezone: ZoneInfo = None):
+def convert_input_to_datetime(
+    datetime: Union[str, dt.datetime], timezone: ZoneInfo = None
+):
     """
     Converts the input to a datetime object with a UTC timezone.
     If the datetime object does not have a timezone sets the

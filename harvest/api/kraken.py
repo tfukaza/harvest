@@ -136,8 +136,6 @@ class Kraken(API):
 
         self.option_cache = {}
 
-    
-
     def main(self):
         df_dict = {}
         df_dict.update(self._fetch_latest_crypto_price())
@@ -160,14 +158,13 @@ class Kraken(API):
 
         debugger.debug(f"Fetching {symbol} {interval} price history")
 
+        start = convert_input_to_datetime(start)
+        end = convert_input_to_datetime(end)
+
         if start is None:
-            start = now() - dt.timedelta(days=365 * 5)
-        elif not has_timezone(start):
-            start = set_system_timezone(start)
+            start = now() - dt.timedelta(hours=12)
         if end is None:
             end = now()
-        elif not has_timezone(end):
-            end = set_system_timezone(end)
 
         if start >= end:
             return pd.DataFrame()
@@ -386,9 +383,10 @@ class Kraken(API):
         bars = self._get_result(
             self.api.query_public(
                 "OHLC",
-                {"pair": temp_symbol, "interval": multiplier, "since": end.timestamp},
+                {"pair": temp_symbol, "interval": multiplier, "since": 0},
             )
         )
+
         df = pd.DataFrame(
             bars[temp_symbol],
             columns=[
@@ -402,13 +400,19 @@ class Kraken(API):
                 "count",
             ],
         )
+
         df = self._format_df(df, symbol)
+        print(df.index[0], start)
+        print(df.index[-1], end)
         df = df.loc[start:end]
         return df
 
     def _format_df(self, df: pd.DataFrame, symbol: str):
         df = df[["timestamp", "open", "high", "low", "close", "volume"]].astype(float)
-        df.index = pd.to_datetime(df["timestamp"], unit="s", utc=True)
+        df.index = pd.DatetimeIndex(
+            pd.to_datetime(df["timestamp"].astype(int), unit="s", utc=True),
+            tz=dt.timezone.utc,
+        )
         df = df.drop(columns=["timestamp"])
         df.columns = pd.MultiIndex.from_product([[symbol], df.columns])
 

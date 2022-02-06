@@ -118,7 +118,6 @@ class DummyStreamer(API):
         start = convert_input_to_datetime(start)
         end = convert_input_to_datetime(end)
 
-
         results = self._generate_history(symbol, interval, start, end)
 
         if self.stock_market_times:

@@ -74,6 +74,9 @@ class PolygonStreamer(API):
 
         debugger.debug(f"Fetching {symbol} {interval} price history")
 
+        start = convert_input_to_datetime(start)
+        end = convert_input_to_datetime(end)
+
         if start is None:
             start = now() - dt.timedelta(days=365 * 2)
         if end is None:
@@ -82,9 +85,6 @@ class PolygonStreamer(API):
         if start >= end:
             return pd.DataFrame()
 
-
-        start = convert_input_to_datetime(start)
-        end = convert_input_to_datetime(end)
         val, unit = expand_interval(interval)
         return self._get_data_from_polygon(symbol, val, unit, start, end)
 
@@ -275,7 +275,7 @@ class PolygonStreamer(API):
             temp_symbol = "X:" + temp_symbol[1:] + "USD"
 
         request = f"https://api.polygon.io/v2/aggs/ticker/{ temp_symbol }/range/{ multiplier }/{ timespan }/{ start_str }/{ end_str }?adjusted=true&sort=asc&apiKey={ key }"
-        
+
         response = requests.get(request)
         ret = response.json()
 
