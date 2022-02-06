@@ -85,6 +85,14 @@ class Alpaca(StreamAPI):
     # -------------- Streamer methods -------------- #
 
     @API._exception_handler
+    def get_current_time(self) -> dt.datetime:
+        ret = self.api.get_clock().__dict__["_raw"]
+        # Convert to ISO 8601 by removing nanoseconds
+        index = ret["timestamp"].index('.')
+        timestamp = ret["timestamp"][:index] + ret["timestamp"][index + 9:]
+        return dt.datetime.fromisoformat(timestamp)
+
+    @API._exception_handler
     def fetch_price_history(
         self,
         symbol: str,
@@ -122,8 +130,12 @@ class Alpaca(StreamAPI):
 
     @API._exception_handler
     def fetch_market_hours(self, date: datetime.date):
-        ret = self.api.get_clock()
-        return ret.__dict__["_raw"]
+        ret = self.api.get_clock().__dict__["_raw"]
+        return {
+            "is_open": ret["is_open"],
+            "open_at": dt.datetime.fromisoformat(ret["next_open"]),
+            "close_at": dt.datetime.fromisoformat(ret["next_close"]),
+        }
 
     # ------------- Broker methods ------------- #
 
@@ -229,11 +241,24 @@ class Alpaca(StreamAPI):
         ).__dict__["_raw"]
 
         return {
-            "type": "CRYPTO",
+            "type": "STOCK",
             "id": order["id"],
             "symbol": symbol,
             "alpaca": order,
         }
+
+    def order_option_limit(
+        self,
+        side: str,
+        symbol: str,
+        quantity: int,
+        limit_price: float,
+        option_type,
+        exp_date: dt.datetime,
+        strike,
+        in_force: str = "gtc",
+    ):
+        raise NotImplementedError("Alpaca does not support options.")
 
     def order_crypto_limit(
         self,
@@ -266,31 +291,18 @@ class Alpaca(StreamAPI):
             "alpaca": order,
         }
 
-    def order_option_limit(
-        self,
-        side: str,
-        symbol: str,
-        quantity: int,
-        limit_price: float,
-        option_type,
-        exp_date: dt.datetime,
-        strike,
-        in_force: str = "gtc",
-    ):
-        raise NotImplementedError("Alpaca does not support options.")
-
     def cancel_stock_order(self, order_id):
         ret = self.api.cancel_order(order_id)
-        return ret.__dict__["_raw"]
+        return {"id": order_id}
+
+    def cancel_option_order(self, order_id):
+        raise NotImplementedError("Alpaca does not support options.")
 
     def cancel_crypto_order(self, order_id):
         if self.basic:
             raise Exception("Alpaca basic accounts do not support crypto.")
         ret = self.api.cancel_order(order_id)
-        return ret.__dict__["_raw"]
-
-    def cancel_option_order(self, order_id):
-        raise NotImplementedError("Alpaca does not support options.")
+        return {"id": order_id}
 
     # ------------- Helper methods ------------- #
 
@@ -411,7 +423,9 @@ class Alpaca(StreamAPI):
             inplace=True,
         )
 
-        df.index = pd.to_datetime(df["timestamp"], utc=True)
+        df.index = pd.DatetimeIndex(
+            pd.to_datetime(df["timestamp"], utc=True), tz=dt.timezone.utc
+        )
         df.drop(columns=["timestamp"], inplace=True)
         df.columns = pd.MultiIndex.from_product([[symbol], df.columns])
         return df.dropna()

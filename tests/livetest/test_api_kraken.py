@@ -21,7 +21,7 @@ class TestKraken(unittest.TestCase):
 
         time.sleep(60)
 
-    def test_fetch_price(self):
+    def test_fetch_crypto_price(self):
         broker = Kraken(path=secret_path)
 
         # Use datetime with no timezone for start and end
@@ -34,7 +34,7 @@ class TestKraken(unittest.TestCase):
         # Use datetime with timezone for start and end
         start = start.astimezone(dt.timezone(dt.timedelta(hours=2)))
         end = end.astimezone(dt.timezone(dt.timedelta(hours=2)))
-        results = broker.fetch_price_history('@BTC', Interval.MIN_1, start, end)
+        results = broker.fetch_price_history('@DOGE', Interval.MIN_1, start, end)
         self.assertTrue(results.shape[0] > 0)
         self.assertTrue(results.shape[1] == 5)
 
