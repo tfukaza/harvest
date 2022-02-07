@@ -1,4 +1,5 @@
 import subprocess
+from glob import glob
 from setuptools import Command, setup
 
 
@@ -27,21 +28,28 @@ class LintCMD(Command):
 
 
 class CoverageTestCMD(Command):
-    user_options = []
+    user_options = [("live=", "l", "a list of files in the livetest folder to run")]
 
     def initialize_options(self):
-        pass
+        self.live = ""
 
     def finalize_options(self):
-        pass
+        self.live = ["tests/livetest/test_api_" + test + ".py" for test in self.live.split(',')]
 
     def run(self):
-        a = subprocess.run(
-            ["coverage", "run", "-m", "unittest", "discover", "-s", "tests/unittest"]
+        exit_code = subprocess.run(
+            ["coverage", "run", "-p", "-m", "unittest", "discover", "-s", "tests/unittest"]
         ).returncode
-        b = subprocess.run(["coverage", "report"]).returncode
-        c = subprocess.run(["coverage", "html"]).returncode
-        exit(a + b + c)
+
+        for test in self.live:
+            exit_code += subprocess.run(
+                ["coverage", "run", "-p", test]
+            ).returncode
+
+        exit_code += subprocess.run(["coverage", "combine"] + glob(".coverage.*")).returncode
+        exit_code += subprocess.run(["coverage", "report"]).returncode
+        exit_code += subprocess.run(["coverage", "html"]).returncode
+        exit(exit_code)
 
 
 setup(

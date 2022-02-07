@@ -17,7 +17,7 @@ build/
 data/
 
 # ignore coverage files
-.coverage
+.coverage*
 /htmlcov
 
 # misc.
