@@ -34,7 +34,7 @@ class CoverageTestCMD(Command):
         self.live = ""
 
     def finalize_options(self):
-        self.live = ["tests/livetest/test_api_" + test + ".py" for test in self.live.split(',')]
+        self.live = ["tests/livetest/test_api_" + test + ".py" for test in self.live.split(',') if test]
 
     def run(self):
         exit_code = subprocess.run(
