@@ -151,7 +151,6 @@ class Kraken(API):
     def get_current_time(self) -> dt.datetime:
         ret = self._get_result(self.api.query_public("Time"))
         return dt.datetime.fromtimestamp(ret["unixtime"], dt.timezone.utc)
-        
 
     @API._exception_handler
     def fetch_price_history(
@@ -316,7 +315,7 @@ class Kraken(API):
                     "type": side,
                     "volume": quantity,
                     "price": limit_price,
-                    "pair": "XXBTZUSD" # symbol,
+                    "pair": "XXBTZUSD",  # symbol,
                 },
             )
         )
