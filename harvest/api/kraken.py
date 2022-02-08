@@ -148,6 +148,12 @@ class Kraken(API):
     # -------------- Streamer methods -------------- #
 
     @API._exception_handler
+    def get_current_time(self) -> dt.datetime:
+        ret = self._get_result(self.api.query_public("Time"))
+        return dt.datetime.fromtimestamp(ret["unixtime"], dt.timezone.utc)
+        
+
+    @API._exception_handler
     def fetch_price_history(
         self,
         symbol: str,
@@ -189,8 +195,9 @@ class Kraken(API):
 
     def fetch_market_hours(self, date: datetime.date):
         # Crypto markets are always open.
+        ret = self._get_result(self.api.query_public("SystemStatus"))
         return {
-            "is_open": True,
+            "is_open": ret["status"] == "online",
             "open_at": None,
             "close_at": None,
         }
@@ -299,6 +306,8 @@ class Kraken(API):
         in_force: str = "gtc",
         extended: bool = False,
     ):
+
+        kraken_symbol = self._ticker_to_kraken(symbol)
         order = self._get_result(
             self.api.query_private(
                 "AddOrder",
@@ -306,7 +315,8 @@ class Kraken(API):
                     "ordertype": "limit",
                     "type": side,
                     "volume": quantity,
-                    "pair": symbol,
+                    "price": limit_price,
+                    "pair": "XXBTZUSD" # symbol,
                 },
             )
         )
@@ -402,8 +412,6 @@ class Kraken(API):
         )
 
         df = self._format_df(df, symbol)
-        print(df.index[0], start)
-        print(df.index[-1], end)
         df = df.loc[start:end]
         return df
 

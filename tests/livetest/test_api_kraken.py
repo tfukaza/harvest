@@ -45,5 +45,48 @@ class TestKraken(unittest.TestCase):
         self.assertTrue(results.shape[0] > 0)
         self.assertTrue(results.shape[1] == 5)
 
+    def test_market_time(self):
+        broker = Kraken(path=secret_path)
+
+        results = broker.fetch_market_hours(now())
+        self.assertTrue("is_open" in results)
+        self.assertTrue("open_at" in results)
+        self.assertTrue("close_at" in results)
+
+        time.sleep(60)
+
+    def test_positions(self):
+        broker = Kraken(path=secret_path)
+
+        results = broker.fetch_stock_positions()
+        self.assertEqual(len(results), 0)
+        results = broker.fetch_option_positions()
+        self.assertEqual(len(results), 0)
+        results = broker.fetch_crypto_positions()
+        self.assertTrue(len(results) >= 0)
+
+        time.sleep(60)
+
+    def test_account(self):
+        broker = Kraken(path=secret_path)
+
+        results = broker.fetch_account()
+        self.assertTrue(results["equity"] >= 0)
+        self.assertTrue(results["cash"] >= 0)
+        self.assertTrue(results["buying_power"] >= 0)
+        self.assertGreater(results["multiplier"], 0)
+
+        time.sleep(60)
+
+    def test_buy_cancel(self):
+        broker = Kraken(path=secret_path)
+
+        # Failes with insufficent funds. 
+        try:
+            results = broker.order_crypto_limit("buy", "@BTC", 1, 1.00)
+        except:
+            self.assertTrue(True)
+
+
 if __name__ == "__main__":
     unittest.main()
