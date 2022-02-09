@@ -2,6 +2,7 @@
 import os
 import time
 import unittest
+import unittest.mock
 import datetime as dt
 
 from harvest.utils import *
@@ -86,6 +87,15 @@ class TestKraken(unittest.TestCase):
             results = broker.order_crypto_limit("buy", "@BTC", 1, 1.00)
         except:
             self.assertTrue(True)
+
+    @unittest.mock.patch("builtins.input", return_value="y")
+    @unittest.mock.patch("getpass.getpass", return_value="y")
+    def test_create_secret(self, mock_input, mock_pass):
+        broker = Kraken(path=secret_path)
+        results = broker.create_secret()
+        for key in broker.req_keys:
+            self.assertTrue(key in results)
+            self.assertEqual(results[key], "y")
 
 
 if __name__ == "__main__":

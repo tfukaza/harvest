@@ -332,7 +332,7 @@ class Kraken(API):
 
     # ------------- Helper methods ------------- #
 
-    def create_secret(self, path: str) -> bool:
+    def create_secret(self) -> Dict[str, str]:
         import harvest.wizard as wizard
 
         w = wizard.Wizard()
@@ -365,8 +365,6 @@ class Kraken(API):
 
         api_key_id = w.get_string("Enter your API key ID")
         secret_key = w.get_password("Enter your API secret key")
-
-        w.println(f"All steps are complete now 🎉. Generating {path}...")
 
         return {"kraken_api_key": f"{api_key_id}", "kraken_secret_key": f"{secret_key}"}
 

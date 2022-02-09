@@ -243,15 +243,9 @@ class PolygonStreamer(API):
 
         api_key = w.get_string("Enter your API key")
 
-        w.println(f"All steps are complete now 🎉. Generating {path}...")
-
         d = {
             "polygon_api_key": f"{api_key}",
         }
-
-        w.println(
-            f"{path} has been created! Make sure you keep this file somewhere secure and never share it with other people."
-        )
 
         return d
 

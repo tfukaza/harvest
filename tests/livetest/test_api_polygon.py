@@ -2,6 +2,7 @@
 import os
 import time
 import unittest
+import unittest.mock
 import datetime as dt
 
 from harvest.utils import *
@@ -94,6 +95,14 @@ class TestPolygonStreamer(unittest.TestCase):
         self.assertTrue("open_at" in results)
         self.assertTrue("close_at" in results)
 
+
+    @unittest.mock.patch("builtins.input", return_value="y")
+    def test_create_secret(self, mock_stdout):
+        streamer = PolygonStreamer(path=secret_path, is_basic_account=True)
+        results = streamer.create_secret()
+        for key in streamer.req_keys:
+            self.assertTrue(key in results)
+            self.assertEqual(results[key], "y")
 
 if __name__ == "__main__":
     unittest.main()

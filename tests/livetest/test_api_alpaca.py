@@ -2,6 +2,7 @@
 import os
 import time
 import unittest
+import unittest.mock
 import datetime as dt
 
 from harvest.utils import *
@@ -90,6 +91,15 @@ class TestAlpaca(unittest.TestCase):
         time.sleep(10)
 
         results = broker.cancel_stock_order(results["id"])
+
+    @unittest.mock.patch("builtins.input", return_value="y")
+    @unittest.mock.patch("getpass.getpass", return_value="y")
+    def test_create_secret(self, mock_input, mock_pass):
+        broker = Alpaca(path=secret_path, is_basic_account=True, paper_trader=True)
+        results = broker.create_secret()
+        for key in broker.req_keys:
+            self.assertTrue(key in results)
+            self.assertEqual(results[key], "y")
 
 if __name__ == "__main__":
     unittest.main()
