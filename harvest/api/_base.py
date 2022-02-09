@@ -78,20 +78,6 @@ class API:
 
         self.config = config
 
-    def create_secret(self) -> Dict[str, str]:
-        """
-        This method is called when the yaml file with credentials
-        is not found. It returns a dictionary containing the necessary credentials.
-        """
-        debugger.warning("Assuming API does not need account information.")
-
-    def refresh_cred(self) -> None:
-        """
-        Most API endpoints, for security reasons, require a refresh of the access token
-        every now and then. This method should perform a refresh of the access token.
-        """
-        debugger.info(f"Refreshing credentials for {type(self).__name__}.")
-
     def setup(
         self, stats: Stats, account: Account, trader_main: Callable = None
     ) -> None:
@@ -216,6 +202,20 @@ class API:
         The intended purpose is for brokers to clear any cache it may have created.
         """
         debugger.debug(f"{type(self).__name__} exited")
+
+    def create_secret(self) -> Dict[str, str]:
+        """
+        This method is called when the yaml file with credentials
+        is not found. It returns a dictionary containing the necessary credentials.
+        """
+        debugger.warning("Assuming API does not need account information.")
+
+    def refresh_cred(self) -> None:
+        """
+        Most API endpoints, for security reasons, require a refresh of the access token
+        every now and then. This method should perform a refresh of the access token.
+        """
+        debugger.info(f"Refreshing credentials for {type(self).__name__}.")
 
     # -------------- Streamer methods -------------- #
 

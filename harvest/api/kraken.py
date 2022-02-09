@@ -136,28 +136,21 @@ class Kraken(API):
 
         self.option_cache = {}
 
-    def exit(self):
-        self.option_cache = {}
-
     def main(self):
         df_dict = {}
-        df_dict.update(self.fetch_latest_crypto_price())
+        df_dict.update(self._fetch_latest_crypto_price())
 
         self.trader_main(df_dict)
 
-    @API._exception_handler
-    def fetch_latest_crypto_price(self):
-        dfs = {}
-        for symbol in self.watch_crypto:
-            dfs[symbol] = self.fetch_price_history(
-                symbol,
-                self.interval[symbol]["interval"],
-                now() - dt.timedelta(days=7),
-                now(),
-            ).iloc[[-1]]
-        return dfs
+    def exit(self):
+        self.option_cache = {}
 
     # -------------- Streamer methods -------------- #
+
+    @API._exception_handler
+    def get_current_time(self) -> dt.datetime:
+        ret = self._get_result(self.api.query_public("Time"))
+        return dt.datetime.fromtimestamp(ret["unixtime"], dt.timezone.utc)
 
     @API._exception_handler
     def fetch_price_history(
@@ -170,14 +163,13 @@ class Kraken(API):
 
         debugger.debug(f"Fetching {symbol} {interval} price history")
 
+        start = convert_input_to_datetime(start)
+        end = convert_input_to_datetime(end)
+
         if start is None:
-            start = now() - dt.timedelta(days=365 * 5)
-        elif not has_timezone(start):
-            start = set_system_timezone(start)
+            start = now() - dt.timedelta(hours=12)
         if end is None:
             end = now()
-        elif not has_timezone(end):
-            end = set_system_timezone(end)
 
         if start >= end:
             return pd.DataFrame()
@@ -187,7 +179,7 @@ class Kraken(API):
                 f"Interval {interval} not in interval list. Possible options are: {self.interval_list}"
             )
         val, unit = expand_interval(interval)
-        df = self.get_data_from_kraken(symbol, val, unit, start, end)
+        df = self._get_data_from_kraken(symbol, val, unit, start, end)
 
         return df
 
@@ -202,8 +194,9 @@ class Kraken(API):
 
     def fetch_market_hours(self, date: datetime.date):
         # Crypto markets are always open.
+        ret = self._get_result(self.api.query_public("SystemStatus"))
         return {
-            "is_open": True,
+            "is_open": ret["status"] == "online",
             "open_at": None,
             "close_at": None,
         }
@@ -222,7 +215,7 @@ class Kraken(API):
 
     @API._exception_handler
     def fetch_crypto_positions(self):
-        positions = self.get_result(self.api.query_private("OpenPositions"))
+        positions = self._get_result(self.api.query_private("OpenPositions"))
 
         def fmt(crypto: Dict[str, Any]):
             # Remove the currency
@@ -243,7 +236,7 @@ class Kraken(API):
 
     @API._exception_handler
     def fetch_account(self):
-        account = self.get_result(self.api.query_private("Balance"))
+        account = self._get_result(self.api.query_private("Balance"))
         if account is None:
             equity = 0
             cash = 0
@@ -284,7 +277,7 @@ class Kraken(API):
 
     @API._exception_handler
     def fetch_order_queue(self):
-        open_orders = self.get_result(self.api.query_private("OpenOrders"))
+        open_orders = self._get_result(self.api.query_private("OpenOrders"))
         open_orders = open_orders["open"]
 
         def fmt(crypto: Dict[str, Any]):
@@ -312,14 +305,17 @@ class Kraken(API):
         in_force: str = "gtc",
         extended: bool = False,
     ):
-        order = self.get_result(
+
+        kraken_symbol = self._ticker_to_kraken(symbol)
+        order = self._get_result(
             self.api.query_private(
                 "AddOrder",
                 {
                     "ordertype": "limit",
                     "type": side,
                     "volume": quantity,
-                    "pair": symbol,
+                    "price": limit_price,
+                    "pair": "XXBTZUSD",  # symbol,
                 },
             )
         )
@@ -336,80 +332,7 @@ class Kraken(API):
 
     # ------------- Helper methods ------------- #
 
-    def get_data_from_kraken(
-        self,
-        symbol: str,
-        multiplier: int,
-        timespan: str,
-        start: dt.datetime,
-        end: dt.datetime,
-    ) -> pd.DataFrame:
-        if timespan == "MIN":
-            multiplier *= 1
-        elif timespan == "HR":
-            multiplier *= 60
-        elif timespan == "DAY":
-            multiplier *= 1440
-
-        if is_crypto(symbol):
-            temp_symbol = self.ticker_to_kraken(symbol)
-        else:
-            raise Exception("Kraken does not support stocks.")
-        bars = self.get_result(
-            self.api.query_public(
-                "OHLC",
-                {"pair": temp_symbol, "interval": multiplier, "since": end.timestamp},
-            )
-        )
-        df = pd.DataFrame(
-            bars[temp_symbol],
-            columns=[
-                "timestamp",
-                "open",
-                "high",
-                "low",
-                "close",
-                "vwap",
-                "volume",
-                "count",
-            ],
-        )
-        df = self._format_df(df, symbol)
-        df = df.loc[start:end]
-        return df
-
-    def _format_df(self, df: pd.DataFrame, symbol: str):
-        df = df[["timestamp", "open", "high", "low", "close", "volume"]].astype(float)
-        df.index = pd.to_datetime(df["timestamp"], unit="s", utc=True)
-        df = df.drop(columns=["timestamp"])
-        df.columns = pd.MultiIndex.from_product([[symbol], df.columns])
-
-        return df.dropna()
-
-    def ticker_to_kraken(self, ticker: str):
-        if not is_crypto(ticker):
-            raise Exception("Kraken does not support stocks.")
-
-        if ticker[1:] in self.crypto_ticker_to_kraken_names:
-            # Currently Harvest supports trades for USD and not other currencies.
-            kraken_ticker = self.crypto_ticker_to_kraken_names.get(ticker[1:]) + "USD"
-            asset_pairs = self.get_result(self.api.query_public("AssetPairs")).keys()
-            if kraken_ticker in asset_pairs:
-                return kraken_ticker
-            else:
-                raise Exception(f"{kraken_ticker} is not a valid asset pair.")
-        else:
-            raise Exception(f"Kraken does not support ticker {ticker}.")
-
-    def get_result(self, response: Dict[str, Any]):
-        """Given a kraken response from an endpoint, either raise an error if an
-        error exists or return the data in the results key.
-        """
-        if len(response["error"]) > 0:
-            raise Exception("\n".join(response["error"]))
-        return response.get("result", None)
-
-    def create_secret(self, path: str) -> bool:
+    def create_secret(self) -> Dict[str, str]:
         import harvest.wizard as wizard
 
         w = wizard.Wizard()
@@ -443,6 +366,94 @@ class Kraken(API):
         api_key_id = w.get_string("Enter your API key ID")
         secret_key = w.get_password("Enter your API secret key")
 
-        w.println(f"All steps are complete now 🎉. Generating {path}...")
-
         return {"kraken_api_key": f"{api_key_id}", "kraken_secret_key": f"{secret_key}"}
+
+    def _get_data_from_kraken(
+        self,
+        symbol: str,
+        multiplier: int,
+        timespan: str,
+        start: dt.datetime,
+        end: dt.datetime,
+    ) -> pd.DataFrame:
+        if timespan == "MIN":
+            multiplier *= 1
+        elif timespan == "HR":
+            multiplier *= 60
+        elif timespan == "DAY":
+            multiplier *= 1440
+
+        if is_crypto(symbol):
+            temp_symbol = self._ticker_to_kraken(symbol)
+        else:
+            raise Exception("Kraken does not support stocks.")
+        bars = self._get_result(
+            self.api.query_public(
+                "OHLC",
+                {"pair": temp_symbol, "interval": multiplier, "since": 0},
+            )
+        )
+
+        df = pd.DataFrame(
+            bars[temp_symbol],
+            columns=[
+                "timestamp",
+                "open",
+                "high",
+                "low",
+                "close",
+                "vwap",
+                "volume",
+                "count",
+            ],
+        )
+
+        df = self._format_df(df, symbol)
+        df = df.loc[start:end]
+        return df
+
+    def _format_df(self, df: pd.DataFrame, symbol: str):
+        df = df[["timestamp", "open", "high", "low", "close", "volume"]].astype(float)
+        df.index = pd.DatetimeIndex(
+            pd.to_datetime(df["timestamp"].astype(int), unit="s", utc=True),
+            tz=dt.timezone.utc,
+        )
+        df = df.drop(columns=["timestamp"])
+        df.columns = pd.MultiIndex.from_product([[symbol], df.columns])
+
+        return df.dropna()
+
+    def _ticker_to_kraken(self, ticker: str):
+        if not is_crypto(ticker):
+            raise Exception("Kraken does not support stocks.")
+
+        if ticker[1:] in self.crypto_ticker_to_kraken_names:
+            # Currently Harvest supports trades for USD and not other currencies.
+            kraken_ticker = self.crypto_ticker_to_kraken_names.get(ticker[1:]) + "USD"
+            asset_pairs = self._get_result(self.api.query_public("AssetPairs")).keys()
+            if kraken_ticker in asset_pairs:
+                return kraken_ticker
+            else:
+                raise Exception(f"{kraken_ticker} is not a valid asset pair.")
+        else:
+            raise Exception(f"Kraken does not support ticker {ticker}.")
+
+    def _get_result(self, response: Dict[str, Any]):
+        """Given a kraken response from an endpoint, either raise an error if an
+        error exists or return the data in the results key.
+        """
+        if len(response["error"]) > 0:
+            raise Exception("\n".join(response["error"]))
+        return response.get("result", None)
+
+    @API._exception_handler
+    def _fetch_latest_crypto_price(self):
+        dfs = {}
+        for symbol in self.watch_crypto:
+            dfs[symbol] = self.fetch_price_history(
+                symbol,
+                self.interval[symbol]["interval"],
+                now() - dt.timedelta(days=7),
+                now(),
+            ).iloc[[-1]]
+        return dfs

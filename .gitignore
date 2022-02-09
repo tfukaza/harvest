@@ -17,7 +17,7 @@ build/
 data/
 
 # ignore coverage files
-.coverage
+.coverage*
 /htmlcov
 
 # misc.
@@ -30,3 +30,4 @@ package-lock.json
 
 *.log
 env
+save

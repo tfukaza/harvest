@@ -1,7 +1,7 @@
 # Builtins
 import json
 import datetime as dt
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Union
 import requests
 
 # External libraries
@@ -28,12 +28,6 @@ class PolygonStreamer(API):
             )
 
         self.basic = is_basic_account
-
-    def setup(self, stats, account, trader_main=None):
-        super().setup(stats, account, trader_main)
-        self.option_cache = {}
-
-    def exit(self):
         self.option_cache = {}
 
     def main(self):
@@ -53,7 +47,17 @@ class PolygonStreamer(API):
             debugger.debug(df)
         self.trader_main(df_dict)
 
+    def exit(self):
+        self.option_cache = {}
+
     # -------------- Streamer methods -------------- #
+
+    @API._exception_handler
+    def get_current_time(self) -> dt.datetime:
+        key = self.config["polygon_api_key"]
+        request = f"https://api.polygon.io/v1/marketstatus/now?apiKey={key}"
+        server_time = requests.get(request).json().get("serverTime")
+        return dt.datetime.fromisoformat(server_time)
 
     @API._exception_handler
     def fetch_price_history(
@@ -65,6 +69,9 @@ class PolygonStreamer(API):
     ):
 
         debugger.debug(f"Fetching {symbol} {interval} price history")
+
+        start = convert_input_to_datetime(start)
+        end = convert_input_to_datetime(end)
 
         if start is None:
             start = now() - dt.timedelta(days=365 * 2)
@@ -81,9 +88,14 @@ class PolygonStreamer(API):
     def fetch_chain_info(self, symbol: str):
         key = self.config["polygon_api_key"]
         request = f"https://api.polygon.io/v3/reference/options/contracts?underlying_ticker={symbol}&apiKey={key}"
-        response = requests.get(request)
-        ret = response.json()
-        dates = {contract["expiration"] for contract in ret["results"]}
+        response = self._handle_request_response(request)
+        if response is None:
+            raise Exception(f"Failed to fech chain info for {symbol}.")
+
+        dates = {
+            dt.datetime.strptime(contract["expiration_date"], "%Y-%m-%d")
+            for contract in response
+        }
         return {
             "id": "n/a",
             "exp_dates": list(dates),
@@ -103,10 +115,14 @@ class PolygonStreamer(API):
         exp_date = date.strftime("%Y-%m-%d")
         key = self.config["polygon_api_key"]
         request = f"https://api.polygon.io/v3/reference/options/contracts?underlying_ticker={symbol}&expiration_date={exp_date}&apiKey={key}"
-        response = requests.get(request)
-        ret = response.json()
-        df = pd.DataFrame.from_dict(ret["results"])
+        response = self._handle_request_response(request)
+        if response is None:
+            debugger.error(
+                f"Failed to get chain data for {symbol} at {date}. Returning an empty dataframe."
+            )
+            return pd.DataFrame()
 
+        df = pd.DataFrame.from_dict(response)
         df = df.rename(
             columns={
                 "contract_type": "type",
@@ -117,8 +133,7 @@ class PolygonStreamer(API):
         # Remove the "O:" prefix from the option ticker symbol
         df["occ_symbol"] = df["occ_symbol"].str.replace("O:", "")
         # Convert the string timestamps of dataframe to datetime objects
-        df["exp_date"] = pd.to_datetime(df["expiration"])
-        df["exp_date"] = pandas_datetime_to_utc(df["exp_date"], pytz.utc)
+        df["exp_date"] = pd.to_datetime(df["expiration_date"], utc=True)
         df = df[["occ_symbol", "exp_date", "strike", "type"]]
         df.set_index("occ_symbol", inplace=True)
 
@@ -130,16 +145,20 @@ class PolygonStreamer(API):
 
     @API._exception_handler
     def fetch_option_market_data(self, occ_symbol: str):
+        if self.basic:
+            raise Exception("Basic accounts do not have access to options.")
         key = self.config["polygon_api_key"]
         occ_symbol.replace(" ", "")
         symbol = occ_to_data(occ_symbol)[0]
         request = f"https://api.polygon.io/v3/snapshot/options/{symbol}/O:{occ_symbol}?apiKey={key}"
-        response = requests.get(request)
-        ret = response.json()
+        response = self._handle_request_response(request)
+        if response is None:
+            raise Exception(f"Failed to fetch option market data for {occ_symbol}.")
+
         return {
-            "price": ret["results"]["day"]["close"],
-            "ask": ret["results"]["last_quote"]["ask"],
-            "bid": ret["results"]["last_quote"]["bid"],
+            "price": response["day"]["close"],
+            "ask": response["last_quote"]["ask"],
+            "bid": response["last_quote"]["bid"],
         }
 
     @API._exception_handler
@@ -224,15 +243,9 @@ class PolygonStreamer(API):
 
         api_key = w.get_string("Enter your API key")
 
-        w.println(f"All steps are complete now 🎉. Generating {path}...")
-
         d = {
             "polygon_api_key": f"{api_key}",
         }
-
-        w.println(
-            f"{path} has been created! Make sure you keep this file somewhere secure and never share it with other people."
-        )
 
         return d
 
@@ -258,23 +271,19 @@ class PolygonStreamer(API):
 
         start_str = start.strftime("%Y-%m-%d")
         end_str = end.strftime("%Y-%m-%d")
-
         key = self.config["polygon_api_key"]
-        request = f"https://api.polygon.io/v2/aggs/ticker/{{ temp_symbol }}/range/{{ multiplier }}/{{ timespan }}/{{ start_str }}/{{ end_str }}?adjusted=true&sort=asc&apiKey={{ key }}"
-
         temp_symbol = symbol
         if is_crypto(symbol):
             temp_symbol = "X:" + temp_symbol[1:] + "USD"
 
-        response = requests.get(request)
-        ret = response.json()
+        request = f"https://api.polygon.io/v2/aggs/ticker/{ temp_symbol }/range/{ multiplier }/{ timespan }/{ start_str }/{ end_str }?adjusted=true&sort=asc&apiKey={ key }"
+        response = self._handle_request_response(request)
 
-        if ret["status"] != "ERROR":
-            df = pd.DataFrame(ret["results"])
-        else:
-            debugger.error(f"Request error! Returning empty dataframe. \n {ret}")
+        if response is None:
+            debugger.error(f"Request error! Returning empty dataframe.")
             return pd.DataFrame()
 
+        df = pd.DataFrame(response)
         df = self._format_df(df, symbol)
         df = df.loc[start:end]
 
@@ -300,3 +309,11 @@ class PolygonStreamer(API):
         df.columns = pd.MultiIndex.from_product([[symbol], df.columns])
 
         return df.dropna()
+
+    def _handle_request_response(self, request):
+        response = requests.get(request).json()
+        if response["status"] == "OK":
+            return response["results"]
+        message = response["message"]
+        debugger.error(f"Request Error!\nRequest: {request}\nResponse: {message}")
+        return None
