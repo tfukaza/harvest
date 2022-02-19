@@ -13,9 +13,10 @@ import datetime as dt
 import tzlocal
 
 # Submodule imports
-from harvest.definitions import *
 from harvest.utils import *
+from harvest.definitions import *
 from harvest.storage import BaseStorage
+from harvest.api._base import API
 from harvest.api.yahoo import YahooStreamer
 from harvest.api.paper import PaperBroker
 from harvest.storage import BaseStorage
@@ -39,7 +40,13 @@ class LiveTrader:
         Interval.DAY_1,
     ]
 
-    def __init__(self, streamer=None, broker=None, storage=None, debug=False):
+    def __init__(
+        self,
+        streamer: API = None,
+        broker: API = None,
+        storage: BaseStorage = None,
+        debug: bool = False,
+    ) -> None:
         """Initializes the Trader."""
 
         self._init_checks()
@@ -48,12 +55,12 @@ class LiveTrader:
         self._init_attributes()
         self._setup_debugger(debug)
 
-    def _init_checks(self):
+    def _init_checks(self) -> None:
         # Harvest only supports Python 3.9 or newer.
         if sys.version_info[0] < 3 or sys.version_info[1] < 9:
             raise Exception("Harvest requires Python 3.9 or above.")
 
-    def _set_streamer_broker(self, streamer, broker):
+    def _set_streamer_broker(self, streamer: API, broker: API) -> None:
         """Sets the streamer and broker."""
         # If streamer is not specified, use YahooStreamer
         self.streamer = YahooStreamer() if streamer is None else streamer
@@ -67,7 +74,7 @@ class LiveTrader:
         else:
             self.broker = broker
 
-    def _init_attributes(self):
+    def _init_attributes(self) -> None:
 
         try:
             signal(SIGINT, self.exit)
@@ -101,7 +108,7 @@ class LiveTrader:
         self.positions = self.account.positions
         self.orders = self.account.orders
 
-    def _setup_debugger(self, debug):
+    def _setup_debugger(self, debug: bool) -> None:
         # Set up logger
         if debug:
             debugger.setLevel("DEBUG")
@@ -112,12 +119,12 @@ class LiveTrader:
 
     def start(
         self,
-        interval="5MIN",
-        aggregations=[],
-        sync=True,
-        server=False,
-        all_history=True,
-    ):
+        interval: str = "5MIN",
+        aggregations: List = [],
+        sync: bool = True,
+        server: bool = False,
+        all_history: bool = True,
+    ) -> None:
         """Entry point to start the system.
 
         :param str? interval: The interval to run the algorithm. defaults to '5MIN'
@@ -174,7 +181,7 @@ class LiveTrader:
 
         self.streamer.start()
 
-    def _setup_stats(self):
+    def _setup_stats(self) -> None:
         """Initializes local cache of stocks, options, and crypto positions."""
 
         # Get any pending orders
@@ -184,7 +191,9 @@ class LiveTrader:
 
         self._fetch_account_data()
 
-    def _setup_params(self, watchlist, interval, aggregations):
+    def _setup_params(
+        self, watchlist: List[str], interval: str, aggregations: List[str]
+    ) -> None:
         """
         Sets up configuration parameters for the Trader, notably
         the 'interval' attribute.
@@ -240,7 +249,7 @@ class LiveTrader:
 
         self.stats.watchlist_cfg = watchlist_cfg_tmp
 
-    def _setup_account(self):
+    def _setup_account(self) -> None:
         """Initializes local cache of account info.
         For testing, it should manually be specified
         """
@@ -249,7 +258,7 @@ class LiveTrader:
             raise Exception("Failed to load account info from broker.")
         self.account.init(ret)
 
-    def _storage_init(self, all_history: bool):
+    def _storage_init(self, all_history: bool) -> None:
         """
         Initializes the storage.
         :all_history: bool :
@@ -265,7 +274,7 @@ class LiveTrader:
 
     # ================== Functions for main routine =====================
 
-    def main(self, df_dict):
+    def main(self, df_dict: Dict[str, pd.DataFrame]) -> None:
         """
         Main loop of the Trader.
         """
@@ -324,7 +333,7 @@ class LiveTrader:
         self.broker.exit()
         self.streamer.exit()
 
-    def _update_order_queue(self):
+    def _update_order_queue(self) -> bool:
         """Check to see if outstanding orders have been accepted or rejected
         and update the order queue accordingly.
         """
@@ -362,7 +371,7 @@ class LiveTrader:
         # if an order was processed, update the positions and account info
         return order_filled
 
-    def _update_local_cache(self, df_dict):
+    def _update_local_cache(self, df_dict: Dict[str, pd.DataFrame]) -> None:
         """Update local cache of stocks, options, and crypto positions"""
         # Update entries in local cache
         # API should also be called if load_watch is false, as there is a high chance
@@ -391,7 +400,7 @@ class LiveTrader:
 
         debugger.debug(f"Updated positions: {self.positions}")
 
-    def _fetch_account_data(self):
+    def _fetch_account_data(self) -> None:
         debugger.debug(f"Fetching account data")
         stock_pos = [
             Position(p["symbol"], p["quantity"], p["avg_price"])
@@ -496,7 +505,7 @@ class LiveTrader:
 
     # ================ Helper Functions ======================
     def get_asset_quantity(
-        self, symbol, include_pending_buy, include_pending_sell
+        self, symbol: str, include_pending_buy: bool, include_pending_sell: bool
     ) -> float:
         """Returns the quantity owned of a specified asset.
 
@@ -536,7 +545,7 @@ class LiveTrader:
 
         return owned_qty
 
-    def set_algo(self, algo):
+    def set_algo(self, algo) -> None:
         """Specifies the algorithm to use.
 
         :param Algo algo: The algorithm to use. You can either pass in a single Algo class, or a
@@ -544,10 +553,10 @@ class LiveTrader:
         """
         self.algo = algo if isinstance(algo, list) else [algo]
 
-    def add_algo(self, algo):
+    def add_algo(self, algo) -> None:
         self.algo.append(algo)
 
-    def set_symbol(self, symbol):
+    def set_symbol(self, symbol: Union[List[str], str]) -> None:
         """Specifies the symbol(s) to watch.
 
         Cryptocurrencies should be prepended with an `@` to differentiate them from stocks.
@@ -560,7 +569,7 @@ class LiveTrader:
         """
         self.watchlist = symbol if isinstance(symbol, list) else [symbol]
 
-    def day_trade_count(self):
+    def day_trade_count(self) -> None:
         # Get the 5-day trading window
         calendar = self.storage.load_calendar()
         open_days = calendar.loc[self.calendar["is_open"] == True]
@@ -588,7 +597,9 @@ class PaperTrader(LiveTrader):
     A class for trading in the paper trading environment.
     """
 
-    def __init__(self, streamer=None, storage=None, debug=False):
+    def __init__(
+        self, streamer: API = None, storage: BaseStorage = None, debug: bool = False
+    ) -> None:
         """Initializes the Trader."""
 
         self._init_checks()

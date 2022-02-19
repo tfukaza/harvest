@@ -18,21 +18,21 @@ from harvest.utils import debugger
 
 
 class User(UserMixin):
-    def __init__(self, username, password):
+    def __init__(self, username: str, password: str) -> None:
         self.id = username
         self.password = password
         self.default_password = True
 
 
 class DB:
-    def __init__(self):
+    def __init__(self) -> None:
         self.users = []
 
-    def add_user(self, username, password):
+    def add_user(self, username: str, password: str) -> None:
         hashed_password = generate_password_hash(password)
         self.users.append(User(username, hashed_password))
 
-    def update_user_password(self, username, password):
+    def update_user_password(self, username: str, password: str) -> None:
         for user in self.users:
             if user.get_id() == username:
                 user.password = generate_password_hash(password)
@@ -40,12 +40,12 @@ class DB:
                 return True
         return False
 
-    def set_is_default_password(self, username, is_default):
+    def set_is_default_password(self, username: str, is_default: bool) -> None:
         for user in self.users:
             if user.get_id() == username:
                 user.default_password = is_default
 
-    def get_user(self, username):
+    def get_user(self, username: str) -> None:
         for user in self.users:
             if user.get_id() == username:
                 return user

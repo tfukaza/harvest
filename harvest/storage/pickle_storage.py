@@ -21,7 +21,7 @@ class PickleStorage(BaseStorage):
 
     def __init__(
         self, save_dir: str = "data", queue_size: int = 200, limit_size: bool = True
-    ):
+    ) -> None:
         super().__init__(queue_size, limit_size)
         """
         Adds a directory to save data to. Loads any data that is currently in the
@@ -70,7 +70,7 @@ class PickleStorage(BaseStorage):
             )
             self.storage_lock.release()
 
-    def open(self, symbol: str, interval: Interval):
+    def open(self, symbol: str, interval: Interval) -> pd.DataFrame:
         if isinstance(interval, Interval):
             interval = interval_enum_to_string(interval)
         name = self.save_dir + f"/{symbol}@{interval}.pickle"

@@ -10,8 +10,8 @@ import pytz
 
 # Submodule imports
 from harvest.api._base import API
-from harvest.definitions import *
 from harvest.utils import *
+from harvest.definitions import *
 
 
 class PolygonStreamer(API):
@@ -19,7 +19,7 @@ class PolygonStreamer(API):
     interval_list = [Interval.MIN_1, Interval.MIN_5, Interval.HR_1, Interval.DAY_1]
     req_keys = ["polygon_api_key"]
 
-    def __init__(self, path: str = None, is_basic_account: bool = False):
+    def __init__(self, path: str = None, is_basic_account: bool = False) -> None:
         super().__init__(path)
 
         if self.config is None:
@@ -30,7 +30,7 @@ class PolygonStreamer(API):
         self.basic = is_basic_account
         self.option_cache = {}
 
-    def main(self):
+    def main(self) -> None:
         df_dict = {}
         combo = self.stats.watchlist_cfg.keys()
         if self.basic and len(combo) > 5:
@@ -47,7 +47,7 @@ class PolygonStreamer(API):
             debugger.debug(df)
         self.trader_main(df_dict)
 
-    def exit(self):
+    def exit(self) -> None:
         self.option_cache = {}
 
     # -------------- Streamer methods -------------- #
@@ -64,9 +64,9 @@ class PolygonStreamer(API):
         self,
         symbol: str,
         interval: Interval,
-        start: dt.datetime = None,
-        end: dt.datetime = None,
-    ):
+        start: Union[str, dt.datetime] = None,
+        end: Union[str, dt.datetime] = None,
+    ) -> pd.DataFrame:
 
         debugger.debug(f"Fetching {symbol} {interval} price history")
 
@@ -85,7 +85,7 @@ class PolygonStreamer(API):
         return self._get_data_from_polygon(symbol, val, unit, start, end)
 
     @API._exception_handler
-    def fetch_chain_info(self, symbol: str):
+    def fetch_chain_info(self, symbol: str) -> Dict[str, Any]:
         key = self.config["polygon_api_key"]
         request = f"https://api.polygon.io/v3/reference/options/contracts?underlying_ticker={symbol}&apiKey={key}"
         response = self._handle_request_response(request)
@@ -103,7 +103,7 @@ class PolygonStreamer(API):
         }
 
     @API._exception_handler
-    def fetch_chain_data(self, symbol: str, date: dt.datetime):
+    def fetch_chain_data(self, symbol: str, date: dt.datetime) -> pd.DataFrame:
 
         if (
             bool(self.option_cache)
@@ -144,7 +144,7 @@ class PolygonStreamer(API):
         return df
 
     @API._exception_handler
-    def fetch_option_market_data(self, occ_symbol: str):
+    def fetch_option_market_data(self, occ_symbol: str) -> Dict[str, Any]:
         if self.basic:
             raise Exception("Basic accounts do not have access to options.")
         key = self.config["polygon_api_key"]
@@ -162,7 +162,7 @@ class PolygonStreamer(API):
         }
 
     @API._exception_handler
-    def fetch_market_hours(self, date: datetime.date):
+    def fetch_market_hours(self, date: datetime.date) -> Dict[str, Any]:
         # Polygon does not support getting market hours,
         # so use the free Tradier API instead.
         # See documentation.tradier.com/brokerage-api/markets/get-clock
@@ -289,7 +289,7 @@ class PolygonStreamer(API):
 
         return df
 
-    def _format_df(self, df: pd.DataFrame, symbol: str):
+    def _format_df(self, df: pd.DataFrame, symbol: str) -> pd.DataFrame:
         df = df.rename(
             columns={
                 "t": "timestamp",
@@ -310,7 +310,7 @@ class PolygonStreamer(API):
 
         return df.dropna()
 
-    def _handle_request_response(self, request):
+    def _handle_request_response(self, request: str) -> Dict[str, Any]:
         response = requests.get(request).json()
         if response["status"] == "OK":
             return response["results"]

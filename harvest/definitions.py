@@ -1,21 +1,25 @@
+import datetime as dt
+from typing import Any, Callable, Dict, Iterable, List 
 from harvest.utils import symbol_type, occ_to_data
 
 
 class Stats:
-    def __init__(self, timestamp=None, timezone=None, watchlist_cfg=None):
+    def __init__(
+        self, timestamp: dt.datetime = None, timezone=None, watchlist_cfg=None
+    ) -> None:
         self._timestamp = timestamp
         self._timezone = timezone
         self._watchlist_cfg = watchlist_cfg
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.timestamp} {self.timezone} {self.watchlist_cfg}"
 
     @property
-    def timestamp(self):
+    def timestamp(self) -> dt.datetime:
         return self._timestamp
 
     @timestamp.setter
-    def timestamp(self, value):
+    def timestamp(self, value: dt.datetime) -> None:
         self._timestamp = value
 
     @property
@@ -23,7 +27,7 @@ class Stats:
         return self._timezone
 
     @timezone.setter
-    def timezone(self, value):
+    def timezone(self, value) -> None:
         self._timezone = value
 
     @property
@@ -31,23 +35,23 @@ class Stats:
         return self._watchlist_cfg
 
     @watchlist_cfg.setter
-    def watchlist_cfg(self, value):
+    def watchlist_cfg(self, value) -> None:
         self._watchlist_cfg = value
 
 
 class Functions:
     def __init__(
         self,
-        buy=None,
-        sell=None,
-        fetch_chain_data=None,
-        fetch_chain_info=None,
-        fetch_option_market_data=None,
-        get_asset_quantity=None,
-        load=None,
-        save=None,
-        load_daytrade=None,
-    ):
+        buy: Callable = None,
+        sell: Callable = None,
+        fetch_chain_data: Callable = None,
+        fetch_chain_info: Callable = None,
+        fetch_option_market_data: Callable = None,
+        get_asset_quantity: Callable = None,
+        load: Callable = None,
+        save: Callable = None,
+        load_daytrade: Callable = None,
+    ) -> None:
         self.buy = buy
         self.sell = sell
         self.fetch_chain_data = fetch_chain_data
@@ -60,7 +64,7 @@ class Functions:
 
 
 class Account:
-    def __init__(self, account_name=None):
+    def __init__(self, account_name: str = None) -> None:
         self._account_name = account_name or "default"
         self._positions = Positions()
         self._orders = Orders()
@@ -72,7 +76,7 @@ class Account:
         self._buying_power = 0
         self._multiplier = 1
 
-    def __str__(self):
+    def __str__(self) -> str:
         return (
             f"Account:\t{self._account_name}\n"
             + f"Cash:\t{self._cash}\n"
@@ -83,81 +87,48 @@ class Account:
             + f"Orders:\n{self._orders}"
         )
 
-    def init(self, dict):
+    def init(self, dict: Dict[str, float]) -> None:
         self._equity = dict["equity"]
         self._cash = dict["cash"]
         self._buying_power = dict["buying_power"]
         self._multiplier = dict["multiplier"]
 
-    def update(self):
+    def update(self) -> None:
         self._asset_value = self._positions.value
         self._equity = self._asset_value + self._cash
 
     @property
-    def account_name(self):
+    def account_name(self) -> str:
         return self._account_name
 
     @property
-    def positions(self):
+    def positions(self) -> List:
         return self._positions
 
     @property
-    def orders(self):
+    def orders(self) -> List:
         return self._orders
 
     @property
-    def equity(self):
+    def equity(self) -> float:
         return self._equity
 
     @property
-    def cash(self):
+    def cash(self) -> float:
         return self._cash
 
     @property
-    def buying_power(self):
+    def buying_power(self) -> float:
         return self._buying_power
 
     @property
-    def multiplier(self):
+    def multiplier(self) -> float:
         return self._multiplier
 
-
-class Orders:
-    def __init__(self):
-        self._orders = []
-
-    def __str__(self):
-        return "\n".join(str(order) for order in self._orders)
-
-    def init(self, orders):
-        self._orders = [Order(**o) for o in orders]
-
-    @property
-    def orders(self):
-        return self._orders
-
-    def get_order(self, order_id):
-        for o in self._orders:
-            if o.order_id == order_id:
-                return o
-
-    def add_new_order(self, symbol, order_id, side, quantity, time_in_force):
-        self._orders.append(Order(symbol, order_id, side, quantity, time_in_force))
-
-    def remove_non_open(self):
-        self._orders = list(filter(lambda x: x.status == "open", self._orders))
-
-    @property
-    def symbols(self):
-        return [o.symbol for o in self._orders]
-
-    @property
-    def stock_crypto_symbols(self):
-        return [o.base_symbol if o.type == "OPTION" else o.symbol for o in self._orders]
-
-
 class Order:
-    def __init__(self, symbol, order_id, side, quantity, time_in_force):
+    def __init__(
+        self, symbol: str, order_id: Any, side: str, quantity: float, time_in_force
+    ) -> None:
         self._symbol = symbol
         self._order_id = order_id
         self._type = symbol_type(symbol)
@@ -170,7 +141,7 @@ class Order:
         self._filled_price = None
         self._filled_quantity = None
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"""
         order_id:       {self._order_id} 
         symbol:         {self._symbol}
@@ -185,23 +156,23 @@ class Order:
         """
 
     @property
-    def symbol(self):
+    def symbol(self) -> str:
         return self._symbol
 
     @property
-    def type(self):
+    def type(self) -> str:
         return self._type
 
     @property
-    def quantity(self):
+    def quantity(self) -> float:
         return self._quantity
 
     @property
-    def filled_quantity(self):
+    def filled_quantity(self) -> float:
         return self._filled_quantity
 
     @property
-    def order_id(self):
+    def order_id(self) -> Any:
         return self._order_id
 
     @property
@@ -209,7 +180,7 @@ class Order:
         return self._time_in_force
 
     @property
-    def status(self):
+    def status(self) -> str:
         return self._status
 
     @property
@@ -221,15 +192,50 @@ class Order:
         return self._filled_price
 
     @property
-    def side(self):
+    def side(self) -> str:
         return self._side
 
-    def update(self, val):
+    def update(self, val: Dict[str, Any]) -> None:
         self._filled_quantity = val["quantity"]
         self._status = val["status"]
         self._filled_price = val["filled_price"]
         self._filled_time = val["filled_time"]
 
+
+class Orders:
+    def __init__(self) -> None:
+        self._orders = []
+
+    def __str__(self) -> str:
+        return "\n".join(str(order) for order in self._orders)
+
+    def init(self, orders: Iterable[Dict[str, Any]]) -> None:
+        self._orders = [Order(**o) for o in orders]
+
+    @property
+    def orders(self) -> List[Order]:
+        return self._orders
+
+    def get_order(self, order_id: Any) -> Order:
+        for o in self._orders:
+            if o.order_id == order_id:
+                return o
+
+    def add_new_order(
+        self, symbol: str, order_id: Any, side: str, quantity: float, time_in_force
+    ) -> None:
+        self._orders.append(Order(symbol, order_id, side, quantity, time_in_force))
+
+    def remove_non_open(self) -> None:
+        self._orders = list(filter(lambda x: x.status == "open", self._orders))
+
+    @property
+    def symbols(self) -> List[str]:
+        return [o.symbol for o in self._orders]
+
+    @property
+    def stock_crypto_symbols(self) -> List[str]:
+        return [o.base_symbol if o.type == "OPTION" else o.symbol for o in self._orders]
 
 class OptionOrder(Order):
     def __init__(
@@ -267,74 +273,6 @@ class OptionOrder(Order):
     @property
     def base_symbol(self):
         return self._base_symbol
-
-
-class Positions:
-    def __init__(self, stock=[], option=[], crypto=[]):
-        self._stock = stock
-        self._option = option
-        self._crypto = crypto
-
-        for p in self._stock + self._option:
-            setattr(self, p.symbol, p)
-        for p in self._crypto:
-            setattr(self, "c_" + p.symbol[1:], p)
-
-    def update(self, stock=None, option=None, crypto=None):
-        current_symbols = [p.symbol for p in self.all]
-        self._stock = stock
-        self._option = option
-        self._crypto = crypto
-        new_symbols = [p.symbol for p in self.all]
-        for p in self._stock + self._option:
-            setattr(self, p.symbol, p)
-        for p in self._crypto:
-            setattr(self, "_" + p.symbol, p)
-
-        deleted_symbols = list(set(current_symbols) - set(new_symbols))
-        for s in deleted_symbols:
-            if symbol_type(s) == "CRYPTO":
-                delattr(self, "c_" + s[1:])
-            else:
-                delattr(self, s)
-
-    def get(self, symbol):
-        for p in self.all:
-            if p.symbol == symbol:
-                return p
-        return None
-
-    @property
-    def stock(self):
-        return self._stock
-
-    @property
-    def option(self):
-        return self._option
-
-    @property
-    def crypto(self):
-        return self._crypto
-
-    @property
-    def all(self):
-        return self._stock + self._option + self._crypto
-
-    @property
-    def stock_crypto(self):
-        return self._stock + self._crypto
-
-    @property
-    def value(self):
-        return sum(p.value for p in self.all)
-
-    def __str__(self):
-        return (
-            "Positions: \n"
-            + f"\tStocks : {'='.join(str(p) for p in self._stock)}\n"
-            + f"\tOptions: {'='.join(str(p) for p in self._option)}\n"
-            + f"\tCrypto : {'='.join(str(p) for p in self._crypto)}"
-        )
 
 
 class Position:
@@ -405,6 +343,73 @@ class Position:
             + f" Profit:\t${self._profit}\n"
             + f" Returns:\t{'▲' if self._profit_percent > 0 else '▼'}{self._profit_percent * 100}%\n"
             + "─" * 50
+        )
+
+class Positions:
+    def __init__(self, stock=[], option=[], crypto=[]):
+        self._stock = stock
+        self._option = option
+        self._crypto = crypto
+
+        for p in self._stock + self._option:
+            setattr(self, p.symbol, p)
+        for p in self._crypto:
+            setattr(self, "c_" + p.symbol[1:], p)
+
+    def update(self, stock=None, option=None, crypto=None):
+        current_symbols = [p.symbol for p in self.all]
+        self._stock = stock
+        self._option = option
+        self._crypto = crypto
+        new_symbols = [p.symbol for p in self.all]
+        for p in self._stock + self._option:
+            setattr(self, p.symbol, p)
+        for p in self._crypto:
+            setattr(self, "_" + p.symbol, p)
+
+        deleted_symbols = list(set(current_symbols) - set(new_symbols))
+        for s in deleted_symbols:
+            if symbol_type(s) == "CRYPTO":
+                delattr(self, "c_" + s[1:])
+            else:
+                delattr(self, s)
+
+    def get(self, symbol):
+        for p in self.all:
+            if p.symbol == symbol:
+                return p
+        return None
+
+    @property
+    def stock(self):
+        return self._stock
+
+    @property
+    def option(self):
+        return self._option
+
+    @property
+    def crypto(self):
+        return self._crypto
+
+    @property
+    def all(self):
+        return self._stock + self._option + self._crypto
+
+    @property
+    def stock_crypto(self):
+        return self._stock + self._crypto
+
+    @property
+    def value(self):
+        return sum(p.value for p in self.all)
+
+    def __str__(self):
+        return (
+            "Positions: \n"
+            + f"\tStocks : {'='.join(str(p) for p in self._stock)}\n"
+            + f"\tOptions: {'='.join(str(p) for p in self._option)}\n"
+            + f"\tCrypto : {'='.join(str(p) for p in self._crypto)}"
         )
 
 

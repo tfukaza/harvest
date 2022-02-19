@@ -22,13 +22,13 @@ class Wizard:
     implement is the `create_secret` function.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.update_size()
 
         self.text_counter = 0
         self.prompt_counter = 0
 
-    def update_size(self):
+    def update_size(self) -> None:
         # https://stackoverflow.com/questions/566746/how-to-get-linux-console-window-width-in-python
         with os.popen("stty size", "r") as dim:
             # with closes the subprocess opened by popen
@@ -66,7 +66,7 @@ class Wizard:
         true_pat: str = r"y|yes",
         false_pat: str = r"n|no",
         default: str = None,
-        persistent=True,
+        persistent: bool = True,
     ) -> bool:
         """
         Prompts the user for a binary decision. Ignores case in regex matching. Return False if the input does not match any pattern and persistent is False.

@@ -13,8 +13,9 @@ import yaml
 # Submodule imports
 from harvest.api._base import API
 from harvest.api.dummy import DummyStreamer
-from harvest.definitions import *
 from harvest.utils import *
+from harvest.definitions import *
+from harvest.storage import BaseStorage
 
 
 class PaperBroker(API):
@@ -32,7 +33,13 @@ class PaperBroker(API):
         Interval.DAY_1,
     ]
 
-    def __init__(self, path: str = None, streamer=None, commission_fee=0, save=False):
+    def __init__(
+        self,
+        path: str = None,
+        streamer: API = None,
+        commission_fee: Union[float, str, Dict[str, Any]] = 0,
+        save: bool = False,
+    ) -> None:
         """
         :path: Path to a configuration file holding account information for the user.
         :streamer: A streamer to get asset prices and the current time.
@@ -84,7 +91,7 @@ class PaperBroker(API):
 
         debugger.debug("Broker state: {}".format(self.config))
 
-    def _load_account(self):
+    def _load_account(self) -> None:
         with open(self.save_path, "rb") as stream:
             save_data = pickle.load(stream)
 
@@ -103,7 +110,7 @@ class PaperBroker(API):
             self.orders = orders["orders"]
             self.order_id = orders["order_id"]
 
-    def _save_account(self):
+    def _save_account(self) -> None:
         with open(self.save_path, "wb") as stream:
             save_data = {
                 "account": {
@@ -124,18 +131,20 @@ class PaperBroker(API):
             }
             pickle.dump(save_data, stream)
 
-    def _delete_account(self):
+    def _delete_account(self) -> None:
         try:
             os.remove(self.save_path)
             debugger.debug("Removed saved account file.")
         except:
             debugger.warning("Saved account file does not exists.")
 
-    def setup(self, stats, account, trader_main=None):
+    def setup(
+        self, stats: Stats, account: Account, trader_main: Callable = None
+    ) -> None:
         super().setup(stats, account, trader_main)
         self.backtest = False
 
-    def setup_backtest(self, storage):
+    def setup_backtest(self, storage: BaseStorage) -> None:
         self.backtest = True
         self.storage = storage
 
@@ -369,7 +378,7 @@ class PaperBroker(API):
         limit_price: float,
         in_force: str = "gtc",
         extended: bool = False,
-    ):
+    ) -> Dict[str, Any]:
         data = {
             "type": "STOCK",
             "symbol": symbol,
@@ -398,7 +407,7 @@ class PaperBroker(API):
         limit_price: float,
         in_force: str = "gtc",
         extended: bool = False,
-    ):
+    ) -> Dict[str, Any]:
         data = {
             "type": "CRYPTO",
             "symbol": "@" + symbol,
@@ -429,7 +438,7 @@ class PaperBroker(API):
         exp_date: dt.datetime,
         strike: float,
         in_force: str = "gtc",
-    ):
+    ) -> Dict[str, Any]:
 
         data = {
             "type": "OPTION",
@@ -453,7 +462,7 @@ class PaperBroker(API):
 
     # ------------- Helper methods ------------- #
 
-    def _calc_equity(self):
+    def _calc_equity(self) -> float:
         """
         Calculates the total worth of the broker by adding together the
         worth of all stocks, cryptos, options and cash in the broker.
@@ -468,7 +477,12 @@ class PaperBroker(API):
         e += self.cash
         return float(e)
 
-    def apply_commission(self, inital_price: float, commission_fee, side: str) -> float:
+    def apply_commission(
+        self,
+        inital_price: float,
+        commission_fee: Union[float, str, Dict[str, Any]],
+        side: str,
+    ) -> float:
         if side == "buy":
             f = lambda a, b: float(a + b)
         elif side == "sell":

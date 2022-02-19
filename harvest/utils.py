@@ -23,6 +23,38 @@ logging.basicConfig(
 debugger = logging.getLogger("harvest")
 
 
+class Timestamp:
+    def __init__(self, *args) -> None:
+        if len(args) == 1:
+            timestamp = args[0]
+            if isinstance(timestamp, str):
+                self.timestamp = str_to_datetime(timestamp)
+            elif isinstance(timestamp, dt.datetime):
+                self.timestamp = timestamp
+            else:
+                raise ValueError(f"Invalid timestamp type {type(timestamp)}")
+        elif len(args) > 1:
+            self.timestamp = dt.datetime(*args)
+
+    def __sub__(self, other):
+        return Timerange(self.timestamp - other.timestamp)
+
+
+class Timerange:
+    def __init__(self, *args) -> None:
+        if len(args) == 1:
+            timerange = args[1]
+            if isinstance(timerange, dt.timedelta):
+                self.timerange = timerange
+            else:
+                raise ValueError(f"Invalid timestamp type {type(timerange)}")
+        elif len(args) > 1:
+            range_list = ["days", "hours", "minutes"]
+            dict = {range_list[i]: arg for i, arg in enumerate(args)}
+            self.timerange = dt.timedelta(**dict)
+
+
+
 class Interval(IntEnum):
     SEC_15 = auto()
     MIN_1 = auto()
@@ -33,7 +65,7 @@ class Interval(IntEnum):
     DAY_1 = auto()
 
 
-def interval_string_to_enum(str_interval: str):
+def interval_string_to_enum(str_interval: str) -> Interval:
     if str_interval == "15SEC":
         return Interval.SEC_15
     elif str_interval == "1MIN":
@@ -52,7 +84,7 @@ def interval_string_to_enum(str_interval: str):
         raise ValueError(f"Invalid interval string {str_interval}")
 
 
-def interval_enum_to_string(enum):
+def interval_enum_to_string(enum: Interval) -> str:
     try:
         name = enum.name
         unit, val = name.split("_")
@@ -61,7 +93,7 @@ def interval_enum_to_string(enum):
         return str(enum)
 
 
-def is_freq(time, interval):
+def is_freq(time: dt.datetime, interval: Interval):
     """Determine if algorithm should be invoked for the
     current time, given the interval. For example, if interval is 30MIN,
     algorithm should be called when minutes are 0 and 30, like 11:30 or 12:00.
@@ -83,14 +115,14 @@ def is_freq(time, interval):
     return minutes % val == 0
 
 
-def expand_interval(interval: Interval):
+def expand_interval(interval: Interval) -> Tuple[int, str]:
     """Given a IntEnum interval, returns the unit of time and the number of units."""
     string = interval.name
     unit, value = string.split("_")
     return int(value), unit
 
 
-def expand_string_interval(interval: str):
+def expand_string_interval(interval: str) -> Tuple[int, str]:
     """Given a string interval, returns the unit of time and the number of units.
     For example, "3DAY" should return (3, "DAY")
     """
@@ -108,7 +140,7 @@ def interval_to_timedelta(interval: Interval) -> dt.timedelta:
     return dt.timedelta(**params)
 
 
-def symbol_type(symbol):
+def symbol_type(symbol: str) -> str:
     """Determines the type of the asset the symbol represents.
     This can be 'STOCK', 'CRYPTO', or 'OPTION'
     """
@@ -120,7 +152,7 @@ def symbol_type(symbol):
         return "STOCK"
 
 
-def occ_to_data(symbol: str):
+def occ_to_data(symbol: str) -> Tuple[str, dt.datetime, str, float]:
     original_symbol = symbol
     try:
         symbol = symbol.replace(" ", "")
@@ -136,7 +168,7 @@ def occ_to_data(symbol: str):
         raise Exception(f"Error parsing OCC symbol: {original_symbol}, {e}")
 
 
-def data_to_occ(symbol: str, date: dt.datetime, option_type: str, price: float):
+def data_to_occ(symbol: str, date: dt.datetime, option_type: str, price: float) -> str:
     """
     Converts data into a OCC format string
     """
@@ -230,11 +262,11 @@ def epoch_zero() -> dt.datetime:
     return dt.datetime(1970, 1, 1, tzinfo=tz.utc)
 
 
-def date_to_str(day) -> str:
+def date_to_str(day: dt.date) -> str:
     return day.strftime("%Y-%m-%d")
 
 
-def str_to_date(day) -> str:
+def str_to_date(day: str) -> dt.date:
     return dt.datetime.strptime(day, "%Y-%m-%d")
 
 
@@ -247,7 +279,7 @@ def str_to_datetime(date: str) -> dt.datetime:
     return dt.datetime.strptime(date, "%Y-%m-%d %H:%M")
 
 
-def get_local_timezone():
+def get_local_timezone() -> ZoneInfo:
     """
     Returns a datetime timezone instance for the user's current timezone
     using their system time.
@@ -257,7 +289,7 @@ def get_local_timezone():
 
 def convert_input_to_datetime(
     datetime: Union[str, dt.datetime], timezone: ZoneInfo = None
-):
+) -> dt.datetime:
     """
     Converts the input to a datetime object with a UTC timezone.
     If the datetime object does not have a timezone sets the
@@ -281,7 +313,9 @@ def convert_input_to_datetime(
     return datetime
 
 
-def convert_input_to_timedelta(period):
+def convert_input_to_timedelta(
+    period: Union[Timerange, str, dt.timedelta]
+) -> dt.timedelta:
     """Converts period into a timedelta object.
     Period can be a string, timedelta object, or a Timerange object."""
     if period is None:
@@ -337,43 +371,12 @@ def datetime_utc_to_local(date_time: dt.datetime, timezone: ZoneInfo) -> dt.date
     return new_tz.replace(tzinfo=None)
 
 
-class Timestamp:
-    def __init__(self, *args) -> None:
-        if len(args) == 1:
-            timestamp = args[0]
-            if isinstance(timestamp, str):
-                self.timestamp = str_to_datetime(timestamp)
-            elif isinstance(timestamp, dt.datetime):
-                self.timestamp = timestamp
-            else:
-                raise ValueError(f"Invalid timestamp type {type(timestamp)}")
-        elif len(args) > 1:
-            self.timestamp = dt.datetime(*args)
-
-    def __sub__(self, other):
-        return Timerange(self.timestamp - other.timestamp)
-
-
-class Timerange:
-    def __init__(self, *args) -> None:
-        if len(args) == 1:
-            timerange = args[1]
-            if isinstance(timerange, dt.timedelta):
-                self.timerange = timerange
-            else:
-                raise ValueError(f"Invalid timestamp type {type(timerange)}")
-        elif len(args) > 1:
-            range_list = ["days", "hours", "minutes"]
-            dict = {range_list[i]: arg for i, arg in enumerate(args)}
-            self.timerange = dt.timedelta(**dict)
-
-
 # ========== Misc. utils ==========
-def mark_up(x):
+def mark_up(x: float) -> float:
     return round(x * 1.05, 2)
 
 
-def mark_down(x):
+def mark_down(x: float) -> float:
     return round(x * 0.95, 2)
 
 

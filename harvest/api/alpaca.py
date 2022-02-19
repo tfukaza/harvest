@@ -8,12 +8,13 @@ from typing import Any, Dict, List, Tuple
 # External libraries
 import pandas as pd
 from alpaca_trade_api.rest import REST, TimeFrame, URL
+from alpaca_trade_api.entity import Bar
 from alpaca_trade_api import Stream
 
 # Submodule imports
 from harvest.api._base import StreamAPI, API
-from harvest.definitions import *
 from harvest.utils import *
+from harvest.definitions import *
 
 
 class Alpaca(StreamAPI):
@@ -28,7 +29,7 @@ class Alpaca(StreamAPI):
         path: str = None,
         is_basic_account: bool = False,
         paper_trader: bool = False,
-    ):
+    ) -> None:
         super().__init__(path)
 
         if self.config is None:
@@ -57,7 +58,9 @@ class Alpaca(StreamAPI):
         self.data_lock = threading.Lock()
         self.data = {}
 
-    def setup(self, stats, account, trader_main=None):
+    def setup(
+        self, stats: Stats, account: Account, trader_main: Callable = None
+    ) -> None:
         super().setup(stats, account, trader_main)
 
         self.watch_stock = []
@@ -76,10 +79,10 @@ class Alpaca(StreamAPI):
 
         self.option_cache = {}
 
-    def start(self):
+    def start(self) -> None:
         self.stream.run()
 
-    def exit(self):
+    def exit(self) -> None:
         self.option_cache = {}
 
     # -------------- Streamer methods -------------- #
@@ -97,9 +100,9 @@ class Alpaca(StreamAPI):
         self,
         symbol: str,
         interval: Interval,
-        start: dt.datetime = None,
-        end: dt.datetime = None,
-    ):
+        start: Union[str, dt.datetime] = None,
+        end: Union[str, dt.datetime] = None,
+    ) -> pd.DataFrame:
 
         debugger.debug(f"Fetching {symbol} {interval} price history")
 
@@ -117,19 +120,19 @@ class Alpaca(StreamAPI):
         return self._get_data_from_alpaca(symbol, interval, start, end)
 
     @API._exception_handler
-    def fetch_chain_info(self, symbol: str):
+    def fetch_chain_info(self, symbol: str) -> None:
         raise NotImplementedError("Alpaca does not support options.")
 
     @API._exception_handler
-    def fetch_chain_data(self, symbol: str, date: dt.datetime):
+    def fetch_chain_data(self, symbol: str, date: dt.datetime) -> None:
         raise NotImplementedError("Alpaca does not support options.")
 
     @API._exception_handler
-    def fetch_option_market_data(self, occ_symbol: str):
+    def fetch_option_market_data(self, occ_symbol: str) -> None:
         raise NotImplementedError("Alpaca does not support options.")
 
     @API._exception_handler
-    def fetch_market_hours(self, date: datetime.date):
+    def fetch_market_hours(self, date: datetime.date) -> Dict[str, Any]:
         ret = self.api.get_clock().__dict__["_raw"]
         return {
             "is_open": ret["is_open"],
@@ -140,8 +143,8 @@ class Alpaca(StreamAPI):
     # ------------- Broker methods ------------- #
 
     @API._exception_handler
-    def fetch_stock_positions(self):
-        def fmt(stock: Dict[str, Any]):
+    def fetch_stock_positions(self) -> List[Dict[str, Any]]:
+        def fmt(stock: Dict[str, Any]) -> Dict[str, Any]:
             return {
                 "symbol": stock["symbol"],
                 "avg_price": float(stock["avg_entry_price"]),
@@ -156,19 +159,19 @@ class Alpaca(StreamAPI):
         ]
 
     @API._exception_handler
-    def fetch_option_positions(self):
+    def fetch_option_positions(self) -> List:
         debugger.error("Alpaca does not support options. Returning an empty list.")
         return []
 
     @API._exception_handler
-    def fetch_crypto_positions(self, key=None):
+    def fetch_crypto_positions(self) -> List:
         if self.basic:
             debugger.error(
                 "Alpaca basic accounts do not support crypto. Returning an empty list."
             )
             return []
 
-        def fmt(crypto: Dict[str, Any]):
+        def fmt(crypto: Dict[str, Any]) -> Dict[str, Any]:
             return {
                 "symbol": "@" + crypto["symbol"],
                 "avg_price": float(crypto["avg_entry_price"]),
@@ -183,11 +186,11 @@ class Alpaca(StreamAPI):
         ]
 
     @API._exception_handler
-    def update_option_positions(self, positions: List[Any]):
+    def update_option_positions(self, positions: List[Any]) -> None:
         debugger.error("Alpaca does not support options. Doing nothing.")
 
     @API._exception_handler
-    def fetch_account(self):
+    def fetch_account(self) -> Dict[str, Any]:
         account = self.api.get_account().__dict__["_raw"]
         return {
             "equity": float(account["equity"]),
@@ -198,21 +201,21 @@ class Alpaca(StreamAPI):
         }
 
     @API._exception_handler
-    def fetch_stock_order_status(self, id: str):
-        return self.api.get_order(id).__dict__["_raw"]
+    def fetch_stock_order_status(self, order_id: str) -> Dict[str, Any]:
+        return self.api.get_order(order_id).__dict__["_raw"]
 
     @API._exception_handler
-    def fetch_option_order_status(self, id):
+    def fetch_option_order_status(self, order_id: str) -> None:
         raise NotImplementedError("Alpaca does not support options.")
 
     @API._exception_handler
-    def fetch_crypto_order_status(self, id):
+    def fetch_crypto_order_status(self, order_id: str) -> Dict[str, Any]:
         if self.basic:
             raise Exception("Alpaca basic accounts do not support crypto.")
-        return self.api.get_order(id).__dict__["_raw"]
+        return self.api.get_order(order_id).__dict__["_raw"]
 
     @API._exception_handler
-    def fetch_order_queue(self):
+    def fetch_order_queue(self) -> List[Dict[str, Any]]:
         return [
             self._format_order_status(pos.__dict__["_raw"])
             for pos in self.api.list_orders()
@@ -228,7 +231,7 @@ class Alpaca(StreamAPI):
         limit_price: float,
         in_force: str = "gtc",
         extended: bool = False,
-    ):
+    ) -> Dict[str, Any]:
 
         order = self.api.submit_order(
             symbol,
@@ -257,7 +260,7 @@ class Alpaca(StreamAPI):
         exp_date: dt.datetime,
         strike,
         in_force: str = "gtc",
-    ):
+    ) -> None:
         raise NotImplementedError("Alpaca does not support options.")
 
     def order_crypto_limit(
@@ -268,7 +271,7 @@ class Alpaca(StreamAPI):
         limit_price: float,
         in_force: str = "gtc",
         extended: bool = False,
-    ):
+    ) -> Dict[str, Any]:
         if self.basic:
             raise Exception("Alpaca basic accounts do not support crypto.")
 
@@ -291,14 +294,14 @@ class Alpaca(StreamAPI):
             "alpaca": order,
         }
 
-    def cancel_stock_order(self, order_id):
+    def cancel_stock_order(self, order_id: str) -> Dict[str, Any]:
         ret = self.api.cancel_order(order_id)
         return {"id": order_id}
 
-    def cancel_option_order(self, order_id):
+    def cancel_option_order(self, order_id: str) -> None:
         raise NotImplementedError("Alpaca does not support options.")
 
-    def cancel_crypto_order(self, order_id):
+    def cancel_crypto_order(self, order_id: str) -> Dict[str, Any]:
         if self.basic:
             raise Exception("Alpaca basic accounts do not support crypto.")
         ret = self.api.cancel_order(order_id)
@@ -348,7 +351,9 @@ class Alpaca(StreamAPI):
 
         return {"alpaca_api_key": f"{api_key_id}", "alpaca_secret_key": f"{secret_key}"}
 
-    def _format_order_status(self, order: Dict[str, Any], is_stock: bool = True):
+    def _format_order_status(
+        self, order: Dict[str, Any], is_stock: bool = True
+    ) -> Dict[str, Any]:
         return {
             "type": "STOCK" if is_stock else "CRYPTO",
             "id": order["id"],
@@ -407,7 +412,7 @@ class Alpaca(StreamAPI):
         df = aggregate_df(df, interval)
         return df
 
-    def _format_df(self, df: pd.DataFrame, symbol: str):
+    def _format_df(self, df: pd.DataFrame, symbol: str) -> pd.DataFrame:
         df = df[["t", "o", "h", "l", "c", "v"]]
         df.rename(
             columns={
@@ -428,7 +433,7 @@ class Alpaca(StreamAPI):
         df.columns = pd.MultiIndex.from_product([[symbol], df.columns])
         return df.dropna()
 
-    async def _update_data(self, bar):
+    async def _update_data(self, bar: Bar) -> None:
         # Update data with the latest bars
         self.data_lock.acquire()
         bar = bar.__dict__["_raw"]

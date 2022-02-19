@@ -13,10 +13,11 @@ import pytz
 # Submodule imports
 from harvest.storage import PickleStorage
 import harvest.trader.trader as trader
+from harvest.api._base import API
 from harvest.api.yahoo import YahooStreamer
 from harvest.api.paper import PaperBroker
-from harvest.definitions import *
 from harvest.utils import *
+from harvest.definitions import *
 
 
 class BackTester(trader.PaperTrader):
@@ -25,7 +26,7 @@ class BackTester(trader.PaperTrader):
     on historical data.
     """
 
-    def __init__(self, streamer=None, debug=False, config={}):
+    def __init__(self, streamer=None, debug=False, config={}) -> None:
         """Initializes the TestTrader."""
 
         self.streamer = YahooStreamer() if streamer is None else streamer
@@ -45,7 +46,7 @@ class BackTester(trader.PaperTrader):
         start=None,
         end=None,
         period=None,
-    ):
+    ) -> None:
         """Runs backtesting.
 
         The interface is very similar to the Trader class, with some additional parameters for specifying
@@ -242,7 +243,9 @@ class BackTester(trader.PaperTrader):
 
         self.load_watch = True
 
-    def _setup_start_end(self, start, end, period):
+    def _setup_start_end(
+        self, start: Union[str, dt.datetime], end: Union[str, dt.datetime], period
+    ):
         start = convert_input_to_datetime(start, self.stats.timezone)
         end = convert_input_to_datetime(end, self.stats.timezone)
         period = convert_input_to_timedelta(period)

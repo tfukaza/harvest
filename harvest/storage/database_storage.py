@@ -43,7 +43,7 @@ class DBStorage(BaseStorage):
     An extension of the basic storage that saves data in SQL tables.
     """
 
-    def __init__(self, db: str = "sqlite:///data.db"):
+    def __init__(self, db: str = "sqlite:///data.db") -> None:
         """
         Adds a directory to save data to. Loads any data that is currently in the
         directory.
@@ -83,7 +83,7 @@ class DBStorage(BaseStorage):
 
     def aggregate(
         self, symbol: str, base: str, target: str, remove_duplicate: bool = True
-    ):
+    ) -> None:
         """
         Aggregates the stock data from the interval specified in 'from' to 'to'.
         """
@@ -94,7 +94,7 @@ class DBStorage(BaseStorage):
         )
         self.store(symbol, target, agg_data)
 
-    def reset(self, symbol: str, interval: str):
+    def reset(self, symbol: str, interval: str) -> None:
         """
         Resets to an empty dataframe
         """

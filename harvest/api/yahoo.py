@@ -13,6 +13,7 @@ import yfinance as yf
 # Submodule imports
 from harvest.api._base import API
 from harvest.utils import *
+from harvest.definitions import *
 
 
 class YahooStreamer(API):
@@ -26,10 +27,10 @@ class YahooStreamer(API):
     ]
     exchange = "NASDAQ"
 
-    def __init__(self, path=None):
+    def __init__(self, path: str = None) -> None:
         pass
 
-    def setup(self, stats, account, trader_main=None):
+    def setup(self, stats: Stats, account: Account, trader_main: Callable = None):
         super().setup(stats, account, trader_main)
 
         self.watch_ticker = {}
@@ -42,7 +43,7 @@ class YahooStreamer(API):
 
         self.option_cache = {}
 
-    def fmt_interval(self, interval):
+    def fmt_interval(self, interval: Interval) -> str:
         val, unit = expand_interval(interval)
         if unit == "MIN":
             interval_fmt = f"{val}m"
@@ -51,18 +52,18 @@ class YahooStreamer(API):
 
         return interval_fmt
 
-    def fmt_symbol(self, symbol: str):
+    def fmt_symbol(self, symbol: str) -> str:
         return symbol[1:] + "-USD" if is_crypto(symbol) else symbol
 
-    def unfmt_symbol(self, symbol: str):
+    def unfmt_symbol(self, symbol: str) -> str:
         if symbol[-4:] == "-USD":
             return "@" + symbol[:-4]
         return symbol
 
-    def exit(self):
+    def exit(self) -> None:
         self.option_cache = {}
 
-    def main(self):
+    def main(self) -> None:
         df_dict = {}
         combo = [
             self.fmt_symbol(sym)
@@ -125,7 +126,7 @@ class YahooStreamer(API):
         interval: Interval,
         start: dt.datetime = None,
         end: dt.datetime = None,
-    ):
+    ) -> pd.DataFrame:
 
         debugger.debug(f"Fetching {symbol} {interval} price history")
         if isinstance(interval, str):
@@ -169,7 +170,7 @@ class YahooStreamer(API):
         return df
 
     @API._exception_handler
-    def fetch_chain_info(self, symbol: str):
+    def fetch_chain_info(self, symbol: str) -> Dict[str, Any]:
         option_list = self.watch_ticker[symbol].options
         return {
             "id": "n/a",
@@ -181,7 +182,7 @@ class YahooStreamer(API):
         }
 
     @API._exception_handler
-    def fetch_chain_data(self, symbol: str, date: dt.datetime):
+    def fetch_chain_data(self, symbol: str, date: dt.datetime) -> pd.DataFrame:
 
         if (
             bool(self.option_cache)
@@ -214,7 +215,7 @@ class YahooStreamer(API):
         return df
 
     @API._exception_handler
-    def fetch_option_market_data(self, occ_symbol: str):
+    def fetch_option_market_data(self, occ_symbol: str) -> Dict[str, Any]:
         occ_symbol = occ_symbol.replace(" ", "")
         symbol, date, typ, _ = self.occ_to_data(occ_symbol)
         chain = self.watch_ticker[symbol].option_chain(date_to_str(date))
@@ -229,7 +230,7 @@ class YahooStreamer(API):
         }
 
     @API._exception_handler
-    def fetch_market_hours(self, date: datetime.date):
+    def fetch_market_hours(self, date: datetime.date) -> Dict[str, Any]:
         # yfinance does not support getting market hours,
         # so use the free Tradier API instead.
         # See documentation.tradier.com/brokerage-api/markets/get-clock
@@ -284,7 +285,7 @@ class YahooStreamer(API):
 
     # ------------- Helper methods ------------- #
 
-    def _format_df(self, df: pd.DataFrame, symbol: str):
+    def _format_df(self, df: pd.DataFrame, symbol: str) -> pd.DataFrame:
         df = df.copy()
         df.reset_index(inplace=True)
         ts_name = df.columns[0]
