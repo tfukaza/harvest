@@ -124,13 +124,16 @@ class YahooStreamer(API):
         self,
         symbol: str,
         interval: Interval,
-        start: dt.datetime = None,
-        end: dt.datetime = None,
+        start: Union[str, dt.datetime] = None,
+        end: Union[str, dt.datetime] = None,
     ) -> pd.DataFrame:
 
         debugger.debug(f"Fetching {symbol} {interval} price history")
         if isinstance(interval, str):
             interval = interval_string_to_enum(interval)
+
+        start = convert_input_to_datetime(start)
+        end = convert_input_to_datetime(end)
 
         if start is None:
             start = epoch_zero()
