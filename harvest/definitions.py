@@ -1,5 +1,5 @@
 import datetime as dt
-from typing import Any, Callable, Dict, Iterable, List 
+from typing import Any, Callable, Dict, Iterable, List
 from harvest.utils import symbol_type, occ_to_data
 
 
@@ -125,6 +125,7 @@ class Account:
     def multiplier(self) -> float:
         return self._multiplier
 
+
 class Order:
     def __init__(
         self, symbol: str, order_id: Any, side: str, quantity: float, time_in_force
@@ -237,6 +238,7 @@ class Orders:
     def stock_crypto_symbols(self) -> List[str]:
         return [o.base_symbol if o.type == "OPTION" else o.symbol for o in self._orders]
 
+
 class OptionOrder(Order):
     def __init__(
         self,
@@ -344,6 +346,7 @@ class Position:
             + f" Returns:\t{'▲' if self._profit_percent > 0 else '▼'}{self._profit_percent * 100}%\n"
             + "─" * 50
         )
+
 
 class Positions:
     def __init__(self, stock=[], option=[], crypto=[]):

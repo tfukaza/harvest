@@ -54,7 +54,6 @@ class Timerange:
             self.timerange = dt.timedelta(**dict)
 
 
-
 class Interval(IntEnum):
     SEC_15 = auto()
     MIN_1 = auto()
