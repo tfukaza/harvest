@@ -118,7 +118,6 @@ class DummyStreamer(API):
         if end is None:
             end = self.get_current_time()
 
-
         results = self._generate_history(symbol, interval, start, end)
 
         if self.stock_market_times:

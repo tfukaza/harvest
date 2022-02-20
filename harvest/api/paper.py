@@ -447,7 +447,7 @@ class PaperBroker(API):
     ) -> Dict[str, Any]:
 
         self._validate_order(side, quantity, limit_price)
-        
+
         data = {
             "type": "OPTION",
             "symbol": data_to_occ(symbol, exp_date, option_type, strike),
