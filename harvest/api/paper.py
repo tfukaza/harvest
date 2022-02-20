@@ -379,6 +379,9 @@ class PaperBroker(API):
         in_force: str = "gtc",
         extended: bool = False,
     ) -> Dict[str, Any]:
+
+        self._validate_order(side, quantity, limit_price)
+
         data = {
             "type": "STOCK",
             "symbol": symbol,
@@ -408,6 +411,9 @@ class PaperBroker(API):
         in_force: str = "gtc",
         extended: bool = False,
     ) -> Dict[str, Any]:
+
+        self._validate_order(side, quantity, limit_price)
+
         data = {
             "type": "CRYPTO",
             "symbol": "@" + symbol,
@@ -440,6 +446,8 @@ class PaperBroker(API):
         in_force: str = "gtc",
     ) -> Dict[str, Any]:
 
+        self._validate_order(side, quantity, limit_price)
+        
         data = {
             "type": "OPTION",
             "symbol": data_to_occ(symbol, exp_date, option_type, strike),

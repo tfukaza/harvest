@@ -99,6 +99,9 @@ class DummyStreamer(API):
         end: Union[str, dt.datetime] = None,
     ) -> pd.DataFrame:
 
+        start = convert_input_to_datetime(start)
+        end = convert_input_to_datetime(end)
+
         if start is None:
             if interval in [
                 Interval.MIN_1,
@@ -115,8 +118,6 @@ class DummyStreamer(API):
         if end is None:
             end = self.get_current_time()
 
-        start = convert_input_to_datetime(start)
-        end = convert_input_to_datetime(end)
 
         results = self._generate_history(symbol, interval, start, end)
 

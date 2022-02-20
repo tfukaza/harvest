@@ -209,7 +209,7 @@ def aggregate_df(df, interval: Interval) -> pd.DataFrame:
     return df.dropna()
 
 
-def floor_trim_df(df, base_interval, agg_interval):
+def floor_trim_df(df, base_interval: Interval, agg_interval: Interval):
     """
     This function takes a dataframe, and trims off rows
     from the beginning so that the timestamp of the first row is a multiple of agg_interval

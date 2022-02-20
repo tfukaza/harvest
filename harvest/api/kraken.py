@@ -308,6 +308,8 @@ class Kraken(API):
         extended: bool = False,
     ) -> Dict[str, Any]:
 
+        self._validate_order(side, quantity, limit_price)
+
         kraken_symbol = self._ticker_to_kraken(symbol)
         order = self._get_result(
             self.api.query_private(

@@ -2,12 +2,11 @@
 import os
 import time
 import unittest
-import unittest.mock
 import datetime as dt
 
 from harvest.utils import *
 from harvest.definitions import *
-from harvest.api.alpaca import YahooStreamer
+from harvest.api.yahoo import YahooStreamer
 
 debugger.setLevel("DEBUG")
 
