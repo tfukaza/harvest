@@ -12,8 +12,8 @@ from os.path import exists
 import pandas as pd
 
 # Submodule imports
-from harvest.definitions import *
 from harvest.utils import *
+from harvest.definitions import *
 
 
 class API:
@@ -315,7 +315,7 @@ class API:
 
     # ------------- Broker methods ------------- #
 
-    def fetch_stock_positions(self) -> List:
+    def fetch_stock_positions(self) -> List[Dict[str, Any]]:
         """
         Returns all current stock positions
 
@@ -329,7 +329,7 @@ class API:
         )
         return []
 
-    def fetch_option_positions(self) -> List:
+    def fetch_option_positions(self) -> List[Dict[str, Any]]:
         """
         Returns all current option positions
 
@@ -348,7 +348,7 @@ class API:
         )
         return []
 
-    def fetch_crypto_positions(self) -> List:
+    def fetch_crypto_positions(self) -> List[Dict[str, Any]]:
         """
         Returns all current crypto positions
 
@@ -452,7 +452,7 @@ class API:
             f"{type(self).__name__} does not support this broker method: `fetch_crypto_order_status`."
         )
 
-    def fetch_order_queue(self) -> List:
+    def fetch_order_queue(self) -> List[Dict[str, Any]]:
         """
         Returns all current pending orders
 

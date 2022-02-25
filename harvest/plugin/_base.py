@@ -11,7 +11,7 @@ class Plugin:
         {Name of source}{Functionality added}Plugin
     """
 
-    def __init__(self, name: str, dependencies: List[str] = []):
+    def __init__(self, name: str, dependencies: List[str] = []) -> None:
         """
         :name: a string that will serve as the name of the plugin. Must
         be a valid python variable because in the algo class, this plugin

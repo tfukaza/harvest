@@ -67,7 +67,7 @@ class BaseStorage:
         transaction_storage_limit: bool = True,
         performance_storage_size: int = 200,
         performance_storage_limit: bool = True,
-    ):
+    ) -> None:
         """
         queue_size: The maximum number of data points to store for asset price history.
             This helps prevent the database from becoming infinitely large as time progresses.
@@ -109,7 +109,7 @@ class BaseStorage:
                 columns=["equity"], index=[]
             )
 
-    def setup(self, stats):
+    def setup(self, stats: Stats) -> None:
         self.stats = stats
 
     def store(
@@ -225,7 +225,7 @@ class BaseStorage:
         self.storage_lock.release()
         return data.loc[start:end]
 
-    def add_calendar_data(self, data):
+    def add_calendar_data(self, data: Dict[str, Any]) -> None:
         timestamp = self.stats.timestamp.date()
         is_open = data["is_open"]
         open_at = data["open_at"]
@@ -286,7 +286,7 @@ class BaseStorage:
     def load_calendar(self) -> pd.DataFrame:
         return self.storage_calendar
 
-    def reset(self, symbol: str, interval: Interval):
+    def reset(self, symbol: str, interval: Interval) -> None:
         """
         Resets to an empty dataframe
         """
@@ -319,7 +319,7 @@ class BaseStorage:
         base: Interval,
         target: Interval,
         remove_duplicate: bool = True,
-    ):
+    ) -> None:
         """
         Aggregates the stock data from the interval specified in 'from' to 'to'.
         """
@@ -337,13 +337,13 @@ class BaseStorage:
             ].iloc[-self.price_storage_size :]
         self.storage_lock.release()
 
-    def init_performace_data(self, equity: float, timestamp):
+    def init_performace_data(self, equity: float, timestamp: dt.datetime) -> None:
         for interval, days in self.performance_history_intervals:
             self.storage_performance[interval] = pd.DataFrame(
                 {"equity": [equity]}, index=[timestamp]
             )
 
-    def add_performance_data(self, equity: float, timestamp):
+    def add_performance_data(self, equity: float, timestamp: dt.datetime) -> None:
         """
         Adds the performance data to the storage.
 

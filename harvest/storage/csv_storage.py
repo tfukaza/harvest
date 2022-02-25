@@ -20,7 +20,7 @@ class CSVStorage(BaseStorage):
     An extension of the basic storage that saves data in csv files.
     """
 
-    def __init__(self, save_dir: str = "data"):
+    def __init__(self, save_dir: str = "data") -> None:
         super().__init__()
         """
         Adds a directory to save data to. Loads any data that is currently in the

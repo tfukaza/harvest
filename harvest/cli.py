@@ -6,9 +6,10 @@ import importlib.util
 
 from os import listdir
 from os.path import isfile, join
+from typing import Callable
 
 # Lambda functions cannot raise exceptions so using higher order functions.
-def _raise(e):
+def _raise(e) -> Callable:
     def raise_helper():
         raise e
 
@@ -26,6 +27,7 @@ try:
 except ModuleNotFoundError as e:
     DBStorage = _raise(e)
 
+from harvest.api._base import API
 from harvest.api.dummy import DummyStreamer
 from harvest.api.yahoo import YahooStreamer
 from harvest.api.polygon import PolygonStreamer
@@ -120,7 +122,7 @@ visualize_parser = subparsers.add_parser("visualize")
 visualize_parser.add_argument("path", help="path to harvest generated data file")
 
 
-def main():
+def main() -> None:
     """
     Entrypoint which parses the command line arguments. Calls subcommands based on which subparser was used.
     :args: A Namespace object containing parsed user arguments.
@@ -138,7 +140,7 @@ def main():
         sys.exit(1)
 
 
-def start(args: argparse.Namespace, test: bool = False):
+def start(args: argparse.Namespace, test: bool = False) -> None:
     """
     Starts the Harvest LiveTrader with the given storage, streamer, broker, and algos specified.
     :args: A Namespace object containing parsed user arguments.
@@ -187,7 +189,7 @@ def start(args: argparse.Namespace, test: bool = False):
         trader.start()
 
 
-def visualize(args: argparse.Namespace):
+def visualize(args: argparse.Namespace) -> None:
     """
     Read a csv or pickle file created by Harvest with ohlc data and graph the data.
     :args: A Namespace object containing parsed user arguments.
@@ -241,7 +243,7 @@ def visualize(args: argparse.Namespace):
     )
 
 
-def _get_storage(storage: str):
+def _get_storage(storage: str) -> None:
     """
     Returns the storage instance specified by the user.
     :storage: The type of storage to be instantiated.
@@ -254,7 +256,7 @@ def _get_storage(storage: str):
     return storage_cls()
 
 
-def _get_streamer(streamer):
+def _get_streamer(streamer: str) -> API:
     """
     Returns the streamer instance specified by the user.
     :streamer: The type of streamer to be instantiated.
@@ -267,7 +269,7 @@ def _get_streamer(streamer):
     return streamer_cls()
 
 
-def _get_broker(broker, streamer, streamer_cls):
+def _get_broker(broker: str, streamer: str, streamer_cls: API) -> API:
     """
     Returns the broker instance specified by the user.
     :broker: The type of broker to be instantiated.

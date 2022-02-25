@@ -10,7 +10,7 @@ class DoltOptionsPlugin:
     database.
     """
 
-    def __init__(self, name: str = "dolt_options", path: str = "options"):
+    def __init__(self, name: str = "dolt_options", path: str = "options") -> None:
         """
         :path: The path to the post-no-preference/options repo.
         """
