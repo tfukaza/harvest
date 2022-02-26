@@ -837,6 +837,11 @@ class API:
 
         return wrapper
 
+    def _validate_order(self, side: str, quantity: float, limit_price: float) -> None:
+        assert side in ("buy", "sell"), "Side must be either 'buy' or 'sell'"
+        assert quantity >= 0, "Quantity must be nonnegative"
+        assert limit_price >= 0, "Limit price must be nonnegative"
+
 
 class StreamAPI(API):
     """ """

@@ -233,6 +233,8 @@ class Alpaca(StreamAPI):
         extended: bool = False,
     ) -> Dict[str, Any]:
 
+        self._validate_order(side, quantity, limit_price)
+
         order = self.api.submit_order(
             symbol,
             quantity,
@@ -274,6 +276,8 @@ class Alpaca(StreamAPI):
     ) -> Dict[str, Any]:
         if self.basic:
             raise Exception("Alpaca basic accounts do not support crypto.")
+
+        self._validate_order(side, quantity, limit_price)
 
         symbol = symbol[1:]
 
