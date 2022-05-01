@@ -22,6 +22,10 @@ from harvest.api.paper import PaperBroker
 from harvest.storage import BaseStorage
 from harvest.server import Server
 
+from rich.console import Console
+from rich.table import Table
+from rich.panel import Panel
+from rich import box
 
 class LiveTrader:
     """
@@ -54,6 +58,7 @@ class LiveTrader:
         self.storage = BaseStorage() if storage is None else storage
         self._init_attributes()
         self._setup_debugger(debug)
+        self.console = Console()
 
     def _init_checks(self) -> None:
         # Harvest only supports Python 3.9 or newer.
@@ -134,52 +139,77 @@ class LiveTrader:
         :param bool? sync: If true, the system will sync with the broker and fetch current positions and pending orders. defaults to true.
         :param bool? all_history: If true, gets all history for all the given assets and if false only get data in the past three days.
         """
-        debugger.debug("Setting up Harvest...")
+        debugger.debug("Setting up Harvest")
+        with self.console.status("[bold green] Setting up Trader...[/bold green]") as status:
+            # If sync is on, call the broker to load pending orders and all positions currently held.
+            if sync:
+                self._setup_stats()
+                for s in self.positions.stock_crypto:
+                    self.watchlist.append(s.symbol)
+                for s in self.positions.option:
+                    self.watchlist.append(s.base_symbol)
+                self.watchlist.extend(self.orders.stock_crypto_symbols)
 
-        # If sync is on, call the broker to load pending orders and all positions currently held.
-        if sync:
-            self._setup_stats()
-            for s in self.positions.stock_crypto:
-                self.watchlist.append(s.symbol)
-            for s in self.positions.option:
-                self.watchlist.append(s.base_symbol)
-            self.watchlist.extend(self.orders.stock_crypto_symbols)
+            # Remove duplicates in watchlist
+            self.watchlist = list(set(self.watchlist))
+            debugger.debug(f"Watchlist: {self.watchlist}")
 
-        # Remove duplicates in watchlist
-        self.watchlist = list(set(self.watchlist))
-        debugger.debug(f"Watchlist: {self.watchlist}")
+            # Initialize a dict of symbols and the intervals they need to run at
+            self._setup_params(self.watchlist, interval, aggregations)
+            self.watchlist = self.stats.watchlist_cfg.keys()
 
-        # Initialize a dict of symbols and the intervals they need to run at
-        self._setup_params(self.watchlist, interval, aggregations)
-        self.watchlist = self.stats.watchlist_cfg.keys()
+            if not self.watchlist:
+                raise Exception("No securities were added to watchlist")
 
-        if not self.watchlist:
-            raise Exception("No securities were added to watchlist")
+            self.broker.setup(self.stats, self.account, self.main)
+            self.console.print(f"- [cyan]{self.broker.__class__.__name__}[/cyan] setup complete")
+            if self.broker != self.streamer:
+                # Only call the streamer setup if it is a different
+                # instance than the broker otherwise some brokers can fail!
+                self.streamer.setup(self.stats, self.account, self.main)
+                self.console.print(f"- [cyan]{self.streamer.__class__.__name__}[/cyan] setup complete")
 
-        self.broker.setup(self.stats, self.account, self.main)
-        if self.broker != self.streamer:
-            # Only call the streamer setup if it is a different
-            # instance than the broker otherwise some brokers can fail!
-            self.streamer.setup(self.stats, self.account, self.main)
+            # Initialize the account
+            self._setup_account()
+            self.storage.init_performace_data(self.account.equity, self.stats.timestamp)
 
-        # Initialize the account
-        self._setup_account()
-        self.storage.init_performace_data(self.account.equity, self.stats.timestamp)
+            # Initialize the storage
+            self._storage_init(all_history)
+            self.console.print(f"- [cyan]{self.storage.__class__.__name__}[/cyan] setup complete")
 
-        # Initialize the storage
-        self._storage_init(all_history)
+            for a in self.algo:
+                a.init(self.stats, self.func, self.account)
+                a.trader = self
+                a.setup()
+            self.console.print("- All algorithms initialized")
 
-        for a in self.algo:
-            a.init(self.stats, self.func, self.account)
-            a.trader = self
-            a.setup()
-
-        debugger.debug("Setup complete")
+        self.console.print("> [bold green]Trader initialization complete[/bold green]")
 
         if server:
             self.server.start()
+        
+        self._print_status()
 
         self.streamer.start()
+
+    def _print_account(self) -> None:
+        a = self.account
+        def p_line(k, v):
+            return f"{k}", f"[bold white]{v}[/bold white]"
+        table = Table(
+            title=a.account_name, 
+            show_header=False,
+            show_lines=True,
+            box=box.ROUNDED,   
+            )
+        table.add_row(*p_line("Cash", a.cash))
+        table.add_row(*p_line("Equity", a.equity))
+
+        self.console.print(table)
+
+
+    def _print_status(self) -> None:
+        self._print_account()
 
     def _setup_stats(self) -> None:
         """Initializes local cache of stocks, options, and crypto positions."""
@@ -314,7 +344,7 @@ class LiveTrader:
                 new_algo.append(a)
                 continue
             try:
-                debugger.info(f"Running algo: {a}")
+                #debugger.info(f"Running algo: {a}")
                 a.main()
                 new_algo.append(a)
             except Exception as e:
@@ -464,7 +494,7 @@ class LiveTrader:
             )
             return None
         ret = self.broker.buy(symbol, quantity, limit_price, in_force, extended)
-        print(f"Account info after buy: {self.account}")
+        debugger.debug(f"Account info after buy: {self.account}")
 
         if ret is None:
             debugger.debug("BUY failed")

@@ -65,7 +65,7 @@ class Functions:
 
 class Account:
     def __init__(self, account_name: str = None) -> None:
-        self._account_name = account_name or "default"
+        self._account_name = account_name or "MyAccount"
         self._positions = Positions()
         self._orders = Orders()
 

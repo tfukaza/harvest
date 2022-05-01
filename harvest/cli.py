@@ -121,6 +121,9 @@ start_parser.add_argument(
 visualize_parser = subparsers.add_parser("visualize")
 visualize_parser.add_argument("path", help="path to harvest generated data file")
 
+from rich.console import Console
+from rich.tree import Tree
+from rich.padding import Padding
 
 def main() -> None:
     """
@@ -152,40 +155,55 @@ def start(args: argparse.Namespace, test: bool = False) -> None:
     debug = args.debug
     trader = LiveTrader(streamer=streamer, broker=broker, storage=storage, debug=debug)
 
-    # Get the directories.
-    directory = args.directory
-    debugger.info(f"🕵 Searching directory {directory}")
-    files = [fi for fi in listdir(directory) if isfile(join(directory, fi))]
-    debugger.info(f"🎉 Found files {files}")
-    # For each file in the directory...
-    for f in files:
-        names = f.split(".")
-        # Filter out non-python files.
-        if len(names) <= 1 or names[-1] != "py":
-            continue
-        name = "".join(names[:-1])
+    console = Console()
+    console.print(f"> [bold green]Welcome to Harvest[/bold green]")
 
-        # ...open it...
-        with open(join(directory, f), "r") as algo_file:
-            firstline = algo_file.readline()
-            if firstline.find("HARVEST_SKIP") != -1:
-                debugger.info(f"ℹ Skipping {f}")
+    with console.status("[bold green] Loading... [/bold green]") as status:
+
+        # Get the directories.
+        directory = args.directory
+        console.print(f"- Searching directory [bold cyan]{directory}[/bold cyan] 🔎")
+        dir_tree = Tree(f"🗂️  {directory}")
+        files = [fi for fi in listdir(directory) if isfile(join(directory, fi))]
+        # For each file in the directory...
+        for f in files:
+            names = f.split(".")
+            # Filter out non-python files.
+            if len(names) <= 1 or names[-1] != "py":
                 continue
+            name = "".join(names[:-1])
+            # ...open it...
+            with open(join(directory, f), "r") as algo_file:
+                firstline = algo_file.readline()
+                if firstline.find("HARVEST_SKIP") != -1:
+                    dir_tree.add(f"⏩ {f} (Skipped)")
+                    continue
+            py_file = dir_tree.add(f"📄 {f}")
 
-        # ...load in the entire file and add the algo to the trader.
-        algo_path = os.path.realpath(join(directory, f))
-        spec = importlib.util.spec_from_file_location(name, algo_path)
-        algo = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(algo)
-        # Iterate though the variables and if a variable is a subclass of BaseAlgo instantiate it and added to the trader.
-        for algo_cls in inspect.getmembers(algo):
-            k, v = algo_cls[0], algo_cls[1]
-            if inspect.isclass(v) and v != BaseAlgo and issubclass(v, BaseAlgo):
-                debugger.info(f"🎉 Found algo {k} in {f}, adding to trader")
-                trader.add_algo(v())
+            # ...load in the entire file and add the algo to the trader.
+            algo_path = os.path.realpath(join(directory, f))
+            spec = importlib.util.spec_from_file_location(name, algo_path)
+            algo = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(algo)
+            # Iterate though the variables and if a variable is a subclass of BaseAlgo instantiate it and added to the trader.
+            for algo_cls in inspect.getmembers(algo):
+                k, v = algo_cls[0], algo_cls[1]
+                if inspect.isclass(v) and v != BaseAlgo and issubclass(v, BaseAlgo):
+                    py_file.add(f"[green]{k}[/green]")
+                    trader.add_algo(v())
+        algo_count = len(trader.algo)
+        if algo_count == 0:
+            console.print("⛔ No algorithms found!")
+            sys.exit(1)
+
+        dir_pad = Padding(dir_tree, (0, 4))
+        console.print(dir_pad)
+        console.print(f"- Found {len(trader.algo)} algo{'' if algo_count == 1 else 's'} 🎉")
+        #status.stop()
+    console.print(f"> [bold green]Finished loading algorithms[/bold green]")
 
     if not test:
-        debugger.info(f"🎊 Starting trader")
+        #console.print(f"Starting trader")
         trader.start()
 
 
