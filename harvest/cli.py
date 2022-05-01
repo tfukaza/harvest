@@ -16,6 +16,7 @@ def _raise(e) -> Callable:
 
     return raise_helper
 
+
 from harvest.utils import debugger
 from harvest.util.factory import storages, streamers, brokers
 from harvest.algo import BaseAlgo
@@ -94,6 +95,7 @@ def start(args: argparse.Namespace, test: bool = False) -> None:
     debug = args.debug
 
     from harvest.trader import LiveTrader
+
     trader = LiveTrader(streamer=streamer, broker=broker, storage=storage, debug=debug)
 
     # Get the directories.
@@ -186,8 +188,10 @@ def visualize(args: argparse.Namespace) -> None:
         title=path,
     )
 
+
 def string_to_class(class_string: str) -> type:
     return getattr(sys.modules[__name__], class_string, None)
+
 
 # def _get_storage(storage: str) -> str:
 #     """

@@ -1,6 +1,7 @@
 # Builtins
 from logging import debug
 import re
+
 # import traceback
 import sys
 from sys import exit
@@ -14,6 +15,7 @@ import tzlocal
 # Submodule imports
 from harvest.utils import *
 from harvest.definitions import *
+
 # from harvest.storage import BaseStorage
 # from harvest.api._base import API
 # from harvest.api.yahoo import YahooStreamer
@@ -70,18 +72,16 @@ class LiveTrader:
             self.broker_str = streamer
         else:
             self.broker_str = broker
-        
+
         if self.streamer_str not in apis:
             raise Exception(f"Streamer {self.streamer_str} is not recognized.")
         if self.broker_str not in apis:
             raise Exception(f"Broker {self.broker_str} is not recognized.")
-        
+
         if self.streamer_str not in streamers:
             raise Exception(f"{self.streamer_str} cannot be used as a streamer.")
         if self.broker_str not in brokers:
             raise Exception(f"{self.broker_str} cannot be used as a broker.")
-        
-
 
     def _set_storage(self, storage: str) -> None:
         """Sets the storage."""
@@ -180,7 +180,6 @@ class LiveTrader:
         # Remove duplicates in watchlist
         self.watchlist = list(set(self.watchlist))
         debugger.debug(f"Watchlist: {self.watchlist}")
-
 
         # Initialize the account
         self._setup_account()
@@ -346,7 +345,7 @@ class LiveTrader:
                     f"Algorithm {a} failed, removing from algorithm list.\n"
                 )
                 debugger.warning(f"Exception: {e}\n")
-                #debugger.warning(f"Traceback: {traceback.format_exc()}\n")
+                # debugger.warning(f"Traceback: {traceback.format_exc()}\n")
 
         if len(new_algo) <= 0:
             debugger.critical("No algorithms to run")
@@ -462,13 +461,13 @@ class LiveTrader:
 
     def fetch_option_market_data(self, *args, **kwargs):
         return self.streamer.fetch_option_market_data(*args, **kwargs)
-    
+
     def load(self, *args, **kwargs):
         return self.storage.load(*args, **kwargs)
-    
+
     def store(self, *args, **kwargs):
         return self.storage.store(*args, **kwargs)
-    
+
     def load_daytrade(self, *args, **kwargs):
         return self.storage.load_daytrade(*args, **kwargs)
 

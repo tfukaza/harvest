@@ -12,6 +12,7 @@ from harvest.api.kraken import Kraken
 secret_path = os.environ["SECRET_PATH"]
 debugger.setLevel("DEBUG")
 
+
 class TestKraken(unittest.TestCase):
     def test_current_time(self):
         broker = Kraken(path=secret_path)
@@ -26,23 +27,23 @@ class TestKraken(unittest.TestCase):
         broker = Kraken(path=secret_path)
 
         # Use datetime with no timezone for start and end
-        end = dt.datetime.now() 
+        end = dt.datetime.now()
         start = end - dt.timedelta(hours=12)
-        results = broker.fetch_price_history('@BTC', Interval.MIN_1, start, end)
+        results = broker.fetch_price_history("@BTC", Interval.MIN_1, start, end)
         self.assertTrue(results.shape[0] > 0)
         self.assertTrue(results.shape[1] == 5)
 
         # Use datetime with timezone for start and end
         start = start.astimezone(dt.timezone(dt.timedelta(hours=2)))
         end = end.astimezone(dt.timezone(dt.timedelta(hours=2)))
-        results = broker.fetch_price_history('@DOGE', Interval.MIN_1, start, end)
+        results = broker.fetch_price_history("@DOGE", Interval.MIN_1, start, end)
         self.assertTrue(results.shape[0] > 0)
         self.assertTrue(results.shape[1] == 5)
 
         # Use ISO 8601 string for start and end
         start = start.isoformat()
         end = end.isoformat()
-        results = broker.fetch_price_history('@BTC', Interval.MIN_1, start, end)
+        results = broker.fetch_price_history("@BTC", Interval.MIN_1, start, end)
         self.assertTrue(results.shape[0] > 0)
         self.assertTrue(results.shape[1] == 5)
 
@@ -82,7 +83,7 @@ class TestKraken(unittest.TestCase):
     def test_buy_cancel(self):
         broker = Kraken(path=secret_path)
 
-        # Failes with insufficent funds. 
+        # Failes with insufficent funds.
         try:
             results = broker.order_crypto_limit("buy", "@BTC", 1, 1.00)
         except:

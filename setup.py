@@ -34,19 +34,32 @@ class CoverageTestCMD(Command):
         self.live = ""
 
     def finalize_options(self):
-        self.live = ["tests/livetest/test_api_" + test + ".py" for test in self.live.split(',') if test]
+        self.live = [
+            "tests/livetest/test_api_" + test + ".py"
+            for test in self.live.split(",")
+            if test
+        ]
 
     def run(self):
         exit_code = subprocess.run(
-            ["coverage", "run", "-p", "-m", "unittest", "discover", "-s", "tests/unittest"]
+            [
+                "coverage",
+                "run",
+                "-p",
+                "-m",
+                "unittest",
+                "discover",
+                "-s",
+                "tests/unittest",
+            ]
         ).returncode
 
         for test in self.live:
-            exit_code += subprocess.run(
-                ["coverage", "run", "-p", test]
-            ).returncode
+            exit_code += subprocess.run(["coverage", "run", "-p", test]).returncode
 
-        exit_code += subprocess.run(["coverage", "combine"] + glob(".coverage.*")).returncode
+        exit_code += subprocess.run(
+            ["coverage", "combine"] + glob(".coverage.*")
+        ).returncode
         exit_code += subprocess.run(["coverage", "report"]).returncode
         exit_code += subprocess.run(["coverage", "html"]).returncode
         exit(exit_code)
