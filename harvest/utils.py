@@ -400,3 +400,5 @@ def gen_data(symbol: str, points: int = 50) -> pd.DataFrame:
     df.columns = pd.MultiIndex.from_product([[symbol], df.columns])
 
     return df
+
+
