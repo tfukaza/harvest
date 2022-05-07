@@ -68,6 +68,7 @@ from rich.console import Console
 from rich.tree import Tree
 from rich.padding import Padding
 
+
 def main() -> None:
     """
     Entrypoint which parses the command line arguments. Calls subcommands based on which subparser was used.
@@ -144,12 +145,14 @@ def start(args: argparse.Namespace, test: bool = False) -> None:
 
         dir_pad = Padding(dir_tree, (0, 4))
         console.print(dir_pad)
-        console.print(f"- Found {len(trader.algo)} algo{'' if algo_count == 1 else 's'} 🎉")
-        #status.stop()
+        console.print(
+            f"- Found {len(trader.algo)} algo{'' if algo_count == 1 else 's'} 🎉"
+        )
+        # status.stop()
     console.print(f"> [bold green]Finished loading algorithms[/bold green]")
 
     if not test:
-        #console.print(f"Starting trader")
+        # console.print(f"Starting trader")
         trader.start()
 
 

@@ -268,7 +268,7 @@ class PaperBroker(API):
                 ret["filled_price"] = price
 
             self.equity = self._calc_equity()
-        
+
         if "filled_time" not in ret:
             ret["filled_time"] = None
         if "filled_price" not in ret:

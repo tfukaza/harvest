@@ -133,7 +133,9 @@ class API:
         val, unit = expand_interval(self.poll_interval)
 
         debugger.debug(f"{type(self).__name__} started...")
-        status = Status(f"Waiting for next interval... ({val} {unit})", spinner="material")
+        status = Status(
+            f"Waiting for next interval... ({val} {unit})", spinner="material"
+        )
         status.start()
         if unit == "MIN":
             sleep = val * 60 - 10

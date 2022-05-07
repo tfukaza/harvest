@@ -148,13 +148,17 @@ class LiveTrader:
         # Load and set up streamer and broker
         self.broker = load_api(self.broker_str)()
         self.broker.setup(self.stats, self.account, self.main)
-        self.console.print(f"- [cyan]{self.broker.__class__.__name__}[/cyan] setup complete")
+        self.console.print(
+            f"- [cyan]{self.broker.__class__.__name__}[/cyan] setup complete"
+        )
         if self.broker_str != self.streamer_str:
             self.streamer = load_api(self.streamer_str)()
             self.streamer.setup(self.stats, self.account, self.main)
             self.broker.streamer = self.streamer
             self.streamer.broker = self.broker
-            self.console.print(f"- [cyan]{self.streamer.__class__.__name__}[/cyan] setup complete")
+            self.console.print(
+                f"- [cyan]{self.streamer.__class__.__name__}[/cyan] setup complete"
+            )
         else:
             self.streamer = self.broker
         self.storage = load_storage(self.storage_str)()
@@ -178,7 +182,9 @@ class LiveTrader:
         :param bool? all_history: If true, gets all history for all the given assets and if false only get data in the past three days.
         """
         debugger.debug("Setting up Harvest")
-        with self.console.status("[bold green] Setting up Trader...[/bold green]") as status:
+        with self.console.status(
+            "[bold green] Setting up Trader...[/bold green]"
+        ) as status:
             if not self.skip_init:
                 self._init_param_streamer_broker(interval, aggregations)
             # If sync is on, call the broker to load pending orders and all positions currently held.
@@ -197,7 +203,9 @@ class LiveTrader:
 
             # Initialize the storage
             self._storage_init(all_history)
-            self.console.print(f"- [cyan]{self.storage.__class__.__name__}[/cyan] setup complete")
+            self.console.print(
+                f"- [cyan]{self.storage.__class__.__name__}[/cyan] setup complete"
+            )
 
             for a in self.algo:
                 a.init(self.stats, self.func, self.account)
@@ -211,25 +219,26 @@ class LiveTrader:
 
         if server:
             self.server.start()
-        
+
         if self.start_streamer:
             self.streamer.start()
 
     def _print_account(self) -> None:
         a = self.account
+
         def p_line(k, v):
             return f"{k}", f"[bold white]{v}[/bold white]"
+
         table = Table(
-            title=a.account_name, 
+            title=a.account_name,
             show_header=False,
             show_lines=True,
-            box=box.ROUNDED,   
-            )
+            box=box.ROUNDED,
+        )
         table.add_row(*p_line("Cash", a.cash))
         table.add_row(*p_line("Equity", a.equity))
 
         self.console.print(table)
-
 
     def _print_status(self) -> None:
         self._print_account()
@@ -371,7 +380,7 @@ class LiveTrader:
                 new_algo.append(a)
                 continue
             try:
-                #debugger.info(f"Running algo: {a}")
+                # debugger.info(f"Running algo: {a}")
                 a.main()
                 new_algo.append(a)
             except Exception as e:

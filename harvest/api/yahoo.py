@@ -76,7 +76,9 @@ class YahooStreamer(API):
             interval_fmt = self.fmt_interval(
                 self.stats.watchlist_cfg[self.unfmt_symbol(s)]["interval"]
             )
-            df = yf.download(s, period="1d", interval=interval_fmt, prepost=True, progress=False)
+            df = yf.download(
+                s, period="1d", interval=interval_fmt, prepost=True, progress=False
+            )
             debugger.debug(f"From yfinance got: {df}")
             if len(df.index) == 0:
                 return
@@ -97,7 +99,11 @@ class YahooStreamer(API):
             for i in required_intervals:
                 names = " ".join(required_intervals[i])
                 df_tmp = yf.download(
-                    names, period="1d", interval=self.fmt_interval(i), prepost=True, progress=False
+                    names,
+                    period="1d",
+                    interval=self.fmt_interval(i),
+                    prepost=True,
+                    progress=False,
                 )
                 debugger.debug(f"From yfinance got: {df_tmp}")
                 df = df_tmp if df is None else df.join(df_tmp)
@@ -166,7 +172,9 @@ class YahooStreamer(API):
             symbol = symbol[1:] + "-USD"
             crypto = True
 
-        df = yf.download(symbol, period=period, interval=get_fmt, prepost=True, progress=False)
+        df = yf.download(
+            symbol, period=period, interval=get_fmt, prepost=True, progress=False
+        )
         if crypto:
             symbol = "@" + symbol[:-4]
         df = self._format_df(df, symbol)
