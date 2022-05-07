@@ -17,9 +17,11 @@ class TestDummyStreamer(unittest.TestCase):
         current_time = dt.datetime(
             2000, 1, 1, 0, 0, tzinfo=get_local_timezone()
         ).astimezone(dt.timezone.utc)
+        print(current_time)
+        print(get_local_timezone())
         # Get per-minute data
         df_1 = streamer.fetch_price_history("A", Interval.MIN_1)["A"]
-        # Check that the last date is 1/1/2020-00:00:00
+        # Check that the last date is 1/1/2000-00:00:00 (local time)
         self.assertEqual(df_1.index[-1], pd.Timestamp(current_time))
         # Advance the time by 1 minute
         streamer.tick()

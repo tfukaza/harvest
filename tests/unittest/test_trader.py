@@ -15,6 +15,8 @@ import datetime as dt
 from harvest.definitions import *
 from harvest.utils import gen_data
 
+from _util import *
+
 
 class TestPaperTrader(unittest.TestCase):
     def test_trader_adding_symbol(self):
@@ -28,36 +30,23 @@ class TestPaperTrader(unittest.TestCase):
             pass
 
     def test_start_do_nothing(self):
-        s = DummyStreamer()
-        # Prevent streamer from running which will cause an infinite loop
-        s.start = lambda: None
-        t = PaperTrader(s)
-        t.set_symbol("A")
-        t.set_algo(BaseAlgo())
-        t.start("1MIN")
+        _, _, _ = create_trader_and_api("dummy", "paper", "1MIN", ["A"])
 
-        self.assertTrue(True)
+    # def test_no_streamer(self):
+    #     """
+    #     If streamer is not specified, by default
+    #     it should be set to DummyStreamer, and broker set to
+    #     """
 
-        try:
-            t._delete_account()
-        except:
-            pass
+    #     t = PaperTrader(DummyStreamer())
 
-    def test_no_streamer(self):
-        """
-        If streamer is not specified, by default
-        it should be set to DummyStreamer, and broker set to
-        """
+    #     self.assertIsInstance(t.streamer, DummyStreamer)
+    #     self.assertIsInstance(t.broker, PaperBroker)
 
-        t = PaperTrader(DummyStreamer())
-
-        self.assertIsInstance(t.streamer, DummyStreamer)
-        self.assertIsInstance(t.broker, PaperBroker)
-
-        try:
-            t._delete_account()
-        except:
-            pass
+    #     try:
+    #         t._delete_account()
+    #     except:
+    #         pass
 
     # def test_broker_set(self):
     #     """If a single API class is set, it should be set as
@@ -67,17 +56,17 @@ class TestPaperTrader(unittest.TestCase):
     #     self.assertIsInstance(t.streamer, Robinhood)
     #     self.assertIsInstance(t.broker, Robinhood)
 
-    def test_dummy_streamer(self):
-        """If streamer is DummyStreamer, broker should be PaperBroker"""
-        t = PaperTrader(DummyStreamer())
+    # def test_dummy_streamer(self):
+    #     """If streamer is DummyStreamer, broker should be PaperBroker"""
+    #     t = PaperTrader(DummyStreamer())
 
-        self.assertIsInstance(t.streamer, DummyStreamer)
-        self.assertIsInstance(t.broker, PaperBroker)
+    #     self.assertIsInstance(t.streamer, DummyStreamer)
+    #     self.assertIsInstance(t.broker, PaperBroker)
 
-        try:
-            t._delete_account()
-        except:
-            pass
+    #     try:
+    #         t._delete_account()
+    #     except:
+    #         pass
 
     def test_invalid_aggregation(self):
         """If invalid aggregation is set, it should raise an error"""

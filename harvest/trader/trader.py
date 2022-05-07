@@ -47,7 +47,7 @@ class LiveTrader:
         self,
         streamer: str = None,
         broker: str = None,
-        storage: str = None,
+        storage: str = "base",
         debug: bool = False,
     ) -> None:
         """Initializes the Trader."""
@@ -97,6 +97,9 @@ class LiveTrader:
             debugger.warning(
                 "Can't use signal, Harvest is running in a non-main thread."
             )
+        
+        self.start_streamer = True
+        self.skip_init = False
 
         self.watchlist = []  # List of securities specified in this class
         self.algo = []  # List of algorithms to run.
@@ -129,6 +132,27 @@ class LiveTrader:
         # debugger.debug(
         #     f"Streamer: {type(self.streamer).__name__}\nBroker: {type(self.broker).__name__}\nStorage: {type(self.storage).__name__}"
         # )
+    
+    def _init_param_streamer_broker(self, interval, aggregations) -> None:
+        # Initialize a dict of symbols and the intervals they need to run at
+        self._setup_params(self.watchlist, interval, aggregations)
+        self.watchlist = list(self.stats.watchlist_cfg.keys())
+        if not self.watchlist:
+            raise Exception("No securities were added to watchlist")
+
+        # Load and set up streamer and broker
+        self.broker = load_api(self.broker_str)()
+        self.broker.setup(self.stats, self.account, self.main)
+        if self.broker_str != self.streamer_str:
+            self.streamer = load_api(self.streamer_str)()
+            self.streamer.setup(self.stats, self.account, self.main)
+            self.broker.streamer = self.streamer
+            self.streamer.broker = self.broker
+        else:
+            self.streamer = self.broker
+        self.storage = load_storage(self.storage_str)()
+        self.storage.setup(self.stats)
+
 
     def start(
         self,
@@ -149,24 +173,8 @@ class LiveTrader:
         """
         debugger.debug("Setting up Harvest...")
 
-        # Initialize a dict of symbols and the intervals they need to run at
-        self._setup_params(self.watchlist, interval, aggregations)
-        self.watchlist = list(self.stats.watchlist_cfg.keys())
-        if not self.watchlist:
-            raise Exception("No securities were added to watchlist")
-
-        # Load and set up streamer and broker
-        self.broker = load_api(self.broker_str)()
-        self.broker.setup(self.stats, self.account, self.main)
-        if self.broker_str != self.streamer_str:
-            self.streamer = load_api(self.streamer_str)()
-            self.streamer.setup(self.stats, self.account, self.main)
-            self.broker.streamer = self.streamer
-            self.streamer.broker = self.broker
-        else:
-            self.streamer = self.broker
-        self.storage = load_storage(self.storage_str)()
-        self.storage.setup(self.stats)
+        if not self.skip_init:
+            self._init_param_streamer_broker(interval, aggregations)
 
         # If sync is on, call the broker to load pending orders and all positions currently held.
         if sync:
@@ -198,7 +206,8 @@ class LiveTrader:
         if server:
             self.server.start()
 
-        self.streamer.start()
+        if self.start_streamer:
+            self.streamer.start()
 
     def _setup_stats(self) -> None:
         """Initializes local cache of stocks, options, and crypto positions."""

@@ -13,6 +13,7 @@ streamers = {
     "alpaca": "Alpaca",
     "kraken": "Kraken",
     "webull": "Webull",
+    "base_stream": "StreamAPI",
 }
 
 brokers = {
@@ -80,5 +81,12 @@ def load_api(name: str) -> type:
         from harvest.api.paper import PaperBroker
 
         return PaperBroker
+    elif name == "base_stream":
+        from harvest.api._base import StreamAPI
+        return StreamAPI
+    elif name == "base_api":
+        from harvest.api._base import API
+        return API
+
     else:
         raise ValueError(f"Invalid api option: {name}")
