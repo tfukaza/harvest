@@ -105,7 +105,7 @@ class YahooStreamer(API):
             if len(df.index) == 0:
                 return
             for s in combo:
-                print(df.columns)
+                debugger.debug(f"Formatting {df}")
                 df_tmp = df.iloc[:, df.columns.get_level_values(1) == s]
                 if len(df_tmp.index) == 0:
                     continue

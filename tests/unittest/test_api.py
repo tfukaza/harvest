@@ -18,15 +18,19 @@ from harvest.utils import *
 
 class TestAPI(unittest.TestCase):
     def test_timeout(self):
-        stream = StreamAPI()
+
+        t = PaperTrader("base_stream", debug=True)
+        t.set_symbol(["A", "B"])
+        t.start_streamer = False
+        t.skip_init = True
+
+        t._init_param_streamer_broker("1MIN", [])
+        stream = t.streamer
         stream.fetch_price_history = lambda x, y, z: pd.DataFrame()
         stream.fetch_account = lambda: {"cash": 100, "equity": 100}
-        t = PaperTrader(stream, debug=True)
-
         stream.trader_main = t.main
-        t.set_symbol(["A", "B"])
-
-        t.start("1MIN", sync=False)
+        stream.trader = t
+        t.start(sync=False)
 
         # Save dummy data
         data = gen_data("A", 10)
@@ -77,16 +81,19 @@ class TestAPI(unittest.TestCase):
             pass
 
     def test_timeout_cancel(self):
-        stream = StreamAPI()
-        stream.fetch_price_history = lambda x, y, z: pd.DataFrame()
-        stream.fetch_account = lambda: {"cash": 100, "equity": 100}
-        t = PaperTrader(stream)
+        t = PaperTrader("base_stream", debug=True)
         t.set_algo(BaseAlgo())
+        t.set_symbol(["A", "B"])
+        t.start_streamer = False
+        t.skip_init = True
+
+        t._init_param_streamer_broker("1MIN", [])
+        stream = t.streamer
         stream.trader = t
         stream.trader_main = t.main
-        t.set_symbol(["A", "B"])
-
-        t.start("1MIN", sync=False)
+        stream.fetch_price_history = lambda x, y, z: pd.DataFrame()
+        stream.fetch_account = lambda: {"cash": 100, "equity": 100}
+        t.start(sync=False)
 
         # Save dummy data
         data = gen_data("A", 10)

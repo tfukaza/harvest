@@ -334,15 +334,15 @@ class TestAlgo(unittest.TestCase):
 
     @patch("harvest.api._base.mark_up")
     def test_buy_sell_option_auto(self, mock_mark_up):
+
         mock_mark_up.return_value = 10
 
-        streamer = DummyStreamer()
-        # Prevent streamer from running which will cause an infinite loop
-        streamer.start = lambda: None
-        t = PaperTrader(streamer, debug=True)
+        t = PaperTrader(streamer="dummy", debug=True)
+        t.start_streamer = False
         t.set_symbol("X")
         t.set_algo(BaseAlgo())
         t.start("1MIN")
+        streamer = t.streamer
         streamer.main()
 
         t.algo[0].buy("X     110101C01000000")
