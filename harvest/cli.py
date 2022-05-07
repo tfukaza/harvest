@@ -128,8 +128,8 @@ def start(args: argparse.Namespace, test: bool = False) -> None:
 
             # ...load in the entire file and add the algo to the trader.
             algo_path = os.path.realpath(join(directory, f))
-            spec = importlib.util.spec_from_file_location(name, algo_path)
-            algo = importlib.util.module_from_spec(spec)
+            spec = spec_from_file_location(name, algo_path)
+            algo = module_from_spec(spec)
             spec.loader.exec_module(algo)
             # Iterate though the variables and if a variable is a subclass of BaseAlgo instantiate it and added to the trader.
             for algo_cls in inspect.getmembers(algo):

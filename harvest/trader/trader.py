@@ -677,3 +677,4 @@ class PaperTrader(LiveTrader):
 
         self._init_attributes()
         self._setup_debugger(debug)
+        self.console = Console()
