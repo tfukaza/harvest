@@ -7,8 +7,6 @@ from harvest import cli
 
 
 class TestCLI(unittest.TestCase):
-
-
     def test_start_basic(self):
         crossover = os.path.dirname(os.path.realpath(__file__)) + "/../../examples"
         args = cli.parser.parse_args(

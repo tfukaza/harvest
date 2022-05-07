@@ -97,7 +97,7 @@ class LiveTrader:
             debugger.warning(
                 "Can't use signal, Harvest is running in a non-main thread."
             )
-        
+
         self.start_streamer = True
         self.skip_init = False
 
@@ -132,7 +132,7 @@ class LiveTrader:
         # debugger.debug(
         #     f"Streamer: {type(self.streamer).__name__}\nBroker: {type(self.broker).__name__}\nStorage: {type(self.storage).__name__}"
         # )
-    
+
     def _init_param_streamer_broker(self, interval, aggregations) -> None:
         # Initialize a dict of symbols and the intervals they need to run at
         self._setup_params(self.watchlist, interval, aggregations)
@@ -152,7 +152,6 @@ class LiveTrader:
             self.streamer = self.broker
         self.storage = load_storage(self.storage_str)()
         self.storage.setup(self.stats)
-
 
     def start(
         self,

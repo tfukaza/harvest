@@ -18,7 +18,7 @@ from harvest.utils import *
 
 class TestAPI(unittest.TestCase):
     def test_timeout(self):
-        
+
         t = PaperTrader("base_stream", debug=True)
         t.set_symbol(["A", "B"])
         t.start_streamer = False

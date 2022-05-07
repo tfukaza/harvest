@@ -1,10 +1,11 @@
 from harvest.trader.trader import LiveTrader
 
+
 def create_trader_and_api(
-    streamer = None,
-    broker = None,
-    interval = None,
-    symbols = None,
+    streamer=None,
+    broker=None,
+    interval=None,
+    symbols=None,
 ):
 
     t = LiveTrader(streamer=streamer, broker=broker, debug=True)

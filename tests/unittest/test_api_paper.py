@@ -50,11 +50,8 @@ class TestPaperBroker(unittest.TestCase):
         paper._delete_account()
 
     def test_buy_order_limit(self):
-        
-        _, _, paper = create_trader_and_api(
-            "dummy", "paper", "1MIN", ["A"]
-        )
 
+        _, _, paper = create_trader_and_api("dummy", "paper", "1MIN", ["A"])
 
         order = paper.order_stock_limit("buy", "A", 5, 50000)
 
@@ -72,11 +69,8 @@ class TestPaperBroker(unittest.TestCase):
         paper._delete_account()
 
     def test_buy(self):
-      
-        trader, dummy, paper = create_trader_and_api(
-            "dummy", "paper",
-            "1MIN", ["A"]
-        )
+
+        trader, dummy, paper = create_trader_and_api("dummy", "paper", "1MIN", ["A"])
 
         order = paper.buy("A", 5, 1e5)
 
@@ -94,10 +88,8 @@ class TestPaperBroker(unittest.TestCase):
         paper._delete_account()
 
     def test_sell_order_limit(self):
-        
-        _, _, paper = create_trader_and_api(
-            "dummy", "paper", "1MIN", ["A"]
-        )
+
+        _, _, paper = create_trader_and_api("dummy", "paper", "1MIN", ["A"])
         paper.stocks = [{"symbol": "A", "avg_price": 10.0, "quantity": 5}]
 
         order = paper.order_stock_limit("sell", "A", 2, 50000)
@@ -115,10 +107,8 @@ class TestPaperBroker(unittest.TestCase):
         paper._delete_account()
 
     def test_sell(self):
-        
-        _, _, paper = create_trader_and_api(
-            "dummy", "paper", "1MIN", ["A"]
-        )
+
+        _, _, paper = create_trader_and_api("dummy", "paper", "1MIN", ["A"])
         paper.stocks = [{"symbol": "A", "avg_price": 10.0, "quantity": 5}]
 
         order = paper.sell("A", 2)
@@ -138,9 +128,7 @@ class TestPaperBroker(unittest.TestCase):
     def test_order_option_limit(self):
         paper = PaperBroker()
 
-        _, _, paper = create_trader_and_api(
-            "dummy", "paper", "1MIN", ["A"]
-        )
+        _, _, paper = create_trader_and_api("dummy", "paper", "1MIN", ["A"])
 
         exp_date = dt.datetime(2021, 11, 14) + dt.timedelta(hours=5)
         order = paper.order_option_limit(
@@ -158,11 +146,9 @@ class TestPaperBroker(unittest.TestCase):
     def test_commission(self):
         commission_fee = {"buy": 5.76, "sell": "2%"}
 
-        _, _, paper = create_trader_and_api(
-            "dummy", "paper", "1MIN", ["A"]
-        )
+        _, _, paper = create_trader_and_api("dummy", "paper", "1MIN", ["A"])
         paper.commission_fee = commission_fee
-        
+
         total_cost = paper.apply_commission(50, paper.commission_fee, "buy")
         self.assertEqual(total_cost, 55.76)
         total_cost = paper.apply_commission(50, paper.commission_fee, "sell")

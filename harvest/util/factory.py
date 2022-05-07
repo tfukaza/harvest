@@ -83,9 +83,11 @@ def load_api(name: str) -> type:
         return PaperBroker
     elif name == "base_stream":
         from harvest.api._base import StreamAPI
+
         return StreamAPI
     elif name == "base_api":
         from harvest.api._base import API
+
         return API
 
     else:
