@@ -304,7 +304,7 @@ def convert_input_to_datetime(
         raise ValueError(f"Cannot convert {datetime} to datetime.")
 
     if not has_timezone(datetime):
-        if timezone is not None:
+        if timezone is None:
             timezone = get_local_timezone()
         datetime = datetime.replace(tzinfo=timezone)
 

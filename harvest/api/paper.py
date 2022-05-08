@@ -62,7 +62,7 @@ class PaperBroker(API):
         self.commission_fee = commission_fee
         self.save = save
 
-        self.streamer = DummyStreamer() if streamer is None else streamer
+        self.streamer = None
 
         if path is None:
             self.save_path = "./save"

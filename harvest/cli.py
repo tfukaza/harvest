@@ -2,7 +2,8 @@ import os
 import sys
 import inspect
 import argparse
-import importlib.util
+from importlib.util import spec_from_file_location, module_from_spec
+from importlib import import_module
 
 from os import listdir
 from os.path import isfile, join
@@ -17,66 +18,8 @@ def _raise(e) -> Callable:
 
 
 from harvest.utils import debugger
-from harvest.storage.base_storage import BaseStorage
-from harvest.storage.csv_storage import CSVStorage
-from harvest.storage.pickle_storage import PickleStorage
-
-# For imports that have extra dependencies, surpress the import error unless the user specifics that resource and does not have the depenedencies.
-try:
-    from harvest.storage.database_storage import DBStorage
-except ModuleNotFoundError as e:
-    DBStorage = _raise(e)
-
-from harvest.api._base import API
-from harvest.api.dummy import DummyStreamer
-from harvest.api.yahoo import YahooStreamer
-from harvest.api.polygon import PolygonStreamer
-from harvest.api.paper import PaperBroker
-
-try:
-    from harvest.api.robinhood import Robinhood
-except ModuleNotFoundError as e:
-    Robinhood = _raise(e)
-try:
-    from harvest.api.alpaca import Alpaca
-except ModuleNotFoundError as e:
-    Alpaca = _raise(e)
-try:
-    from harvest.api.kraken import Kraken
-except ModuleNotFoundError as e:
-    Kraken = _raise(e)
-try:
-    from harvest.api.webull import Webull
-except ModuleNotFoundError as e:
-    Webull = _raise(e)
-
-from harvest.trader import LiveTrader
+from harvest.util.factory import storages, streamers, brokers
 from harvest.algo import BaseAlgo
-
-storages = {
-    "memory": BaseStorage,
-    "csv": CSVStorage,
-    "pickle": PickleStorage,
-    "db": DBStorage,
-}
-
-streamers = {
-    "dummy": DummyStreamer,
-    "yahoo": YahooStreamer,
-    "polygon": PolygonStreamer,
-    "robinhood": Robinhood,
-    "alpaca": Alpaca,
-    "kraken": Kraken,
-    "webull": Webull,
-}
-
-brokers = {
-    "paper": PaperBroker,
-    "robinhood": Robinhood,
-    "alpaca": Alpaca,
-    "kraken": Kraken,
-    "webull": Webull,
-}
 
 parser = argparse.ArgumentParser(description="Harvest CLI")
 subparsers = parser.add_subparsers(dest="command")
@@ -86,7 +29,7 @@ start_parser = subparsers.add_parser("start")
 start_parser.add_argument(
     "-o",
     "--storage",
-    default="memory",
+    default="base",
     help="the way to store asset data",
     choices=list(storages.keys()),
 )
@@ -146,10 +89,13 @@ def start(args: argparse.Namespace, test: bool = False) -> None:
     :args: A Namespace object containing parsed user arguments.
     :test: True if we are testing so that we can exit this function cleanly.
     """
-    storage = _get_storage(args.storage)
-    streamer = _get_streamer(args.streamer)
-    broker = _get_broker(args.broker, args.streamer, streamer)
+    storage = args.storage
+    streamer = args.streamer
+    broker = args.broker
     debug = args.debug
+
+    from harvest.trader import LiveTrader
+
     trader = LiveTrader(streamer=streamer, broker=broker, storage=storage, debug=debug)
 
     # Get the directories.
@@ -174,8 +120,8 @@ def start(args: argparse.Namespace, test: bool = False) -> None:
 
         # ...load in the entire file and add the algo to the trader.
         algo_path = os.path.realpath(join(directory, f))
-        spec = importlib.util.spec_from_file_location(name, algo_path)
-        algo = importlib.util.module_from_spec(spec)
+        spec = spec_from_file_location(name, algo_path)
+        algo = module_from_spec(spec)
         spec.loader.exec_module(algo)
         # Iterate though the variables and if a variable is a subclass of BaseAlgo instantiate it and added to the trader.
         for algo_cls in inspect.getmembers(algo):
@@ -243,58 +189,32 @@ def visualize(args: argparse.Namespace) -> None:
     )
 
 
-def _get_storage(storage: str) -> None:
-    """
-    Returns the storage instance specified by the user.
-    :storage: The type of storage to be instantiated.
-    """
-    storage_cls = storages.get(storage)
-    if storage_cls is None:
-        raise ValueError(
-            f"Invalid storage option: {storage}, valid options are {storages.keys()}"
-        )
-    return storage_cls()
+def string_to_class(class_string: str) -> type:
+    return getattr(sys.modules[__name__], class_string, None)
 
 
-def _get_streamer(streamer: str) -> API:
-    """
-    Returns the streamer instance specified by the user.
-    :streamer: The type of streamer to be instantiated.
-    """
-    streamer_cls = streamers.get(streamer)
-    if streamer_cls is None:
-        raise ValueError(
-            f"Invalid streamer option: {streamer}, valid options are {streamers.keys()}"
-        )
-    return streamer_cls()
+# def _get_storage(storage: str) -> str:
+#     """
+#     Returns the storage instance specified by the user.
+#     :storage: The type of storage to be instantiated.
+#     """
+#     return storage
 
 
-def _get_broker(broker: str, streamer: str, streamer_cls: API) -> API:
-    """
-    Returns the broker instance specified by the user.
-    :broker: The type of broker to be instantiated.
-    """
+# def _get_streamer(streamer: str) -> str:
+#     """
+#     Returns the streamer instance specified by the user.
+#     :streamer: The type of streamer to be instantiated.
+#     """
+#     return streamer
 
-    if broker == streamer:
-        debugger.info(f"Using streamer instance as broker. Streamer: {streamer}")
-        return streamer_cls
 
-    if broker == "streamer":
-        if streamer in brokers.keys():
-            debugger.info(f"ℹ Using streamer instance as broker. Streamer: {streamer}")
-            return streamer_cls
-        else:
-            debugger.warning(
-                f"⚠ Streamer {streamer} does not support broker methods! Using paper broker."
-            )
-            return brokers.get("paper")()
-
-    broker_cls = brokers.get(broker)
-    if broker_cls is None:
-        raise ValueError(
-            f"Invalid broker option: {broker}, valid options are: {brokers.keys()}"
-        )
-    return broker_cls()
+# def _get_broker(broker: str, streamer: str, streamer_cls: str) -> str:
+#     """
+#     Returns the broker instance specified by the user.
+#     :broker: The type of broker to be instantiated.
+#     """
+#     return broker
 
 
 if __name__ == "__main__":

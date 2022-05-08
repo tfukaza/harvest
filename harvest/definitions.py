@@ -368,7 +368,7 @@ class Positions:
         for p in self._stock + self._option:
             setattr(self, p.symbol, p)
         for p in self._crypto:
-            setattr(self, "_" + p.symbol, p)
+            setattr(self, "c_" + p.symbol, p)
 
         deleted_symbols = list(set(current_symbols) - set(new_symbols))
         for s in deleted_symbols:

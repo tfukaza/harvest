@@ -1,8 +1,8 @@
 # Builtins
 from logging import debug
 import re
-import threading
-import traceback
+
+# import traceback
 import sys
 from sys import exit
 from signal import signal, SIGINT
@@ -15,12 +15,15 @@ import tzlocal
 # Submodule imports
 from harvest.utils import *
 from harvest.definitions import *
-from harvest.storage import BaseStorage
-from harvest.api._base import API
-from harvest.api.yahoo import YahooStreamer
-from harvest.api.paper import PaperBroker
-from harvest.storage import BaseStorage
+
+# from harvest.storage import BaseStorage
+# from harvest.api._base import API
+# from harvest.api.yahoo import YahooStreamer
+# from harvest.api.paper import PaperBroker
+# from harvest.storage import BaseStorage
 from harvest.server import Server
+
+from harvest.util.factory import *
 
 
 class LiveTrader:
@@ -42,16 +45,16 @@ class LiveTrader:
 
     def __init__(
         self,
-        streamer: API = None,
-        broker: API = None,
-        storage: BaseStorage = None,
+        streamer: str = None,
+        broker: str = None,
+        storage: str = "base",
         debug: bool = False,
     ) -> None:
         """Initializes the Trader."""
 
         self._init_checks()
         self._set_streamer_broker(streamer, broker)
-        self.storage = BaseStorage() if storage is None else storage
+        self._set_storage(storage)
         self._init_attributes()
         self._setup_debugger(debug)
 
@@ -60,19 +63,31 @@ class LiveTrader:
         if sys.version_info[0] < 3 or sys.version_info[1] < 9:
             raise Exception("Harvest requires Python 3.9 or above.")
 
-    def _set_streamer_broker(self, streamer: API, broker: API) -> None:
+    def _set_streamer_broker(self, streamer: str, broker: str) -> None:
         """Sets the streamer and broker."""
-        # If streamer is not specified, use YahooStreamer
-        self.streamer = YahooStreamer() if streamer is None else streamer
-        # Broker must be specified
-        if broker is None:
-            # TODO: Raise exception if specified class is streaming only
-            if isinstance(self.streamer, YahooStreamer):
-                raise Exception("Broker must be specified")
-            else:
-                self.broker = self.streamer
+        if streamer is None:
+            raise Exception("Streamer is not specified.")
+        self.streamer_str = streamer
+        if not broker:
+            self.broker_str = streamer
         else:
-            self.broker = broker
+            self.broker_str = broker
+
+        if self.streamer_str not in apis:
+            raise Exception(f"Streamer {self.streamer_str} is not recognized.")
+        if self.broker_str not in apis:
+            raise Exception(f"Broker {self.broker_str} is not recognized.")
+
+        if self.streamer_str not in streamers:
+            raise Exception(f"{self.streamer_str} cannot be used as a streamer.")
+        if self.broker_str not in brokers:
+            raise Exception(f"{self.broker_str} cannot be used as a broker.")
+
+    def _set_storage(self, storage: str) -> None:
+        """Sets the storage."""
+        if storage is None:
+            raise Exception("Storage is not specified.")
+        self.storage_str = storage
 
     def _init_attributes(self) -> None:
 
@@ -83,14 +98,15 @@ class LiveTrader:
                 "Can't use signal, Harvest is running in a non-main thread."
             )
 
+        self.start_streamer = True
+        self.skip_init = False
+
         self.watchlist = []  # List of securities specified in this class
         self.algo = []  # List of algorithms to run.
 
         self.server = Server(self)  # Initialize the web interface server
 
         self.stats = Stats(None, tzlocal.get_localzone(), None)
-
-        self.storage.setup(self.stats)
 
         self.func = Functions(
             self.buy,
@@ -99,9 +115,9 @@ class LiveTrader:
             self.fetch_chain_info,
             self.fetch_option_market_data,
             self.get_asset_quantity,
-            self.storage.load,
-            self.storage.store,
-            self.storage.load_daytrade,
+            self.load,
+            self.store,
+            self.load_daytrade,
         )
 
         self.account = Account()
@@ -113,9 +129,29 @@ class LiveTrader:
         if debug:
             debugger.setLevel("DEBUG")
 
-        debugger.debug(
-            f"Streamer: {type(self.streamer).__name__}\nBroker: {type(self.broker).__name__}\nStorage: {type(self.storage).__name__}"
-        )
+        # debugger.debug(
+        #     f"Streamer: {type(self.streamer).__name__}\nBroker: {type(self.broker).__name__}\nStorage: {type(self.storage).__name__}"
+        # )
+
+    def _init_param_streamer_broker(self, interval, aggregations) -> None:
+        # Initialize a dict of symbols and the intervals they need to run at
+        self._setup_params(self.watchlist, interval, aggregations)
+        self.watchlist = list(self.stats.watchlist_cfg.keys())
+        if not self.watchlist:
+            raise Exception("No securities were added to watchlist")
+
+        # Load and set up streamer and broker
+        self.broker = load_api(self.broker_str)()
+        self.broker.setup(self.stats, self.account, self.main)
+        if self.broker_str != self.streamer_str:
+            self.streamer = load_api(self.streamer_str)()
+            self.streamer.setup(self.stats, self.account, self.main)
+            self.broker.streamer = self.streamer
+            self.streamer.broker = self.broker
+        else:
+            self.streamer = self.broker
+        self.storage = load_storage(self.storage_str)()
+        self.storage.setup(self.stats)
 
     def start(
         self,
@@ -136,6 +172,9 @@ class LiveTrader:
         """
         debugger.debug("Setting up Harvest...")
 
+        if not self.skip_init:
+            self._init_param_streamer_broker(interval, aggregations)
+
         # If sync is on, call the broker to load pending orders and all positions currently held.
         if sync:
             self._setup_stats()
@@ -148,19 +187,6 @@ class LiveTrader:
         # Remove duplicates in watchlist
         self.watchlist = list(set(self.watchlist))
         debugger.debug(f"Watchlist: {self.watchlist}")
-
-        # Initialize a dict of symbols and the intervals they need to run at
-        self._setup_params(self.watchlist, interval, aggregations)
-        self.watchlist = self.stats.watchlist_cfg.keys()
-
-        if not self.watchlist:
-            raise Exception("No securities were added to watchlist")
-
-        self.broker.setup(self.stats, self.account, self.main)
-        if self.broker != self.streamer:
-            # Only call the streamer setup if it is a different
-            # instance than the broker otherwise some brokers can fail!
-            self.streamer.setup(self.stats, self.account, self.main)
 
         # Initialize the account
         self._setup_account()
@@ -179,7 +205,8 @@ class LiveTrader:
         if server:
             self.server.start()
 
-        self.streamer.start()
+        if self.start_streamer:
+            self.streamer.start()
 
     def _setup_stats(self) -> None:
         """Initializes local cache of stocks, options, and crypto positions."""
@@ -204,6 +231,8 @@ class LiveTrader:
             sym: {"interval": interval, "aggregations": aggregations}
             for sym in watchlist
         }
+
+        debugger.debug(f"Watchlist cfg: {watchlist_cfg_tmp}")
         # Update the dict based on parameters specified in Algo class
         for a in self.algo:
             a.config()
@@ -241,6 +270,8 @@ class LiveTrader:
                 for agg in a.aggregations:
                     if agg not in watchlist_cfg_tmp[sym]["aggregations"]:
                         watchlist_cfg_tmp[sym]["aggregations"].append(agg)
+
+        debugger.debug(f"Watchlist config: {watchlist_cfg_tmp}")
 
         # Remove any duplicates in the dict
         for sym in watchlist_cfg_tmp:
@@ -322,7 +353,7 @@ class LiveTrader:
                     f"Algorithm {a} failed, removing from algorithm list.\n"
                 )
                 debugger.warning(f"Exception: {e}\n")
-                debugger.warning(f"Traceback: {traceback.format_exc()}\n")
+                # debugger.warning(f"Traceback: {traceback.format_exc()}\n")
 
         if len(new_algo) <= 0:
             debugger.critical("No algorithms to run")
@@ -438,6 +469,15 @@ class LiveTrader:
 
     def fetch_option_market_data(self, *args, **kwargs):
         return self.streamer.fetch_option_market_data(*args, **kwargs)
+
+    def load(self, *args, **kwargs):
+        return self.storage.load(*args, **kwargs)
+
+    def store(self, *args, **kwargs):
+        return self.storage.store(*args, **kwargs)
+
+    def load_daytrade(self, *args, **kwargs):
+        return self.storage.load_daytrade(*args, **kwargs)
 
     def buy(self, symbol: str, quantity: int, in_force: str, extended: bool):
         # Check if user has enough buying power
@@ -598,19 +638,16 @@ class PaperTrader(LiveTrader):
     """
 
     def __init__(
-        self, streamer: API = None, storage: BaseStorage = None, debug: bool = False
+        self, streamer: str = None, storage: str = None, debug: bool = False
     ) -> None:
         """Initializes the Trader."""
 
         self._init_checks()
 
         # If streamer is not specified, use YahooStreamer
-        self.streamer = YahooStreamer() if streamer is None else streamer
-        self.broker = PaperBroker(streamer=self.streamer)
+        self.streamer_str = "yahoo" if streamer is None else streamer
+        self.broker_str = "paper"
+        self.storage_str = "base" if storage is None else storage
 
-        self.storage = (
-            BaseStorage() if storage is None else storage
-        )  # Initialize the storage
         self._init_attributes()
-
         self._setup_debugger(debug)
