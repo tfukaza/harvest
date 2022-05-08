@@ -1,6 +1,6 @@
 import datetime as dt
 from typing import Any, Callable, Dict, Iterable, List
-from harvest.utils import symbol_type, occ_to_data
+from harvest.utils import symbol_type, occ_to_data, OPTION_QTY_MULTIPLIER
 
 
 class Stats:
@@ -290,9 +290,9 @@ class Position:
 
     def update(self, current_price: float):
         self._current_price = current_price
-        self._value = self._current_price * self._quantity
-        self._profit = self._value - self._avg_price * self._quantity
-        self._profit_percent = self._profit / (self._avg_price * self._quantity)
+        #self._value = self._current_price * self._quantity
+        # self._profit = self._value - self._avg_price * self._quantity
+        # self._profit_percent = self._profit / (self._avg_price * self._quantity)
 
     def buy(self, quantity, price):
         self._avg_price = (self._avg_price * self._quantity + price * quantity) / (
@@ -311,12 +311,13 @@ class Position:
     def quantity(self):
         return self._quantity
 
-    @property
-    def value(self):
-        return self._value
 
     @property
     def avg_price(self):
+        return self._avg_price
+    
+    @property
+    def avg_cost(self):
         return self._avg_price
 
     @property
@@ -326,14 +327,22 @@ class Position:
     @property
     def current_price(self):
         return self._current_price
+    
+    @property
+    def value(self):
+        return self._current_price * self._quantity
+    
+    @property
+    def total_cost(self):
+        return self._avg_price * self._quantity
 
     @property
     def profit(self):
-        return self._profit
+        return self.value - self.total_cost
 
     @property
     def profit_percent(self):
-        return self._profit_percent
+        return self.profit / self.total_cost
 
     def __str__(self):
         return (
@@ -368,7 +377,7 @@ class Positions:
         for p in self._stock + self._option:
             setattr(self, p.symbol, p)
         for p in self._crypto:
-            setattr(self, "c_" + p.symbol, p)
+            setattr(self, "c_" + p.symbol[1:], p)
 
         deleted_symbols = list(set(current_symbols) - set(new_symbols))
         for s in deleted_symbols:
@@ -436,5 +445,21 @@ class OptionPosition(Position):
         return self._base_symbol
 
     @property
+    def strike(self):
+        return self._strike
+    
+    @property
+    def expiration(self):
+        return self._expiration
+    
+    @property
+    def option_type(self):
+        return self._option_type
+
+    @property
     def value(self):
-        return self._value * self._multiplier
+        return self._current_price * self._quantity * OPTION_QTY_MULTIPLIER
+    
+    @property
+    def total_cost(self):
+        return self._avg_price * self._quantity * OPTION_QTY_MULTIPLIER

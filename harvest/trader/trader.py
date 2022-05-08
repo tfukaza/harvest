@@ -235,13 +235,93 @@ class LiveTrader:
             show_lines=True,
             box=box.ROUNDED,
         )
-        table.add_row(*p_line("Cash", a.cash))
-        table.add_row(*p_line("Equity", a.equity))
+        table.add_row(*p_line("Cash ($)", a.cash))
+        table.add_row(*p_line("Equity ($)", a.equity))
+        table.add_row(*p_line("Buying Power ($)", a.buying_power))
 
         self.console.print(table)
+    
+    def _print_positions(self) -> None:
+        
+        def bold(s):
+            return f"[bold white]{s}[/bold white]"
+        def red_or_green(s):
+            if s >= 0:
+                return f"[bold green]{s}[/bold green]"
+            else:
+                return f"[bold red]{s}[/bold red]"
+
+        def print_table(title, positions):
+
+            if len(positions) == 0:
+                return
+
+            stock_table = Table(
+                title=title,
+                show_lines=True,
+                box=box.ROUNDED,
+            )
+            stock_table.add_column("Symbol")
+            stock_table.add_column("Quantity")
+            stock_table.add_column("Current Price")
+            stock_table.add_column("Avg. Cost")
+            stock_table.add_column("Profit/Loss ($)")
+            stock_table.add_column("Profit/Loss (%)")
+            
+            for p in positions:
+                ret_prefix = "+" if p.profit >= 0 else ""
+                per_prefix = "🚀 " if p.profit_percent >= 0.1 else ""
+                stock_table.add_row(
+                    f"{p.symbol}",
+                    f"{p.quantity}",
+                    f"${p.current_price}",
+                    f"${p.avg_cost}",
+                    f"{per_prefix} {ret_prefix} {red_or_green(p.profit)}",
+                    f"{per_prefix} {ret_prefix} {red_or_green(p.profit_percent)}",
+                )
+            self.console.print(stock_table)
+
+        print_table("Stock Positions", self.positions.stock)
+        print_table("Crypto Positions", self.positions.crypto)
+
+        if len(self.positions.option) == 0:
+            return 
+        
+        option_table = Table(
+            title="Option Positions",
+            show_lines=True,
+            box=box.ROUNDED,
+        )
+        option_table.add_column("Symbol")
+        option_table.add_column("Strike Price")
+        option_table.add_column("Expiration Date")
+        option_table.add_column("Type")
+        option_table.add_column("Quantity")
+        option_table.add_column("Current Price")
+        option_table.add_column("Avg. Cost")
+        option_table.add_column("Profit/Loss ($)")
+        option_table.add_column("Profit/Loss (%)")
+
+        for p in self.positions.option:
+            ret_prefix = "+" if p.profit >= 0 else ""
+            per_prefix = "🚀 " if p.profit_percent >= 0.1 else ""
+            option_table.add_row(
+                f"{p.base_symbol}",
+                f"{p.strike}",
+                f"{p.expiration}",
+                f"{p.option_type}",
+                f"{p.quantity}",
+                f"${p.current_price}",
+                f"${p.avg_cost}",
+                f"{per_prefix} {ret_prefix} {red_or_green(p.profit)}",
+                f"{per_prefix} {ret_prefix} {red_or_green(p.profit_percent)}",
+            )
+        self.console.print(option_table)
+
 
     def _print_status(self) -> None:
         self._print_account()
+        self._print_positions()
 
     def _setup_stats(self) -> None:
         """Initializes local cache of stocks, options, and crypto positions."""
@@ -374,6 +454,8 @@ class LiveTrader:
 
         self._update_local_cache(df_dict)
 
+        self._print_positions()
+
         new_algo = []
         for a in self.algo:
             if not is_freq(self.stats.timestamp, a.interval):
@@ -449,7 +531,7 @@ class LiveTrader:
         for p in self.positions.stock_crypto:
             symbol = p.symbol
             if symbol in df_dict:
-                price = df_dict[symbol].iloc[0][symbol]["close"]
+                price = df_dict[symbol].iloc[-1][symbol]["close"]
             elif (
                 symbol not in self.watchlist
             ):  # handle cases when user has an asset not in watchlist
