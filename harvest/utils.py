@@ -22,6 +22,14 @@ logging.basicConfig(
 )
 debugger = logging.getLogger("harvest")
 
+# from rich.console import Console
+# console = Console()
+
+# # from rich.status import Status
+# # status = Status()
+
+OPTION_QTY_MULTIPLIER = 100
+
 
 class Timestamp:
     def __init__(self, *args) -> None:

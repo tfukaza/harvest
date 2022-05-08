@@ -269,6 +269,11 @@ class PaperBroker(API):
 
             self.equity = self._calc_equity()
 
+        if "filled_time" not in ret:
+            ret["filled_time"] = None
+        if "filled_price" not in ret:
+            ret["filled_price"] = None
+
         debugger.debug(f"Returning status: {ret}")
         debugger.debug(f"Positions:\n{self.stocks}\n=========\n{self.cryptos}")
         debugger.debug(f"Equity:{self._calc_equity()}")

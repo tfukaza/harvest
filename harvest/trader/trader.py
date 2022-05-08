@@ -23,6 +23,10 @@ from harvest.definitions import *
 # from harvest.storage import BaseStorage
 from harvest.server import Server
 
+from rich.console import Console
+from rich.table import Table
+from rich.panel import Panel
+from rich import box
 from harvest.util.factory import *
 
 
@@ -57,6 +61,7 @@ class LiveTrader:
         self._set_storage(storage)
         self._init_attributes()
         self._setup_debugger(debug)
+        self.console = Console()
 
     def _init_checks(self) -> None:
         # Harvest only supports Python 3.9 or newer.
@@ -143,11 +148,17 @@ class LiveTrader:
         # Load and set up streamer and broker
         self.broker = load_api(self.broker_str)()
         self.broker.setup(self.stats, self.account, self.main)
+        self.console.print(
+            f"- [cyan]{self.broker.__class__.__name__}[/cyan] setup complete"
+        )
         if self.broker_str != self.streamer_str:
             self.streamer = load_api(self.streamer_str)()
             self.streamer.setup(self.stats, self.account, self.main)
             self.broker.streamer = self.streamer
             self.streamer.broker = self.broker
+            self.console.print(
+                f"- [cyan]{self.streamer.__class__.__name__}[/cyan] setup complete"
+            )
         else:
             self.streamer = self.broker
         self.storage = load_storage(self.storage_str)()
@@ -170,43 +181,146 @@ class LiveTrader:
         :param bool? sync: If true, the system will sync with the broker and fetch current positions and pending orders. defaults to true.
         :param bool? all_history: If true, gets all history for all the given assets and if false only get data in the past three days.
         """
-        debugger.debug("Setting up Harvest...")
+        debugger.debug("Setting up Harvest")
+        with self.console.status(
+            "[bold green] Setting up Trader...[/bold green]"
+        ) as status:
+            if not self.skip_init:
+                self._init_param_streamer_broker(interval, aggregations)
+            # If sync is on, call the broker to load pending orders and all positions currently held.
+            if sync:
+                self._setup_stats()
+                for s in self.positions.stock_crypto:
+                    self.watchlist.append(s.symbol)
+                for s in self.positions.option:
+                    self.watchlist.append(s.base_symbol)
+                self.watchlist.extend(self.orders.stock_crypto_symbols)
+                self.console.print(f"- Finished syncing data with broker")
 
-        if not self.skip_init:
-            self._init_param_streamer_broker(interval, aggregations)
+            # Initialize the account
+            self._setup_account()
+            self.storage.init_performace_data(self.account.equity, self.stats.timestamp)
 
-        # If sync is on, call the broker to load pending orders and all positions currently held.
-        if sync:
-            self._setup_stats()
-            for s in self.positions.stock_crypto:
-                self.watchlist.append(s.symbol)
-            for s in self.positions.option:
-                self.watchlist.append(s.base_symbol)
-            self.watchlist.extend(self.orders.stock_crypto_symbols)
+            # Initialize the storage
+            self._storage_init(all_history)
+            self.console.print(
+                f"- [cyan]{self.storage.__class__.__name__}[/cyan] setup complete"
+            )
 
-        # Remove duplicates in watchlist
-        self.watchlist = list(set(self.watchlist))
-        debugger.debug(f"Watchlist: {self.watchlist}")
+            for a in self.algo:
+                a.init(self.stats, self.func, self.account)
+                a.trader = self
+                a.setup()
+            self.console.print("- All algorithms initialized")
 
-        # Initialize the account
-        self._setup_account()
-        self.storage.init_performace_data(self.account.equity, self.stats.timestamp)
+        self.console.print("> [bold green]Trader initialization complete[/bold green]")
 
-        # Initialize the storage
-        self._storage_init(all_history)
-
-        for a in self.algo:
-            a.init(self.stats, self.func, self.account)
-            a.trader = self
-            a.setup()
-
-        debugger.debug("Setup complete")
+        self._print_status()
 
         if server:
             self.server.start()
 
         if self.start_streamer:
             self.streamer.start()
+
+    def _print_account(self) -> None:
+        a = self.account
+
+        def p_line(k, v):
+            return f"{k}", f"[bold white]{v}[/bold white]"
+
+        table = Table(
+            title=a.account_name,
+            show_header=False,
+            show_lines=True,
+            box=box.ROUNDED,
+        )
+        table.add_row(*p_line("Cash ($)", a.cash))
+        table.add_row(*p_line("Equity ($)", a.equity))
+        table.add_row(*p_line("Buying Power ($)", a.buying_power))
+
+        self.console.print(table)
+
+    def _print_positions(self) -> None:
+        def bold(s):
+            return f"[bold white]{s}[/bold white]"
+
+        def red_or_green(s):
+            if s >= 0:
+                return f"[bold green]{s}[/bold green]"
+            else:
+                return f"[bold red]{s}[/bold red]"
+
+        def print_table(title, positions):
+
+            if len(positions) == 0:
+                return
+
+            stock_table = Table(
+                title=title,
+                show_lines=True,
+                box=box.ROUNDED,
+            )
+            stock_table.add_column("Symbol")
+            stock_table.add_column("Quantity")
+            stock_table.add_column("Current Price")
+            stock_table.add_column("Avg. Cost")
+            stock_table.add_column("Profit/Loss ($)")
+            stock_table.add_column("Profit/Loss (%)")
+
+            for p in positions:
+                ret_prefix = "+" if p.profit >= 0 else ""
+                per_prefix = "🚀 " if p.profit_percent >= 0.1 else ""
+                stock_table.add_row(
+                    f"{p.symbol}",
+                    f"{p.quantity}",
+                    f"${p.current_price}",
+                    f"${p.avg_cost}",
+                    f"{per_prefix} {ret_prefix} {red_or_green(p.profit)}",
+                    f"{per_prefix} {ret_prefix} {red_or_green(p.profit_percent)}",
+                )
+            self.console.print(stock_table)
+
+        print_table("Stock Positions", self.positions.stock)
+        print_table("Crypto Positions", self.positions.crypto)
+
+        if len(self.positions.option) == 0:
+            return
+
+        option_table = Table(
+            title="Option Positions",
+            show_lines=True,
+            box=box.ROUNDED,
+        )
+        option_table.add_column("Symbol")
+        option_table.add_column("Strike Price")
+        option_table.add_column("Expiration Date")
+        option_table.add_column("Type")
+        option_table.add_column("Quantity")
+        option_table.add_column("Current Price")
+        option_table.add_column("Avg. Cost")
+        option_table.add_column("Profit/Loss ($)")
+        option_table.add_column("Profit/Loss (%)")
+
+        for p in self.positions.option:
+            ret_prefix = "+" if p.profit >= 0 else ""
+            per_prefix = "🚀 " if p.profit_percent >= 0.1 else ""
+            option_table.add_row(
+                f"{p.base_symbol}",
+                f"{p.strike}",
+                f"{p.expiration}",
+                f"{p.option_type}",
+                f"{p.quantity}",
+                f"${p.current_price}",
+                f"${p.avg_cost}",
+                f"{per_prefix} {ret_prefix} {red_or_green(p.profit)}",
+                f"{per_prefix} {ret_prefix} {red_or_green(p.profit_percent)}",
+            )
+        self.console.print(option_table)
+
+    def _print_status(self) -> None:
+        self._print_account()
+        self._print_positions()
 
     def _setup_stats(self) -> None:
         """Initializes local cache of stocks, options, and crypto positions."""
@@ -339,13 +453,15 @@ class LiveTrader:
 
         self._update_local_cache(df_dict)
 
+        self._print_positions()
+
         new_algo = []
         for a in self.algo:
             if not is_freq(self.stats.timestamp, a.interval):
                 new_algo.append(a)
                 continue
             try:
-                debugger.info(f"Running algo: {a}")
+                # debugger.info(f"Running algo: {a}")
                 a.main()
                 new_algo.append(a)
             except Exception as e:
@@ -414,7 +530,7 @@ class LiveTrader:
         for p in self.positions.stock_crypto:
             symbol = p.symbol
             if symbol in df_dict:
-                price = df_dict[symbol].iloc[0][symbol]["close"]
+                price = df_dict[symbol].iloc[-1][symbol]["close"]
             elif (
                 symbol not in self.watchlist
             ):  # handle cases when user has an asset not in watchlist
@@ -504,7 +620,7 @@ class LiveTrader:
             )
             return None
         ret = self.broker.buy(symbol, quantity, limit_price, in_force, extended)
-        print(f"Account info after buy: {self.account}")
+        debugger.debug(f"Account info after buy: {self.account}")
 
         if ret is None:
             debugger.debug("BUY failed")
@@ -651,3 +767,4 @@ class PaperTrader(LiveTrader):
 
         self._init_attributes()
         self._setup_debugger(debug)
+        self.console = Console()

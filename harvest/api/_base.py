@@ -10,6 +10,7 @@ from os.path import exists
 
 # External libraries
 import pandas as pd
+from rich.status import Status
 
 # Submodule imports
 from harvest.utils import *
@@ -132,6 +133,10 @@ class API:
         val, unit = expand_interval(self.poll_interval)
 
         debugger.debug(f"{type(self).__name__} started...")
+        status = Status(
+            f"Waiting for next interval... ({val} {unit})", spinner="material"
+        )
+        status.start()
         if unit == "MIN":
             sleep = val * 60 - 10
             while 1:
@@ -139,7 +144,9 @@ class API:
                 minutes = cur.minute
                 if minutes % val == 0 and minutes != cur_min:
                     self.stats.timestamp = cur
+                    status.stop()
                     self.main()
+                    status.start()
                     time.sleep(sleep)
                 cur_min = minutes
         elif unit == "HR":
@@ -149,7 +156,9 @@ class API:
                 minutes = cur.minute
                 if minutes == 0 and minutes != cur_min:
                     self.stats.timestamp = cur
+                    status.stop()
                     self.main()
+                    status.start()
                     time.sleep(sleep)
                 cur_min = minutes
         else:
@@ -159,7 +168,9 @@ class API:
                 hours = cur.hour
                 if hours == 19 and minutes == 50:
                     self.stats.timestamp = cur
+                    status.stop()
                     self.main()
+                    status.start()
                     time.sleep(80000)
                 cur_min = minutes
 
