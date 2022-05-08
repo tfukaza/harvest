@@ -240,11 +240,11 @@ class LiveTrader:
         table.add_row(*p_line("Buying Power ($)", a.buying_power))
 
         self.console.print(table)
-    
+
     def _print_positions(self) -> None:
-        
         def bold(s):
             return f"[bold white]{s}[/bold white]"
+
         def red_or_green(s):
             if s >= 0:
                 return f"[bold green]{s}[/bold green]"
@@ -267,7 +267,7 @@ class LiveTrader:
             stock_table.add_column("Avg. Cost")
             stock_table.add_column("Profit/Loss ($)")
             stock_table.add_column("Profit/Loss (%)")
-            
+
             for p in positions:
                 ret_prefix = "+" if p.profit >= 0 else ""
                 per_prefix = "🚀 " if p.profit_percent >= 0.1 else ""
@@ -285,8 +285,8 @@ class LiveTrader:
         print_table("Crypto Positions", self.positions.crypto)
 
         if len(self.positions.option) == 0:
-            return 
-        
+            return
+
         option_table = Table(
             title="Option Positions",
             show_lines=True,
@@ -317,7 +317,6 @@ class LiveTrader:
                 f"{per_prefix} {ret_prefix} {red_or_green(p.profit_percent)}",
             )
         self.console.print(option_table)
-
 
     def _print_status(self) -> None:
         self._print_account()

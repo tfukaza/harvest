@@ -290,7 +290,7 @@ class Position:
 
     def update(self, current_price: float):
         self._current_price = current_price
-        #self._value = self._current_price * self._quantity
+        # self._value = self._current_price * self._quantity
         # self._profit = self._value - self._avg_price * self._quantity
         # self._profit_percent = self._profit / (self._avg_price * self._quantity)
 
@@ -311,11 +311,10 @@ class Position:
     def quantity(self):
         return self._quantity
 
-
     @property
     def avg_price(self):
         return self._avg_price
-    
+
     @property
     def avg_cost(self):
         return self._avg_price
@@ -327,11 +326,11 @@ class Position:
     @property
     def current_price(self):
         return self._current_price
-    
+
     @property
     def value(self):
         return self._current_price * self._quantity
-    
+
     @property
     def total_cost(self):
         return self._avg_price * self._quantity
@@ -447,11 +446,11 @@ class OptionPosition(Position):
     @property
     def strike(self):
         return self._strike
-    
+
     @property
     def expiration(self):
         return self._expiration
-    
+
     @property
     def option_type(self):
         return self._option_type
@@ -459,7 +458,7 @@ class OptionPosition(Position):
     @property
     def value(self):
         return self._current_price * self._quantity * OPTION_QTY_MULTIPLIER
-    
+
     @property
     def total_cost(self):
         return self._avg_price * self._quantity * OPTION_QTY_MULTIPLIER
