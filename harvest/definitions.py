@@ -143,7 +143,7 @@ class Order:
         self._side = side
         self._order_id = order_id
 
-        self._status = None
+        self._status = "open"
         self._filled_time = None
         self._filled_price = None
         self._filled_quantity = None

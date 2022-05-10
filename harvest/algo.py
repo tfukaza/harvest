@@ -620,7 +620,8 @@ class BaseAlgo:
             symbol = self.watchlist[0]
         asset = self.positions.get(symbol)
         if asset is None:
-            raise Exception(f"{symbol} is not currently owned")
+            debugger.warning(f"{symbol} is not currently owned. You either don't have it or it's still in the order queue.")
+            return None
         return asset.profit_percent
 
     def get_asset_max_quantity(self, symbol=None):

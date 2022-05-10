@@ -829,6 +829,7 @@ class API:
                     tries -= 1
                     debugger.error("Retrying...")
                     continue
+            raise Exception(f"Failed to run {func.__name__}")
 
         return wrapper
 
