@@ -132,7 +132,7 @@ class Order:
         order_type: str,
         symbol: str, 
         quantity: float, 
-        time_in_force
+        time_in_force,
         side: str, 
         order_id: Any, 
     ) -> None:
@@ -254,7 +254,30 @@ class Orders:
     def add_new_order(
         self, symbol: str, order_id: Any, side: str, quantity: float, time_in_force
     ) -> None:
-        self._orders.append(Order(symbol, order_id, side, quantity, time_in_force))
+        if symbol_type(symbol) == "OPTION":
+            base_symbol, _, _, _ = occ_to_data(symbol)
+            self._orders.append(
+                OptionOrder(
+                    "OPTION",
+                    symbol,
+                    base_symbol,
+                    quantity,
+                    time_in_force,
+                    side,
+                    order_id,
+                )
+            )
+        else:
+            self._orders.append(
+                Order(
+                    symbol_type(symbol),
+                    symbol,
+                    quantity,
+                    time_in_force,
+                    side,
+                    order_id,
+                )
+            )
 
     def remove_non_open(self) -> None:
         self._orders = list(filter(lambda x: x.status == "open", self._orders))

@@ -628,6 +628,7 @@ class LiveTrader:
             return None
         self.orders.add_new_order(symbol, ret["order_id"], "buy", quantity, in_force)
         debugger.debug(f"BUY: {self.stats.timestamp}, {symbol}, {quantity}")
+        debugger.debug(f"Updated order queue: {self.orders}")
 
         return ret
 
