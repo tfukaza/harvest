@@ -280,7 +280,9 @@ class Orders:
             )
 
     def remove_non_open(self) -> None:
-        self._orders = list(filter(lambda x: x.status == "open", self._orders))
+        print(self._orders)
+        self._orders = list(filter(lambda x: x.status != "filled", self._orders))
+        print(self._orders)
 
     @property
     def symbols(self) -> List[str]:

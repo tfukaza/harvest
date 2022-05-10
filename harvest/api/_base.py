@@ -130,6 +130,7 @@ class API:
         make sure to set the callback function to self.main().
         """
         cur_min = -1
+        cur_sec = -1
         val, unit = expand_interval(self.poll_interval)
 
         debugger.debug(f"{type(self).__name__} started...")
@@ -137,7 +138,17 @@ class API:
             f"Waiting for next interval... ({val} {unit})", spinner="material"
         )
         status.start()
-        if unit == "MIN":
+        if unit == "SEC":
+            while 1:
+                cur = dt.datetime.now(tz.utc).replace(microsecond=0)
+                sec = cur.second
+                if sec % 15 == 0 and sec != cur_sec:
+                    cur_sec = sec
+                    self.stats.timestamp = cur
+                    status.stop()
+                    self.main()
+                    status.start()
+        elif unit == "MIN":
             sleep = val * 60 - 10
             while 1:
                 cur = now()

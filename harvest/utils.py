@@ -141,7 +141,7 @@ def expand_string_interval(interval: str) -> Tuple[int, str]:
 
 def interval_to_timedelta(interval: Interval) -> dt.timedelta:
     """Converts an IntEnum interval into a timedelta object of equal value."""
-    expanded_units = {"DAY": "days", "HR": "hours", "MIN": "minutes"}
+    expanded_units = {"DAY": "days", "HR": "hours", "MIN": "minutes", "SEC": "seconds"}
     value, unit = expand_interval(interval)
     params = {expanded_units[unit]: value}
     return dt.timedelta(**params)

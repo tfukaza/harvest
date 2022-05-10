@@ -166,6 +166,8 @@ class Robinhood(API):
         # 1MIN, 5MIN interval must be capped to 1 day.
         elif interval in [Interval.MIN_1, Interval.MIN_5]:
             span = "day"
+            if symbol_type(symbol) == "CRYPTO":
+                span = "hour"
         # Other intervals have varying spans
         elif interval in [
             Interval.MIN_15,
@@ -499,10 +501,10 @@ class Robinhood(API):
                     "base_symbol": r["chain_symbol"],
                     "quantity": r["quantity"],
                     "filled_qty": r["processed_quantity"],
-                    "id": r["id"],
+                    "order_id": r["id"],
                     "time_in_force": r["time_in_force"],
                     "status": r["state"],
-                    "order_id": leg["id"],
+                    "id": leg["id"],
                     "side": leg["side"],
                     "filled_time": None,
                     "filled_price": None,
@@ -525,6 +527,7 @@ class Robinhood(API):
                     "filled_price": None,
                 }
             )
+        debugger.debug(queue)
         return queue
 
     # --------------- Methods for Trading --------------- #
@@ -636,6 +639,8 @@ class Robinhood(API):
                     optionType=option_type,
                     timeInForce=in_force,
                 )
+            debugger.debug(f"Order placed: {ret}")
+            # leg = ret["legs"][0]
             return {
                 "order_id": ret["id"],
                 "symbol": symbol,
