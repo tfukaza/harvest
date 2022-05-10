@@ -128,14 +128,20 @@ class Account:
 
 class Order:
     def __init__(
-        self, symbol: str, order_id: Any, side: str, quantity: float, time_in_force
+        self, 
+        order_type: str,
+        symbol: str, 
+        quantity: float, 
+        time_in_force
+        side: str, 
+        order_id: Any, 
     ) -> None:
+        self._type = order_type
         self._symbol = symbol
-        self._order_id = order_id
-        self._type = symbol_type(symbol)
-        self._side = side
-        self._time_in_force = time_in_force
         self._quantity = quantity
+        self._time_in_force = time_in_force
+        self._side = side
+        self._order_id = order_id
 
         self._status = None
         self._filled_time = None
@@ -211,8 +217,31 @@ class Orders:
         return "\n".join(str(order) for order in self._orders)
 
     def init(self, orders: Iterable[Dict[str, Any]]) -> None:
-        self._orders = [Order(**o) for o in orders]
-
+        for o in orders:
+            if o["order_type"] == "OPTION":
+                self._orders.append(
+                    OptionOrder(
+                        o["order_type"],
+                        o["symbol"],
+                        o["base_symbol"],
+                        o["quantity"],
+                        o["time_in_force"],
+                        o["side"],
+                        o["order_id"],
+                    )
+                )
+            else:
+                self._orders.append(
+                    Order(
+                        o["order_type"],
+                        o["symbol"],
+                        o["quantity"],
+                        o["time_in_force"],
+                        o["side"],
+                        o["order_id"],
+                    )
+                )
+                
     @property
     def orders(self) -> List[Order]:
         return self._orders
@@ -242,29 +271,21 @@ class Orders:
 class OptionOrder(Order):
     def __init__(
         self,
-        type,
+        order_type,
         symbol,
-        quantity,
-        filled_qty,
-        id,
-        time_in_force,
-        status,
-        side,
-        filled_time,
-        filled_price,
         base_symbol,
+        quantity,
+        time_in_force,
+        side,
+        order_id,
     ):
         super().__init__(
-            type,
+            order_type,
             symbol,
             quantity,
-            filled_qty,
-            id,
             time_in_force,
-            status,
             side,
-            filled_time,
-            filled_price,
+            order_id,
         )
         self._base_symbol = base_symbol
 
@@ -386,8 +407,6 @@ class Positions:
                 delattr(self, s)
 
     def get(self, symbol):
-        debugger.debug(f"Getting position for {symbol}")
-        debugger.debug(f"Searching in: {self.all}")
         for p in self.all:
             if p.symbol == symbol:
                 return p

@@ -472,11 +472,11 @@ class API:
                 - order_type: "STOCK" or "CRYPTO"
                 - symbol: Symbol of asset
                 - quantity: Quantity ordered
-                - filled_qty: Quantity filled
-                - order_id: ID of order
                 - time_in_force: Time in force
-                - status: Status of the order
                 - side: 'buy' or 'sell'
+                - order_id: ID of order
+                - status: Status of the order
+                - filled_qty: Quantity filled
                 - filled_time: Time the order was filled
                 - filled_price: Price the order was filled at
             For options:
@@ -484,13 +484,13 @@ class API:
                 - symbol: OCC symbol of option
                 - base_symbol:
                 - quantity: Quantity ordered
+                - order_id: ID of order
+                - time_in_force: Time in force
+                - side: 'buy' or 'sell'
+                - status: Status of the order
                 - filled_qty: Quantity filled
                 - filled_time: Time the order was filled
                 - filled_price: Price the order was filled at
-                - order_id: ID of order
-                - time_in_force: Time in force
-                - status: Status of the order
-                - side: 'buy' or 'sell'
 
         """
         debugger.error(
