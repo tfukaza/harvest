@@ -240,7 +240,7 @@ class PaperBroker(API):
                         pos["quantity"] = pos["quantity"] + qty
 
                     self.cash -= actual_price
-                    self.buying_power += ret["limit_price"] * qty
+                    #self.buying_power += ret["limit_price"] * qty
                     self.buying_power -= actual_price
                     ret_1 = ret.copy()
                     self.orders.remove(ret)
@@ -288,7 +288,7 @@ class PaperBroker(API):
         price = self.streamer.fetch_option_market_data(occ_sym)["price"]
 
         qty = ret["quantity"]
-        original_price = price * qty
+        original_price = price * qty * OPTION_QTY_MULTIPLIER
         # If order has been opened, simulate asset buy/sell
         if ret["status"] == "open":
             pos = next((r for r in self.options if r["symbol"] == occ_sym), None)

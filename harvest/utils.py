@@ -299,7 +299,7 @@ def convert_input_to_datetime(
 ) -> dt.datetime:
     """
     Converts the input to a datetime object with a UTC timezone.
-    If the datetime object does not have a timezone sets the
+    If the datetime object does not have a timezone, sets the
     datetime object's timezone to the given timezone and then
     covert it to UTC. If timezone is None then the system's local
     timezone is used.
