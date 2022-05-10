@@ -328,6 +328,8 @@ class LiveTrader:
         # Get any pending orders
         ret = self.broker.fetch_order_queue()
         self.orders.init(ret)
+        self._update_order_queue()
+
         debugger.debug(f"Fetched orders:\n{self.orders}")
 
         self._fetch_account_data()
