@@ -818,9 +818,12 @@ class API:
                 try:
                     return func(*args, **kwargs)
                 except Exception as e:
-                    self = args[0]
-                    debugger.error(f"Error: {e}")
-                    traceback.print_exc()
+                    from rich.console import Console
+                    c = Console()
+                    c.print_exception(show_locals=True)
+                    # self = args[0]
+                    # debugger.error(f"Error: {e}")
+                    # traceback.print_exc()
                     debugger.error("Logging out and back in...")
                     args[0].refresh_cred()
                     tries -= 1

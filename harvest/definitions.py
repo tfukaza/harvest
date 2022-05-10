@@ -314,7 +314,7 @@ class OptionOrder(Order):
 
     def __str__(self):
         s = super().__str__()
-        return f"{s} {self.base_symbol}"
+        return f"{s}base_symbol: {self.base_symbol}"
 
     @property
     def base_symbol(self):
