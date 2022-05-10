@@ -386,6 +386,8 @@ class Positions:
                 delattr(self, s)
 
     def get(self, symbol):
+        debugger.debug(f"Getting position for {symbol}")
+        debugger.debug(f"Searching in: {self.all}")
         for p in self.all:
             if p.symbol == symbol:
                 return p
