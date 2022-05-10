@@ -213,13 +213,13 @@ class BaseAlgo:
         lower_exp = convert_input_to_datetime(lower_exp, timezone.utc)
         upper_exp = convert_input_to_datetime(upper_exp, timezone.utc)
         # Remove timezone from datetime objects
-        lower_exp = lower_exp.replace(tzinfo=None)
-        upper_exp = upper_exp.replace(tzinfo=None)
 
         exp_dates = self.get_option_chain_info(symbol)["exp_dates"]
         if lower_exp is not None:
+            lower_exp = lower_exp.replace(tzinfo=None)
             exp_dates = list(filter(lambda x: x >= lower_exp, exp_dates))
         if upper_exp is not None:
+            upper_exp = upper_exp.replace(tzinfo=None)
             exp_dates = list(filter(lambda x: x <= upper_exp, exp_dates))
         exp_dates = sorted(exp_dates)
 
