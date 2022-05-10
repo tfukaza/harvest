@@ -2,7 +2,7 @@
 from logging import debug
 import re
 
-# import traceback
+import traceback
 import sys
 from sys import exit
 from signal import signal, SIGINT
@@ -469,7 +469,8 @@ class LiveTrader:
                     f"Algorithm {a} failed, removing from algorithm list.\n"
                 )
                 debugger.warning(f"Exception: {e}\n")
-                # debugger.warning(f"Traceback: {traceback.format_exc()}\n")
+                debugger.warning(f"Traceback: {traceback.format_exc()}\n")
+                self.console.print_exception(show_locals=True)
 
         if len(new_algo) <= 0:
             debugger.critical("No algorithms to run")
