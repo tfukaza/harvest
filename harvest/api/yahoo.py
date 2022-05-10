@@ -188,7 +188,7 @@ class YahooStreamer(API):
         return {
             "id": "n/a",
             "exp_dates": [
-                convert_input_to_datetime(s, tzlocal.get_localzone())
+                convert_input_to_datetime(s, no_tz=True)
                 for s in option_list
             ],
             "multiplier": 100,

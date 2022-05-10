@@ -295,7 +295,7 @@ def get_local_timezone() -> ZoneInfo:
 
 
 def convert_input_to_datetime(
-    datetime: Union[str, dt.datetime], timezone: ZoneInfo = None
+    datetime: Union[str, dt.datetime], timezone: ZoneInfo = None, no_tz=False
 ) -> dt.datetime:
     """
     Converts the input to a datetime object with a UTC timezone.
@@ -310,6 +310,11 @@ def convert_input_to_datetime(
         datetime = dt.datetime.fromisoformat(datetime)
     elif not isinstance(datetime, dt.datetime):
         raise ValueError(f"Cannot convert {datetime} to datetime.")
+    
+    if no_tz:
+        if has_timezone(datetime):
+            datetime = datetime.replace(tzinfo=None)
+        return datetime
 
     if not has_timezone(datetime):
         if timezone is None:
