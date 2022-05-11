@@ -542,7 +542,7 @@ class LiveTrader:
             symbol = p.symbol
             if symbol in df_dict:
                 sym_df = df_dict[symbol]
-                price_df = sym_df.iloc[[-1]]
+                price_df = sym_df.iloc[-1]
                 price = price_df[symbol]["close"]
             elif (
                 symbol not in self.watchlist
