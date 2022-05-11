@@ -190,10 +190,10 @@ class Robinhood(API):
 
         if symbol[0] == "@":
             ret = rh.get_crypto_historicals(
-                symbol[1:], interval=get_interval_fmt, span=span, bounds="regular"
+                symbol[1:], interval=get_interval_fmt, span=span,
             )
         else:
-            ret = rh.get_stock_historicals(symbol, interval=get_interval_fmt, span=span, bounds="regular")
+            ret = rh.get_stock_historicals(symbol, interval=get_interval_fmt, span=span)
         
         debugger.debug(f"Fetched:\n{ret}")
 
