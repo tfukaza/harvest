@@ -691,7 +691,9 @@ class Robinhood(API):
 
         df.columns = pd.MultiIndex.from_product([watch, df.columns])
 
-        return df.dropna()
+        df = df.dropna()
+        debugger.debug(f"Formatted dataframe: {df}")
+        return df
 
     def _rh_datestr_to_datetime(self, date_str: str):
         date_str = date_str[:-3] + date_str[-2:]
