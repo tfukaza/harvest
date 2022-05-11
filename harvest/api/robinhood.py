@@ -186,7 +186,7 @@ class Robinhood(API):
             else:
                 span = "year"
 
-        debugger.debug(f"Fetching {symbol}, {interval}, {start}, {end}")
+        debugger.debug(f"Fetching {symbol}, {interval}, {start}, {end}, {span}")
 
         if symbol[0] == "@":
             ret = rh.get_crypto_historicals(
