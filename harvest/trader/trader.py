@@ -221,7 +221,10 @@ class LiveTrader:
             self.server.start()
 
         if self.start_streamer:
-            self.streamer.start()
+            try:
+                self.streamer.start()
+            except Exception as e:
+                self.console.print_exception(show_locals=True)
 
     def _print_account(self) -> None:
         a = self.account

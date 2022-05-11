@@ -194,8 +194,6 @@ class Robinhood(API):
             )
         else:
             ret = rh.get_stock_historicals(symbol, interval=get_interval_fmt, span=span)
-        
-        debugger.debug(f"Fetched:\n{ret}")
 
         df = pd.DataFrame.from_dict(ret)
         df = self._format_df(df, [symbol], interval)
