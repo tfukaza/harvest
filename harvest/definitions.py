@@ -375,11 +375,11 @@ class Position:
 
     @property
     def value(self):
-        return self._current_price * self._quantity
+        return self.current_price * self.quantity
 
     @property
     def total_cost(self):
-        return self._avg_price * self._quantity
+        return self.avg_price * self.quantity
 
     @property
     def profit(self):

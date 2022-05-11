@@ -117,7 +117,7 @@ class API:
 
         self.poll_interval = min_interval
 
-        debugger.debug(f"Poll Interval: {self.poll_interval}")
+        debugger.debug(f"Poll Interval: {interval_enum_to_string(self.poll_interval)}")
         debugger.debug(f"{type(self).__name__} setup finished")
 
     def start(self) -> None:

@@ -160,27 +160,27 @@ class Robinhood(API):
         delta = delta.total_seconds()
         delta_hours = int(delta / 3600)
 
-        # 15SEC interval must be capped to 1 hour.
         if interval == Interval.SEC_15:
             span = "hour"
-        # 1MIN, 5MIN interval must be capped to 1 day.
-        elif interval in [Interval.MIN_1, Interval.MIN_5]:
-            span = "day"
+        elif interval == Interval.MIN_1:
             if symbol_type(symbol) == "CRYPTO":
                 span = "hour"
-        # Other intervals have varying spans
+            else:
+                span = "day"
+        elif interval == Interval.MIN_5:
+            span = "week"
         elif interval in [
             Interval.MIN_15,
             Interval.MIN_30,
             Interval.HR_1,
         ]:
             if delta_hours <= 24:
-                span = "day"
+                span = "week"
             else:
                 span = "month"
         elif interval in [Interval.DAY_1]:
             if delta_hours <= 24:
-                span = "day"
+                span = "week"
             elif delta_hours <= 720:
                 span = "month"
             else:
@@ -188,10 +188,10 @@ class Robinhood(API):
 
         if symbol[0] == "@":
             ret = rh.get_crypto_historicals(
-                symbol[1:], interval=get_interval_fmt, span=span
+                symbol[1:], interval=get_interval_fmt, span=span, bounds="regular"
             )
         else:
-            ret = rh.get_stock_historicals(symbol, interval=get_interval_fmt, span=span)
+            ret = rh.get_stock_historicals(symbol, interval=get_interval_fmt, span=span, bounds="regular")
 
         df = pd.DataFrame.from_dict(ret)
         df = self._format_df(df, [symbol], interval)

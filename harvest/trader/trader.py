@@ -265,8 +265,8 @@ class LiveTrader:
             stock_table.add_column("Quantity")
             stock_table.add_column("Current Price")
             stock_table.add_column("Avg. Cost")
-            stock_table.add_column("Profit/Loss ($)")
-            stock_table.add_column("Profit/Loss (%)")
+            stock_table.add_column("Profit/Loss")
+            stock_table.add_column("Profit/Loss")
 
             for p in positions:
                 ret_prefix = "+" if p.profit >= 0 else ""
@@ -276,8 +276,8 @@ class LiveTrader:
                     f"{p.quantity}",
                     f"${p.current_price}",
                     f"${p.avg_cost}",
-                    f"{per_prefix} {ret_prefix} {red_or_green(p.profit)}",
-                    f"{per_prefix} {ret_prefix} {red_or_green(p.profit_percent)}",
+                    f"{per_prefix} ${ret_prefix}{red_or_green(p.profit)}",
+                    f"{per_prefix} {ret_prefix}{red_or_green(p.profit_percent*100)}%",
                 )
             self.console.print(stock_table)
 
@@ -332,6 +332,7 @@ class LiveTrader:
 
         debugger.debug(f"Fetched orders:\n{self.orders}")
 
+        # Get currently held positions
         self._fetch_account_data()
 
     def _setup_params(
@@ -375,6 +376,8 @@ class LiveTrader:
                     if a.interval < cur_interval:
                         watchlist_cfg_tmp[sym]["aggregations"].append(cur_interval)
                         watchlist_cfg_tmp[sym]["interval"] = a.interval
+                    elif a.interval > cur_interval:
+                        watchlist_cfg_tmp[sym]["aggregations"].append(a.interval)
                 # If symbol is not in global watchlist, simply add it
                 else:
                     watchlist_cfg_tmp[sym] = {}
@@ -573,6 +576,13 @@ class LiveTrader:
             for p in self.broker.fetch_crypto_positions()
         ]
         self.positions.update(stock_pos, option_pos, crypto_pos)
+        # Get the latest price for all positions
+        for p in self.positions.stock_crypto:
+            price = self.streamer.fetch_latest_price(p.symbol)
+            p.update(price)
+        for p in self.positions.option:
+            price = self.streamer.fetch_option_market_data(p.symbol)["price"]
+            p.update(price)
 
         ret = self.broker.fetch_account()
 
