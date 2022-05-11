@@ -395,9 +395,9 @@ class Position:
             + f" Quantity:\t{self._quantity}\n"
             + f" Avg. Cost:\t${self._avg_price}\n"
             + f" Price:  \t${self._current_price}\n"
-            + f" Value:  \t${self._value}\n"
-            + f" Profit:\t${self._profit}\n"
-            + f" Returns:\t{'▲' if self._profit_percent > 0 else '▼'}{self._profit_percent * 100}%\n"
+            + f" Value:  \t${self.value}\n"
+            + f" Profit:\t${self.profit}\n"
+            + f" Returns:\t{'▲' if self.profit_percent > 0 else '▼'}{self.profit_percent * 100}%\n"
             + "─" * 50
         )
 
