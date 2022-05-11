@@ -539,7 +539,9 @@ class LiveTrader:
         for p in self.positions.stock_crypto:
             symbol = p.symbol
             if symbol in df_dict:
-                price = df_dict[symbol].iloc[-1][symbol]["close"]
+                sym_df = df_dict[symbol]
+                price_df  = sym_df.iloc[[-1]]
+                price = price_df[symbol]["close"]
             elif (
                 symbol not in self.watchlist
             ):  # handle cases when user has an asset not in watchlist
