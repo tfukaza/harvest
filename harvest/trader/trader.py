@@ -434,6 +434,8 @@ class LiveTrader:
         # # Periodically refresh access tokens
         # if self.stats.timestamp.hour % 12 == 0 and self.stats.timestamp.minute == 0:
         #     self.streamer.refresh_cred()
+    
+        debugger.debug(f"{df_dict}")
 
         self.storage.add_performance_data(self.account.equity, self.stats.timestamp)
         self.storage.add_calendar_data(
@@ -540,7 +542,7 @@ class LiveTrader:
             symbol = p.symbol
             if symbol in df_dict:
                 sym_df = df_dict[symbol]
-                price_df  = sym_df.iloc[[-1]]
+                price_df = sym_df.iloc[[-1]]
                 price = price_df[symbol]["close"]
             elif (
                 symbol not in self.watchlist
