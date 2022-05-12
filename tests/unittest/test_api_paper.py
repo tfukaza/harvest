@@ -12,7 +12,6 @@ from _util import *
 
 
 class TestPaperBroker(unittest.TestCase):
-
     @delete_save_files(".")
     def test_account(self):
         """
@@ -54,7 +53,7 @@ class TestPaperBroker(unittest.TestCase):
         """
         Test if buy orders can be placed correctly.
         """
-    
+
         _, dummy, paper = create_trader_and_api("dummy", "paper", "5MIN", ["A"])
         account = paper.fetch_account()
 
@@ -91,7 +90,9 @@ class TestPaperBroker(unittest.TestCase):
         account_after = paper.fetch_account()
         self.assertEqual(account_after["equity"], account["equity"])
         self.assertEqual(account_after["cash"], account["cash"] - cost_1)
-        self.assertEqual(account_after["buying_power"], account["buying_power"] - cost_1)
+        self.assertEqual(
+            account_after["buying_power"], account["buying_power"] - cost_1
+        )
 
     # def test_buy(self):
 

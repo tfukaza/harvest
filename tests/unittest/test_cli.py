@@ -8,7 +8,6 @@ from _util import *
 
 
 class TestCLI(unittest.TestCase):
-
     @delete_save_files(".")
     def test_start_basic(self):
         crossover = os.path.dirname(os.path.realpath(__file__)) + "/../../examples"

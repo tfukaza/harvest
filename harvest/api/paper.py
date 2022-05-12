@@ -240,7 +240,9 @@ class PaperBroker(API):
                         pos["quantity"] = pos["quantity"] + qty
 
                     self.cash -= actual_price
-                    self.buying_power += ret["limit_price"] * qty # Add back the buying power that was used to buy the stock
+                    self.buying_power += (
+                        ret["limit_price"] * qty
+                    )  # Add back the buying power that was used to buy the stock
                     self.buying_power -= actual_price
                     ret_1 = ret.copy()
                     self.orders.remove(ret)

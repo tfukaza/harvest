@@ -19,7 +19,6 @@ prices = [10, 12, 11, 9, 8, 10, 11, 12, 13, 15, 14, 16, 13, 14]
 
 
 class TestAlgo(unittest.TestCase):
-   
 
     # Watchlist set in the Algo class locally should take precendance over watchlist in Trader class
     @delete_save_files(".")
