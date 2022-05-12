@@ -160,7 +160,7 @@ class YahooStreamer(API):
         else:
             get_fmt = "1d"
 
-        if interval == Interval.MIN_1:
+        if interval <= Interval.MIN_1:
             period = "5d"
         elif interval >= Interval.MIN_5 and interval <= Interval.HR_1:
             period = "1mo"

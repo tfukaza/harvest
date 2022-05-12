@@ -463,7 +463,7 @@ class LiveTrader:
 
         self._update_local_cache(df_dict)
 
-        self._print_positions()
+        #self._print_positions()
 
         new_algo = []
         for a in self.algo:
