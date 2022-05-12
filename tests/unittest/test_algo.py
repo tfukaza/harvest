@@ -40,11 +40,7 @@ class TestAlgo(unittest.TestCase):
         algo2 = Algo2()
 
         trader, dummy, paper = create_trader_and_api(
-            "dummy", 
-            "paper", 
-            "5MIN", 
-            ["1", "2", "3"], 
-            [algo1, algo2]
+            "dummy", "paper", "5MIN", ["1", "2", "3"], [algo1, algo2]
         )
 
         # Getting watchlist should return the watchlist of the Algo class
@@ -59,7 +55,6 @@ class TestAlgo(unittest.TestCase):
         self.assertListEqual(
             prices1, list(trader.storage.load("A", Interval.MIN_5)["A"]["close"])
         )
-
 
     @patch("harvest.api._base.mark_up")
     def test_buy_sell_option_auto(self, mock_mark_up):

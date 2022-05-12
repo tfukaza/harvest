@@ -310,7 +310,7 @@ def convert_input_to_datetime(
         datetime = dt.datetime.fromisoformat(datetime)
     elif not isinstance(datetime, dt.datetime):
         raise ValueError(f"Cannot convert {datetime} to datetime.")
-    
+
     if no_tz:
         if has_timezone(datetime):
             datetime = datetime.replace(tzinfo=None)

@@ -12,7 +12,6 @@ from _util import *
 
 
 class TestPaperBroker(unittest.TestCase):
-
     @delete_save_files(".")
     def test_account(self):
         """
@@ -48,7 +47,6 @@ class TestPaperBroker(unittest.TestCase):
         self.assertEqual(cryptos[0]["symbol"], "@C")
         self.assertEqual(cryptos[0]["avg_price"], 289.21)
         self.assertEqual(cryptos[0]["quantity"], 2)
-        
 
     @delete_save_files(".")
     def test_buy_order_limit(self):
@@ -64,7 +62,7 @@ class TestPaperBroker(unittest.TestCase):
         # Get the current price of A
         A_price = dummy.fetch_latest_price("A")
         # Place an order to buy A
-        order = paper.order_stock_limit("buy", "A", 5, A_price*1.05)
+        order = paper.order_stock_limit("buy", "A", 5, A_price * 1.05)
 
         self.assertEqual(order["order_id"], 0)
         self.assertEqual(order["symbol"], "A")
@@ -79,7 +77,7 @@ class TestPaperBroker(unittest.TestCase):
         self.assertEqual(status["side"], "buy")
         self.assertEqual(status["time_in_force"], "gtc")
         self.assertEqual(status["status"], "filled")
-        
+
         filled_price = status["filled_price"]
         filled_qty = status["filled_qty"]
         cost = filled_price * filled_qty
@@ -93,7 +91,6 @@ class TestPaperBroker(unittest.TestCase):
         self.assertEqual(account_after["cash"], account["cash"] - cost)
         self.assertEqual(account_after["buying_power"], account["buying_power"] - cost)
 
-    
     # def test_buy(self):
 
     #     trader, dummy, paper = create_trader_and_api("dummy", "paper", "1MIN", ["A"])
@@ -123,7 +120,7 @@ class TestPaperBroker(unittest.TestCase):
         account = paper.fetch_account()
 
         A_price = dummy.fetch_latest_price("A")
-        order = paper.order_stock_limit("buy", "A", 2, A_price*1.05)
+        order = paper.order_stock_limit("buy", "A", 2, A_price * 1.05)
         status = paper.fetch_stock_order_status(order["order_id"])
         filled_price = status["filled_price"]
         filled_qty = status["filled_qty"]
@@ -135,7 +132,7 @@ class TestPaperBroker(unittest.TestCase):
         account_1 = paper.fetch_account()
         print(account_1)
 
-        order = paper.order_stock_limit("sell", "A", 2, A_price*0.95)
+        order = paper.order_stock_limit("sell", "A", 2, A_price * 0.95)
 
         status = paper.fetch_stock_order_status(order["order_id"])
         self.assertEqual(status["order_id"], 1)
@@ -145,12 +142,12 @@ class TestPaperBroker(unittest.TestCase):
         self.assertEqual(status["side"], "sell")
         self.assertEqual(status["time_in_force"], "gtc")
         self.assertEqual(status["status"], "filled")
-        
+
         filled_price_s = status["filled_price"]
         filled_qty_s = status["filled_qty"]
         cost_s = filled_price_s * filled_qty_s
         profit = cost_s - cost
-        
+
         exp_equity = 1000000.0 + profit
 
         dummy.main()
@@ -160,7 +157,6 @@ class TestPaperBroker(unittest.TestCase):
         self.assertEqual(account_2["equity"], exp_equity)
         self.assertEqual(account_2["cash"], account_1["cash"] + cost_s)
         self.assertEqual(account_2["buying_power"], account_1["buying_power"] + cost_s)
-
 
     def test_sell(self):
 

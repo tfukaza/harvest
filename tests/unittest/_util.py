@@ -4,6 +4,7 @@ import functools
 
 from harvest.algo import BaseAlgo
 
+
 def create_trader_and_api(
     streamer=None,
     broker=None,
@@ -32,6 +33,7 @@ def create_trader_and_api(
 
     return t, stream, broker
 
+
 # Wrapper to delete save files after test
 def delete_save_files(path):
     def wrapper_outer(func):
@@ -42,5 +44,7 @@ def delete_save_files(path):
             if os.path.exists(save_path):
                 os.remove(save_path)
             return r
+
         return wrapper_inner
+
     return wrapper_outer

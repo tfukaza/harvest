@@ -620,7 +620,9 @@ class BaseAlgo:
             symbol = self.watchlist[0]
         asset = self.positions.get(symbol)
         if asset is None:
-            debugger.warning(f"{symbol} is not currently owned. You either don't have it or it's still in the order queue.")
+            debugger.warning(
+                f"{symbol} is not currently owned. You either don't have it or it's still in the order queue."
+            )
             return None
         return asset.profit_percent
 
@@ -639,7 +641,7 @@ class BaseAlgo:
 
         if symbol_type(symbol) == "CRYPTO":
             price = mark_up(price)
-            return math.floor(power / price * 10**5) / 10**5
+            return math.floor(power / price * 10 ** 5) / 10 ** 5
         else:
             price = mark_up(price)
             return math.floor(power / price)

@@ -830,6 +830,7 @@ class API:
                     return func(*args, **kwargs)
                 except Exception as e:
                     from rich.console import Console
+
                     c = Console()
                     c.print_exception(show_locals=True)
                     # self = args[0]

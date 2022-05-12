@@ -128,13 +128,13 @@ class Account:
 
 class Order:
     def __init__(
-        self, 
+        self,
         order_type: str,
-        symbol: str, 
-        quantity: float, 
+        symbol: str,
+        quantity: float,
         time_in_force,
-        side: str, 
-        order_id: Any, 
+        side: str,
+        order_id: Any,
     ) -> None:
         self._type = order_type
         self._symbol = symbol
@@ -241,7 +241,7 @@ class Orders:
                         o["order_id"],
                     )
                 )
-                
+
     @property
     def orders(self) -> List[Order]:
         return self._orders
