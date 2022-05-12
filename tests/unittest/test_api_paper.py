@@ -12,6 +12,7 @@ from _util import *
 
 
 class TestPaperBroker(unittest.TestCase):
+
     @delete_save_files(".")
     def test_account(self):
         """
@@ -53,12 +54,14 @@ class TestPaperBroker(unittest.TestCase):
         """
         Test if buy orders can be placed correctly.
         """
-
+    
         _, dummy, paper = create_trader_and_api("dummy", "paper", "5MIN", ["A"])
         account = paper.fetch_account()
 
         # First, check that there is $1m in the account
         self.assertEqual(account["equity"], 1000000.0)
+        self.assertEqual(account["cash"], 1000000.0)
+        self.assertEqual(account["buying_power"], 1000000.0)
         # Get the current price of A
         A_price = dummy.fetch_latest_price("A")
         # Place an order to buy A
@@ -80,16 +83,15 @@ class TestPaperBroker(unittest.TestCase):
 
         filled_price = status["filled_price"]
         filled_qty = status["filled_qty"]
-        cost = filled_price * filled_qty
+        cost_1 = filled_price * filled_qty
 
         # Advance time so broker status gets updated
         dummy.main()
 
         account_after = paper.fetch_account()
-        print(account_after)
         self.assertEqual(account_after["equity"], account["equity"])
-        self.assertEqual(account_after["cash"], account["cash"] - cost)
-        self.assertEqual(account_after["buying_power"], account["buying_power"] - cost)
+        self.assertEqual(account_after["cash"], account["cash"] - cost_1)
+        self.assertEqual(account_after["buying_power"], account["buying_power"] - cost_1)
 
     # def test_buy(self):
 
@@ -110,6 +112,7 @@ class TestPaperBroker(unittest.TestCase):
     #     self.assertEqual(status["status"], "filled")
     #     paper._delete_account()
 
+    @delete_save_files(".")
     def test_sell_order_limit(self):
         """
         Test if Paper Broker can sell orders correctly.
@@ -158,6 +161,7 @@ class TestPaperBroker(unittest.TestCase):
         self.assertEqual(account_2["cash"], account_1["cash"] + cost_s)
         self.assertEqual(account_2["buying_power"], account_1["buying_power"] + cost_s)
 
+    @delete_save_files(".")
     def test_sell(self):
 
         _, _, paper = create_trader_and_api("dummy", "paper", "1MIN", ["A"])
@@ -177,6 +181,7 @@ class TestPaperBroker(unittest.TestCase):
         self.assertEqual(status["status"], "filled")
         paper._delete_account()
 
+    @delete_save_files(".")
     def test_order_option_limit(self):
         paper = PaperBroker()
 
@@ -195,6 +200,7 @@ class TestPaperBroker(unittest.TestCase):
         self.assertEqual(status["quantity"], 5)
         paper._delete_account()
 
+    @delete_save_files(".")
     def test_commission(self):
         commission_fee = {"buy": 5.76, "sell": "2%"}
 

@@ -39,8 +39,10 @@ def delete_save_files(path):
     def wrapper_outer(func):
         @functools.wraps(func)
         def wrapper_inner(*args, **kwargs):
+            save_path = os.path.join(path, "save")
+            if os.path.exists(save_path):
+                os.remove(save_path)
             r = func(*args, **kwargs)
-            save_path = os.path.join(path, ".save")
             if os.path.exists(save_path):
                 os.remove(save_path)
             return r

@@ -19,14 +19,10 @@ prices = [10, 12, 11, 9, 8, 10, 11, 12, 13, 15, 14, 16, 13, 14]
 
 
 class TestAlgo(unittest.TestCase):
-    @classmethod
-    def setUpClass(self):
-        try:
-            os.remove("./.save")
-        except:
-            pass
+   
 
     # Watchlist set in the Algo class locally should take precendance over watchlist in Trader class
+    @delete_save_files(".")
     def test_config_watchlist_1(self):
         class Algo1(BaseAlgo):
             def config(self):
@@ -57,6 +53,7 @@ class TestAlgo(unittest.TestCase):
         )
 
     @patch("harvest.api._base.mark_up")
+    @delete_save_files(".")
     def test_buy_sell_option_auto(self, mock_mark_up):
 
         mock_mark_up.return_value = 10

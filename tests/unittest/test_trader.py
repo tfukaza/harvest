@@ -29,6 +29,7 @@ class TestPaperTrader(unittest.TestCase):
         except:
             pass
 
+    @delete_save_files(".")
     def test_start_do_nothing(self):
         _, _, _ = create_trader_and_api("dummy", "paper", "1MIN", ["A"])
 
