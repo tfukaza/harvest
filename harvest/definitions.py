@@ -128,16 +128,22 @@ class Account:
 
 class Order:
     def __init__(
-        self, symbol: str, order_id: Any, side: str, quantity: float, time_in_force
+        self,
+        order_type: str,
+        symbol: str,
+        quantity: float,
+        time_in_force,
+        side: str,
+        order_id: Any,
     ) -> None:
+        self._type = order_type
         self._symbol = symbol
-        self._order_id = order_id
-        self._type = symbol_type(symbol)
-        self._side = side
-        self._time_in_force = time_in_force
         self._quantity = quantity
+        self._time_in_force = time_in_force
+        self._side = side
+        self._order_id = order_id
 
-        self._status = None
+        self._status = "open"
         self._filled_time = None
         self._filled_price = None
         self._filled_quantity = None
@@ -211,7 +217,30 @@ class Orders:
         return "\n".join(str(order) for order in self._orders)
 
     def init(self, orders: Iterable[Dict[str, Any]]) -> None:
-        self._orders = [Order(**o) for o in orders]
+        for o in orders:
+            if o["order_type"] == "OPTION":
+                self._orders.append(
+                    OptionOrder(
+                        o["order_type"],
+                        o["symbol"],
+                        o["base_symbol"],
+                        o["quantity"],
+                        o["time_in_force"],
+                        o["side"],
+                        o["order_id"],
+                    )
+                )
+            else:
+                self._orders.append(
+                    Order(
+                        o["order_type"],
+                        o["symbol"],
+                        o["quantity"],
+                        o["time_in_force"],
+                        o["side"],
+                        o["order_id"],
+                    )
+                )
 
     @property
     def orders(self) -> List[Order]:
@@ -225,10 +254,35 @@ class Orders:
     def add_new_order(
         self, symbol: str, order_id: Any, side: str, quantity: float, time_in_force
     ) -> None:
-        self._orders.append(Order(symbol, order_id, side, quantity, time_in_force))
+        if symbol_type(symbol) == "OPTION":
+            base_symbol, _, _, _ = occ_to_data(symbol)
+            self._orders.append(
+                OptionOrder(
+                    "OPTION",
+                    symbol,
+                    base_symbol,
+                    quantity,
+                    time_in_force,
+                    side,
+                    order_id,
+                )
+            )
+        else:
+            self._orders.append(
+                Order(
+                    symbol_type(symbol),
+                    symbol,
+                    quantity,
+                    time_in_force,
+                    side,
+                    order_id,
+                )
+            )
 
     def remove_non_open(self) -> None:
-        self._orders = list(filter(lambda x: x.status == "open", self._orders))
+        print(self._orders)
+        self._orders = list(filter(lambda x: x.status != "filled", self._orders))
+        print(self._orders)
 
     @property
     def symbols(self) -> List[str]:
@@ -242,35 +296,27 @@ class Orders:
 class OptionOrder(Order):
     def __init__(
         self,
-        type,
+        order_type,
         symbol,
-        quantity,
-        filled_qty,
-        id,
-        time_in_force,
-        status,
-        side,
-        filled_time,
-        filled_price,
         base_symbol,
+        quantity,
+        time_in_force,
+        side,
+        order_id,
     ):
         super().__init__(
-            type,
+            order_type,
             symbol,
             quantity,
-            filled_qty,
-            id,
             time_in_force,
-            status,
             side,
-            filled_time,
-            filled_price,
+            order_id,
         )
         self._base_symbol = base_symbol
 
     def __str__(self):
         s = super().__str__()
-        return f"{s} {self.base_symbol}"
+        return f"{s}base_symbol: {self.base_symbol}"
 
     @property
     def base_symbol(self):
@@ -329,11 +375,11 @@ class Position:
 
     @property
     def value(self):
-        return self._current_price * self._quantity
+        return self.current_price * self.quantity
 
     @property
     def total_cost(self):
-        return self._avg_price * self._quantity
+        return self.avg_price * self.quantity
 
     @property
     def profit(self):
@@ -349,9 +395,9 @@ class Position:
             + f" Quantity:\t{self._quantity}\n"
             + f" Avg. Cost:\t${self._avg_price}\n"
             + f" Price:  \t${self._current_price}\n"
-            + f" Value:  \t${self._value}\n"
-            + f" Profit:\t${self._profit}\n"
-            + f" Returns:\t{'▲' if self._profit_percent > 0 else '▼'}{self._profit_percent * 100}%\n"
+            + f" Value:  \t${self.value}\n"
+            + f" Profit:\t${self.profit}\n"
+            + f" Returns:\t{'▲' if self.profit_percent > 0 else '▼'}{self.profit_percent * 100}%\n"
             + "─" * 50
         )
 

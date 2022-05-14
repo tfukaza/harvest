@@ -15,6 +15,8 @@ from harvest.trader import PaperTrader
 from harvest.definitions import *
 from harvest.utils import *
 
+from _util import *
+
 
 class TestAPI(unittest.TestCase):
     def test_timeout(self):
@@ -80,6 +82,7 @@ class TestAPI(unittest.TestCase):
         except:
             pass
 
+    @delete_save_files(".")
     def test_timeout_cancel(self):
         t = PaperTrader("base_stream", debug=True)
         t.set_algo(BaseAlgo())

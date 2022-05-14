@@ -210,13 +210,16 @@ class BaseAlgo:
         """
         if symbol is None:
             symbol = self.watchlist[0]
-        lower_exp = convert_input_to_datetime(lower_exp, None)
-        upper_exp = convert_input_to_datetime(upper_exp, None)
+        lower_exp = convert_input_to_datetime(lower_exp, timezone.utc)
+        upper_exp = convert_input_to_datetime(upper_exp, timezone.utc)
+        # Remove timezone from datetime objects
 
         exp_dates = self.get_option_chain_info(symbol)["exp_dates"]
         if lower_exp is not None:
+            lower_exp = lower_exp.replace(tzinfo=None)
             exp_dates = list(filter(lambda x: x >= lower_exp, exp_dates))
         if upper_exp is not None:
+            upper_exp = upper_exp.replace(tzinfo=None)
             exp_dates = list(filter(lambda x: x <= upper_exp, exp_dates))
         exp_dates = sorted(exp_dates)
 
@@ -617,7 +620,10 @@ class BaseAlgo:
             symbol = self.watchlist[0]
         asset = self.positions.get(symbol)
         if asset is None:
-            raise Exception(f"{symbol} is not currently owned")
+            debugger.warning(
+                f"{symbol} is not currently owned. You either don't have it or it's still in the order queue."
+            )
+            return None
         return asset.profit_percent
 
     def get_asset_max_quantity(self, symbol=None):

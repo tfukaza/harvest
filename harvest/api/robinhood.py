@@ -160,33 +160,39 @@ class Robinhood(API):
         delta = delta.total_seconds()
         delta_hours = int(delta / 3600)
 
-        # 15SEC interval must be capped to 1 hour.
         if interval == Interval.SEC_15:
             span = "hour"
-        # 1MIN, 5MIN interval must be capped to 1 day.
-        elif interval in [Interval.MIN_1, Interval.MIN_5]:
-            span = "day"
-        # Other intervals have varying spans
+        elif interval == Interval.MIN_1:
+            if symbol_type(symbol) == "CRYPTO":
+                span = "hour"
+            else:
+                span = "day"
+        elif interval == Interval.MIN_5:
+            span = "week"
         elif interval in [
             Interval.MIN_15,
             Interval.MIN_30,
             Interval.HR_1,
         ]:
             if delta_hours <= 24:
-                span = "day"
+                span = "week"
             else:
                 span = "month"
         elif interval in [Interval.DAY_1]:
             if delta_hours <= 24:
-                span = "day"
+                span = "week"
             elif delta_hours <= 720:
                 span = "month"
             else:
                 span = "year"
 
+        debugger.debug(f"Fetching {symbol}, {interval}, {start}, {end}, {span}")
+
         if symbol[0] == "@":
             ret = rh.get_crypto_historicals(
-                symbol[1:], interval=get_interval_fmt, span=span
+                symbol[1:],
+                interval=get_interval_fmt,
+                span=span,
             )
         else:
             ret = rh.get_stock_historicals(symbol, interval=get_interval_fmt, span=span)
@@ -499,10 +505,10 @@ class Robinhood(API):
                     "base_symbol": r["chain_symbol"],
                     "quantity": r["quantity"],
                     "filled_qty": r["processed_quantity"],
-                    "id": r["id"],
+                    "order_id": r["id"],
                     "time_in_force": r["time_in_force"],
                     "status": r["state"],
-                    "order_id": leg["id"],
+                    "id": leg["id"],
                     "side": leg["side"],
                     "filled_time": None,
                     "filled_price": None,
@@ -525,6 +531,7 @@ class Robinhood(API):
                     "filled_price": None,
                 }
             )
+        debugger.debug(queue)
         return queue
 
     # --------------- Methods for Trading --------------- #
@@ -636,6 +643,8 @@ class Robinhood(API):
                     optionType=option_type,
                     timeInForce=in_force,
                 )
+            debugger.debug(f"Order placed: {ret}")
+            # leg = ret["legs"][0]
             return {
                 "order_id": ret["id"],
                 "symbol": symbol,
@@ -684,7 +693,9 @@ class Robinhood(API):
 
         df.columns = pd.MultiIndex.from_product([watch, df.columns])
 
-        return df.dropna()
+        df = df.dropna()
+        debugger.debug(f"Formatted dataframe: {df}")
+        return df
 
     def _rh_datestr_to_datetime(self, date_str: str):
         date_str = date_str[:-3] + date_str[-2:]

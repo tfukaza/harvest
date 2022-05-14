@@ -240,7 +240,9 @@ class PaperBroker(API):
                         pos["quantity"] = pos["quantity"] + qty
 
                     self.cash -= actual_price
-                    self.buying_power += ret["limit_price"] * qty
+                    self.buying_power += (
+                        ret["limit_price"] * qty
+                    )  # Add back the buying power that was used to buy the stock
                     self.buying_power -= actual_price
                     ret_1 = ret.copy()
                     self.orders.remove(ret)
@@ -288,7 +290,7 @@ class PaperBroker(API):
         price = self.streamer.fetch_option_market_data(occ_sym)["price"]
 
         qty = ret["quantity"]
-        original_price = price * qty
+        original_price = price * qty * OPTION_QTY_MULTIPLIER
         # If order has been opened, simulate asset buy/sell
         if ret["status"] == "open":
             pos = next((r for r in self.options if r["symbol"] == occ_sym), None)
@@ -316,7 +318,7 @@ class PaperBroker(API):
                                 "symbol": ret["symbol"],
                                 "avg_price": price,
                                 "quantity": ret["quantity"],
-                                "multiplier": 100,
+                                "multiplier": OPTION_QTY_MULTIPLIER,
                                 "exp_date": date,
                                 "strike_price": strike,
                                 "type": option_type,
@@ -329,6 +331,9 @@ class PaperBroker(API):
                         pos["quantity"] = pos["quantity"] + qty
 
                     self.cash -= actual_price
+                    self.buying_power += (
+                        ret["limit_price"] * qty * OPTION_QTY_MULTIPLIER
+                    )
                     self.buying_power -= actual_price
                     ret["status"] = "filled"
                     ret["filled_time"] = self.streamer.get_current_time()
@@ -469,7 +474,7 @@ class PaperBroker(API):
         self.orders.append(data)
         self.order_id += 1
         if side == "buy":
-            self.buying_power -= quantity * limit_price
+            self.buying_power -= quantity * limit_price * OPTION_QTY_MULTIPLIER
 
         return {"order_id": data["order_id"], "symbol": data["symbol"]}
 

@@ -141,7 +141,7 @@ def expand_string_interval(interval: str) -> Tuple[int, str]:
 
 def interval_to_timedelta(interval: Interval) -> dt.timedelta:
     """Converts an IntEnum interval into a timedelta object of equal value."""
-    expanded_units = {"DAY": "days", "HR": "hours", "MIN": "minutes"}
+    expanded_units = {"DAY": "days", "HR": "hours", "MIN": "minutes", "SEC": "seconds"}
     value, unit = expand_interval(interval)
     params = {expanded_units[unit]: value}
     return dt.timedelta(**params)
@@ -295,11 +295,11 @@ def get_local_timezone() -> ZoneInfo:
 
 
 def convert_input_to_datetime(
-    datetime: Union[str, dt.datetime], timezone: ZoneInfo = None
+    datetime: Union[str, dt.datetime], timezone: ZoneInfo = None, no_tz=False
 ) -> dt.datetime:
     """
     Converts the input to a datetime object with a UTC timezone.
-    If the datetime object does not have a timezone sets the
+    If the datetime object does not have a timezone, sets the
     datetime object's timezone to the given timezone and then
     covert it to UTC. If timezone is None then the system's local
     timezone is used.
@@ -310,6 +310,11 @@ def convert_input_to_datetime(
         datetime = dt.datetime.fromisoformat(datetime)
     elif not isinstance(datetime, dt.datetime):
         raise ValueError(f"Cannot convert {datetime} to datetime.")
+
+    if no_tz:
+        if has_timezone(datetime):
+            datetime = datetime.replace(tzinfo=None)
+        return datetime
 
     if not has_timezone(datetime):
         if timezone is None:

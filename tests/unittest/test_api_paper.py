@@ -12,23 +12,23 @@ from _util import *
 
 
 class TestPaperBroker(unittest.TestCase):
-    @classmethod
-    def setUpClass(self):
-        try:
-            os.remove("./.save")
-        except:
-            pass
-
+    @delete_save_files(".")
     def test_account(self):
+        """
+        By default, the account is created with a balance of 1 million dollars.
+        """
         paper = PaperBroker()
         d = paper.fetch_account()
         self.assertEqual(d["equity"], 1000000.0)
         self.assertEqual(d["cash"], 1000000.0)
         self.assertEqual(d["buying_power"], 1000000.0)
         self.assertEqual(d["multiplier"], 1)
-        paper._delete_account()
 
+    @delete_save_files(".")
     def test_dummy_account(self):
+        """
+        Test if positions can be saved correctly.
+        """
         paper = PaperBroker()
 
         paper.stocks.append({"symbol": "A", "avg_price": 1.0, "quantity": 5})
@@ -47,18 +47,31 @@ class TestPaperBroker(unittest.TestCase):
         self.assertEqual(cryptos[0]["symbol"], "@C")
         self.assertEqual(cryptos[0]["avg_price"], 289.21)
         self.assertEqual(cryptos[0]["quantity"], 2)
-        paper._delete_account()
 
+    @delete_save_files(".")
     def test_buy_order_limit(self):
+        """
+        Test if buy orders can be placed correctly.
+        """
 
-        _, _, paper = create_trader_and_api("dummy", "paper", "1MIN", ["A"])
+        _, dummy, paper = create_trader_and_api("dummy", "paper", "5MIN", ["A"])
+        account = paper.fetch_account()
 
-        order = paper.order_stock_limit("buy", "A", 5, 50000)
+        # First, check that there is $1m in the account
+        self.assertEqual(account["equity"], 1000000.0)
+        self.assertEqual(account["cash"], 1000000.0)
+        self.assertEqual(account["buying_power"], 1000000.0)
+        # Get the current price of A
+        A_price = dummy.fetch_latest_price("A")
+        # Place an order to buy A
+        order = paper.order_stock_limit("buy", "A", 5, A_price * 1.05)
 
         self.assertEqual(order["order_id"], 0)
         self.assertEqual(order["symbol"], "A")
 
+        # Since this is a simulation, orders are immediately filled
         status = paper.fetch_stock_order_status(order["order_id"])
+
         self.assertEqual(status["order_id"], 0)
         self.assertEqual(status["symbol"], "A")
         self.assertEqual(status["quantity"], 5)
@@ -66,46 +79,90 @@ class TestPaperBroker(unittest.TestCase):
         self.assertEqual(status["side"], "buy")
         self.assertEqual(status["time_in_force"], "gtc")
         self.assertEqual(status["status"], "filled")
-        paper._delete_account()
 
-    def test_buy(self):
+        filled_price = status["filled_price"]
+        filled_qty = status["filled_qty"]
+        cost_1 = filled_price * filled_qty
 
-        trader, dummy, paper = create_trader_and_api("dummy", "paper", "1MIN", ["A"])
+        # Advance time so broker status gets updated
+        dummy.main()
 
-        order = paper.buy("A", 5, 1e5)
+        account_after = paper.fetch_account()
+        self.assertEqual(account_after["equity"], account["equity"])
+        self.assertEqual(account_after["cash"], account["cash"] - cost_1)
+        self.assertEqual(
+            account_after["buying_power"], account["buying_power"] - cost_1
+        )
 
-        self.assertEqual(order["order_id"], 0)
-        self.assertEqual(order["symbol"], "A")
+    # def test_buy(self):
 
-        status = paper.fetch_stock_order_status(order["order_id"])
-        self.assertEqual(status["order_id"], 0)
-        self.assertEqual(status["symbol"], "A")
-        self.assertEqual(status["quantity"], 5)
-        self.assertEqual(status["filled_qty"], 5)
-        self.assertEqual(status["side"], "buy")
-        self.assertEqual(status["time_in_force"], "gtc")
-        self.assertEqual(status["status"], "filled")
-        paper._delete_account()
+    #     trader, dummy, paper = create_trader_and_api("dummy", "paper", "1MIN", ["A"])
 
+    #     order = paper.buy("A", 5, 1e5)
+
+    #     self.assertEqual(order["order_id"], 0)
+    #     self.assertEqual(order["symbol"], "A")
+
+    #     status = paper.fetch_stock_order_status(order["order_id"])
+    #     self.assertEqual(status["order_id"], 0)
+    #     self.assertEqual(status["symbol"], "A")
+    #     self.assertEqual(status["quantity"], 5)
+    #     self.assertEqual(status["filled_qty"], 5)
+    #     self.assertEqual(status["side"], "buy")
+    #     self.assertEqual(status["time_in_force"], "gtc")
+    #     self.assertEqual(status["status"], "filled")
+    #     paper._delete_account()
+
+    @delete_save_files(".")
     def test_sell_order_limit(self):
+        """
+        Test if Paper Broker can sell orders correctly.
+        Assumes the buy feature works.
+        """
 
-        _, _, paper = create_trader_and_api("dummy", "paper", "1MIN", ["A"])
-        paper.stocks = [{"symbol": "A", "avg_price": 10.0, "quantity": 5}]
+        _, dummy, paper = create_trader_and_api("dummy", "paper", "5MIN", ["A"])
+        account = paper.fetch_account()
 
-        order = paper.order_stock_limit("sell", "A", 2, 50000)
-        self.assertEqual(order["order_id"], 0)
-        self.assertEqual(order["symbol"], "A")
+        A_price = dummy.fetch_latest_price("A")
+        order = paper.order_stock_limit("buy", "A", 2, A_price * 1.05)
+        status = paper.fetch_stock_order_status(order["order_id"])
+        filled_price = status["filled_price"]
+        filled_qty = status["filled_qty"]
+        cost = filled_price * filled_qty
+
+        dummy.main()
+
+        A_price = dummy.fetch_latest_price("A")
+        account_1 = paper.fetch_account()
+        print(account_1)
+
+        order = paper.order_stock_limit("sell", "A", 2, A_price * 0.95)
 
         status = paper.fetch_stock_order_status(order["order_id"])
-        self.assertEqual(status["order_id"], 0)
+        self.assertEqual(status["order_id"], 1)
         self.assertEqual(status["symbol"], "A")
         self.assertEqual(status["quantity"], 2)
         self.assertEqual(status["filled_qty"], 2)
         self.assertEqual(status["side"], "sell")
         self.assertEqual(status["time_in_force"], "gtc")
         self.assertEqual(status["status"], "filled")
-        paper._delete_account()
 
+        filled_price_s = status["filled_price"]
+        filled_qty_s = status["filled_qty"]
+        cost_s = filled_price_s * filled_qty_s
+        profit = cost_s - cost
+
+        exp_equity = 1000000.0 + profit
+
+        dummy.main()
+
+        account_2 = paper.fetch_account()
+
+        self.assertEqual(account_2["equity"], exp_equity)
+        self.assertEqual(account_2["cash"], account_1["cash"] + cost_s)
+        self.assertEqual(account_2["buying_power"], account_1["buying_power"] + cost_s)
+
+    @delete_save_files(".")
     def test_sell(self):
 
         _, _, paper = create_trader_and_api("dummy", "paper", "1MIN", ["A"])
@@ -125,6 +182,7 @@ class TestPaperBroker(unittest.TestCase):
         self.assertEqual(status["status"], "filled")
         paper._delete_account()
 
+    @delete_save_files(".")
     def test_order_option_limit(self):
         paper = PaperBroker()
 
@@ -143,6 +201,7 @@ class TestPaperBroker(unittest.TestCase):
         self.assertEqual(status["quantity"], 5)
         paper._delete_account()
 
+    @delete_save_files(".")
     def test_commission(self):
         commission_fee = {"buy": 5.76, "sell": "2%"}
 

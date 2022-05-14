@@ -2,7 +2,7 @@
 from logging import debug
 import re
 
-# import traceback
+import traceback
 import sys
 from sys import exit
 from signal import signal, SIGINT
@@ -221,7 +221,10 @@ class LiveTrader:
             self.server.start()
 
         if self.start_streamer:
-            self.streamer.start()
+            try:
+                self.streamer.start()
+            except Exception as e:
+                self.console.print_exception(show_locals=True)
 
     def _print_account(self) -> None:
         a = self.account
@@ -265,8 +268,8 @@ class LiveTrader:
             stock_table.add_column("Quantity")
             stock_table.add_column("Current Price")
             stock_table.add_column("Avg. Cost")
-            stock_table.add_column("Profit/Loss ($)")
-            stock_table.add_column("Profit/Loss (%)")
+            stock_table.add_column("Profit/Loss")
+            stock_table.add_column("Profit/Loss")
 
             for p in positions:
                 ret_prefix = "+" if p.profit >= 0 else ""
@@ -276,8 +279,8 @@ class LiveTrader:
                     f"{p.quantity}",
                     f"${p.current_price}",
                     f"${p.avg_cost}",
-                    f"{per_prefix} {ret_prefix} {red_or_green(p.profit)}",
-                    f"{per_prefix} {ret_prefix} {red_or_green(p.profit_percent)}",
+                    f"{per_prefix} ${ret_prefix}{red_or_green(p.profit)}",
+                    f"{per_prefix} {ret_prefix}{red_or_green(p.profit_percent*100)}%",
                 )
             self.console.print(stock_table)
 
@@ -328,8 +331,11 @@ class LiveTrader:
         # Get any pending orders
         ret = self.broker.fetch_order_queue()
         self.orders.init(ret)
+        self._update_order_queue()
+
         debugger.debug(f"Fetched orders:\n{self.orders}")
 
+        # Get currently held positions
         self._fetch_account_data()
 
     def _setup_params(
@@ -373,6 +379,8 @@ class LiveTrader:
                     if a.interval < cur_interval:
                         watchlist_cfg_tmp[sym]["aggregations"].append(cur_interval)
                         watchlist_cfg_tmp[sym]["interval"] = a.interval
+                    elif a.interval > cur_interval:
+                        watchlist_cfg_tmp[sym]["aggregations"].append(a.interval)
                 # If symbol is not in global watchlist, simply add it
                 else:
                     watchlist_cfg_tmp[sym] = {}
@@ -427,6 +435,8 @@ class LiveTrader:
         # if self.stats.timestamp.hour % 12 == 0 and self.stats.timestamp.minute == 0:
         #     self.streamer.refresh_cred()
 
+        debugger.debug(f"{df_dict}")
+
         self.storage.add_performance_data(self.account.equity, self.stats.timestamp)
         self.storage.add_calendar_data(
             self.streamer.fetch_market_hours(self.stats.timestamp.date())
@@ -453,7 +463,7 @@ class LiveTrader:
 
         self._update_local_cache(df_dict)
 
-        self._print_positions()
+        # self._print_positions()
 
         new_algo = []
         for a in self.algo:
@@ -469,7 +479,8 @@ class LiveTrader:
                     f"Algorithm {a} failed, removing from algorithm list.\n"
                 )
                 debugger.warning(f"Exception: {e}\n")
-                # debugger.warning(f"Traceback: {traceback.format_exc()}\n")
+                debugger.warning(f"Traceback: {traceback.format_exc()}\n")
+                self.console.print_exception(show_locals=True)
 
         if len(new_algo) <= 0:
             debugger.critical("No algorithms to run")
@@ -530,7 +541,9 @@ class LiveTrader:
         for p in self.positions.stock_crypto:
             symbol = p.symbol
             if symbol in df_dict:
-                price = df_dict[symbol].iloc[-1][symbol]["close"]
+                sym_df = df_dict[symbol]
+                price_df = sym_df.iloc[-1]
+                price = price_df[symbol]["close"]
             elif (
                 symbol not in self.watchlist
             ):  # handle cases when user has an asset not in watchlist
@@ -570,6 +583,13 @@ class LiveTrader:
             for p in self.broker.fetch_crypto_positions()
         ]
         self.positions.update(stock_pos, option_pos, crypto_pos)
+        # Get the latest price for all positions
+        for p in self.positions.stock_crypto:
+            price = self.streamer.fetch_latest_price(p.symbol)
+            p.update(price)
+        for p in self.positions.option:
+            price = self.streamer.fetch_option_market_data(p.symbol)["price"]
+            p.update(price)
 
         ret = self.broker.fetch_account()
 
@@ -627,6 +647,7 @@ class LiveTrader:
             return None
         self.orders.add_new_order(symbol, ret["order_id"], "buy", quantity, in_force)
         debugger.debug(f"BUY: {self.stats.timestamp}, {symbol}, {quantity}")
+        debugger.debug(f"Updated order queue: {self.orders}")
 
         return ret
 

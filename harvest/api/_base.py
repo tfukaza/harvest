@@ -117,7 +117,7 @@ class API:
 
         self.poll_interval = min_interval
 
-        debugger.debug(f"Poll Interval: {self.poll_interval}")
+        debugger.debug(f"Poll Interval: {interval_enum_to_string(self.poll_interval)}")
         debugger.debug(f"{type(self).__name__} setup finished")
 
     def start(self) -> None:
@@ -130,6 +130,7 @@ class API:
         make sure to set the callback function to self.main().
         """
         cur_min = -1
+        cur_sec = -1
         val, unit = expand_interval(self.poll_interval)
 
         debugger.debug(f"{type(self).__name__} started...")
@@ -137,7 +138,17 @@ class API:
             f"Waiting for next interval... ({val} {unit})", spinner="material"
         )
         status.start()
-        if unit == "MIN":
+        if unit == "SEC":
+            while 1:
+                cur = dt.datetime.now(tz.utc).replace(microsecond=0)
+                sec = cur.second
+                if sec % 15 == 0 and sec != cur_sec:
+                    cur_sec = sec
+                    self.stats.timestamp = cur
+                    status.stop()
+                    self.main()
+                    status.start()
+        elif unit == "MIN":
             sleep = val * 60 - 10
             while 1:
                 cur = now()
@@ -203,7 +214,7 @@ class API:
                 debugger.debug(f"{sym} price fetch returned: {latest}")
                 if latest is None or latest.empty:
                     continue
-                df_dict[sym] = latest.iloc[-1]
+                df_dict[sym] = latest.iloc[[-1]]
 
         self.trader_main(df_dict)
 
@@ -258,7 +269,7 @@ class API:
     def fetch_latest_price(self, symbol: str) -> float:
         interval = self.poll_interval
         end = self.get_current_time()
-        start = end - interval_to_timedelta(interval) * 2
+        start = end - interval_to_timedelta(interval) * 12
         price = self.fetch_price_history(symbol, interval, start, end)
         return price[symbol]["close"][-1]
 
@@ -472,11 +483,11 @@ class API:
                 - order_type: "STOCK" or "CRYPTO"
                 - symbol: Symbol of asset
                 - quantity: Quantity ordered
-                - filled_qty: Quantity filled
-                - order_id: ID of order
                 - time_in_force: Time in force
-                - status: Status of the order
                 - side: 'buy' or 'sell'
+                - order_id: ID of order
+                - status: Status of the order
+                - filled_qty: Quantity filled
                 - filled_time: Time the order was filled
                 - filled_price: Price the order was filled at
             For options:
@@ -484,13 +495,13 @@ class API:
                 - symbol: OCC symbol of option
                 - base_symbol:
                 - quantity: Quantity ordered
+                - order_id: ID of order
+                - time_in_force: Time in force
+                - side: 'buy' or 'sell'
+                - status: Status of the order
                 - filled_qty: Quantity filled
                 - filled_time: Time the order was filled
                 - filled_price: Price the order was filled at
-                - order_id: ID of order
-                - time_in_force: Time in force
-                - status: Status of the order
-                - side: 'buy' or 'sell'
 
         """
         debugger.error(
@@ -818,14 +829,19 @@ class API:
                 try:
                     return func(*args, **kwargs)
                 except Exception as e:
-                    self = args[0]
-                    debugger.error(f"Error: {e}")
-                    traceback.print_exc()
+                    from rich.console import Console
+
+                    c = Console()
+                    c.print_exception(show_locals=True)
+                    # self = args[0]
+                    # debugger.error(f"Error: {e}")
+                    # traceback.print_exc()
                     debugger.error("Logging out and back in...")
                     args[0].refresh_cred()
                     tries -= 1
                     debugger.error("Retrying...")
                     continue
+            raise Exception(f"Failed to run {func.__name__}")
 
         return wrapper
 
