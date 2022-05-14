@@ -318,7 +318,7 @@ class PaperBroker(API):
                                 "symbol": ret["symbol"],
                                 "avg_price": price,
                                 "quantity": ret["quantity"],
-                                "multiplier": OPTION_QTY_MULTIPLIER
+                                "multiplier": OPTION_QTY_MULTIPLIER,
                                 "exp_date": date,
                                 "strike_price": strike,
                                 "type": option_type,
