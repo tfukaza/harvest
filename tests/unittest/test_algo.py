@@ -51,36 +51,36 @@ class TestAlgo(unittest.TestCase):
             prices1, list(trader.storage.load("A", Interval.MIN_5)["A"]["close"])
         )
 
-    @patch("harvest.api._base.mark_up")
-    @delete_save_files(".")
-    def test_buy_sell_option_auto(self, mock_mark_up):
+    #@patch("harvest.api._base.mark_up")
+    # @delete_save_files(".")
+    # def test_buy_sell_option_auto(self, mock_mark_up):
 
-        mock_mark_up.return_value = 10
+    #     mock_mark_up.return_value = 10
 
-        t = PaperTrader(streamer="dummy", debug=True)
-        t.start_streamer = False
-        t.set_symbol("X")
-        t.set_algo(BaseAlgo())
-        t.start("1MIN")
-        streamer = t.streamer
-        streamer.main()
+    #     t = PaperTrader(streamer="dummy", debug=True)
+    #     t.start_streamer = False
+    #     t.set_symbol("X")
+    #     t.set_algo(BaseAlgo())
+    #     t.start("1MIN")
+    #     streamer = t.streamer
+    #     streamer.main()
 
-        t.algo[0].buy("X     110101C01000000")
-        streamer.main()
+    #     t.algo[0].buy("X     110101C01000000")
+    #     streamer.main()
 
-        p = t.positions.option[0]
-        self.assertEqual(p.symbol, "X110101C01000000")
+    #     p = t.positions.option[0]
+    #     self.assertEqual(p.symbol, "X110101C01000000")
 
-        t.algo[0].sell_all_options()
-        streamer.main()
+    #     t.algo[0].sell_all_options()
+    #     streamer.main()
 
-        t.broker._delete_account()
-        self.assertEqual(0, t.algo[0].get_asset_quantity("X     110101C01000000"))
+    #     t.broker._delete_account()
+    #     self.assertEqual(0, t.algo[0].get_asset_quantity("X     110101C01000000"))
 
-        try:
-            t._delete_account()
-        except:
-            pass
+    #     try:
+    #         t._delete_account()
+    #     except:
+    #         pass
 
 
 if __name__ == "__main__":
