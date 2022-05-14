@@ -318,7 +318,7 @@ class PaperBroker(API):
                                 "symbol": ret["symbol"],
                                 "avg_price": price,
                                 "quantity": ret["quantity"],
-                                "multiplier": 100,
+                                "multiplier": OPTION_QTY_MULTIPLIER
                                 "exp_date": date,
                                 "strike_price": strike,
                                 "type": option_type,
@@ -331,6 +331,9 @@ class PaperBroker(API):
                         pos["quantity"] = pos["quantity"] + qty
 
                     self.cash -= actual_price
+                    self.buying_power += (
+                        ret["limit_price"] * qty * OPTION_QTY_MULTIPLIER
+                    )
                     self.buying_power -= actual_price
                     ret["status"] = "filled"
                     ret["filled_time"] = self.streamer.get_current_time()
@@ -471,7 +474,7 @@ class PaperBroker(API):
         self.orders.append(data)
         self.order_id += 1
         if side == "buy":
-            self.buying_power -= quantity * limit_price
+            self.buying_power -= quantity * limit_price * OPTION_QTY_MULTIPLIER
 
         return {"order_id": data["order_id"], "symbol": data["symbol"]}
 

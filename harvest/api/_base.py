@@ -269,7 +269,7 @@ class API:
     def fetch_latest_price(self, symbol: str) -> float:
         interval = self.poll_interval
         end = self.get_current_time()
-        start = end - interval_to_timedelta(interval) * 2
+        start = end - interval_to_timedelta(interval) * 12
         price = self.fetch_price_history(symbol, interval, start, end)
         return price[symbol]["close"][-1]
 
