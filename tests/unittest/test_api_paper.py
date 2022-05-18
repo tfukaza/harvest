@@ -75,13 +75,15 @@ class TestPaperBroker(unittest.TestCase):
         self.assertEqual(status["order_id"], 0)
         self.assertEqual(status["symbol"], "A")
         self.assertEqual(status["quantity"], 5)
-        self.assertEqual(status["filled_qty"], 5)
+        self.assertEqual(status["filled_qty"], 0)
+        #self.assertEqual(status["filled_price"], 0)
         self.assertEqual(status["side"], "buy")
         self.assertEqual(status["time_in_force"], "gtc")
         self.assertEqual(status["status"], "filled")
 
-        filled_price = status["filled_price"]
-        filled_qty = status["filled_qty"]
+        # Assume order will be filled at the price of A
+        filled_price = A_price
+        filled_qty = status["quantity"]
         cost_1 = filled_price * filled_qty
 
         # Advance time so broker status gets updated
@@ -126,8 +128,8 @@ class TestPaperBroker(unittest.TestCase):
         A_price = dummy.fetch_latest_price("A")
         order = paper.order_stock_limit("buy", "A", 2, A_price * 1.05)
         status = paper.fetch_stock_order_status(order["order_id"])
-        filled_price = status["filled_price"]
-        filled_qty = status["filled_qty"]
+        filled_price = A_price
+        filled_qty = status["quantity"]
         cost = filled_price * filled_qty
 
         dummy.main()
@@ -142,13 +144,14 @@ class TestPaperBroker(unittest.TestCase):
         self.assertEqual(status["order_id"], 1)
         self.assertEqual(status["symbol"], "A")
         self.assertEqual(status["quantity"], 2)
-        self.assertEqual(status["filled_qty"], 2)
+        self.assertEqual(status["filled_qty"], 0)
+        #self.assertEqual(status["filled_price"], 0)
         self.assertEqual(status["side"], "sell")
         self.assertEqual(status["time_in_force"], "gtc")
         self.assertEqual(status["status"], "filled")
 
-        filled_price_s = status["filled_price"]
-        filled_qty_s = status["filled_qty"]
+        filled_price_s = A_price
+        filled_qty_s = status["quantity"]
         cost_s = filled_price_s * filled_qty_s
         profit = cost_s - cost
 
@@ -158,7 +161,7 @@ class TestPaperBroker(unittest.TestCase):
 
         account_2 = paper.fetch_account()
 
-        self.assertEqual(account_2["equity"], exp_equity)
+        self.assertAlmostEqual(account_2["equity"], exp_equity, 2)
         self.assertEqual(account_2["cash"], account_1["cash"] + cost_s)
         self.assertEqual(account_2["buying_power"], account_1["buying_power"] + cost_s)
 
@@ -176,7 +179,8 @@ class TestPaperBroker(unittest.TestCase):
         self.assertEqual(status["order_id"], 0)
         self.assertEqual(status["symbol"], "A")
         self.assertEqual(status["quantity"], 2)
-        self.assertEqual(status["filled_qty"], 2)
+        self.assertEqual(status["filled_qty"], 0)
+        #self.assertEqual(status["filled_price"], 0)
         self.assertEqual(status["side"], "sell")
         self.assertEqual(status["time_in_force"], "gtc")
         self.assertEqual(status["status"], "filled")
