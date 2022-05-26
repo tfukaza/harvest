@@ -70,14 +70,21 @@ class LiveTrader:
 
     def _set_streamer_broker(self, streamer: str, broker: str) -> None:
         """Sets the streamer and broker."""
+      
         if streamer is None:
-            raise Exception("Streamer is not specified.")
+            if broker is None:
+                streamer = "yahoo"
+                broker = "paper"
+            elif broker in streamers:
+                streamer = broker
+            else:
+                streamer = "yahoo"
+        elif not broker:
+            broker = "paper"
+                
         self.streamer_str = streamer
-        if not broker:
-            self.broker_str = streamer
-        else:
-            self.broker_str = broker
-
+        self.broker_str = broker
+        
         if self.streamer_str not in apis:
             raise Exception(f"Streamer {self.streamer_str} is not recognized.")
         if self.broker_str not in apis:
@@ -161,6 +168,7 @@ class LiveTrader:
             )
         else:
             self.streamer = self.broker
+
         self.storage = load_storage(self.storage_str)()
         self.storage.setup(self.stats)
 
@@ -517,7 +525,7 @@ class LiveTrader:
                 )
                 self.storage.store_transaction(
                     order.filled_time,
-                    "N/A",
+                    "N/A",  # Name of algorithm
                     order.symbol,
                     order.side,
                     order.quantity,
@@ -749,16 +757,18 @@ class LiveTrader:
     def day_trade_count(self) -> None:
         # Get the 5-day trading window
         calendar = self.storage.load_calendar()
-        open_days = calendar.loc[self.calendar["is_open"] == True]
+        debugger.debug(f"Calendar: {calendar}")
+        open_days = calendar.loc[calendar["is_open"] == True]
         if len(open_days) == 0:
             return 0
         elif len(open_days) < 5:
-            window_start = open_days.index[0]
+            window_start = open_days.iloc[0]["open_at"]
         else:
-            window_start = open_days.index[-5]
+            window_start = open_days.iloc[-5]["open_at"]
 
         # Check how many daytrades occurred in the last 5 trading days
         day_trades = self.storage.load_daytrade()
+        debugger.debug(f"Day trades: {day_trades}")
         day_trades = day_trades.loc[day_trades["timestamp"] >= window_start]
 
         return len(day_trades)

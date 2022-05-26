@@ -246,23 +246,42 @@ class BaseStorage:
         quantity: int,
         price: float,
     ) -> None:
-        self.storage_transaction.append(
-            [timestamp, algorithm_name, symbol, side, quantity, price],
+        # Append this transaction to the transaction dataframe
+        self.storage_transaction = self.storage_transaction.append(
+            {
+                "timestamp": timestamp,
+                "algorithm_name": algorithm_name,
+                "symbol": symbol,
+                "side": side,
+                "quantity": quantity,
+                "price": price,
+            },
             ignore_index=True,
+        )
+
+        debugger.debug(
+            f"Stored transaction: {timestamp}, {algorithm_name}, {symbol}, {side}, {quantity}, {price}"
         )
         if symbol_type(symbol) == "CRYPTO":
             return
 
         # For stocks and options, check for daytrades.
         # First, check the transaction history for this asset in the current day.
-        history = self.storage_transaction.copy()
+        history = self.storage_transaction
+        debugger.debug(f"{history}")
         # history.set_index("timestamp", inplace=True)
         history = history[history["symbol"] == symbol]
+        debugger.debug(f"History: {history}")
+        # convert to date object (not datetime)
+        history["timestamp"] = history["timestamp"].dt.date
         history = history[history["timestamp"] == timestamp.date()]
 
         # If there is no history, this cannot be a daytrade.
         if history.empty:
             return
+        
+        debugger.debug(f"Found {len(history)} transactions for {symbol}")
+        debugger.debug(f"{history}")
 
         # If there is history, check if this transaction is a daytrade.
         # Note that we don't support shorting, so a sell always closes a position.
@@ -270,12 +289,14 @@ class BaseStorage:
 
         if side == "sell":
             if buy_sell[-1] == "buy":
-                # TODO: Check if this sell sells all quantity.
-                data = pd.DataFrame(
-                    [timestamp, symbol],
+                self.storage_daytrade = self.storage_daytrade.append(
+                    {
+                        "timestamp": timestamp,
+                        "symbol": symbol,
+                    },
                     ignore_index=True,
                 )
-                self.storage_daytrade.append(data)
+                debugger.debug(f"Stored daytrade: {timestamp}, {symbol}")
 
     def load_transaction(self) -> pd.DataFrame:
         return self.storage_transaction
