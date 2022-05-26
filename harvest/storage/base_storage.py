@@ -247,7 +247,8 @@ class BaseStorage:
         price: float,
     ) -> None:
         # Append this transaction to the transaction dataframe
-        self.storage_transaction = self.storage_transaction.append(
+        # index is the timestamp
+        self.storage_transaction = pd.concat([self.storage_transaction, pd.DataFrame(
             {
                 "timestamp": timestamp,
                 "algorithm_name": algorithm_name,
@@ -256,8 +257,8 @@ class BaseStorage:
                 "quantity": quantity,
                 "price": price,
             },
-            ignore_index=True,
-        )
+            index=[timestamp],
+        )])
 
         debugger.debug(
             f"Stored transaction: {timestamp}, {algorithm_name}, {symbol}, {side}, {quantity}, {price}"
@@ -289,13 +290,14 @@ class BaseStorage:
 
         if side == "sell":
             if buy_sell[-1] == "buy":
-                self.storage_daytrade = self.storage_daytrade.append(
+                self.storage_daytrade = pd.concat([self.storage_daytrade, pd.DataFrame(
                     {
                         "timestamp": timestamp,
                         "symbol": symbol,
                     },
-                    ignore_index=True,
-                )
+                    index=[timestamp],
+                )])
+
                 debugger.debug(f"Stored daytrade: {timestamp}, {symbol}")
 
     def load_transaction(self) -> pd.DataFrame:
@@ -329,7 +331,7 @@ class BaseStorage:
         :new_data: data coming from the the broker's API call
         """
 
-        new_df = current_data.append(new_data)
+        new_df = pd.concat([current_data, new_data])
         if remove_duplicate:
             new_df = new_df[~new_df.index.duplicated(keep="last")].sort_index()
         return new_df
@@ -382,7 +384,7 @@ class BaseStorage:
             cutoff = timestamp - dt.timedelta(days=days)
             if df.index[0] < cutoff:
                 df = df.loc[df.index >= cutoff]
-            df = df.append(pd.DataFrame({"equity": [equity]}, index=[timestamp]))
+            df = pd.concat([df, pd.DataFrame({"equity": [equity]}, index=[timestamp])])
             self.storage_performance[interval] = df
 
         # Performance history intervals after '3 MONTHS' are populated
@@ -391,9 +393,9 @@ class BaseStorage:
             df = self.storage_performance[interval]
             if df.index[-1].date() == timestamp.date():
                 df = df.iloc[:-1]
-                df = df.append(pd.DataFrame({"equity": [equity]}, index=[timestamp]))
+                df = pd.concat([df, pd.DataFrame({"equity": [equity]}, index=[timestamp])])
             else:
-                df = df.append(pd.DataFrame({"equity": [equity]}, index=[timestamp]))
+                df = pd.concat([df, pd.DataFrame({"equity": [equity]}, index=[timestamp])])
                 cutoff = timestamp - dt.timedelta(days=days)
                 if df.index[0] < cutoff:
                     df = df.loc[df.index >= cutoff]
@@ -402,7 +404,7 @@ class BaseStorage:
         df = self.storage_performance["ALL"]
         if df.index[-1].date() == timestamp.date():
             df = df.iloc[:-1]
-        df = df.append(pd.DataFrame({"equity": [equity]}, index=[timestamp]))
+        df = pd.concat([df, pd.DataFrame({"equity": [equity]}, index=[timestamp])])
         self.storage_performance["ALL"] = df
 
         debugger.debug("Performance data added")

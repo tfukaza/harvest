@@ -238,6 +238,9 @@ class API:
         elif unit == "HR":
             self._poll_hr(val)
         elif unit == "DAY":
+            self._poll_day(val)
+        else:
+            raise Exception(f"Unsupported interval {self.poll_interval}.")
             
 
     def main(self) -> None:
