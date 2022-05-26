@@ -248,17 +248,22 @@ class BaseStorage:
     ) -> None:
         # Append this transaction to the transaction dataframe
         # index is the timestamp
-        self.storage_transaction = pd.concat([self.storage_transaction, pd.DataFrame(
-            {
-                "timestamp": timestamp,
-                "algorithm_name": algorithm_name,
-                "symbol": symbol,
-                "side": side,
-                "quantity": quantity,
-                "price": price,
-            },
-            index=[timestamp],
-        )])
+        self.storage_transaction = pd.concat(
+            [
+                self.storage_transaction,
+                pd.DataFrame(
+                    {
+                        "timestamp": timestamp,
+                        "algorithm_name": algorithm_name,
+                        "symbol": symbol,
+                        "side": side,
+                        "quantity": quantity,
+                        "price": price,
+                    },
+                    index=[timestamp],
+                ),
+            ]
+        )
 
         debugger.debug(
             f"Stored transaction: {timestamp}, {algorithm_name}, {symbol}, {side}, {quantity}, {price}"
@@ -280,7 +285,7 @@ class BaseStorage:
         # If there is no history, this cannot be a daytrade.
         if history.empty:
             return
-        
+
         debugger.debug(f"Found {len(history)} transactions for {symbol}")
         debugger.debug(f"{history}")
 
@@ -290,13 +295,18 @@ class BaseStorage:
 
         if side == "sell":
             if buy_sell[-1] == "buy":
-                self.storage_daytrade = pd.concat([self.storage_daytrade, pd.DataFrame(
-                    {
-                        "timestamp": timestamp,
-                        "symbol": symbol,
-                    },
-                    index=[timestamp],
-                )])
+                self.storage_daytrade = pd.concat(
+                    [
+                        self.storage_daytrade,
+                        pd.DataFrame(
+                            {
+                                "timestamp": timestamp,
+                                "symbol": symbol,
+                            },
+                            index=[timestamp],
+                        ),
+                    ]
+                )
 
                 debugger.debug(f"Stored daytrade: {timestamp}, {symbol}")
 
@@ -393,9 +403,13 @@ class BaseStorage:
             df = self.storage_performance[interval]
             if df.index[-1].date() == timestamp.date():
                 df = df.iloc[:-1]
-                df = pd.concat([df, pd.DataFrame({"equity": [equity]}, index=[timestamp])])
+                df = pd.concat(
+                    [df, pd.DataFrame({"equity": [equity]}, index=[timestamp])]
+                )
             else:
-                df = pd.concat([df, pd.DataFrame({"equity": [equity]}, index=[timestamp])])
+                df = pd.concat(
+                    [df, pd.DataFrame({"equity": [equity]}, index=[timestamp])]
+                )
                 cutoff = timestamp - dt.timedelta(days=days)
                 if df.index[0] < cutoff:
                     df = df.loc[df.index >= cutoff]

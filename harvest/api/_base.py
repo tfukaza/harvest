@@ -194,7 +194,7 @@ class API:
         cur_min = -1
         cur_hr = -1
         cur_day = -1
-        #market_data = self.fetch_market_hours(now())
+        # market_data = self.fetch_market_hours(now())
         while 1:
             cur = now()
             minutes = cur.minute
@@ -209,7 +209,12 @@ class API:
             closes_min = closes_at.minute
             is_open = market_data["is_open"]
 
-            if is_open and hours == closes_hr and minutes == closes_min and minutes != cur_min:
+            if (
+                is_open
+                and hours == closes_hr
+                and minutes == closes_min
+                and minutes != cur_min
+            ):
                 self.stats.timestamp = cur
                 status.stop()
                 self.main()
@@ -218,7 +223,6 @@ class API:
                 market_data = self.fetch_market_hours(now())
             cur_min = minutes
 
-            
     def start(self) -> None:
         """
         This method begins streaming data from the API.
@@ -241,7 +245,6 @@ class API:
             self._poll_day(val)
         else:
             raise Exception(f"Unsupported interval {self.poll_interval}.")
-            
 
     def main(self) -> None:
         """

@@ -70,7 +70,7 @@ class LiveTrader:
 
     def _set_streamer_broker(self, streamer: str, broker: str) -> None:
         """Sets the streamer and broker."""
-      
+
         if streamer is None:
             if broker is None:
                 streamer = "yahoo"
@@ -81,10 +81,10 @@ class LiveTrader:
                 streamer = "yahoo"
         elif not broker:
             broker = "paper"
-                
+
         self.streamer_str = streamer
         self.broker_str = broker
-        
+
         if self.streamer_str not in apis:
             raise Exception(f"Streamer {self.streamer_str} is not recognized.")
         if self.broker_str not in apis:
