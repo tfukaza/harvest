@@ -246,23 +246,48 @@ class BaseStorage:
         quantity: int,
         price: float,
     ) -> None:
-        self.storage_transaction.append(
-            [timestamp, algorithm_name, symbol, side, quantity, price],
-            ignore_index=True,
+        # Append this transaction to the transaction dataframe
+        # index is the timestamp
+        self.storage_transaction = pd.concat(
+            [
+                self.storage_transaction,
+                pd.DataFrame(
+                    {
+                        "timestamp": timestamp,
+                        "algorithm_name": algorithm_name,
+                        "symbol": symbol,
+                        "side": side,
+                        "quantity": quantity,
+                        "price": price,
+                    },
+                    index=[timestamp],
+                ),
+            ]
+        )
+
+        debugger.debug(
+            f"Stored transaction: {timestamp}, {algorithm_name}, {symbol}, {side}, {quantity}, {price}"
         )
         if symbol_type(symbol) == "CRYPTO":
             return
 
         # For stocks and options, check for daytrades.
         # First, check the transaction history for this asset in the current day.
-        history = self.storage_transaction.copy()
+        history = self.storage_transaction
+        debugger.debug(f"{history}")
         # history.set_index("timestamp", inplace=True)
         history = history[history["symbol"] == symbol]
+        debugger.debug(f"History: {history}")
+        # convert to date object (not datetime)
+        history["timestamp"] = history["timestamp"].dt.date
         history = history[history["timestamp"] == timestamp.date()]
 
         # If there is no history, this cannot be a daytrade.
         if history.empty:
             return
+
+        debugger.debug(f"Found {len(history)} transactions for {symbol}")
+        debugger.debug(f"{history}")
 
         # If there is history, check if this transaction is a daytrade.
         # Note that we don't support shorting, so a sell always closes a position.
@@ -270,12 +295,20 @@ class BaseStorage:
 
         if side == "sell":
             if buy_sell[-1] == "buy":
-                # TODO: Check if this sell sells all quantity.
-                data = pd.DataFrame(
-                    [timestamp, symbol],
-                    ignore_index=True,
+                self.storage_daytrade = pd.concat(
+                    [
+                        self.storage_daytrade,
+                        pd.DataFrame(
+                            {
+                                "timestamp": timestamp,
+                                "symbol": symbol,
+                            },
+                            index=[timestamp],
+                        ),
+                    ]
                 )
-                self.storage_daytrade.append(data)
+
+                debugger.debug(f"Stored daytrade: {timestamp}, {symbol}")
 
     def load_transaction(self) -> pd.DataFrame:
         return self.storage_transaction
@@ -308,7 +341,7 @@ class BaseStorage:
         :new_data: data coming from the the broker's API call
         """
 
-        new_df = current_data.append(new_data)
+        new_df = pd.concat([current_data, new_data])
         if remove_duplicate:
             new_df = new_df[~new_df.index.duplicated(keep="last")].sort_index()
         return new_df
@@ -361,7 +394,7 @@ class BaseStorage:
             cutoff = timestamp - dt.timedelta(days=days)
             if df.index[0] < cutoff:
                 df = df.loc[df.index >= cutoff]
-            df = df.append(pd.DataFrame({"equity": [equity]}, index=[timestamp]))
+            df = pd.concat([df, pd.DataFrame({"equity": [equity]}, index=[timestamp])])
             self.storage_performance[interval] = df
 
         # Performance history intervals after '3 MONTHS' are populated
@@ -370,9 +403,13 @@ class BaseStorage:
             df = self.storage_performance[interval]
             if df.index[-1].date() == timestamp.date():
                 df = df.iloc[:-1]
-                df = df.append(pd.DataFrame({"equity": [equity]}, index=[timestamp]))
+                df = pd.concat(
+                    [df, pd.DataFrame({"equity": [equity]}, index=[timestamp])]
+                )
             else:
-                df = df.append(pd.DataFrame({"equity": [equity]}, index=[timestamp]))
+                df = pd.concat(
+                    [df, pd.DataFrame({"equity": [equity]}, index=[timestamp])]
+                )
                 cutoff = timestamp - dt.timedelta(days=days)
                 if df.index[0] < cutoff:
                     df = df.loc[df.index >= cutoff]
@@ -381,7 +418,7 @@ class BaseStorage:
         df = self.storage_performance["ALL"]
         if df.index[-1].date() == timestamp.date():
             df = df.iloc[:-1]
-        df = df.append(pd.DataFrame({"equity": [equity]}, index=[timestamp]))
+        df = pd.concat([df, pd.DataFrame({"equity": [equity]}, index=[timestamp])])
         self.storage_performance["ALL"] = df
 
         debugger.debug("Performance data added")

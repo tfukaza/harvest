@@ -51,7 +51,7 @@ class TestAlgo(unittest.TestCase):
             prices1, list(trader.storage.load("A", Interval.MIN_5)["A"]["close"])
         )
 
-    #@patch("harvest.api._base.mark_up")
+    # @patch("harvest.api._base.mark_up")
     # @delete_save_files(".")
     # def test_buy_sell_option_auto(self, mock_mark_up):
 

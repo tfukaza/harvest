@@ -120,6 +120,109 @@ class API:
         debugger.debug(f"Poll Interval: {interval_enum_to_string(self.poll_interval)}")
         debugger.debug(f"{type(self).__name__} setup finished")
 
+    def _poll_sec(self, interval_sec) -> None:
+        """
+        This function is called by the main thread to poll the API for
+        new data.
+        """
+        status = Status(
+            f"Waiting for next interval... ({val} {unit})", spinner="material"
+        )
+        status.start()
+        cur_sec = -1
+        while 1:
+            cur = now()
+            sec = cur.second
+            if sec % interval_sec == 0 and sec != cur_sec:
+                cur_sec = sec
+                self.stats.timestamp = cur
+                status.stop()
+                self.main()
+                status.start()
+
+    def _poll_min(self, interval_min):
+        """
+        This function is called by the main thread to poll the API for
+        new data.
+        """
+        status = Status(
+            f"Waiting for next interval... ({val} {unit})", spinner="material"
+        )
+        status.start()
+        cur_min = -1
+        sleep = interval_min * 60 - 10
+        while 1:
+            cur = now()
+            minute = cur.minute
+            if minute % interval_min == 0 and minute != cur_min:
+                self.stats.timestamp = cur
+                status.stop()
+                self.main()
+                status.start()
+                time.sleep(sleep)
+            cur_min = minute
+
+    def _poll_hr(self, interval_hr):
+        """
+        This function is called by the main thread to poll the API for
+        new data.
+        """
+        status = Status(
+            f"Waiting for next interval... ({interval_hr} HR)", spinner="material"
+        )
+        status.start()
+        cur_hr = -1
+        cur_min = -1
+        sleep = val * 3600 - 60
+        while 1:
+            cur = now()
+            minutes = cur.minute
+            hours = cur.hour
+            if hours % interval_hr == 0 and minutes == 0 and minutes != cur_min:
+                self.stats.timestamp = cur
+                status.stop()
+                self.main()
+                status.start()
+                time.sleep(sleep)
+            cur_min = minutes
+
+    def _poll_day(self, interval_day):
+        status = Status(
+            f"Waiting for next interval... ({interval_hr} HR)", spinner="material"
+        )
+        status.start()
+        cur_min = -1
+        cur_hr = -1
+        cur_day = -1
+        # market_data = self.fetch_market_hours(now())
+        while 1:
+            cur = now()
+            minutes = cur.minute
+            hours = cur.hour
+            day = cur.day
+
+            if day != cur_day:
+                market_data = self.fetch_market_hours(cur)
+                cur_day = day
+            closes_at = market_data["closes_at"]
+            closes_hr = closes_at.hour
+            closes_min = closes_at.minute
+            is_open = market_data["is_open"]
+
+            if (
+                is_open
+                and hours == closes_hr
+                and minutes == closes_min
+                and minutes != cur_min
+            ):
+                self.stats.timestamp = cur
+                status.stop()
+                self.main()
+                status.start()
+                time.sleep(80000)
+                market_data = self.fetch_market_hours(now())
+            cur_min = minutes
+
     def start(self) -> None:
         """
         This method begins streaming data from the API.
@@ -129,61 +232,19 @@ class API:
         this method and configure it to use that API. In that case,
         make sure to set the callback function to self.main().
         """
-        cur_min = -1
-        cur_sec = -1
         val, unit = expand_interval(self.poll_interval)
-
         debugger.debug(f"{type(self).__name__} started...")
-        status = Status(
-            f"Waiting for next interval... ({val} {unit})", spinner="material"
-        )
-        status.start()
+
         if unit == "SEC":
-            while 1:
-                cur = dt.datetime.now(tz.utc).replace(microsecond=0)
-                sec = cur.second
-                if sec % 15 == 0 and sec != cur_sec:
-                    cur_sec = sec
-                    self.stats.timestamp = cur
-                    status.stop()
-                    self.main()
-                    status.start()
+            self._poll_sec(val)
         elif unit == "MIN":
-            sleep = val * 60 - 10
-            while 1:
-                cur = now()
-                minutes = cur.minute
-                if minutes % val == 0 and minutes != cur_min:
-                    self.stats.timestamp = cur
-                    status.stop()
-                    self.main()
-                    status.start()
-                    time.sleep(sleep)
-                cur_min = minutes
+            self._poll_min(val)
         elif unit == "HR":
-            sleep = val * 3600 - 60
-            while 1:
-                cur = now()
-                minutes = cur.minute
-                if minutes == 0 and minutes != cur_min:
-                    self.stats.timestamp = cur
-                    status.stop()
-                    self.main()
-                    status.start()
-                    time.sleep(sleep)
-                cur_min = minutes
+            self._poll_hr(val)
+        elif unit == "DAY":
+            self._poll_day(val)
         else:
-            while 1:
-                cur = now()
-                minutes = cur.minute
-                hours = cur.hour
-                if hours == 19 and minutes == 50:
-                    self.stats.timestamp = cur
-                    status.stop()
-                    self.main()
-                    status.start()
-                    time.sleep(80000)
-                cur_min = minutes
+            raise Exception(f"Unsupported interval {self.poll_interval}.")
 
     def main(self) -> None:
         """
