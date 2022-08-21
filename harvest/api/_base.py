@@ -171,9 +171,8 @@ class API:
             f"Waiting for next interval... ({interval_hr} HR)", spinner="material"
         )
         status.start()
-        cur_hr = -1
         cur_min = -1
-        sleep = val * 3600 - 60
+        sleep = interval_hr * 3600 - 60
         while 1:
             cur = now()
             minutes = cur.minute
@@ -192,7 +191,6 @@ class API:
         )
         status.start()
         cur_min = -1
-        cur_hr = -1
         cur_day = -1
         # market_data = self.fetch_market_hours(now())
         while 1:
