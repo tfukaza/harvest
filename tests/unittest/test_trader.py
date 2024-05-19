@@ -5,9 +5,9 @@ import time
 # Submodule imports
 from harvest.trader import *
 from harvest.algo import BaseAlgo
-from harvest.api.dummy import DummyStreamer
-from harvest.api.paper import PaperBroker
-from harvest.api.yahoo import YahooStreamer
+from harvest.broker.dummy import DummyStreamer
+from harvest.broker.paper import PaperBroker
+from harvest.broker.yahoo import YahooStreamer
 
 # from harvest.api.robinhood import Robinhood
 
@@ -25,7 +25,7 @@ class TestLiveTrader(unittest.TestCase):
         """
         If no streamer or broker is specified, LiveTrader should default to Yahoo Streamer and Paper Broker
         """
-        trader = LiveTrader()
+        trader = BrokerHub()
         self.assertEqual(trader.streamer_str, "yahoo")
         self.assertEqual(trader.broker_str, "paper")
 
@@ -34,7 +34,7 @@ class TestLiveTrader(unittest.TestCase):
         If no streamer is specified but a broker is set, and the broker can be used as a streamer
         (which is almost always the case), LiveTrader should use the broker as the streamer
         """
-        trader = LiveTrader(broker="robinhood")
+        trader = BrokerHub(broker="robinhood")
         self.assertEqual(trader.streamer_str, "robinhood")
         self.assertEqual(trader.broker_str, "robinhood")
 
@@ -43,7 +43,7 @@ class TestLiveTrader(unittest.TestCase):
         If no streamer is specified but a paper broker is set,
         LiveTrader should use the yahoo broker as the streamer
         """
-        trader = LiveTrader(broker="paper")
+        trader = BrokerHub(broker="paper")
         self.assertEqual(trader.streamer_str, "yahoo")
         self.assertEqual(trader.broker_str, "paper")
 
@@ -51,11 +51,11 @@ class TestLiveTrader(unittest.TestCase):
         """
         If a streamer is specified but no broker, LiveTrader should default to use Paper Broker
         """
-        trader = LiveTrader(streamer="robinhood")
+        trader = BrokerHub(streamer="robinhood")
         self.assertEqual(trader.streamer_str, "robinhood")
         self.assertEqual(trader.broker_str, "paper")
 
-        trader_yh = LiveTrader(streamer="yahoo")
+        trader_yh = BrokerHub(streamer="yahoo")
         self.assertEqual(trader_yh.streamer_str, "yahoo")
         self.assertEqual(trader_yh.broker_str, "paper")
 

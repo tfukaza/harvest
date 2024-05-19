@@ -1,6 +1,6 @@
 import unittest
-from harvest.api.robinhood import Robinhood
-from harvest.api.paper import PaperBroker
+from harvest.broker.robinhood import Robinhood
+from harvest.broker.paper import PaperBroker
 from harvest.utils import *
 import time
 import os

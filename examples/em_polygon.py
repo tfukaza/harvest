@@ -5,9 +5,9 @@ import datetime as dt
 
 # Harvest imports
 from harvest.algo import BaseAlgo
-from harvest.trader import LiveTrader
-from harvest.api.polygon import PolygonStreamer
-from harvest.api.paper import PaperBroker
+from harvest.trader import BrokerHub
+from harvest.broker.polygon import PolygonStreamer
+from harvest.broker.paper import PaperBroker
 from harvest.storage.csv_storage import CSVStorage
 
 # Third-party imports
@@ -95,7 +95,7 @@ if __name__ == "__main__":
     )
     paper = PaperBroker()
     em_algo = EMAlgo()
-    trader = LiveTrader(streamer=polygon, broker=paper, storage=csv_storage, debug=True)
+    trader = BrokerHub(streamer=polygon, broker=paper, storage=csv_storage, debug=True)
 
     trader.set_algo(em_algo)
 

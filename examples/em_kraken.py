@@ -5,8 +5,8 @@ import datetime as dt
 
 # Harvest imports
 from harvest.algo import BaseAlgo
-from harvest.trader import LiveTrader
-from harvest.api.kraken import Kraken
+from harvest.trader import BrokerHub
+from harvest.broker.kraken import Kraken
 from harvest.storage.csv_storage import CSVStorage
 
 # Third-party imports
@@ -90,7 +90,7 @@ if __name__ == "__main__":
     # Our streamer and broker will be Alpaca. My secret keys are stored in `alpaca_secret.yaml`
     kraken = Kraken(path="accounts/kraken-secret.yaml")
     em_algo = EMAlgo()
-    trader = LiveTrader(streamer=kraken, broker=kraken, storage=csv_storage, debug=True)
+    trader = BrokerHub(streamer=kraken, broker=kraken, storage=csv_storage, debug=True)
 
     # trader.set_symbol("@BTC")
     trader.set_symbol("@DOGE")

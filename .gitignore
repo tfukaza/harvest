@@ -29,5 +29,5 @@ package-lock.json
 .DS_Store
 
 *.log
-env
+.env
 save

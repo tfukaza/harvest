@@ -1,4 +1,4 @@
-from harvest.trader.trader import LiveTrader
+from harvest.trader.trader import BrokerHub
 import os
 import functools
 
@@ -16,7 +16,7 @@ def create_trader_and_api(
     class EmptyAlgo(BaseAlgo):
         pass
 
-    t = LiveTrader(streamer=streamer, broker=broker, debug=True)
+    t = BrokerHub(streamer=streamer, broker=broker, debug=True)
     t.set_symbol(symbols)
     if init_algos:
         for a in init_algos:

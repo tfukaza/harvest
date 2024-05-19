@@ -4,8 +4,8 @@ This code uses the pickle storage class in action.
 """
 from harvest.algo import BaseAlgo
 from harvest.trader import Trader
-from harvest.api.yahoo import YahooStreamer
-from harvest.api.paper import PaperBroker
+from harvest.broker.yahoo import YahooStreamer
+from harvest.broker.paper import PaperBroker
 from harvest.storage import PickleStorage
 
 

@@ -6,7 +6,7 @@ import datetime as dt
 
 from harvest.utils import *
 from harvest.definitions import *
-from harvest.api.yahoo import YahooStreamer
+from harvest.broker.yahoo import YahooStreamer
 
 debugger.setLevel("DEBUG")
 

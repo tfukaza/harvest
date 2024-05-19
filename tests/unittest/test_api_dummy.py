@@ -6,7 +6,7 @@ import datetime as dt
 import pytz
 from pandas.testing import assert_frame_equal
 
-from harvest.api.dummy import DummyStreamer
+from harvest.broker.dummy import DummyStreamer
 from harvest.definitions import *
 from harvest.utils import *
 

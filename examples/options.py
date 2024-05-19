@@ -1,7 +1,7 @@
 # HARVEST_SKIP
 from harvest.algo import BaseAlgo
 from harvest.trader import Trader
-from harvest.api.robinhood import Robinhood
+from harvest.broker.robinhood import Robinhood
 
 import datetime as dt
 

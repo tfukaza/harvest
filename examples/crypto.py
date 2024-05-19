@@ -1,8 +1,8 @@
 # HARVEST_SKIP
 from harvest.algo import BaseAlgo
-from harvest.trader import LiveTrader
-from harvest.api.robinhood import Robinhood
-from harvest.api.paper import PaperBroker
+from harvest.trader import BrokerHub
+from harvest.broker.robinhood import Robinhood
+from harvest.broker.paper import PaperBroker
 
 """This algorithm trades Dogecoin.
 It also demonstrates some built-in functions.
@@ -100,6 +100,6 @@ class Crypto(BaseAlgo):
 
 
 if __name__ == "__main__":
-    t = LiveTrader(Robinhood(), PaperBroker())
+    t = BrokerHub(Robinhood(), PaperBroker())
     t.set_algo(Crypto())
     t.start()

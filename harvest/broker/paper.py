@@ -11,14 +11,14 @@ import pandas as pd
 import yaml
 
 # Submodule imports
-from harvest.api._base import API
-from harvest.api.dummy import DummyStreamer
+from harvest.broker._base import Broker
+from harvest.broker.dummy import DummyStreamer
 from harvest.utils import *
 from harvest.definitions import *
 from harvest.storage import BaseStorage
 
 
-class PaperBroker(API):
+class PaperBroker(Broker):
     """DummyBroker, as its name implies, is a dummy broker class that can
     be useful for testing algorithms. When used as a streamer, it will return
     randomly generated prices. When used as a broker, it paper trades.
@@ -36,7 +36,7 @@ class PaperBroker(API):
     def __init__(
         self,
         path: str = None,
-        streamer: API = None,
+        streamer: Broker = None,
         commission_fee: Union[float, str, Dict[str, Any]] = 0,
         save: bool = False,
     ) -> None:

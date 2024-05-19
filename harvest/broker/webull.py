@@ -9,12 +9,12 @@ from webull import webull, paper_webull
 import yaml
 
 # Submodule imports
-from harvest.api._base import API
+from harvest.broker._base import Broker
 from harvest.definitions import *
 from harvest.utils import *
 
 
-class Webull(API):
+class Webull(Broker):
 
     interval_list = [Interval.MIN_1, Interval.MIN_5, Interval.HR_1, Interval.DAY_1]
     exchange = "NASDAQ"
@@ -137,7 +137,7 @@ class Webull(API):
 
     # -------------- Streamer methods -------------- #
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_price_history(
         self,
         symbol: str,
@@ -202,7 +202,7 @@ class Webull(API):
 
         return df
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_chain_info(self, symbol: str):
         ret = self.api.get_options_expiration_dates(symbol)
         return {
@@ -211,7 +211,7 @@ class Webull(API):
             "multiplier": 100,
         }
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_chain_data(self, symbol: str, date: dt.datetime):
 
         if (
@@ -263,7 +263,7 @@ class Webull(API):
 
         return df.drop(["id"], axis=1)
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_option_market_data(self, symbol: str):
         sym, date, _, price = self.occ_to_data(symbol)
         date = str_to_date(date_to_str(date))
@@ -303,7 +303,7 @@ class Webull(API):
 
     # ------------- Broker methods ------------- #
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_stock_positions(self):
         ret = self.api.get_positions()
         pos = []
@@ -319,7 +319,7 @@ class Webull(API):
             )
         return pos
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_option_positions(self):
         ret = self.api.get_positions()
         pos = []
@@ -346,7 +346,7 @@ class Webull(API):
 
         return pos
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_crypto_positions(self, key=None):
         ret = self.api.get_positions()
         pos = []
@@ -383,25 +383,29 @@ class Webull(API):
                 return line["value"]
         return -1
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_account(self):
         if not self.api.is_logged_in():
             return None
         ret = self.api.get_account()["accountMembers"]
         return {
             "equity": float(self.fmt_fetch_account("totalMarketValue", ret)),
-            "cash": float(self.fmt_fetch_account("cashBalance", ret))
-            if not self.paper
-            else float(self.fmt_fetch_account("usableCash", ret)),
-            "buying_power": float(self.fmt_fetch_account("dayBuyingPower", ret))
-            if not self.paper
-            else float(self.fmt_fetch_account("usableCash", ret)),
+            "cash": (
+                float(self.fmt_fetch_account("cashBalance", ret))
+                if not self.paper
+                else float(self.fmt_fetch_account("usableCash", ret))
+            ),
+            "buying_power": (
+                float(self.fmt_fetch_account("dayBuyingPower", ret))
+                if not self.paper
+                else float(self.fmt_fetch_account("usableCash", ret))
+            ),
             "bp_options": float(self.fmt_fetch_account("optionBuyingPower", ret)),
             "bp_crypto": float(self.fmt_fetch_account("cryptoBuyingPower", ret)),
             "multiplier": float(-1),
         }
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_stock_order_status(self, id):
         ret = self.api.get_history_orders(status="All")
         for r in ret:
@@ -419,7 +423,7 @@ class Webull(API):
                     "status": r["status"].lower(),
                 }
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_option_order_status(self, id):
         ret = self.api.get_history_orders(status="All")
         for r in ret:
@@ -442,7 +446,7 @@ class Webull(API):
                     "status": r["status"].lower(),
                 }
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_crypto_order_status(self, id):
         ret = self.api.get_history_orders(status="All")
         for r in ret:
@@ -453,16 +457,18 @@ class Webull(API):
                     "symbol": f"@{r['orders'][0]['ticker']['symbol'].replace('USD', '')}",
                     "qty": float(r["quantity"]),
                     "filled_qty": float(r["cumulative_quantity"]),
-                    "filled_price": float(r["executions"][0]["effective_price"])
-                    if len(r["executions"])
-                    else 0,
+                    "filled_price": (
+                        float(r["executions"][0]["effective_price"])
+                        if len(r["executions"])
+                        else 0
+                    ),
                     "filled_cost": float(r["rounded_executed_notional"]),
                     "side": r["side"],
                     "time_in_force": r["timeInForce"],
                     "status": r["status"].lower(),
                 }
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_order_queue(self):
         queue = []
         ret = self.api.get_current_orders()

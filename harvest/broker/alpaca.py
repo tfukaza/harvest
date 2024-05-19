@@ -12,7 +12,7 @@ from alpaca_trade_api.entity import Bar
 from alpaca_trade_api import Stream
 
 # Submodule imports
-from harvest.api._base import StreamAPI, API
+from harvest.broker._base import StreamAPI, Broker
 from harvest.utils import *
 from harvest.definitions import *
 
@@ -87,7 +87,7 @@ class Alpaca(StreamAPI):
 
     # -------------- Streamer methods -------------- #
 
-    @API._exception_handler
+    @Broker._exception_handler
     def get_current_time(self) -> dt.datetime:
         ret = self.api.get_clock().__dict__["_raw"]
         # Convert to ISO 8601 by removing nanoseconds
@@ -95,7 +95,7 @@ class Alpaca(StreamAPI):
         timestamp = ret["timestamp"][:index] + ret["timestamp"][index + 9 :]
         return dt.datetime.fromisoformat(timestamp)
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_price_history(
         self,
         symbol: str,
@@ -119,19 +119,19 @@ class Alpaca(StreamAPI):
 
         return self._get_data_from_alpaca(symbol, interval, start, end)
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_chain_info(self, symbol: str) -> None:
         raise NotImplementedError("Alpaca does not support options.")
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_chain_data(self, symbol: str, date: dt.datetime) -> None:
         raise NotImplementedError("Alpaca does not support options.")
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_option_market_data(self, occ_symbol: str) -> None:
         raise NotImplementedError("Alpaca does not support options.")
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_market_hours(self, date: datetime.date) -> Dict[str, Any]:
         ret = self.api.get_clock().__dict__["_raw"]
         return {
@@ -142,7 +142,7 @@ class Alpaca(StreamAPI):
 
     # ------------- Broker methods ------------- #
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_stock_positions(self) -> List[Dict[str, Any]]:
         def fmt(stock: Dict[str, Any]) -> Dict[str, Any]:
             return {
@@ -158,12 +158,12 @@ class Alpaca(StreamAPI):
             if pos.asset_class != "crypto"
         ]
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_option_positions(self) -> List:
         debugger.error("Alpaca does not support options. Returning an empty list.")
         return []
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_crypto_positions(self) -> List:
         if self.basic:
             debugger.error(
@@ -185,11 +185,11 @@ class Alpaca(StreamAPI):
             if pos.asset_class == "crypto"
         ]
 
-    @API._exception_handler
+    @Broker._exception_handler
     def update_option_positions(self, positions: List[Any]) -> None:
         debugger.error("Alpaca does not support options. Doing nothing.")
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_account(self) -> Dict[str, Any]:
         account = self.api.get_account().__dict__["_raw"]
         return {
@@ -200,21 +200,21 @@ class Alpaca(StreamAPI):
             "alpaca": account,
         }
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_stock_order_status(self, order_id: str) -> Dict[str, Any]:
         return self.api.get_order(order_id).__dict__["_raw"]
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_option_order_status(self, order_id: str) -> None:
         raise NotImplementedError("Alpaca does not support options.")
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_crypto_order_status(self, order_id: str) -> Dict[str, Any]:
         if self.basic:
             raise Exception("Alpaca basic accounts do not support crypto.")
         return self.api.get_order(order_id).__dict__["_raw"]
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_order_queue(self) -> List[Dict[str, Any]]:
         return [
             self._format_order_status(pos.__dict__["_raw"])
@@ -463,6 +463,6 @@ class Alpaca(StreamAPI):
             data = self.data
             self.data = {}
             self.data_lock.release()
-            self.trader_main(data)
+            self.broker_hub_cb(data)
         else:
             self.data_lock.release()

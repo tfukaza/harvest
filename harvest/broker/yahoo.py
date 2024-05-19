@@ -11,12 +11,12 @@ import pandas as pd
 import yfinance as yf
 
 # Submodule imports
-from harvest.api._base import API
+from harvest.broker._base import Broker
 from harvest.utils import *
 from harvest.definitions import *
 
 
-class YahooStreamer(API):
+class YahooStreamer(Broker):
 
     interval_list = [
         Interval.MIN_1,
@@ -122,11 +122,11 @@ class YahooStreamer(API):
                 df_dict[s] = df_tmp
 
         debugger.debug(f"From yfinance dict: {df_dict}")
-        self.trader_main(df_dict)
+        self.broker_hub_cb(df_dict)
 
     # -------------- Streamer methods -------------- #
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_price_history(
         self,
         symbol: str,
@@ -182,7 +182,7 @@ class YahooStreamer(API):
         debugger.debug(f"From yfinance got: {df}")
         return df
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_chain_info(self, symbol: str) -> Dict[str, Any]:
         option_list = self.watch_ticker[symbol].options
         return {
@@ -193,7 +193,7 @@ class YahooStreamer(API):
             "multiplier": 100,
         }
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_chain_data(self, symbol: str, date: dt.datetime) -> pd.DataFrame:
 
         if (
@@ -226,7 +226,7 @@ class YahooStreamer(API):
 
         return df
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_option_market_data(self, occ_symbol: str) -> Dict[str, Any]:
         occ_symbol = occ_symbol.replace(" ", "")
         symbol, date, typ, _ = self.occ_to_data(occ_symbol)
@@ -241,7 +241,7 @@ class YahooStreamer(API):
             "bid": float(df["bid"].iloc[0]),
         }
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_market_hours(self, date: datetime.date) -> Dict[str, Any]:
         # yfinance does not support getting market hours,
         # so use the free Tradier API instead.

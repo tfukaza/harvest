@@ -9,12 +9,12 @@ import pandas as pd
 import numpy as np
 
 # Submodule imports
-from harvest.api._base import API
+from harvest.broker._base import Broker
 from harvest.utils import *
 from harvest.definitions import *
 
 
-class DummyStreamer(API):
+class DummyStreamer(Broker):
     """DummyStreamer, as its name implies, is a dummy broker class that can
     be useful for testing algorithms. When used as a streamer, it will return
     randomly generated prices.
@@ -84,7 +84,7 @@ class DummyStreamer(API):
     def main(self) -> None:
         self.tick()
         df_dict = self.fetch_latest_ohlc()
-        self.trader_main(df_dict)
+        self.broker_hub_cb(df_dict)
 
     # -------------- Streamer methods -------------- #
 

@@ -11,12 +11,12 @@ import pyotp
 import yaml
 
 # Submodule imports
-from harvest.api._base import API
+from harvest.broker._base import Broker
 from harvest.definitions import *
 from harvest.utils import *
 
 
-class Robinhood(API):
+class Robinhood(Broker):
 
     interval_list = [Interval.SEC_15, Interval.MIN_5, Interval.HR_1, Interval.DAY_1]
     exchange = "NASDAQ"
@@ -114,7 +114,7 @@ class Robinhood(API):
 
     # -------------- Streamer methods -------------- #
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_price_history(
         self,
         symbol: str,
@@ -203,7 +203,7 @@ class Robinhood(API):
 
         return df
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_chain_info(self, symbol: str):
         ret = rh.get_chains(symbol)
         return {
@@ -212,7 +212,7 @@ class Robinhood(API):
             "multiplier": ret["trade_value_multiplier"],
         }
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_chain_data(self, symbol: str, date: dt.datetime):
 
         if (
@@ -257,7 +257,7 @@ class Robinhood(API):
 
         return df
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_option_market_data(self, symbol: str):
 
         sym, date, type, price = self.occ_to_data(symbol)
@@ -271,7 +271,7 @@ class Robinhood(API):
             "bid": float(ret["bid_price"]),
         }
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_market_hours(self, date: datetime.date):
         ret = rh.get_market_hours("XNAS", date.strftime("%Y-%m-%d"))
         is_open = ret["is_open"]
@@ -298,7 +298,7 @@ class Robinhood(API):
 
     # ------------- Broker methods ------------- #
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_stock_positions(self):
         ret = rh.get_open_stock_positions()
         pos = []
@@ -316,7 +316,7 @@ class Robinhood(API):
             )
         return pos
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_option_positions(self):
         ret = rh.get_open_option_positions()
         pos = []
@@ -344,7 +344,7 @@ class Robinhood(API):
 
         return pos
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_crypto_positions(self, key=None):
         ret = rh.get_crypto_positions()
         pos = []
@@ -378,7 +378,7 @@ class Robinhood(API):
     #         r["market_value"] = float(upd["adjusted_mark_price"]) * r["quantity"]
     #         r["cost_basis"] = r["avg_price"] * r["quantity"]
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_account(self):
         ret = rh.load_phoenix_account()
         ret = {
@@ -389,7 +389,7 @@ class Robinhood(API):
         }
         return ret
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_stock_order_status(self, id):
         ret = rh.get_stock_order_info(id)
         # Check if any of the orders were executed
@@ -413,7 +413,7 @@ class Robinhood(API):
             "filled_price": filled_price,
         }
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_option_order_status(self, id):
         ret = rh.get_option_order_info(id)
         debugger.debug(ret)
@@ -438,7 +438,7 @@ class Robinhood(API):
             "filled_price": filled_price,
         }
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_crypto_order_status(self, id):
         ret = rh.get_crypto_order_info(id)
         debugger.debug(ret)
@@ -464,7 +464,7 @@ class Robinhood(API):
             "filled_price": filled_price,
         }
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_order_queue(self):
         queue = []
         ret = rh.get_all_open_stock_orders()

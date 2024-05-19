@@ -1,12 +1,11 @@
 # Builtins
 import datetime as dt
 import time
-from pathlib import Path
 import yaml
-import traceback
 import threading
 from typing import Any, Callable, Dict, List, Tuple, Union
 from os.path import exists
+from abc import ABC, abstractmethod
 
 # External libraries
 import pandas as pd
@@ -17,15 +16,15 @@ from harvest.utils import *
 from harvest.definitions import *
 
 
-class API:
+class Broker(ABC):
     """
-    The API class communicates with various API endpoints to perform the
-    necessary operations. The Base class defines the interface for all API classes to
-    extend and implement.
+    The Broker class is an abstract class that defines the interface for all brokers.
+    Broker classes communicate with various API endpoints to perform operations like
+    fetching historical data and placing orders.
 
     Attributes
-    :interval_list: A list of supported intervals.
-    :exchange: The market the API trades on. Ignored if the API is not a broker.
+    :interval_list: A list of intervals that the broker supports.
+    :exchange: The market the API trades on. Ignored if the API cannot place orders.
     """
 
     # List of supported intervals
@@ -39,7 +38,7 @@ class API:
     ]
     # Name of the exchange this API trades on
     exchange = ""
-    # List of attributes that are required to be in the secret file
+    # List of attributes that are required to be in the secret file, e.g. 'api_key'
     req_keys = []
 
     def __init__(self, path: str = None) -> None:
@@ -47,11 +46,9 @@ class API:
         Performs initializations of the class, such as setting the
         timestamp and loading credentials.
 
-        There are three API class types, 'streamer', 'broker', and 'both'. A
-        'streamer' is responsible for fetching data and interacting with
-        the queue to store data. A 'broker' is used solely for buying and
-        selling stocks, cryptos and options. Finally, 'both' is used to
-        indicate that the broker fetch data and buy and sell stocks.
+        A broker can retrieve stock/account data, place orders, or both.
+        Usually a broker can do both, but some brokers may only be able to
+        place orders (such as PaperBroker), or only retrieve data.
 
         All subclass implementations should call this __init__ method
         using `super().__init__(path)`.
@@ -63,11 +60,11 @@ class API:
 
         if path is None:
             path = "./secret.yaml"
+
         # Check if file exists. If not, create a secret file
         if not exists(path):
             config = self.create_secret()
         else:
-            # Open file
             with open(path, "r") as stream:
                 config = yaml.safe_load(stream)
                 # Check if the file contains all the required parameters
@@ -80,17 +77,19 @@ class API:
         self.config = config
 
     def setup(
-        self, stats: Stats, account: Account, trader_main: Callable = None
+        self, stats: Stats, account: Account, broker_hub_cb: Callable = None
     ) -> None:
         """
         This function is called right before the algorithm begins,
         and initializes several runtime parameters like
         the symbols to watch and what interval data is needed.
 
-        :trader_main: A callback function to the trader which will pass the data to the algorithms.
+        :stats: The Stats object that contains the watchlist and other configurations.
+        :account: The Account object that contains the user's account information.
+        :broker_hub_cb: The callback function that the broker calls every time it fetches new data.
         """
 
-        self.trader_main = trader_main
+        self.broker_hub_cb = broker_hub_cb
         self.stats = stats
         self.stats.timestamp = now()
         self.account = account
@@ -98,13 +97,16 @@ class API:
         min_interval = None
         for sym in stats.watchlist_cfg:
             inter = stats.watchlist_cfg[sym]["interval"]
-            # If the specified interval is not supported on this API, raise Exception
             if inter < self.interval_list[0]:
                 raise Exception(f"Specified interval {inter} is not supported.")
-            # If the exact inteval is not supported but it can be recreated by aggregating
+            # If the exact interval is not supported, see if it can be recreated by aggregating
             # candles from a more granular interval
             if inter not in self.interval_list:
                 granular_int = [i for i in self.interval_list if i < inter]
+                if not granular_int:
+                    raise Exception(
+                        f"Specified interval {inter} is not supported, and cannot be recreated by aggregating from a more granular interval either."
+                    )
                 new_inter = granular_int[-1]
                 stats.watchlist_cfg[sym]["aggregations"].append(inter)
                 stats.watchlist_cfg[sym]["interval"] = new_inter
@@ -122,11 +124,10 @@ class API:
 
     def _poll_sec(self, interval_sec) -> None:
         """
-        This function is called by the main thread to poll the API for
-        new data.
+        This function is called by the main thread to poll the Broker every second.
         """
         status = Status(
-            f"Waiting for next interval... ({val} {unit})", spinner="material"
+            f"Waiting for next interval... ({self.val} {unit})", spinner="material"
         )
         status.start()
         cur_sec = -1
@@ -275,7 +276,7 @@ class API:
                     continue
                 df_dict[sym] = latest.iloc[[-1]]
 
-        self.trader_main(df_dict)
+        self.broker_hub_cb(df_dict)
 
     def exit(self) -> None:
         """
@@ -893,7 +894,7 @@ class API:
                     c = Console()
                     c.print_exception(show_locals=True)
                     # self = args[0]
-                    # debugger.error(f"Error: {e}")
+                    debugger.error(f"Error: {e}")
                     # traceback.print_exc()
                     debugger.error("Logging out and back in...")
                     args[0].refresh_cred()
@@ -929,7 +930,7 @@ class API:
         assert limit_price >= 0, "Limit price must be nonnegative"
 
 
-class StreamAPI(API):
+class StreamAPI(Broker):
     """ """
 
     def __init__(self, path: str = None) -> None:
@@ -971,7 +972,7 @@ class StreamAPI(API):
         # If all data has been received, pass on the data
         if len(missing) == 0:
             debugger.debug("All data received")
-            self.trader_main(self.block_queue)
+            self.broker_hub_cb(self.block_queue)
             self.block_queue = {}
             self.all_recv = True
             self.first = True
@@ -1008,5 +1009,5 @@ class StreamAPI(API):
             data.columns = pd.MultiIndex.from_product([[n], data.columns])
             self.block_queue[n] = data
         self.block_lock.release()
-        self.trader_main(self.block_queue)
+        self.broker_hub_cb(self.block_queue)
         self.block_queue = {}

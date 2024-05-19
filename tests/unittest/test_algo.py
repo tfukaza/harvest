@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 # from harvest import algo
 from harvest.trader import PaperTrader
-from harvest.api.dummy import DummyStreamer
+from harvest.broker.dummy import DummyStreamer
 from harvest.algo import BaseAlgo
 
 from harvest.definitions import *

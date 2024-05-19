@@ -1,11 +1,11 @@
 import unittest
-from harvest.api.robinhood import Robinhood
-from harvest.api.webull import Webull
-from harvest.api.alpaca import Alpaca
-from harvest.api.kraken import Kraken
+from harvest.broker.robinhood import Robinhood
+from harvest.broker.webull import Webull
+from harvest.broker.alpaca import Alpaca
+from harvest.broker.kraken import Kraken
 
 # from harvest.api.paper import PaperBroker
-from harvest.api.yahoo import YahooStreamer
+from harvest.broker.yahoo import YahooStreamer
 
 from harvest.definitions import *
 from harvest.utils import *
@@ -16,6 +16,7 @@ secret_path = os.environ["SECRET_PATH"]
 debugger.setLevel("DEBUG")
 
 import functools
+
 
 # A decorator to repeat the same test for all the brokers
 def decorator_repeat_test(api_list):

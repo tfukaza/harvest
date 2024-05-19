@@ -8,12 +8,12 @@ import krakenex
 import pandas as pd
 
 # Submodule imports
-from harvest.api._base import API
+from harvest.broker._base import Broker
 from harvest.utils import *
 from harvest.definitions import *
 
 
-class Kraken(API):
+class Kraken(Broker):
 
     interval_list = [Interval.MIN_1, Interval.MIN_5, Interval.HR_1, Interval.DAY_1]
     req_keys = ["kraken_api_key", "kraken_secret_key"]
@@ -142,19 +142,19 @@ class Kraken(API):
         df_dict = {}
         df_dict.update(self._fetch_latest_crypto_price())
 
-        self.trader_main(df_dict)
+        self.broker_hub_cb(df_dict)
 
     def exit(self) -> None:
         self.option_cache = {}
 
     # -------------- Streamer methods -------------- #
 
-    @API._exception_handler
+    @Broker._exception_handler
     def get_current_time(self) -> dt.datetime:
         ret = self._get_result(self.api.query_public("Time"))
         return dt.datetime.fromtimestamp(ret["unixtime"], dt.timezone.utc)
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_price_history(
         self,
         symbol: str,
@@ -205,17 +205,17 @@ class Kraken(API):
 
     # ------------- Broker methods ------------- #
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_stock_positions(self) -> List:
         debugger.error("Kraken does not support stocks. Returning an empty list.")
         return []
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_option_positions(self) -> List:
         debugger.error("Kraken does not support options")
         return []
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_crypto_positions(self) -> List[Dict[str, Any]]:
         positions = self._get_result(self.api.query_private("OpenPositions"))
 
@@ -236,7 +236,7 @@ class Kraken(API):
     def update_option_positions(self, positions: List[Any]):
         debugger.error("Kraken does not support options. Doing nothing.")
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_account(self) -> Dict[str, Any]:
         account = self._get_result(self.api.query_private("Balance"))
         if account is None:
@@ -259,7 +259,7 @@ class Kraken(API):
     def fetch_option_order_status(self, order_id: str) -> None:
         raise Exception("Kraken does not support options.")
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_crypto_order_status(self, order_id: str) -> Dict[str, Any]:
         order = self.api.query_private("QueryOrders", {"txid": order_id})
         symbol = kraken_names_to_crypto_ticker.get(crypto["descr"]["pair"][:-4])
@@ -277,7 +277,7 @@ class Kraken(API):
 
     # --------------- Methods for Trading --------------- #
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_order_queue(self) -> Dict[str, Any]:
         open_orders = self._get_result(self.api.query_private("OpenOrders"))
         open_orders = open_orders["open"]
@@ -450,7 +450,7 @@ class Kraken(API):
             raise Exception("\n".join(response["error"]))
         return response.get("result", None)
 
-    @API._exception_handler
+    @Broker._exception_handler
     def _fetch_latest_crypto_price(self) -> Dict[str, pd.DataFrame]:
         dfs = {}
         for symbol in self.watch_crypto:

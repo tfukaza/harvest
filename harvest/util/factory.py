@@ -50,45 +50,45 @@ def load_storage(name: str) -> type:
 
 def load_api(name: str) -> type:
     if name == "dummy":
-        from harvest.api.dummy import DummyStreamer
+        from harvest.broker.dummy import DummyStreamer
 
         return DummyStreamer
     elif name == "yahoo":
-        from harvest.api.yahoo import YahooStreamer
+        from harvest.broker.yahoo import YahooStreamer
 
         return YahooStreamer
     elif name == "polygon":
-        from harvest.api.polygon import PolygonStreamer
+        from harvest.broker.polygon import PolygonStreamer
 
         return PolygonStreamer
     elif name == "robinhood":
-        from harvest.api.robinhood import Robinhood
+        from harvest.broker.robinhood import Robinhood
 
         return Robinhood
     elif name == "alpaca":
-        from harvest.api.alpaca import Alpaca
+        from harvest.broker.alpaca import Alpaca
 
         return Alpaca
     elif name == "kraken":
-        from harvest.api.kraken import Kraken
+        from harvest.broker.kraken import Kraken
 
         return Kraken
     elif name == "webull":
-        from harvest.api.webull import Webull
+        from harvest.broker.webull import Webull
 
         return Webull
     elif name == "paper":
-        from harvest.api.paper import PaperBroker
+        from harvest.broker.paper import PaperBroker
 
         return PaperBroker
     elif name == "base_stream":
-        from harvest.api._base import StreamAPI
+        from harvest.broker._base import StreamAPI
 
         return StreamAPI
     elif name == "base_api":
-        from harvest.api._base import API
+        from harvest.broker._base import Broker
 
-        return API
+        return Broker
 
     else:
         raise ValueError(f"Invalid api option: {name}")

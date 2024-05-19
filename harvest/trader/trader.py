@@ -1,12 +1,7 @@
-# Builtins
-from logging import debug
-import re
-
 import traceback
 import sys
 from sys import exit
 from signal import signal, SIGINT
-import time
 import datetime as dt
 
 # External libraries
@@ -16,11 +11,6 @@ import tzlocal
 from harvest.utils import *
 from harvest.definitions import *
 
-# from harvest.storage import BaseStorage
-# from harvest.api._base import API
-# from harvest.api.yahoo import YahooStreamer
-# from harvest.api.paper import PaperBroker
-# from harvest.storage import BaseStorage
 from harvest.server import Server
 
 from rich.console import Console
@@ -30,7 +20,7 @@ from rich import box
 from harvest.util.factory import *
 
 
-class LiveTrader:
+class BrokerHub:
     """
     :broker: Both the broker and streamer store a Broker object.
         Broker places orders and retrieves latest account info like equity.
@@ -779,7 +769,7 @@ class LiveTrader:
         exit(0)
 
 
-class PaperTrader(LiveTrader):
+class PaperTrader(BrokerHub):
     """
     A class for trading in the paper trading environment.
     """

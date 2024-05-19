@@ -5,8 +5,8 @@ import datetime as dt
 
 # Harvest imports
 from harvest.algo import BaseAlgo
-from harvest.trader import LiveTrader
-from harvest.api.alpaca import Alpaca
+from harvest.trader import BrokerHub
+from harvest.broker.alpaca import Alpaca
 from harvest.storage.csv_storage import CSVStorage
 
 # Third-party imports
@@ -70,7 +70,7 @@ if __name__ == "__main__":
         path="accounts/alpaca-secret.yaml", is_basic_account=True, paper_trader=True
     )
     em_algo = EMAlgo()
-    trader = LiveTrader(streamer=alpaca, broker=alpaca, storage=csv_storage, debug=True)
+    trader = BrokerHub(streamer=alpaca, broker=alpaca, storage=csv_storage, debug=True)
 
     # Watch for Apple and Microsoft
     trader.set_symbol("AAPL")

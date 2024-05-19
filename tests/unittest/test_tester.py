@@ -6,7 +6,7 @@ import shutil
 # Submodule imports
 from harvest.trader import BackTester
 from harvest.algo import BaseAlgo
-from harvest.api.dummy import DummyStreamer
+from harvest.broker.dummy import DummyStreamer
 from harvest.definitions import *
 from harvest.utils import *
 

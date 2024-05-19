@@ -9,6 +9,7 @@ from os import listdir
 from os.path import isfile, join
 from typing import Callable
 
+
 # Lambda functions cannot raise exceptions so using higher order functions.
 def _raise(e) -> Callable:
     def raise_helper():
@@ -98,9 +99,9 @@ def start(args: argparse.Namespace, test: bool = False) -> None:
     broker = args.broker
     debug = args.debug
 
-    from harvest.trader import LiveTrader
+    from harvest.trader import BrokerHub
 
-    trader = LiveTrader(streamer=streamer, broker=broker, storage=storage, debug=debug)
+    trader = BrokerHub(streamer=streamer, broker=broker, storage=storage, debug=debug)
 
     console = Console()
     console.print(f"> [bold green]Welcome to Harvest[/bold green]")

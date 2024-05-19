@@ -1,5 +1,5 @@
 # Builtins
-from harvest.api.dummy import DummyStreamer
+from harvest.broker.dummy import DummyStreamer
 import pathlib
 import unittest
 import datetime as dt
@@ -9,8 +9,8 @@ import pandas as pd
 
 
 from harvest.algo import BaseAlgo
-from harvest.api._base import API, StreamAPI
-from harvest.api.dummy import DummyStreamer
+from harvest.broker._base import Broker, StreamAPI
+from harvest.broker.dummy import DummyStreamer
 from harvest.trader import PaperTrader
 from harvest.definitions import *
 from harvest.utils import *
@@ -146,7 +146,7 @@ class TestAPI(unittest.TestCase):
             pass
 
     def test_exceptions(self):
-        api = API()
+        api = Broker()
 
         self.assertEqual(api.create_secret(), None)
 
@@ -260,7 +260,7 @@ class TestAPI(unittest.TestCase):
             )
 
     def test_base_cases(self):
-        api = API()
+        api = Broker()
 
         api.refresh_cred()
         api.exit()
@@ -270,9 +270,9 @@ class TestAPI(unittest.TestCase):
         self.assertEqual(api.fetch_order_queue(), [])
 
     def test_run_once(self):
-        api = API()
+        api = Broker()
         fn = lambda x: x + 1
-        wrapper = API._run_once(fn)
+        wrapper = Broker._run_once(fn)
         self.assertEqual(wrapper(5), 6)
         self.assertTrue(wrapper(5) is None)
 

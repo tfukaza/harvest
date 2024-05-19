@@ -7,7 +7,7 @@ import datetime as dt
 
 from harvest.utils import *
 from harvest.definitions import *
-from harvest.api.alpaca import Alpaca
+from harvest.broker.alpaca import Alpaca
 
 secret_path = os.environ["SECRET_PATH"]
 debugger.setLevel("DEBUG")

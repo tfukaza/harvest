@@ -1,8 +1,8 @@
 # HARVEST_SKIP
 from harvest.algo import BaseAlgo
 from harvest.trader import PaperTrader
-from harvest.api.robinhood import Robinhood
-from harvest.api.paper import PaperBroker
+from harvest.broker.robinhood import Robinhood
+from harvest.broker.paper import PaperBroker
 
 """
 """

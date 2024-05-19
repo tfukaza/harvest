@@ -7,7 +7,7 @@ import datetime as dt
 
 from harvest.utils import *
 from harvest.definitions import *
-from harvest.api.kraken import Kraken
+from harvest.broker.kraken import Kraken
 
 secret_path = os.environ["SECRET_PATH"]
 debugger.setLevel("DEBUG")

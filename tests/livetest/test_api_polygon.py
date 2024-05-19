@@ -7,7 +7,7 @@ import datetime as dt
 
 from harvest.utils import *
 from harvest.definitions import *
-from harvest.api.polygon import PolygonStreamer
+from harvest.broker.polygon import PolygonStreamer
 
 secret_path = os.environ["SECRET_PATH"]
 debugger.setLevel("DEBUG")
