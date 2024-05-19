@@ -1,0 +1,159 @@
+# Enable pylint error, pylint warning, flake8-copyright, Isort
+# For full list of pylint rules implemented in ruff, see https://github.com/astral-sh/ruff/issues/970
+lint.select = [
+  "B", # flake8-Bugbear
+  "I", # isort
+  "PLE", # pylint errors
+  "PLW", # pylint warnings
+  # pydocstyle (flake8-docstring) select docstring
+  "D207",
+  "D208",
+  "D300",
+  "D419",
+  # pylint warnings equivalent in ruff (not marked as PLW)
+  "A001",
+  "ARG001",
+  "B033",
+  "B904",
+  "E703",
+  "E722",
+  "F401",
+  "F403",
+  "F404",
+  "F504",
+  "F507",
+  "F524",
+  "F525",
+  "F541",
+  "F541",
+  "F601",
+  "F631",
+  "F811",
+  "F841",
+  "N999",
+  "PIE790",
+  "Q000",
+  "S102",
+  "S307",
+  "TRY302",
+  "UP025",
+  "W605",
+  # pylint errors equivalent in ruff (not marked as PLE)
+  "E999",
+  "F501",
+  "F502",
+  "F506",
+  "F522",
+  "F524",
+  "F524",
+  "F622",
+  "F701",
+  "F702",
+  "F704",
+  "F706",
+  "F811",
+  "F821",
+  "F822",
+  "F901",
+  "N805",
+  "TID252",
+  # pylint refactor errors equivalent in ruff
+  "C416",
+  "PLR0133",
+  "PLR1711",
+  "PLR1722",
+  "SIM115",
+  "UP008",
+]
+lint.ignore = [
+  "B008", # function-call-in-default-argument
+  "B017", # assert-raises-exception
+  "B027", # empty-method-without-abstract-decorator
+  "B028", # explicit-stacklevel
+  "B905", # zip-without-explicit-strict
+  "E701", # multiple-statements part 1
+  "E702", # multiple-statements part 2
+  "E741", # ambiguous-name
+  "PIE790", # uncecessary ... literal
+  "PLR", # refactor
+  "PLW0406", # import-self
+  "PLW0603", # global-statement
+  "PLW0133", # useless-exception-statement
+  "PLW1514", # unexpected-encoding
+  "PLW1641", # eq-without-hash
+  "PLW2901", # redefined-loop-name
+  "PLW3201", # bad-dunder-method-name
+  "RET501", # inconsistent-return-statements
+  "RET502", # inconsistent-return-statements
+  "RET505", # no-else-return
+  "RET506", # no-else-raise
+  "RET507", # no-else-continue
+  "RET508", # no-else-break
+]
+# Full list of error codes https://beta.ruff.rs/docs/rules/
+# Pylint warning of global
+# Overwritten variables
+
+# Allow autofix for all enabled rules (when `--fix`) is provided.
+lint.fixable = [
+  "A",
+  "ANN",
+  "ARG",
+  "B",
+  "BLE",
+  "C",
+  "COM",
+  "D",
+  "DJ",
+  "DTZ",
+  "E",
+  "EM",
+  "ERA",
+  "EXE",
+  "F",
+  "FBT",
+  "G",
+  "I",
+  "I",
+  "ICN",
+  "INP",
+  "N",
+  "NPY",
+  "PD",
+  "PIE",
+  "PL",
+  "PT",
+  "PTH",
+  "PYI",
+  "Q",
+  "RET",
+  "RSE",
+  "RUF",
+  "S",
+  "S307",
+  "SIM",
+  "SLF",
+  "T",
+  "TCH",
+  "TID",
+  "TRY",
+  "UP",
+  "W",
+  "YTT",
+]
+lint.unfixable = [
+  "F401", # unused-imports this may lead to imports removed when not intended in init.py
+]
+
+# Exclude a variety of commonly ignored directories.
+exclude = [
+  ".cache",
+  ".git",
+  ".ruff_cache",
+  ".trunk",
+  ".vscode",
+]
+
+line-length = 120
+
+target-version = "py310"

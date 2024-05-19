@@ -19,7 +19,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    
+
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
       with:
@@ -31,9 +31,9 @@ jobs:
         python setup.py install
         python -m pip install .[Dev]
 
-    - name: Run linter
-      run: python setup.py lint -c True
-    
+    - name: Trunk Check # runs linters under trunk check
+      uses: trunk-io/trunk-action@v1
+
     - name: Run test
       run: python setup.py test
 

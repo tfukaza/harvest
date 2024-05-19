@@ -1,6 +1,3 @@
-# ignore ide files
-.vscode
-
 # ignore compiled python files
 **/__pycache__/
 *.py[cod]
@@ -22,6 +19,7 @@ data/
 
 # misc.
 *.yaml
+!trunk.yaml
 !dummy_account.yaml
 !dummy_account_copy.yaml
 package-lock.json
