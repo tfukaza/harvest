@@ -1,0 +1,6 @@
+{
+    "files.insertFinalNewline": true,
+    "files.trimTrailingWhitespace": true,
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "trunk.io",
+}

@@ -1,6 +1,3 @@
-# ignore ide files
-.vscode
-
 # ignore compiled python files
 **/__pycache__/
 *.py[cod]
