@@ -1,5 +1,5 @@
 ![Header](docs/banner.png)<br />
-Harvest is a simple yet flexible Python framework for algorithmic trading. Paper trade and live trade stocks, cryptos, and options![^1][^2] Visit [**here**](https://tfukaza.github.io/harvest-website) for tutorials and documentation. 
+Harvest is a simple yet flexible Python framework for algorithmic trading. Paper trade and live trade stocks, cryptos, and options![^1][^2] Visit [**here**](https://tfukaza.github.io/harvest-website) for tutorials and documentation.
 
 <br />
 
@@ -10,7 +10,7 @@ Harvest is a simple yet flexible Python framework for algorithmic trading. Paper
 ---
 
 **⚠️WARNING⚠️**
-Harvest is currently at **v0.3**. The program is unstable and contains many bugs. Use with caution, and contributions are greatly appreciated. 
+Harvest is currently at **v0.3**. The program is unstable and contains many bugs. Use with caution, and contributions are greatly appreciated.
 - 🪲 [File a bug report](https://github.com/tfukaza/harvest/issues/new?assignees=&labels=bug&template=bug_report.md&title=%5B%F0%9F%AA%B0BUG%5D)
 - 💡 [Submit a feature suggestion](https://github.com/tfukaza/harvest/issues/new?assignees=&labels=enhancement%2C+question&template=feature-request.md&title=%5B%F0%9F%92%A1Feature+Request%5D)
 - 📝 [Request documentation](https://github.com/tfukaza/harvest/issues/new?assignees=&labels=documentation&template=documentation.md&title=%5B%F0%9F%93%9DDocumentation%5D)
@@ -36,7 +36,7 @@ class Watch(BaseAlgo):
 ```
 To paper trade using this algorithm, run the following command:
 ```bash
-harvest start -s yahoo -b paper 
+harvest start -s yahoo -b paper
 ```
 To live trade using Robinhood, run:
 ```bash
@@ -58,21 +58,28 @@ pip install harvest-python[BROKER]
 ```
 Replace `BROKER` with a brokerage/data source of your choice:
 - Robinhood
-- Alpaca 
+- Alpaca
 - Webull
 - Kraken
-- Polygon 
+- Polygon
 
 Now you're all set!
 
 # Contributing
-Contributions are greatly appreciated. Check out the [CONTRIBUTING](CONTRIBUTING.md) document for details, and [ABOUT](ABOUT.md) for the long-term goals of this project. 
+Contributions are greatly appreciated. Check out the [CONTRIBUTING](CONTRIBUTING.md) document for details, and [ABOUT](ABOUT.md) for the long-term goals of this project.
 
 # Disclaimer
-- Harvest is not officially associated with Robinhood, Alpaca, Webull, Kraken, Polygon, or Yahoo. 
-- Many of the brokers were also not designed to be used for algo-trading. Excessive access to their API can result in your account getting locked. 
-- Tutorials and documentation solely exist to provide technical references of the code. They are not recommendations of any specific securities or strategies. 
+- Harvest is not officially associated with Robinhood, Alpaca, Webull, Kraken, Polygon, or Yahoo.
+- Many of the brokers were also not designed to be used for algo-trading. Excessive access to their API can result in your account getting locked.
+- Tutorials and documentation solely exist to provide technical references of the code. They are not recommendations of any specific securities or strategies.
 - Use Harvest at your own responsibility. Developers of Harvest take no responsibility for any financial losses you incur by using Harvest. By using Harvest, you certify you understand that Harvest is a software in early development and may contain bugs and unexpected behaviors.
 
-[^1]: What assets you can trade depends on the broker you are using. 
-[^2]: Backtesting is also available, but it is not supported for options. 
+# Linter
+- Trunk is a wrapper around linters. see `trunk.yaml` for details on which linters are enabled
+- Currently we run `ruff` which supports isort, pylint, black
+- For the best experience, please install the proper extensions under vscode "recommended extensions"
+- To run lint checks manually, use `trunk check`, to run formatters, use `trunk fmt`
+- To run lint & format checks automatically, install the extensions recommended and save
+
+[^1]: What assets you can trade depends on the broker you are using.
+[^2]: Backtesting is also available, but it is not supported for options.
