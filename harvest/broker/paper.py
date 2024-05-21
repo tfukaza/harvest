@@ -1,27 +1,24 @@
-# Builtins
-import re
 import datetime as dt
-from typing import Any, Dict, List, Tuple
-from pathlib import Path
-import pickle
 import os
+import pickle
+import re
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Union
 
-# External libraries
-import pandas as pd
-import yaml
-
-# Submodule imports
 from harvest.broker._base import Broker
-from harvest.broker.dummy import DummyStreamer
-from harvest.utils import *
-from harvest.definitions import *
+from harvest.definitions import OPTION_QTY_MULTIPLIER, Account, Stats
+from harvest.enum import DataBrokerType, Interval
 from harvest.storage import BaseStorage
+from harvest.util.factory import load_broker
+from harvest.util.helper import data_to_occ, debugger, is_crypto
 
 
 class PaperBroker(Broker):
-    """DummyBroker, as its name implies, is a dummy broker class that can
-    be useful for testing algorithms. When used as a streamer, it will return
-    randomly generated prices. When used as a broker, it paper trades.
+    """
+    PaperBroker is a broker class that simulates buying and selling of assets.
+    It does this by keeping track of orders and assets in a local database.
+    It does not have the ability to retrieve real data from the market,
+    so it must be used in conjunction with another broker that can provide data.
     """
 
     interval_list = [
@@ -36,13 +33,13 @@ class PaperBroker(Broker):
     def __init__(
         self,
         path: str = None,
-        streamer: Broker = None,
+        data_source_broker: DataBrokerType = DataBrokerType.DUMMY,
         commission_fee: Union[float, str, Dict[str, Any]] = 0,
         save: bool = False,
     ) -> None:
         """
         :path: Path to a configuration file holding account information for the user.
-        :streamer: A streamer to get asset prices and the current time.
+        :data_source_broker: A broker that can provide data to the PaperBroker.
         :commission_fee: When this is a number it is assumed to be a flat price
             on all buys and sells of assets. When this is a string formatted as
             'XX%' then it is assumed that commission fees are that percent of the
@@ -50,6 +47,7 @@ class PaperBroker(Broker):
             with the keys 'buy' and 'sell' you can specify different commission
             fees when buying and selling assets. The values must be numbers or
             strings formatted as 'XX%'.
+        :save: Whether or not to save the state of the broker to a file.
         """
 
         super().__init__(path)
@@ -62,7 +60,7 @@ class PaperBroker(Broker):
         self.commission_fee = commission_fee
         self.save = save
 
-        self.streamer = None
+        self.data_broker_ref = load_broker(data_source_broker)()
 
         if path is None:
             self.save_path = "./save"
@@ -135,12 +133,10 @@ class PaperBroker(Broker):
         try:
             os.remove(self.save_path)
             debugger.debug("Removed saved account file.")
-        except:
+        except OSError:
             debugger.warning("Saved account file does not exists.")
 
-    def setup(
-        self, stats: Stats, account: Account, trader_main: Callable = None
-    ) -> None:
+    def setup(self, stats: Stats, account: Account, trader_main: Callable = None) -> None:
         super().setup(stats, account, trader_main)
         self.backtest = False
 
@@ -167,15 +163,6 @@ class PaperBroker(Broker):
     def fetch_crypto_positions(self) -> List[Dict[str, Any]]:
         return self.cryptos
 
-    # def update_option_positions(self, positions) -> List[Dict[str, Any]]:
-    #     for r in self.options:
-    #         occ_sym = r["symbol"]
-    #         price = self.streamer.fetch_option_market_data(occ_sym)["price"]
-
-    #         r["current_price"] = price
-    #         r["market_value"] = price * r["quantity"] * 100
-    #         r["cost_basis"] = r["avg_price"] * r["quantity"] * 100
-
     def fetch_account(self) -> Dict[str, Any]:
         self.equity = self._calc_equity()
         self._save_account()
@@ -194,15 +181,13 @@ class PaperBroker(Broker):
         debugger.debug(f"Backtest: {self.backtest}")
 
         if self.backtest:
-            price = self.storage.load(sym, self.stats.watchlist_cfg[sym]["interval"])[
-                sym
-            ]["close"][-1]
+            price = self.storage.load(sym, self.stats.watchlist_cfg[sym]["interval"])[sym]["close"][-1]
         else:
-            price = self.streamer.fetch_price_history(
+            price = self.data_broker_ref.fetch_price_history(
                 sym,
                 self.stats.watchlist_cfg[sym]["interval"],
-                self.streamer.get_current_time() - dt.timedelta(days=7),
-                self.streamer.get_current_time(),
+                self.data_broker_ref.get_current_time() - dt.timedelta(days=7),
+                self.data_broker_ref.get_current_time(),
             )[sym]["close"][-1]
 
         debugger.debug(f"Price of {sym} is {price}")
@@ -216,9 +201,7 @@ class PaperBroker(Broker):
             if ret["side"] == "buy":
                 # Check to see if user has enough funds to buy the stock
                 debugger.debug(f"Original price: {original_price}")
-                actual_price = self.apply_commission(
-                    original_price, self.commission_fee, "buy"
-                )
+                actual_price = self.apply_commission(original_price, self.commission_fee, "buy")
                 # Check if user has enough buying power
                 if self.buying_power + ret["limit_price"] * qty < actual_price:
                     debugger.error(
@@ -226,17 +209,13 @@ class PaperBroker(Broker):
                     )
                 elif ret["limit_price"] < price:
                     limit_price = ret["limit_price"]
-                    debugger.info(
-                        f"Limit price for {sym} is less than current price ({limit_price} < {price})."
-                    )
+                    debugger.info(f"Limit price for {sym} is less than current price ({limit_price} < {price}).")
                 else:
                     # If asset already exists, buy more. If not, add a new entry
                     if pos is None:
                         lst.append({"symbol": sym, "avg_price": price, "quantity": qty})
                     else:
-                        pos["avg_price"] = (
-                            pos["avg_price"] * pos["quantity"] + price * qty
-                        ) / (qty + pos["quantity"])
+                        pos["avg_price"] = (pos["avg_price"] * pos["quantity"] + price * qty) / (qty + pos["quantity"])
                         pos["quantity"] = pos["quantity"] + qty
 
                     self.cash -= actual_price
@@ -248,7 +227,7 @@ class PaperBroker(Broker):
                     self.orders.remove(ret)
                     ret = ret_1
                     ret["status"] = "filled"
-                    ret["filled_time"] = self.streamer.get_current_time()
+                    ret["filled_time"] = self.data_broker_ref.get_current_time()
                     ret["filled_price"] = price
             else:
                 if pos is None:
@@ -257,16 +236,14 @@ class PaperBroker(Broker):
                 pos["quantity"] = pos["quantity"] - qty
                 if pos["quantity"] < 1e-8:
                     lst.remove(pos)
-                actual_worth = self.apply_commission(
-                    original_price, self.commission_fee, "sell"
-                )
+                actual_worth = self.apply_commission(original_price, self.commission_fee, "sell")
                 self.cash += actual_worth
                 self.buying_power += actual_worth
                 ret_1 = ret.copy()
                 self.orders.remove(ret)
                 ret = ret_1
                 ret["status"] = "filled"
-                ret["filled_time"] = self.streamer.get_current_time()
+                ret["filled_time"] = self.data_broker_ref.get_current_time()
                 ret["filled_price"] = price
 
             self.equity = self._calc_equity()
@@ -287,7 +264,7 @@ class PaperBroker(Broker):
         sym = ret["base_symbol"]
         occ_sym = ret["symbol"]
 
-        price = self.streamer.fetch_option_market_data(occ_sym)["price"]
+        price = self.data_broker_ref.fetch_option_market_data(occ_sym)["price"]
 
         qty = ret["quantity"]
         original_price = price * qty * OPTION_QTY_MULTIPLIER
@@ -296,9 +273,7 @@ class PaperBroker(Broker):
             pos = next((r for r in self.options if r["symbol"] == occ_sym), None)
             if ret["side"] == "buy":
                 # Check to see if user has enough funds to buy the stock
-                actual_price = self.apply_commission(
-                    original_price, self.commission_fee, "buy"
-                )
+                actual_price = self.apply_commission(original_price, self.commission_fee, "buy")
                 if self.buying_power < actual_price:
                     debugger.error(
                         f"""Not enough buying power.\n Total price ({actual_price}) exceeds buying power {self.buying_power}.\n Reduce purchase quantity or increase buying power."""
@@ -325,18 +300,14 @@ class PaperBroker(Broker):
                             }
                         )
                     else:
-                        pos["avg_price"] = (
-                            pos["avg_price"] * pos["quantity"] + price * qty
-                        ) / (qty + pos["quantity"])
+                        pos["avg_price"] = (pos["avg_price"] * pos["quantity"] + price * qty) / (qty + pos["quantity"])
                         pos["quantity"] = pos["quantity"] + qty
 
                     self.cash -= actual_price
-                    self.buying_power += (
-                        ret["limit_price"] * qty * OPTION_QTY_MULTIPLIER
-                    )
+                    self.buying_power += ret["limit_price"] * qty * OPTION_QTY_MULTIPLIER
                     self.buying_power -= actual_price
                     ret["status"] = "filled"
-                    ret["filled_time"] = self.streamer.get_current_time()
+                    ret["filled_time"] = self.data_broker_ref.get_current_time()
                     ret["filled_price"] = price
                     debugger.debug(f"After BUY: {self.buying_power}")
                     ret_1 = ret.copy()
@@ -347,18 +318,14 @@ class PaperBroker(Broker):
                     raise Exception(f"Cannot sell {sym}, is not owned")
                 pos["quantity"] = pos["quantity"] - qty
                 debugger.debug(f"current:{self.buying_power}")
-                actual_price = self.apply_commission(
-                    original_price, self.commission_fee, "sell"
-                )
+                actual_price = self.apply_commission(original_price, self.commission_fee, "sell")
                 self.cash += actual_price
                 self.buying_power += actual_price
-                debugger.debug(
-                    f"Made {sym} {occ_sym} {qty} {price}: {self.buying_power}"
-                )
+                debugger.debug(f"Made {sym} {occ_sym} {qty} {price}: {self.buying_power}")
                 if pos["quantity"] < 1e-8:
                     self.options.remove(pos)
                 ret["status"] = "filled"
-                ret["filled_time"] = self.streamer.get_current_time()
+                ret["filled_time"] = self.data_broker_ref.get_current_time()
                 ret["filled_price"] = price
                 ret_1 = ret.copy()
                 self.orders.remove(ret)
@@ -389,7 +356,6 @@ class PaperBroker(Broker):
         in_force: str = "gtc",
         extended: bool = False,
     ) -> Dict[str, Any]:
-
         self._validate_order(side, quantity, limit_price)
 
         data = {
@@ -422,7 +388,6 @@ class PaperBroker(Broker):
         in_force: str = "gtc",
         extended: bool = False,
     ) -> Dict[str, Any]:
-
         self._validate_order(side, quantity, limit_price)
 
         data = {
@@ -457,7 +422,6 @@ class PaperBroker(Broker):
         strike: float,
         in_force: str = "gtc",
     ) -> Dict[str, Any]:
-
         self._validate_order(side, quantity, limit_price)
 
         data = {
@@ -517,8 +481,6 @@ class PaperBroker(Broker):
             if match is not None:
                 commission_fee = inital_price * 0.01 * float(match.group(1))
                 return f(inital_price, commission_fee)
-            raise Exception(
-                f"`commission_fee` {commission_fee} not valid must match this regex expression: {pattern}"
-            )
+            raise Exception(f"`commission_fee` {commission_fee} not valid must match this regex expression: {pattern}")
         elif type(commission_fee) is dict:
             return self.apply_commission(inital_price, commission_fee[side], side)

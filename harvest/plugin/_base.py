@@ -1,5 +1,5 @@
 from typing import List
-from harvest.utils import debugger
+from harvest.util.helper import debugger
 
 
 class Plugin:
@@ -30,9 +30,7 @@ class Plugin:
         """
         Returns how to install the necessary prerequsites for this plugin.
         """
-        raise NotImplementedError(
-            f"No installation steps for plugin: {type(self).__name__}"
-        )
+        raise NotImplementedError(f"No installation steps for plugin: {type(self).__name__}")
 
     def _check_dependency(self, dep: str) -> None:
         try:

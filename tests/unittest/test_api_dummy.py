@@ -1,22 +1,19 @@
-# Builtins
-import pathlib
-import unittest
 import datetime as dt
+import unittest
 
-import pytz
+import pandas as pd
 from pandas.testing import assert_frame_equal
 
-from harvest.broker.dummy import DummyStreamer
-from harvest.definitions import *
-from harvest.utils import *
+from harvest.broker.dummy import DummyDataBroker
+from harvest.definitions import Account, Stats
+from harvest.enum import Interval
+from harvest.util.date import get_local_timezone
 
 
 class TestDummyStreamer(unittest.TestCase):
     def test_fetch_prices(self):
-        streamer = DummyStreamer(current_time="2000-01-01 00:00")
-        current_time = dt.datetime(
-            2000, 1, 1, 0, 0, tzinfo=get_local_timezone()
-        ).astimezone(dt.timezone.utc)
+        streamer = DummyDataBroker(current_time="2000-01-01 00:00")
+        current_time = dt.datetime(2000, 1, 1, 0, 0, tzinfo=get_local_timezone()).astimezone(dt.timezone.utc)
         print(current_time)
         print(get_local_timezone())
         # Get per-minute data
@@ -27,15 +24,13 @@ class TestDummyStreamer(unittest.TestCase):
         streamer.tick()
         df_2 = streamer.fetch_price_history("A", Interval.MIN_1)["A"]
         # Check that the last date is 1/1/2020-00:01:00
-        self.assertEqual(
-            df_2.index[-1], pd.Timestamp(current_time + dt.timedelta(minutes=1))
-        )
+        self.assertEqual(df_2.index[-1], pd.Timestamp(current_time + dt.timedelta(minutes=1)))
 
         # Check that the two dataframes are the same
         assert_frame_equal(df_1.iloc[1:], df_2.iloc[:-1])
 
     def test_setup(self):
-        dummy = DummyStreamer()
+        dummy = DummyDataBroker()
         interval = {
             "A": {"interval": Interval.MIN_1, "aggregations": []},
             "B": {"interval": Interval.MIN_1, "aggregations": []},
@@ -48,7 +43,7 @@ class TestDummyStreamer(unittest.TestCase):
         self.assertEqual(dummy.stats.watchlist_cfg, interval)
 
     def test_get_stock_price(self):
-        dummy = DummyStreamer()
+        dummy = DummyDataBroker()
         interval = {
             "A": {"interval": Interval.MIN_1, "aggregations": []},
             "B": {"interval": Interval.MIN_1, "aggregations": []},
@@ -60,10 +55,10 @@ class TestDummyStreamer(unittest.TestCase):
         trader_main = lambda df_dict: self.assertTrue("A" in df_dict)
         dummy.setup(stats, Account(), trader_main)
 
-        dummy.main()
+        dummy.step()
 
     def test_get_crypto_price(self):
-        dummy = DummyStreamer()
+        dummy = DummyDataBroker()
         interval = {
             "A": {"interval": Interval.MIN_1, "aggregations": []},
             "B": {"interval": Interval.MIN_1, "aggregations": []},
@@ -75,11 +70,11 @@ class TestDummyStreamer(unittest.TestCase):
         trader_main = lambda df_dict: self.assertTrue("@D" in df_dict)
         dummy.setup(stats, Account(), trader_main)
 
-        dummy.main()
+        dummy.step()
 
     def test_simple_static(self):
-        dummy1 = DummyStreamer()
-        dummy2 = DummyStreamer()
+        dummy1 = DummyDataBroker()
+        dummy2 = DummyDataBroker()
 
         df1 = dummy1.fetch_price_history("A", Interval.MIN_1)
         df2 = dummy2.fetch_price_history("A", Interval.MIN_1)
@@ -87,8 +82,8 @@ class TestDummyStreamer(unittest.TestCase):
         assert_frame_equal(df1, df2)
 
     def test_complex_static(self):
-        dummy1 = DummyStreamer()
-        dummy2 = DummyStreamer()
+        dummy1 = DummyDataBroker()
+        dummy2 = DummyDataBroker()
 
         df1B = dummy1.fetch_price_history("B", Interval.MIN_5)
         df2A = dummy2.fetch_price_history("A", Interval.MIN_5)

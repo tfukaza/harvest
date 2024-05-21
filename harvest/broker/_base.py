@@ -1,24 +1,32 @@
-# Builtins
 import datetime as dt
-import time
-import yaml
+import inspect
 import threading
-from typing import Any, Callable, Dict, List, Tuple, Union
+import time
 from os.path import exists
-from abc import ABC, abstractmethod
+from typing import Any, Callable, Dict, List, Tuple, Union
 
-# External libraries
 import pandas as pd
+import yaml
 from rich.status import Status
 
-# Submodule imports
-from harvest.utils import *
-from harvest.definitions import *
+from harvest.definitions import Account, Stats
+from harvest.enum import Interval
+from harvest.util.helper import (
+    check_interval,
+    data_to_occ,
+    debugger,
+    expand_interval,
+    interval_enum_to_string,
+    interval_to_timedelta,
+    occ_to_data,
+    symbol_type,
+    utc_current_time,
+)
 
 
-class Broker(ABC):
+class Broker:
     """
-    The Broker class is an abstract class that defines the interface for all brokers.
+    The Broker defines the interface for all brokers.
     Broker classes communicate with various API endpoints to perform operations like
     fetching historical data and placing orders.
 
@@ -76,9 +84,7 @@ class Broker(ABC):
 
         self.config = config
 
-    def setup(
-        self, stats: Stats, account: Account, broker_hub_cb: Callable = None
-    ) -> None:
+    def setup(self, stats: Stats, account: Account, broker_hub_cb: Callable = None) -> None:
         """
         This function is called right before the algorithm begins,
         and initializes several runtime parameters like
@@ -91,7 +97,7 @@ class Broker(ABC):
 
         self.broker_hub_cb = broker_hub_cb
         self.stats = stats
-        self.stats.timestamp = now()
+        self.stats.timestamp = utc_current_time()
         self.account = account
 
         min_interval = None
@@ -111,10 +117,7 @@ class Broker(ABC):
                 stats.watchlist_cfg[sym]["aggregations"].append(inter)
                 stats.watchlist_cfg[sym]["interval"] = new_inter
 
-            if (
-                min_interval is None
-                or stats.watchlist_cfg[sym]["interval"] < min_interval
-            ):
+            if min_interval is None or stats.watchlist_cfg[sym]["interval"] < min_interval:
                 min_interval = stats.watchlist_cfg[sym]["interval"]
 
         self.poll_interval = min_interval
@@ -126,76 +129,69 @@ class Broker(ABC):
         """
         This function is called by the main thread to poll the Broker every second.
         """
-        status = Status(
-            f"Waiting for next interval... ({self.val} {unit})", spinner="material"
-        )
+        status = Status(f"Waiting for next interval... ({self.poll_interval})", spinner="material")
         status.start()
         cur_sec = -1
         while 1:
-            cur = now()
+            cur = utc_current_time()
             sec = cur.second
             if sec % interval_sec == 0 and sec != cur_sec:
                 cur_sec = sec
                 self.stats.timestamp = cur
                 status.stop()
-                self.main()
+                self.step()
                 status.start()
 
     def _poll_min(self, interval_min):
         """
-        This function is called by the main thread to poll the API for
-        new data.
+        This function is called by the main thread to poll the Broker for new data every minute.
         """
-        status = Status(
-            f"Waiting for next interval... ({val} {unit})", spinner="material"
-        )
+        status = Status(f"Waiting for next interval... ({self.poll_interval})", spinner="material")
         status.start()
         cur_min = -1
         sleep = interval_min * 60 - 10
         while 1:
-            cur = now()
+            cur = utc_current_time()
             minute = cur.minute
             if minute % interval_min == 0 and minute != cur_min:
                 self.stats.timestamp = cur
                 status.stop()
-                self.main()
+                self.step()
                 status.start()
                 time.sleep(sleep)
             cur_min = minute
 
     def _poll_hr(self, interval_hr):
         """
-        This function is called by the main thread to poll the API for
-        new data.
+        This function is called by the main thread to poll the Broker for new data every hour.
         """
-        status = Status(
-            f"Waiting for next interval... ({interval_hr} HR)", spinner="material"
-        )
+        status = Status(f"Waiting for next interval... ({self.poll_interval})", spinner="material")
         status.start()
         cur_min = -1
         sleep = interval_hr * 3600 - 60
         while 1:
-            cur = now()
+            cur = utc_current_time()
             minutes = cur.minute
             hours = cur.hour
             if hours % interval_hr == 0 and minutes == 0 and minutes != cur_min:
                 self.stats.timestamp = cur
                 status.stop()
-                self.main()
+                self.step()
                 status.start()
                 time.sleep(sleep)
             cur_min = minutes
 
     def _poll_day(self, interval_day):
-        status = Status(
-            f"Waiting for next interval... ({interval_hr} HR)", spinner="material"
-        )
+        """
+        This function is called by the main thread to poll the Broker for new data every day.
+        """
+        status = Status(f"Waiting for next interval... ({self.poll_interval})", spinner="material")
         status.start()
         cur_min = -1
         cur_day = -1
         # market_data = self.fetch_market_hours(now())
         while 1:
-            cur = now()
+            cur = utc_current_time()
             minutes = cur.minute
             hours = cur.hour
             day = cur.day
@@ -208,28 +204,23 @@ class Broker(ABC):
             closes_min = closes_at.minute
             is_open = market_data["is_open"]
 
-            if (
-                is_open
-                and hours == closes_hr
-                and minutes == closes_min
-                and minutes != cur_min
-            ):
+            if is_open and hours == closes_hr and minutes == closes_min and minutes != cur_min:
                 self.stats.timestamp = cur
                 status.stop()
-                self.main()
+                self.step()
                 status.start()
                 time.sleep(80000)
-                market_data = self.fetch_market_hours(now())
+                market_data = self.fetch_market_hours(utc_current_time())
             cur_min = minutes
 
     def start(self) -> None:
         """
-        This method begins streaming data from the API.
+        This method begins streaming data from the Broker.
 
         The default implementation below is for polling the API.
-        If your brokerage provides a streaming API, you should override
-        this method and configure it to use that API. In that case,
-        make sure to set the callback function to self.main().
+        If a brokerage provides a streaming API, this method should be overridden
+        to use the streaming API.
+        Make sure to call self.step() in the overridden method.
         """
         val, unit = expand_interval(self.poll_interval)
         debugger.debug(f"{type(self).__name__} started...")
@@ -245,7 +236,7 @@ class Broker(ABC):
         else:
             raise Exception(f"Unsupported interval {self.poll_interval}.")
 
-    def main(self) -> None:
+    def step(self) -> None:
         """
         This method is called at the interval specified by the user.
         It should create a dictionary where each key is the symbol for an asset,
@@ -257,20 +248,17 @@ class Broker(ABC):
 
         timestamp should be an offset-aware datetime object in UTC timezone.
 
-        The dictionary should be passed to the trader by calling `self.trader_main(dict)`
+        The dictionary should be passed to the trader by calling `self.broker_hub_cb()`
         """
         # Iterate through securities in the watchlist. For those that have
         # intervals that needs to be called now, fetch the latest data
-
         df_dict = {}
         for sym in self.stats.watchlist_cfg:
             inter = self.stats.watchlist_cfg[sym]["interval"]
 
-            if is_freq(self.stats.timestamp, inter):
+            if check_interval(self.stats.timestamp, inter):
                 n = self.stats.timestamp
-                latest = self.fetch_price_history(
-                    sym, inter, n - interval_to_timedelta(inter) * 2, n
-                )
+                latest = self.fetch_price_history(sym, inter, n - interval_to_timedelta(inter) * 2, n)
                 debugger.debug(f"{sym} price fetch returned: {latest}")
                 if latest is None or latest.empty:
                     continue
@@ -280,15 +268,14 @@ class Broker(ABC):
 
     def exit(self) -> None:
         """
-        This function is called after every invocation of algo's handler.
-        The intended purpose is for brokers to clear any cache it may have created.
+        Exit the broker.
         """
         debugger.debug(f"{type(self).__name__} exited")
 
     def create_secret(self) -> Dict[str, str]:
         """
-        This method is called when the yaml file with credentials
-        is not found. It returns a dictionary containing the necessary credentials.
+        This method is called when the yaml file with credentials is not found.
+        Each broker should implement a wizard to instruct users on how to create the necessary credentials.
         """
         debugger.warning("Assuming API does not need account information.")
 
@@ -299,10 +286,11 @@ class Broker(ABC):
         """
         debugger.info(f"Refreshing credentials for {type(self).__name__}.")
 
-    # -------------- Streamer methods -------------- #
-
     def get_current_time(self) -> dt.datetime:
-        return now()
+        """
+        Returns the current time in UTC timezone, accurate to the minute.
+        """
+        return utc_current_time()
 
     def fetch_price_history(
         self,
@@ -323,10 +311,15 @@ class Broker(ABC):
         :returns: A pandas dataframe, same format as main()
         """
         raise NotImplementedError(
-            f"{type(self).__name__} does not support this streamer method: `fetch_price_history`."
+            f"{type(self).__name__} class does not support the method {inspect.currentframe().f_code.co_name}."
         )
 
     def fetch_latest_price(self, symbol: str) -> float:
+        """
+        Fetches the latest price of the specified asset.
+
+        :param symbol: The stock/crypto to get data for. Note options are not supported.
+        """
         interval = self.poll_interval
         end = self.get_current_time()
         start = end - interval_to_timedelta(interval) * 12
@@ -344,12 +337,10 @@ class Broker(ABC):
             - multiplier: Multiplier of the option, usually 100
         """
         raise NotImplementedError(
-            f"{type(self).__name__} does not support this streamer method: `fetch_chain_info`."
+            f"{type(self).__name__} class does not support the method {inspect.currentframe().f_code.co_name}."
         )
 
-    def fetch_chain_data(
-        self, symbol: str, date: Union[str, dt.datetime]
-    ) -> pd.DataFrame:
+    def fetch_chain_data(self, symbol: str, date: Union[str, dt.datetime]) -> pd.DataFrame:
         """
         Returns the option chain for the specified symbol.
 
@@ -363,7 +354,7 @@ class Broker(ABC):
         exp_date should be a timezone-aware datetime object localized to UTC
         """
         raise NotImplementedError(
-            f"{type(self).__name__} does not support this streamer method: `fetch_chain_data`."
+            f"{type(self).__name__} class does not support the method {inspect.currentframe().f_code.co_name}."
         )
 
     def fetch_option_market_data(self, symbol: str) -> Dict[str, Any]:
@@ -377,7 +368,7 @@ class Broker(ABC):
             - bid: bid price
         """
         raise NotImplementedError(
-            f"{type(self).__name__} does not support this streamer method: `fetch_option_market_data`."
+            f"{type(self).__name__} class does not support the method {inspect.currentframe().f_code.co_name}."
         )
 
     def fetch_market_hours(self, date: dt.date) -> Dict[str, Any]:
@@ -390,9 +381,6 @@ class Broker(ABC):
             - open_at: Time the market opens in UTC timezone.
             - close_at: Time the market closes in UTC timezone.
         """
-        # raise NotImplementedError(
-        #     f"{type(self).__name__} does not support this broker method: `fetch_market_hours`."
-        # )
         return {"is_open": True, "open_at": None, "close_at": None}
 
     # ------------- Broker methods ------------- #
@@ -407,7 +395,7 @@ class Broker(ABC):
             - quantity: Quantity owned
         """
         debugger.error(
-            f"{type(self).__name__} does not support this broker method: `fetch_stock_positions`. Returning an empty list."
+            f"{type(self).__name__} class does not support the method {inspect.currentframe().f_code.co_name}. Returning an empty list."
         )
         return []
 
@@ -426,7 +414,7 @@ class Broker(ABC):
             - type: 'call' or 'put'
         """
         debugger.error(
-            f"{type(self).__name__} does not support this broker method: `fetch_option_positions`. Returning an empty list."
+            f"{type(self).__name__} class does not support the method {inspect.currentframe().f_code.co_name}. Returning an empty list."
         )
         return []
 
@@ -440,22 +428,9 @@ class Broker(ABC):
             - quantity: Quantity owned
         """
         debugger.error(
-            f"{type(self).__name__} does not support this broker method: `fetch_crypto_positions`. Returning an empty list."
+            f"{type(self).__name__} class does not support the method {inspect.currentframe().f_code.co_name}. Returning an empty list."
         )
         return []
-
-    # def update_option_positions(self, positions: List[Any]):
-    #     """
-    #     Updates entries in option_positions list with the latest option price.
-    #     This is needed as options are priced based on various metrics,
-    #     and cannot be easily calculated from stock prices.
-
-    #     :positions: The option_positions list in the Trader class.
-    #     :returns: Nothing
-    #     """
-    #     debugger.error(
-    #         f"{type(self).__name__} does not support this broker method: `update_option_positions`. Doing nothing."
-    #     )
 
     def fetch_account(self) -> Dict[str, float]:
         """
@@ -468,7 +443,7 @@ class Broker(ABC):
             - multiplier: Scale of leverage, if leveraging
         """
         raise NotImplementedError(
-            f"{type(self).__name__} does not support this broker method: `fetch_account`."
+            f"{type(self).__name__} class does not support the method {inspect.currentframe().f_code.co_name}."
         )
 
     def fetch_stock_order_status(self, id) -> Dict[str, Any]:
@@ -489,7 +464,7 @@ class Broker(ABC):
             - filled_price: Price the order was filled at
         """
         raise NotImplementedError(
-            f"{type(self).__name__} does not support this broker method: `fetch_stock_order_status`."
+            f"{type(self).__name__} class does not support the method {inspect.currentframe().f_code.co_name}."
         )
 
     def fetch_option_order_status(self, id) -> Dict[str, Any]:
@@ -510,7 +485,7 @@ class Broker(ABC):
             - filled_price: Price the order was filled at
         """
         raise NotImplementedError(
-            f"{type(self).__name__} does not support this broker method: `fetch_option_order_status`."
+            f"{type(self).__name__} class does not support the method {inspect.currentframe().f_code.co_name}."
         )
 
     def fetch_crypto_order_status(self, id) -> Dict[str, Any]:
@@ -531,7 +506,7 @@ class Broker(ABC):
             - filled_price: Price the order was filled at
         """
         raise NotImplementedError(
-            f"{type(self).__name__} does not support this broker method: `fetch_crypto_order_status`."
+            f"{type(self).__name__} class does not support the method {inspect.currentframe().f_code.co_name}."
         )
 
     def fetch_order_queue(self) -> List[Dict[str, Any]]:
@@ -596,7 +571,7 @@ class Broker(ABC):
             Raises an exception if order fails.
         """
         raise NotImplementedError(
-            f"{type(self).__name__} does not support this broker method: `order_stock_limit`."
+            f"{type(self).__name__} class does not support the method {inspect.currentframe().f_code.co_name}."
         )
 
     def order_crypto_limit(
@@ -624,7 +599,7 @@ class Broker(ABC):
             Raises an exception if order fails.
         """
         raise NotImplementedError(
-            f"{type(self).__name__} does not support this broker method: `order_crypto_limit`."
+            f"{type(self).__name__} class does not support the method {inspect.currentframe().f_code.co_name}."
         )
 
     def order_option_limit(
@@ -656,22 +631,22 @@ class Broker(ABC):
             Raises an exception if order fails.
         """
         raise NotImplementedError(
-            f"{type(self).__name__} does not support this broker method: `order_option_limit`."
+            f"{type(self).__name__} class does not support the method {inspect.currentframe().f_code.co_name}."
         )
 
     def cancel_stock_order(self, order_id) -> None:
         raise NotImplementedError(
-            f"{type(self).__name__} does not support this broker method: `cancel_stock_order`."
+            f"{type(self).__name__} class does not support the method {inspect.currentframe().f_code.co_name}."
         )
 
     def cancel_crypto_order(self, order_id) -> None:
         raise NotImplementedError(
-            f"{type(self).__name__} does not support this broker method: `cancel_crypto_order`."
+            f"{type(self).__name__} class does not support the method {inspect.currentframe().f_code.co_name}."
         )
 
     def cancel_option_order(self, order_id) -> None:
         raise NotImplementedError(
-            f"{type(self).__name__} does not support this broker method: `cancel_option_order`."
+            f"{type(self).__name__} class does not support the method {inspect.currentframe().f_code.co_name}."
         )
 
     # -------------- Built-in methods -------------- #
@@ -700,13 +675,9 @@ class Broker(ABC):
         debugger.debug(f"{type(self).__name__} ordered a buy of {quantity} {symbol}")
         typ = symbol_type(symbol)
         if typ == "STOCK":
-            return self.order_stock_limit(
-                "buy", symbol, quantity, limit_price, in_force, extended
-            )
+            return self.order_stock_limit("buy", symbol, quantity, limit_price, in_force, extended)
         elif typ == "CRYPTO":
-            return self.order_crypto_limit(
-                "buy", symbol[1:], quantity, limit_price, in_force, extended
-            )
+            return self.order_crypto_limit("buy", symbol[1:], quantity, limit_price, in_force, extended)
         elif typ == "OPTION":
             sym, exp_date, option_type, strike = self.occ_to_data(symbol)
             return self.order_option_limit(
@@ -745,13 +716,9 @@ class Broker(ABC):
 
         typ = symbol_type(symbol)
         if typ == "STOCK":
-            return self.order_stock_limit(
-                "sell", symbol, quantity, limit_price, in_force, extended
-            )
+            return self.order_stock_limit("sell", symbol, quantity, limit_price, in_force, extended)
         elif typ == "CRYPTO":
-            return self.order_crypto_limit(
-                "sell", symbol[1:], quantity, limit_price, in_force, extended
-            )
+            return self.order_crypto_limit("sell", symbol[1:], quantity, limit_price, in_force, extended)
         elif typ == "OPTION":
             sym, exp_date, option_type, strike = self.occ_to_data(symbol)
             return self.order_option_limit(
@@ -778,102 +745,21 @@ class Broker(ABC):
                 elif asset_type == "OPTION":
                     self.cancel_option_order(order_id)
 
-    # def buy_option(self, symbol: str, quantity: int = 0, in_force: str = "gtc"):
-    #     """
-    #     Buys the specified option.
-
-    #     :symbol:    Symbol of the asset to buy, in OCC format.
-    #     :quantity:  Quantity of asset to buy
-    #     :in_force:  Duration the order is in force
-
-    #     :returns: The result of order_option_limit(). Returns None if there is an issue with the parameters.
-    #     """
-    #     if quantity <= 0.0:
-    #         debugger.error(
-    #             f"Quantity cannot be less than or equal to 0: was given {quantity}"
-    #         )
-    #         return None
-    #     if self.trader is None:
-    #         buy_power = self.fetch_account()["buying_power"]
-    #         price = self.streamer.fetch_option_market_data(symbol)["price"]
-    #     else:
-    #         buy_power = self.trader.account["buying_power"]
-    #         price = self.trader.streamer.fetch_option_market_data(symbol)["price"]
-
-    #     limit_price = mark_up(price)
-    #     total_price = limit_price * quantity
-
-    #     if total_price >= buy_power:
-    #         debugger.warning(
-    #             "Not enough buying power.\n" +
-    #             f"Total price ({price} * {quantity} * 1.05 = {limit_price*quantity}) exceeds buying power {buy_power}.\n" +
-    #             "Reduce purchase quantity or increase buying power."
-    #         )
-
-    #     sym, date, option_type, strike = self.occ_to_data(symbol)
-    #     return self.order_option_limit(
-    #         "buy",
-    #         sym,
-    #         quantity,
-    #         limit_price,
-    #         option_type,
-    #         date,
-    #         strike,
-    #         in_force=in_force,
-    #     )
-
-    # def sell_option(self, symbol: str, quantity: int = 0, in_force: str = "gtc"):
-    #     """
-    #     Sells the specified option.
-
-    #     :symbol:    Symbol of the asset to buy, in OCC format.
-    #     :quantity:  Quantity of asset to buy
-    #     :in_force:  Duration the order is in force
-
-    #     :returns: The result of order_option_limit(). Returns None if there is an issue with the parameters.
-    #     """
-    #     if quantity <= 0.0:
-    #         debugger.error(
-    #             f"Quantity cannot be less than or equal to 0: was given {quantity}"
-    #         )
-    #         return None
-    #     if self.trader is None:
-    #         price = self.streamer.fetch_option_market_data(symbol)["price"]
-    #     else:
-    #         price = self.trader.streamer.fetch_option_market_data(symbol)["price"]
-
-    #     limit_price = mark_down(price)
-
-    #     debugger.debug(f"{type(self).__name__} ordered a sell of {quantity} {symbol}")
-    #     sym, date, option_type, strike = self.occ_to_data(symbol)
-    #     return self.order_option_limit(
-    #         "sell",
-    #         sym,
-    #         quantity,
-    #         limit_price,
-    #         option_type,
-    #         date,
-    #         strike,
-    #         in_force=in_force,
-    #     )
-
     # -------------- Helper methods -------------- #
 
     def has_interval(self, interval: Interval) -> bool:
         return interval in self.interval_list
 
-    def data_to_occ(
-        self, symbol: str, date: dt.datetime, option_type: str, price: float
-    ) -> str:
+    def data_to_occ(self, symbol: str, date: dt.datetime, option_type: str, price: float) -> str:
         return data_to_occ(symbol, date, option_type, price)
 
     def occ_to_data(self, symbol: str) -> Tuple[str, dt.datetime, str, float]:
         return occ_to_data(symbol)
 
     def current_timestamp(self) -> dt.datetime:
-        return now()
+        return utc_current_time()
 
-    def _exception_handler(func: Callable) -> Callable:
+    def _exception_handler(self: Callable) -> Callable:
         """
         Wrapper to handle unexpected errors in the wrapped function.
         Most functions should be wrapped with this to properly handle errors, such as
@@ -887,7 +773,7 @@ class Broker(ABC):
             tries = 3
             while tries > 0:
                 try:
-                    return func(*args, **kwargs)
+                    return self(*args, **kwargs)
                 except Exception as e:
                     from rich.console import Console
 
@@ -901,26 +787,7 @@ class Broker(ABC):
                     tries -= 1
                     debugger.error("Retrying...")
                     continue
-            raise Exception(f"Failed to run {func.__name__}")
-
-        return wrapper
-
-    def _run_once(func: Callable) -> Callable:
-        """
-        Wrapper to only allows wrapped functions to be run once.
-
-        :func: Function to wrap.
-        :returns: The return of the inputted function if it has not been run before and None otherwise.
-        """
-
-        ran = False
-
-        def wrapper(*args, **kwargs):
-            nonlocal ran
-            if not ran:
-                ran = True
-                return func(*args, **kwargs)
-            return None
+            raise Exception(f"Failed to run {self.__name__}")
 
         return wrapper
 
@@ -930,10 +797,18 @@ class Broker(ABC):
         assert limit_price >= 0, "Limit price must be nonnegative"
 
 
-class StreamAPI(Broker):
-    """ """
+class StreamBroker(Broker):
+    """
+    Class for brokers that support streaming APIs.
+    Whenever possible, it is preferred to use a streaming API over polling as it helps offload
+    interval handling to the server.
+    """
 
     def __init__(self, path: str = None) -> None:
+        """
+        Streaming APIs often return data asynchronously, so this class additionally defines a lock to
+        prevent race conditions in case different data arrives close to each other.
+        """
         super().__init__(path)
 
         # Lock for streams that receive data asynchronously.
@@ -942,32 +817,35 @@ class StreamAPI(Broker):
         self.first = True
 
     def start(self) -> None:
+        """
+        Called when the broker is started.
+        The streaming API should be initialized here.
+        """
         debugger.debug(f"{type(self).__name__} started...")
 
-    def main(self, df_dict: Dict[str, Any]) -> None:
+    def step(self, df_dict: Dict[str, Any]) -> None:
         """
-        Streaming is event driven, so sometimes not all data comes in at once.
-        StreamAPI class
+        Called at the interval specified by the user.
+        This method is more complicated for streaming APIs, as data can arrive asynchronously.
         """
-        self.block_lock.acquire()
-        got = [k for k in df_dict]
-        # First, identify which symbols need to have data fetched
-        # for this timestamp
+        self.block_lock.acquire()  # Obtain lock to prevent race conditions when data arrives asynchronously
+
+        # First, identify which symbols need to have data fetched for this timestamp
+        got = list(df_dict)
         if self.first:
             self.needed = [
                 sym
                 for sym in self.stats.watchlist_cfg
-                if is_freq(now(), self.stats.watchlist_cfg[sym]["interval"])
+                if check_interval(utc_current_time(), self.stats.watchlist_cfg[sym]["interval"])
             ]
             self.stats.timestamp = df_dict[got[0]].index[0]
-
-        debugger.debug(f"Needs: {self.needed}")
-        debugger.debug(f"Got data for: {got}")
         missing = list(set(self.needed) - set(got))
-        debugger.debug(f"Still need data for: {missing}")
+
+        debugger.debug(f"Awaiting data for: {self.needed}")
+        debugger.debug(f"Received data for: {got}")
+        debugger.debug(f"Missing data for: {missing}")
 
         self.block_queue.update(df_dict)
-        # debugger.debug(self.block_queue)
 
         # If all data has been received, pass on the data
         if len(missing) == 0:
@@ -991,13 +869,20 @@ class StreamAPI(Broker):
         self.block_lock.release()
 
     def timeout(self) -> None:
+        """
+        Starts a timer after the first data is received for the current timestamp.
+        """
         debugger.debug("Begin timeout timer")
-        time.sleep(1)
+        time.sleep(1)  # TODO: Make it configurable
         if not self.all_recv:
             debugger.debug("Force flush")
             self.flush()
 
     def flush(self) -> None:
+        """
+        Called when the timeout timer expires.
+        Forces data to be returned for the current timestamp.
+        """
         # For missing data, return a OHLC with all zeroes.
         self.block_lock.acquire()
         for n in self.needed:

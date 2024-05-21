@@ -1,22 +1,34 @@
-# Builtins
+import datetime
 import datetime as dt
-from logging import debug
-from typing import Any, Dict, List, Tuple
+from typing import List
 
-# External libraries
 import pandas as pd
-import robin_stocks.robinhood as rh
-import pytz
 import pyotp
-import yaml
+import pytz
+import pytz as tz
+import robin_stocks.robinhood as rh
 
-# Submodule imports
 from harvest.broker._base import Broker
-from harvest.definitions import *
-from harvest.utils import *
+from harvest.enum import Interval
+from harvest.util.helper import (
+    aggregate_df,
+    convert_input_to_datetime,
+    data_to_occ,
+    date_to_str,
+    debugger,
+    is_crypto,
+    str_to_date,
+    symbol_type,
+)
 
 
-class Robinhood(Broker):
+class RobinhoodBroker(Broker):
+    """
+    The Robinhood broker class that interacts with the Robinhood Brokerage (robinhood.com)
+
+    Robinhood is not an API-first brokerage, so this class uses the robin_stocks package
+    to interact with the brokerage.
+    """
 
     interval_list = [Interval.SEC_15, Interval.MIN_5, Interval.HR_1, Interval.DAY_1]
     exchange = "NASDAQ"
@@ -26,13 +38,15 @@ class Robinhood(Broker):
         super().__init__(path)
 
         if self.config is None:
-            raise Exception(
-                f"Account credentials not found! Expected file path: {path}"
-            )
+            raise Exception(f"Account credentials not found! Expected file path: {path}")
 
         self.login()
 
     def login(self):
+        """
+        Log in to Robinhood using the credentials provided in the secret.yml file.
+        Robinhood also requires 2FA to be enabled, so the MFA code is also required.
+        """
         debugger.debug("Logging into Robinhood...")
         totp = pyotp.TOTP(self.config["robin_mfa"]).now()
         rh.login(
@@ -43,74 +57,26 @@ class Robinhood(Broker):
         )
 
     def refresh_cred(self):
+        """
+        Robinhood sessions expire after a certain amount of time, so this method is used to refresh the session.
+        """
         super().refresh_cred()
         debugger.debug("Logging out of Robinhood...")
         rh.authentication.logout()
         self.login()
         debugger.debug("Logged into Robinhood...")
 
-    # @API._run_once
     def setup(self, stats, account, trader_main=None):
-
         super().setup(stats, account, trader_main)
 
         # Robinhood only supports 15SEC, 1MIN interval for crypto
         for sym in self.stats.watchlist_cfg:
-            if (
-                not is_crypto(sym)
-                and self.stats.watchlist_cfg[sym]["interval"] < Interval.MIN_5
-            ):
-                raise Exception(
-                    f'Interval {self.stats.watchlist_cfg[sym]["interval"]} is only supported for crypto'
-                )
-
-        # self.__watch_stock = []
-        # self.__watch_crypto = []
-        # self.__watch_crypto_fmt = []
-
-        # for s in interval:
-        #     if is_crypto(s):
-        #         self.__watch_crypto_fmt.append(s[1:])
-        #         self.__watch_crypto.append(s)
-        #     else:
-        #         self.__watch_stock.append(s)
-
+            if not is_crypto(sym) and self.stats.watchlist_cfg[sym]["interval"] < Interval.MIN_5:
+                raise Exception(f'Interval {self.stats.watchlist_cfg[sym]["interval"]} is only supported for crypto')
         self.__option_cache = {}
 
     def exit(self):
         self.__option_cache = {}
-
-    # @API._exception_handler
-    # def fetch_latest_stock_price(self):
-    #     df={}
-    #     for s in self.__watch_stock:
-    #         ret = rh.get_stock_historicals(
-    #             s,
-    #             interval=self.__interval_fmt,
-    #             span='day',
-    #             )
-    #         if 'error' in ret or ret == None or (type(ret) == list and len(ret) == 0):
-    #             continue
-    #         df_tmp = pd.DataFrame.from_dict(ret)
-    #         df_tmp = self._format_df(df_tmp, [s], self.stats.watchlist_cfg).iloc[[-1]]
-    #         df[s] = df_tmp
-
-    #     return df
-
-    # @API._exception_handler
-    # def fetch_latest_crypto_price(self):
-    #     df={}
-    #     for s in self.__watch_crypto_fmt:
-    #         ret = rh.get_crypto_historicals(
-    #             s,
-    #             interval=self.__interval_fmt,
-    #             span='hour',
-    #             )
-    #         df_tmp = pd.DataFrame.from_dict(ret)
-    #         df_tmp = self._format_df(df_tmp, ['@'+s], self.stats.watchlist_cfg).iloc[[-1]]
-    #         df['@'+s] = df_tmp
-
-    #     return df
 
     # -------------- Streamer methods -------------- #
 
@@ -122,7 +88,6 @@ class Robinhood(Broker):
         start: dt.datetime = None,
         end: dt.datetime = None,
     ):
-
         if start is None:
             start = dt.datetime(1970, 1, 1)
         if end is None:
@@ -214,12 +179,7 @@ class Robinhood(Broker):
 
     @Broker._exception_handler
     def fetch_chain_data(self, symbol: str, date: dt.datetime):
-
-        if (
-            bool(self.__option_cache)
-            and symbol in self.__option_cache
-            and date in self.__option_cache[symbol]
-        ):
+        if bool(self.__option_cache) and symbol in self.__option_cache and date in self.__option_cache[symbol]:
             return self.__option_cache[symbol][date]
 
         ret = rh.find_tradable_options(symbol, date_to_str(date))
@@ -259,11 +219,8 @@ class Robinhood(Broker):
 
     @Broker._exception_handler
     def fetch_option_market_data(self, symbol: str):
-
-        sym, date, type, price = self.occ_to_data(symbol)
-        ret = rh.get_option_market_data(
-            sym, date.strftime("%Y-%m-%d"), str(price), type
-        )
+        sym, date, opt_type, price = self.occ_to_data(symbol)
+        ret = rh.get_option_market_data(sym, date.strftime("%Y-%m-%d"), str(price), opt_type)
         ret = ret[0][0]
         return {
             "price": float(ret["adjusted_mark_price"]),
@@ -327,8 +284,7 @@ class Robinhood(Broker):
             pos.append(
                 {
                     "base_symbol": r["chain_symbol"],
-                    "avg_price": float(r["average_price"])
-                    / float(r["trade_value_multiplier"]),
+                    "avg_price": float(r["average_price"]) / float(r["trade_value_multiplier"]),
                     "quantity": float(r["quantity"]),
                     "multiplier": float(r["trade_value_multiplier"]),
                     "exp_date": data["expiration_date"],
@@ -338,9 +294,7 @@ class Robinhood(Broker):
             )
             date = data["expiration_date"]
             date = dt.datetime.strptime(date, "%Y-%m-%d")
-            pos[-1]["symbol"] = self.data_to_occ(
-                r["chain_symbol"], date, data["type"], float(data["strike_price"])
-            )
+            pos[-1]["symbol"] = self.data_to_occ(r["chain_symbol"], date, data["type"], float(data["strike_price"]))
 
         return pos
 
@@ -365,18 +319,6 @@ class Robinhood(Broker):
                 }
             )
         return pos
-
-    # @API._exception_handler
-    # def update_option_positions(self, positions: List[Any]):
-    #     for r in positions:
-    #         sym, date, type, price = self.occ_to_data(r["symbol"])
-    #         upd = rh.get_option_market_data(
-    #             sym, date.strftime("%Y-%m-%d"), str(price), type
-    #         )
-    #         upd = upd[0][0]
-    #         r["current_price"] = float(upd["adjusted_mark_price"])
-    #         r["market_value"] = float(upd["adjusted_mark_price"]) * r["quantity"]
-    #         r["cost_basis"] = r["avg_price"] * r["quantity"]
 
     @Broker._exception_handler
     def fetch_account(self):
@@ -567,9 +509,8 @@ class Robinhood(Broker):
                 "order_id": ret["id"],
                 "symbol": symbol,
             }
-        except:
+        except Exception:
             debugger.error("Error while placing order.\nReturned: {ret}", exc_info=True)
-            raise Exception("Error while placing order.")
 
     def order_crypto_limit(
         self,
@@ -600,11 +541,8 @@ class Robinhood(Broker):
                 "order_id": ret["id"],
                 "symbol": "@" + symbol,
             }
-        except:
-            debugger.error(
-                f"Error while placing order.\nReturned: {ret}", exc_info=True
-            )
-            raise Exception(f"Error while placing order.")
+        except Exception:
+            debugger.error(f"Error while placing order.\nReturned: {ret}", exc_info=True)
 
     def order_option_limit(
         self,
@@ -649,11 +587,8 @@ class Robinhood(Broker):
                 "order_id": ret["id"],
                 "symbol": symbol,
             }
-        except:
-            debugger.error(
-                f"Error while placing order.\nReturned: {ret}", exc_info=True
-            )
-            raise Exception("Error while placing order")
+        except Exception:
+            debugger.error(f"Error while placing order.\nReturned: {ret}", exc_info=True)
 
     def cancel_stock_order(self, order_id):
         ret = rh.cancel_stock_order(order_id)
@@ -667,9 +602,7 @@ class Robinhood(Broker):
         ret = rh.cancel_crypto_order(order_id)
         debugger.debug(ret)
 
-    def _format_df(
-        self, df: pd.DataFrame, watch: List[str], interval: str, latest: bool = False
-    ):
+    def _format_df(self, df: pd.DataFrame, watch: List[str], interval: str, latest: bool = False):
         # Robinhood returns offset-aware timestamps based on timezone GMT-0, or UTC
         df["timestamp"] = pd.to_datetime(df["begins_at"])
         df = df.set_index(["timestamp"])
@@ -706,9 +639,7 @@ class Robinhood(Broker):
 
         w = wizard.Wizard()
 
-        w.println(
-            "Hmm, looks like you haven't set up login credentials for Robinhood yet."
-        )
+        w.println("Hmm, looks like you haven't set up login credentials for Robinhood yet.")
         should_setup = w.get_bool("Do you want to set it up now?", default="y")
 
         if not should_setup:
@@ -725,23 +656,15 @@ class Robinhood(Broker):
             )
             w.wait_for_input()
 
-        have_mfa = w.get_bool(
-            "Do you have Two Factor Authentication enabled?", default="y"
-        )
+        have_mfa = w.get_bool("Do you have Two Factor Authentication enabled?", default="y")
 
         if not have_mfa:
-            w.println(
-                "Robinhood (and Harvest) requires users to have 2FA enabled, so we'll turn that on next."
-            )
+            w.println("Robinhood (and Harvest) requires users to have 2FA enabled, so we'll turn that on next.")
         else:
-            w.println(
-                "We'll need to reconfigure 2FA to use Harvest, so temporarily disable 2FA"
-            )
+            w.println("We'll need to reconfigure 2FA to use Harvest, so temporarily disable 2FA")
             w.wait_for_input()
 
-        w.println(
-            "Enable 2FA. Robinhood should ask you what authentication method you want to use."
-        )
+        w.println("Enable 2FA. Robinhood should ask you what authentication method you want to use.")
         w.wait_for_input()
         w.println("Select 'Authenticator App'.")
         w.wait_for_input()
@@ -755,7 +678,7 @@ class Robinhood(Broker):
         while True:
             try:
                 totp = pyotp.TOTP(mfa).now()
-            except:
+            except ValueError:
                 mfa = w.get_string(
                     "Woah😮 Something went wrong. Make sure you typed in the code correctly.",
                     pattern=r"[\d\w]+",
@@ -763,18 +686,14 @@ class Robinhood(Broker):
                 continue
             break
 
+        w.print(f"Good! Robinhood should now be asking you for a 6-digit passcode. Type in: {totp}")
         w.print(
-            f"Good! Robinhood should now be asking you for a 6-digit passcode. Type in: {totp}"
-        )
-        w.print(
-            f"⚠️  Beware, this passcode expires in a few seconds! If you couldn't type it in time, it should be regenerated."
+            "⚠️  Beware, this passcode expires in a few seconds! If you couldn't type it in time, it should be regenerated."
         )
 
         new_passcode = True
         while new_passcode:
-            new_passcode = w.get_bool(
-                "Do you want to generate a new passcode?", default="n"
-            )
+            new_passcode = w.get_bool("Do you want to generate a new passcode?", default="n")
             if new_passcode:
                 totp = pyotp.TOTP(mfa).now()
                 w.print(f"New passcode: {totp}")
@@ -794,12 +713,12 @@ class Robinhood(Broker):
         )
         w.wait_for_input()
 
-        w.println(f"Almost there! Type in your username and password for Robinhood")
+        w.println("Almost there! Type in your username and password for Robinhood")
 
         username = w.get_string("Username: ")
         password = w.get_password("Password: ")
 
-        w.println(f"All steps are complete now 🎉. Generating secret.yml...")
+        w.println("All steps are complete now 🎉. Generating secret.yml...")
 
         return {
             "robin_mfa": f"{mfa}",

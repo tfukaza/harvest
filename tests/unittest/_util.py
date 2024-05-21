@@ -1,8 +1,8 @@
-from harvest.trader.trader import BrokerHub
-import os
 import functools
+import os
 
 from harvest.algo import BaseAlgo
+from harvest.trader.trader import BrokerHub
 
 
 def create_trader_and_api(
@@ -16,22 +16,22 @@ def create_trader_and_api(
     class EmptyAlgo(BaseAlgo):
         pass
 
-    t = BrokerHub(streamer=streamer, broker=broker, debug=True)
-    t.set_symbol(symbols)
+    bh = BrokerHub(data_broker=streamer, trade_broker=broker, debug=True)
+    bh.set_symbol(symbols)
     if init_algos:
         for a in init_algos:
-            t.add_algo(a)
+            bh.add_algo(a)
     else:
-        t.add_algo(EmptyAlgo())
-    t.start_streamer = False
-    t.skip_init = True
+        bh.add_algo(EmptyAlgo())
+    bh.start_data_broker = False
+    bh.skip_init = True
 
-    t._init_param_streamer_broker(interval, [])
-    stream = t.streamer
-    broker = t.broker
-    t.start(sync=False)
+    bh._init_param_streamer_broker(interval, [])
+    stream = bh.data_broker_ref
+    broker = bh.trade_broker_ref
+    bh.start(sync=False)
 
-    return t, stream, broker
+    return bh, stream, broker
 
 
 # Wrapper to delete save files after test

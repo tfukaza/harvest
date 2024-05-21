@@ -1,21 +1,16 @@
-# Builtins
 import datetime as dt
-from typing import Any, Dict, List, Tuple
 import os.path
+from typing import List
 
-# External libraries
 import pandas as pd
-from webull import webull, paper_webull
-import yaml
+from webull import paper_webull, webull
 
-# Submodule imports
 from harvest.broker._base import Broker
-from harvest.definitions import *
-from harvest.utils import *
+from harvest.enum import Interval
+from harvest.util.helper import date_to_str, debugger, expand_interval, is_crypto, str_to_date, utc_current_time
 
 
-class Webull(Broker):
-
+class WebullBroker(Broker):
     interval_list = [Interval.MIN_1, Interval.MIN_5, Interval.HR_1, Interval.DAY_1]
     exchange = "NASDAQ"
     req_keys = ["wb_username", "wb_password", "wb_trade_pin"]
@@ -24,13 +19,11 @@ class Webull(Broker):
         super().__init__(path)
 
         if self.config is None:
-            raise Exception(
-                f"Account credentials not found! Expected file path: {path}"
-            )
+            raise Exception(f"Account credentials not found! Expected file path: {path}")
 
         self.paper = paper_trader
         self.wb_tokens = None
-        self.timestamp = now()
+        self.timestamp = utc_current_time()
         wb_filename = "webull_credentials.json"
         if os.path.isfile(wb_filename):
             self.wb_tokens = pd.read_pickle(wb_filename)
@@ -48,23 +41,21 @@ class Webull(Broker):
         if wb_tokens:
             debugger.debug("Trying token login")
             try:
-                ret = self.api.api_login(
+                self.api.api_login(
                     access_token=wb_tokens["accessToken"],
                     refresh_token=wb_tokens["refreshToken"],
                     token_expire=wb_tokens["tokenExpireTime"],
                     uuid=wb_tokens["uuid"],
                 )
                 if not self.api.is_logged_in():
-                    debugger.debug(f"Token login failed. \n{e}")
+                    debugger.debug("Token login failed.")
                     wb_tokens = None
             except Exception as e:
-                debugger.debug(f"Token login failed. \n{e}")
+                debugger.debug(f"Token login failed: {e}")
                 wb_tokens = None
         if not wb_tokens and hasattr(self, "config"):
             debugger.debug("Trying interactive login.")
-            self.api.login(
-                self.config["wb_username"], self.config["wb_password"], save_token=True
-            )
+            self.api.login(self.config["wb_username"], self.config["wb_password"], save_token=True)
         debugger.debug(f"Logged-in?: {self.api.is_logged_in()}, Paper: {self.paper}")
 
     def refresh_cred(self):
@@ -104,37 +95,6 @@ class Webull(Broker):
     def exit(self):
         pass
 
-    # def main(self):
-    #     df_dict = {}
-    #     df_dict.update(self.fetch_latest_stock_price())
-    #     df_dict.update(self.fetch_latest_crypto_price())
-
-    #     self.trader_main(df_dict)
-
-    # @API._exception_handler
-    # def fetch_latest_stock_price(self):
-    #     df = {}
-    #     for s in self.watch_stock:
-    #         ret = self.api.get_bars(stock=s, interval=self.poll_interval_fmt)
-    #         if len(ret) == 0:
-    #             continue
-    #         df_tmp = pd.DataFrame.from_dict(ret)
-    #         df_tmp = self._format_df(df_tmp, [s], self.poll_interval).iloc[[-1]]
-    #         df[s] = df_tmp
-
-    #     return df
-
-    # @API._exception_handler
-    # def fetch_latest_crypto_price(self):
-    #     df = {}
-    #     for s in self.watch_crypto_fmt:
-    #         ret = self.api.get_bars(stock=s, interval=self.poll_interval_fmt)
-    #         df_tmp = pd.DataFrame.from_dict(ret)
-    #         df_tmp = self._format_df(df_tmp, ["@" + s], self.poll_interval).iloc[[-1]]
-    #         df["@" + s] = df_tmp
-
-    #     return df
-
     # -------------- Streamer methods -------------- #
 
     @Broker._exception_handler
@@ -145,7 +105,6 @@ class Webull(Broker):
         start: dt.datetime = None,
         end: dt.datetime = None,
     ):
-
         if start is None:
             start = dt.datetime(1970, 1, 1)
         if end is None:
@@ -213,12 +172,7 @@ class Webull(Broker):
 
     @Broker._exception_handler
     def fetch_chain_data(self, symbol: str, date: dt.datetime):
-
-        if (
-            bool(self.__option_cache)
-            and symbol in self.__option_cache
-            and date in self.__option_cache[symbol]
-        ):
+        if bool(self.__option_cache) and symbol in self.__option_cache and date in self.__option_cache[symbol]:
             df = self.__option_cache[symbol][date]
             df.drop("id", axis=1, inplace=True)
             return df
@@ -271,9 +225,7 @@ class Webull(Broker):
         if sym not in self.__option_cache or date not in self.__option_cache[sym]:
             self.fetch_chain_data(sym, date)
 
-        option_df = self.__option_cache[sym][date][
-            self.__option_cache[sym][date].index == symbol
-        ]
+        option_df = self.__option_cache[sym][date][self.__option_cache[sym][date].index == symbol]
 
         oc_id = option_df["id"][0]
 
@@ -289,11 +241,8 @@ class Webull(Broker):
                 raise Exception(err_msg)
         try:
             price = float(ret["data"][0]["close"])
-        except:
-            price = (
-                float(ret["data"][0]["askList"][0]["price"])
-                + float(ret["data"][0]["bidList"][0]["price"])
-            ) / 2
+        except Exception:
+            price = (float(ret["data"][0]["askList"][0]["price"]) + float(ret["data"][0]["bidList"][0]["price"])) / 2
 
         return {
             "price": price,
@@ -327,14 +276,11 @@ class Webull(Broker):
             if not r.get("assetType") or r.get("assetType") != "OPTION":
                 continue
             # Get option data such as expiration date
-            data = self.api.get_option_quote(
-                stock=r["ticker"]["tickerId"], optionId=r["tickerId"]
-            )
+            data = self.api.get_option_quote(stock=r["ticker"]["tickerId"], optionId=r["tickerId"])
             pos.append(
                 {
                     "base_symbol": r["ticker"]["symbol"],
-                    "avg_price": float(r["cost"])
-                    / float(data["data"][0]["quoteMultiplier"]),
+                    "avg_price": float(r["cost"]) / float(data["data"][0]["quoteMultiplier"]),
                     "quantity": float(r["position"]),
                     "multiplier": float(data["data"][0]["quoteMultiplier"]),
                     "exp_date": data["data"][0]["expireDate"],
@@ -363,19 +309,6 @@ class Webull(Broker):
                 }
             )
         return pos
-
-    # @API._exception_handler
-    # def update_option_positions(self, positions: List[Any]):
-    #     for r in positions:
-    #         sym, date, _, price = self.occ_to_data(r["occ_symbol"])
-    #         oc_id = self.__option_cache[sym][date][
-    #             self.__option_cache[sym][date].index == symbol
-    #         ].id[0]
-    #         ret = self.api.get_option_quote(stock=sym, optionId=oc_id)
-
-    #         r["current_price"] = float(ret["data"][0]["close"])
-    #         r["market_value"] = float(ret["data"][0]["close"]) * r["quantity"]
-    #         r["cost_basis"] = r["avg_price"] * r["quantity"]
 
     def fmt_fetch_account(self, val, data):
         for line in data:
@@ -457,11 +390,7 @@ class Webull(Broker):
                     "symbol": f"@{r['orders'][0]['ticker']['symbol'].replace('USD', '')}",
                     "qty": float(r["quantity"]),
                     "filled_qty": float(r["cumulative_quantity"]),
-                    "filled_price": (
-                        float(r["executions"][0]["effective_price"])
-                        if len(r["executions"])
-                        else 0
-                    ),
+                    "filled_price": (float(r["executions"][0]["effective_price"]) if len(r["executions"]) else 0),
                     "filled_cost": float(r["rounded_executed_notional"]),
                     "side": r["side"],
                     "time_in_force": r["timeInForce"],
@@ -521,11 +450,8 @@ class Webull(Broker):
                 debugger.error(f"Error while placing order.\nReturned: {ret}")
                 raise Exception("Error while placing order.")
             return {"type": typ, "id": ret["data"]["orderId"], "symbol": symbol}
-        except Exception as e:
-            debugger.error(
-                f"Error while placing order.\nReturned: {ret}", exc_info=True
-            )
-            raise Exception("Error while placing order.")
+        except TimeoutError:
+            debugger.error(f"Error while placing order.\nReturned: {ret}", exc_info=True)
 
     def order_crypto_limit(
         self,
@@ -558,11 +484,8 @@ class Webull(Broker):
                 debugger.error(f"Error while placing order.\nReturned: {ret}")
                 raise Exception("Error while placing order.")
             return {"type": typ, "id": ret["data"]["orderId"], "symbol": symbol}
-        except Exception as e:
-            debugger.error(
-                f"Error while placing order.\nReturned: {ret}", exc_info=True
-            )
-            raise Exception("Error while placing order.")
+        except Exception:
+            debugger.error(f"Error while placing order.\nReturned: {ret}", exc_info=True)
 
     def order_option_limit(
         self,
@@ -579,14 +502,10 @@ class Webull(Broker):
         ret = None
         sym = self.data_to_occ(symbol, exp_date, side, strike)
         date = str_to_date(date_to_str(exp_date))
-        oc_id = self.__option_cache[symbol][date][
-            self.__option_cache[symbol][date].index == sym
-        ]["id"][0].item()
+        oc_id = self.__option_cache[symbol][date][self.__option_cache[symbol][date].index == sym]["id"][0].item()
 
         if not isinstance(oc_id, int):
-            debugger.error(
-                "Error while placing order_option_limit. Can't find optionId."
-            )
+            debugger.error("Error while placing order_option_limit. Can't find optionId.")
             raise Exception("Error while placing order.")
         try:
             ret = self.api.place_order_option(
@@ -604,15 +523,10 @@ class Webull(Broker):
                 raise Exception("Error while placing order.")
             return {"type": "OPTION", "id": ret["orderId"], "symbol": symbol}
 
-        except:
-            debugger.error(
-                f"Error while placing order.\nReturned: {ret}", exc_info=True
-            )
-            raise Exception("Error while placing order")
+        except Exception:
+            debugger.error(f"Error while placing order.\nReturned: {ret}", exc_info=True)
 
-    def _format_df(
-        self, df: pd.DataFrame, watch: List[str], interval: str, latest: bool = False
-    ):
+    def _format_df(self, df: pd.DataFrame, watch: List[str], interval: str, latest: bool = False):
         df = df[["open", "close", "high", "low", "volume"]].astype(float)
         df.columns = pd.MultiIndex.from_product([watch, df.columns])
         return df.dropna()
@@ -622,9 +536,7 @@ class Webull(Broker):
 
         w = wizard.Wizard()
 
-        w.println(
-            "Hmm, looks like you haven't set up login credentials for Webull yet."
-        )
+        w.println("Hmm, looks like you haven't set up login credentials for Webull yet.")
         should_setup = w.get_bool("Do you want to set it up now?", default="y")
 
         if not should_setup:
@@ -644,7 +556,7 @@ class Webull(Broker):
         username = w.get_string("Username: ")
         password = w.get_password("Password: ")
         device = w.get_string("Device Name (e.g. Harvester): ")
-        w.println(f"Getting security question.")
+        w.println("Getting security question.")
         from webull import webull
 
         wb = webull()
@@ -681,7 +593,7 @@ class Webull(Broker):
             else:
                 break
 
-        w.println(f"Requesting MFA code via email.")
+        w.println("Requesting MFA code via email.")
         wb.get_mfa(username)
         mfa = w.get_password("MFA Code: ")
 
@@ -700,12 +612,10 @@ class Webull(Broker):
             return False
 
         if isinstance(pin, int) and not wb.get_trade_token(pin):
-            w.println(
-                f"Trade PIN verification failed... check your info and try again.\nReason: {ret}"
-            )
+            w.println(f"Trade PIN verification failed... check your info and try again.\nReason: {ret}")
             return False
 
         wb.logout()
-        w.println(f"All steps are complete now 🎉. Generating secret.yml...")
+        w.println("All steps are complete now 🎉. Generating secret.yml...")
 
         return {"wb_username": username, "wb_password": password, "wb_trade_pin": pin}

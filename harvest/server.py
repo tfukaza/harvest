@@ -14,7 +14,7 @@ from flask_login import (
     UserMixin,
 )
 
-from harvest.utils import debugger
+from harvest.util.helper import debugger
 
 
 class User(UserMixin):
@@ -86,7 +86,6 @@ class Server:
 
 @app.route("/api/login", methods=["POST"])
 def api_login():
-
     username = request.json["username"]
     password = request.json["password"]
 
@@ -106,7 +105,6 @@ def api_login():
 @app.route("/api/update_password", methods=["POST"])
 @login_required
 def api_update_password():
-
     username = current_user.get_id()
     new_password = request.json["password"]
 

@@ -1,15 +1,11 @@
-import unittest
-from harvest.broker.robinhood import Robinhood
-from harvest.broker.webull import Webull
-from harvest.broker.alpaca import Alpaca
-from harvest.broker.kraken import Kraken
-from harvest.broker.yahoo import YahooStreamer
-
-from harvest.definitions import *
-from harvest.utils import *
-import time
-import os
 import datetime as dt
+import os
+import unittest
+
+from harvest.broker.robinhood import RobinhoodBroker
+from harvest.broker.yahoo import YahooBroker
+from harvest.definitions import Account, Interval, Stats
+from harvest.util.helper import debugger, utc_epoch_zero
 
 secret_path = os.environ["SECRET_PATH"]
 debugger.setLevel("DEBUG")
@@ -33,7 +29,7 @@ def decorator_repeat_test(api_list):
 
 
 class TestLiveStreamer(unittest.TestCase):
-    @decorator_repeat_test([Robinhood, YahooStreamer])
+    @decorator_repeat_test([RobinhoodBroker, YahooBroker])
     def test_setup(self, api):
         """
         Assuming that secret.yml is already created with proper parameters, test if the broker can read its contents and establish a connection with the server.
@@ -47,14 +43,14 @@ class TestLiveStreamer(unittest.TestCase):
         api.setup(stats, Account())
         self.assertTrue(True)
 
-    @decorator_repeat_test([Robinhood, YahooStreamer])
+    @decorator_repeat_test([RobinhoodBroker, YahooBroker])
     def test_fetch_stock_prices(self, api):
         """
         Test if stock price history can be properly fetched for every interval supported
         """
         api = api(secret_path)
         intervals = api.interval_list
-        if isinstance(api, Robinhood):
+        if isinstance(api, RobinhoodBroker):
             intervals = intervals[1:]
 
         interval = {
@@ -72,7 +68,7 @@ class TestLiveStreamer(unittest.TestCase):
                 sorted(["open", "high", "low", "close", "volume"]),
             )
 
-    @decorator_repeat_test([Robinhood, YahooStreamer])
+    @decorator_repeat_test([RobinhoodBroker, YahooBroker])
     def test_fetch_crypto_prices(self, api):
         """
         Test if crypro price history can be properly fetched for every interval supported
@@ -94,7 +90,7 @@ class TestLiveStreamer(unittest.TestCase):
                 sorted(["open", "high", "low", "close", "volume"]),
             )
 
-    @decorator_repeat_test([Robinhood, YahooStreamer])
+    @decorator_repeat_test([RobinhoodBroker, YahooBroker])
     def test_main_mix(self, api):
         """
         Test if latest prices can be fetched when there are both
@@ -114,10 +110,10 @@ class TestLiveStreamer(unittest.TestCase):
         api.setup(stats, Account(), test_main)
 
         # Override timestamp to ensure is_freq() evaluates to True
-        stats.timestamp = epoch_zero()
+        stats.timestamp = utc_epoch_zero()
         api.main()
 
-    @decorator_repeat_test([Robinhood, YahooStreamer])
+    @decorator_repeat_test([RobinhoodBroker, YahooBroker])
     def test_chain_info(self, api):
         """
         Test if chain info can be fetched
@@ -133,7 +129,7 @@ class TestLiveStreamer(unittest.TestCase):
         debugger.debug(f"{api} fetch_chain_info TWTR returned {info}")
         self.assertGreater(len(info["exp_dates"]), 0)
 
-    @decorator_repeat_test([Robinhood, YahooStreamer])
+    @decorator_repeat_test([RobinhoodBroker, YahooBroker])
     def test_chain_data(self, api):
         """
         Test if chain data can be fetched
@@ -153,9 +149,8 @@ class TestLiveStreamer(unittest.TestCase):
         self.assertGreater(len(data), 0)
         self.assertListEqual(list(data.columns), ["exp_date", "strike", "type"])
 
-    @decorator_repeat_test([Robinhood, YahooStreamer])
+    @decorator_repeat_test([RobinhoodBroker, YahooBroker])
     def test_option_market_data(self, api):
-        """ """
         api = api(secret_path)
         interval = {
             "TWTR": {"interval": Interval.MIN_5, "aggregations": []},
@@ -170,7 +165,7 @@ class TestLiveStreamer(unittest.TestCase):
         debugger.debug(f"{api} fetch_option_market_data {sym} returned {df}")
         self.assertTrue(True)
 
-    @decorator_repeat_test([Robinhood, YahooStreamer])
+    @decorator_repeat_test([RobinhoodBroker, YahooBroker])
     def test_fetch_market_hours(self, api):
         """
         Test if market hours can be fetched

@@ -9,7 +9,7 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 
 from harvest.storage import BaseStorage
 from harvest.definitions import *
-from harvest.utils import *
+from harvest.util.helper import *
 
 """
 This module serves as a storage system for pandas dataframes in with SQL tables.
@@ -34,7 +34,7 @@ class Asset(Base):
     volume = Column("volume", Float)
 
     def __repr__(self):
-        return f"""Asset: {self.timestamp} \t {self.symbol} \t {self.interval} \n 
+        return f"""Asset: {self.timestamp} \t {self.symbol} \t {self.interval} \n
         open: {self.open_} \t high: {self.high} \t low: {self.low} \t close: {self.close} \t volume: {self.volume}"""
 
 
@@ -81,17 +81,13 @@ class DBStorage(BaseStorage):
                 [session.merge(Asset(**d)) for d in data]
                 session.commit()
 
-    def aggregate(
-        self, symbol: str, base: str, target: str, remove_duplicate: bool = True
-    ) -> None:
+    def aggregate(self, symbol: str, base: str, target: str, remove_duplicate: bool = True) -> None:
         """
         Aggregates the stock data from the interval specified in 'from' to 'to'.
         """
 
         data = self.load(symbol, base)
-        agg_data = self._append(
-            self.load(symbol, target), aggregate_df(data, target), remove_duplicate
-        )
+        agg_data = self._append(self.load(symbol, target), aggregate_df(data, target), remove_duplicate)
         self.store(symbol, target, agg_data)
 
     def reset(self, symbol: str, interval: str) -> None:
@@ -100,11 +96,7 @@ class DBStorage(BaseStorage):
         """
 
         with self.Session.begin() as session:
-            session.execute(
-                Asset.__table__.delete().where(
-                    Asset.symbol == symbol and Asset.interval == interval
-                )
-            )
+            session.execute(Asset.__table__.delete().where(Asset.symbol == symbol and Asset.interval == interval))
             session.commit()
 
     def load(
@@ -138,9 +130,7 @@ class DBStorage(BaseStorage):
                     Asset.volume,
                 ).where(Asset.symbol == symbol and Asset.interval == interval)
             )
-            data = pd.DataFrame(
-                data, columns=["timestamp", "open_", "close", "high", "low", "volume"]
-            )
+            data = pd.DataFrame(data, columns=["timestamp", "open_", "close", "high", "low", "volume"])
 
             if data.empty:
                 return None

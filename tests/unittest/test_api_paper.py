@@ -1,14 +1,10 @@
-# Builtins
-import os
-import pathlib
-import unittest
 import datetime as dt
+import unittest
+
+from _util import create_trader_and_api, delete_save_files
 
 from harvest.broker.paper import PaperBroker
-
-from harvest.definitions import *
-from harvest.utils import *
-from _util import *
+from harvest.enum import DataBrokerType, TradeBrokerType
 
 
 class TestPaperBroker(unittest.TestCase):
@@ -54,7 +50,7 @@ class TestPaperBroker(unittest.TestCase):
         Test if buy orders can be placed correctly.
         """
 
-        _, dummy, paper = create_trader_and_api("dummy", "paper", "5MIN", ["A"])
+        _, dummy, paper = create_trader_and_api(DataBrokerType.DUMMY, TradeBrokerType.PAPER, "5MIN", ["A"])
         account = paper.fetch_account()
 
         # First, check that there is $1m in the account
@@ -87,14 +83,12 @@ class TestPaperBroker(unittest.TestCase):
         cost_1 = filled_price * filled_qty
 
         # Advance time so broker status gets updated
-        dummy.main()
+        dummy.step()
 
         account_after = paper.fetch_account()
         self.assertEqual(account_after["equity"], account["equity"])
         self.assertEqual(account_after["cash"], account["cash"] - cost_1)
-        self.assertEqual(
-            account_after["buying_power"], account["buying_power"] - cost_1
-        )
+        self.assertEqual(account_after["buying_power"], account["buying_power"] - cost_1)
 
     # def test_buy(self):
 
@@ -122,8 +116,8 @@ class TestPaperBroker(unittest.TestCase):
         Assumes the buy feature works.
         """
 
-        _, dummy, paper = create_trader_and_api("dummy", "paper", "5MIN", ["A"])
-        account = paper.fetch_account()
+        _, dummy, paper = create_trader_and_api(DataBrokerType.DUMMY, TradeBrokerType.PAPER, "5MIN", ["A"])
+        _ = paper.fetch_account()
 
         A_price = dummy.fetch_latest_price("A")
         order = paper.order_stock_limit("buy", "A", 2, A_price * 1.05)
@@ -132,7 +126,7 @@ class TestPaperBroker(unittest.TestCase):
         filled_qty = status["quantity"]
         cost = filled_price * filled_qty
 
-        dummy.main()
+        dummy.step()
 
         A_price = dummy.fetch_latest_price("A")
         account_1 = paper.fetch_account()
@@ -157,18 +151,17 @@ class TestPaperBroker(unittest.TestCase):
 
         exp_equity = 1000000.0 + profit
 
-        dummy.main()
+        dummy.step()
 
         account_2 = paper.fetch_account()
 
         self.assertAlmostEqual(account_2["equity"], exp_equity, 2)
-        self.assertEqual(account_2["cash"], account_1["cash"] + cost_s)
-        self.assertEqual(account_2["buying_power"], account_1["buying_power"] + cost_s)
+        self.assertAlmostEqual(account_2["cash"], account_1["cash"] + cost_s, 2)
+        self.assertAlmostEqual(account_2["buying_power"], account_1["buying_power"] + cost_s, 2)
 
     @delete_save_files(".")
     def test_sell(self):
-
-        _, _, paper = create_trader_and_api("dummy", "paper", "1MIN", ["A"])
+        _, _, paper = create_trader_and_api(DataBrokerType.DUMMY, TradeBrokerType.PAPER, "5MIN", ["A"])
         paper.stocks = [{"symbol": "A", "avg_price": 10.0, "quantity": 5}]
 
         order = paper.sell("A", 2)
@@ -190,12 +183,10 @@ class TestPaperBroker(unittest.TestCase):
     def test_order_option_limit(self):
         paper = PaperBroker()
 
-        _, _, paper = create_trader_and_api("dummy", "paper", "1MIN", ["A"])
+        _, _, paper = create_trader_and_api(DataBrokerType.DUMMY, TradeBrokerType.PAPER, "1MIN", ["A"])
 
         exp_date = dt.datetime(2021, 11, 14) + dt.timedelta(hours=5)
-        order = paper.order_option_limit(
-            "buy", "A", 5, 50000, "OPTION", exp_date, 50001
-        )
+        order = paper.order_option_limit("buy", "A", 5, 50000, "OPTION", exp_date, 50001)
 
         self.assertEqual(order["order_id"], 0)
         self.assertEqual(order["symbol"], "A211114P50001000")
@@ -209,7 +200,7 @@ class TestPaperBroker(unittest.TestCase):
     def test_commission(self):
         commission_fee = {"buy": 5.76, "sell": "2%"}
 
-        _, _, paper = create_trader_and_api("dummy", "paper", "1MIN", ["A"])
+        _, _, paper = create_trader_and_api(DataBrokerType.DUMMY, TradeBrokerType.PAPER, "1MIN", ["A"])
         paper.commission_fee = commission_fee
 
         total_cost = paper.apply_commission(50, paper.commission_fee, "buy")

@@ -1,17 +1,18 @@
 # HARVEST_SKIP
 # Builtin imports
-import logging
 import datetime as dt
+import logging
 
-# Harvest imports
-from harvest.algo import BaseAlgo
-from harvest.trader import BrokerHub
-from harvest.broker.alpaca import Alpaca
-from harvest.storage.csv_storage import CSVStorage
+import mplfinance as mpf
 
 # Third-party imports
 import pandas as pd
-import mplfinance as mpf
+
+# Harvest imports
+from harvest.algo import BaseAlgo
+from harvest.broker.alpaca import AlpacaBroker
+from harvest.storage.csv_storage import CSVStorage
+from harvest.trader import BrokerHub
 
 
 class EMAlgo(BaseAlgo):
@@ -30,10 +31,8 @@ class EMAlgo(BaseAlgo):
         now = dt.datetime.now()
         logging.info(f"EMAlgo.main ran at: {now}")
 
-        if now - now.replace(hour=0, minute=0, second=0, microsecond=0) <= dt.timedelta(
-            seconds=60
-        ):
-            logger.info(f"It's a new day! Clearning OHLC caches!")
+        if now - now.replace(hour=0, minute=0, second=0, microsecond=0) <= dt.timedelta(seconds=60):
+            logging.info("It's a new day! Cleaning OHLC caches!")
             for ticker_value in self.tickers.values():
                 ticker_value["ohlc"] = pd.DataFrame()
 
@@ -66,9 +65,7 @@ if __name__ == "__main__":
     # Store the OHLC data in a folder called `em_storage` with each file stored as a csv document
     csv_storage = CSVStorage(save_dir="em_storage")
     # Our streamer and broker will be Alpaca. My secret keys are stored in `alpaca_secret.yaml`
-    alpaca = Alpaca(
-        path="accounts/alpaca-secret.yaml", is_basic_account=True, paper_trader=True
-    )
+    alpaca = AlpacaBroker(path="accounts/alpaca-secret.yaml", is_basic_account=True, paper_trader=True)
     em_algo = EMAlgo()
     trader = BrokerHub(streamer=alpaca, broker=alpaca, storage=csv_storage, debug=True)
 

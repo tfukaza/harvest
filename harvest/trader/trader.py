@@ -1,23 +1,35 @@
-import traceback
-import sys
-from sys import exit
-from signal import signal, SIGINT
 import datetime as dt
+import sys
+import traceback
+from signal import SIGINT, signal
+from sys import exit
+from typing import Dict, List, Union
 
-# External libraries
+import pandas as pd
 import tzlocal
-
-# Submodule imports
-from harvest.utils import *
-from harvest.definitions import *
-
-from harvest.server import Server
-
+from rich import box
 from rich.console import Console
 from rich.table import Table
-from rich.panel import Panel
-from rich import box
-from harvest.util.factory import *
+
+from harvest.definitions import (
+    Account,
+    Functions,
+    OptionPosition,
+    Position,
+    Stats,
+)
+from harvest.enum import BrokerType, DataBrokerType, Interval, StorageType, TradeBrokerType
+from harvest.server import Server
+from harvest.util.factory import load_broker, load_storage
+from harvest.util.helper import (
+    check_interval,
+    debugger,
+    interval_string_to_enum,
+    mark_down,
+    mark_up,
+    symbol_type,
+    utc_current_time,
+)
 
 
 class BrokerHub:
@@ -39,15 +51,22 @@ class BrokerHub:
 
     def __init__(
         self,
-        streamer: str = None,
-        broker: str = None,
-        storage: str = "base",
+        data_broker: BrokerType = None,
+        trade_broker: BrokerType = None,
+        storage: StorageType = None,
         debug: bool = False,
     ) -> None:
-        """Initializes the Trader."""
+        """
+        Initializes the BrokerHub.
+
+        :param str? data_broker: The broker to use to obtain data. If not specified, defaults to 'dummy'.
+        :param str? trade_broker: The broker to use to place orders. If not specified, defaults to 'paper'.
+        :param str? storage: The storage to use. If not specified, defaults to 'base', which is saves data to RAM.
+        :param bool? debug: If true, the debugger will be set to debug mode. defaults to False.
+        """
 
         self._init_checks()
-        self._set_streamer_broker(streamer, broker)
+        self._set_streamer_broker(data_broker, trade_broker)
         self._set_storage(storage)
         self._init_attributes()
         self._setup_debugger(debug)
@@ -58,50 +77,51 @@ class BrokerHub:
         if sys.version_info[0] < 3 or sys.version_info[1] < 9:
             raise Exception("Harvest requires Python 3.9 or above.")
 
-    def _set_streamer_broker(self, streamer: str, broker: str) -> None:
-        """Sets the streamer and broker."""
+    def _set_streamer_broker(self, data_broker: BrokerType, trade_broker: BrokerType) -> None:
+        """
+        Sets the data and trade brokers.
+        """
 
-        if streamer is None:
-            if broker is None:
-                streamer = "yahoo"
-                broker = "paper"
-            elif broker in streamers:
-                streamer = broker
+        if data_broker is None:
+            if trade_broker is None:
+                data_broker = BrokerType.DUMMY
+            elif trade_broker.value in DataBrokerType.list():
+                data_broker = trade_broker
             else:
-                streamer = "yahoo"
-        elif not broker:
-            broker = "paper"
+                data_broker = BrokerType.DUMMY
 
-        self.streamer_str = streamer
-        self.broker_str = broker
+        if not trade_broker:
+            trade_broker = BrokerType.PAPER
 
-        if self.streamer_str not in apis:
-            raise Exception(f"Streamer {self.streamer_str} is not recognized.")
-        if self.broker_str not in apis:
-            raise Exception(f"Broker {self.broker_str} is not recognized.")
+        self.data_broker = data_broker
+        self.trade_broker = trade_broker
 
-        if self.streamer_str not in streamers:
-            raise Exception(f"{self.streamer_str} cannot be used as a streamer.")
-        if self.broker_str not in brokers:
-            raise Exception(f"{self.broker_str} cannot be used as a broker.")
+        if self.data_broker.value not in BrokerType.list():
+            raise Exception(f"{self.data_broker} is not recognized.")
+        if self.trade_broker.value not in BrokerType.list():
+            raise Exception(f"{self.trade_broker} is not recognized.")
 
-    def _set_storage(self, storage: str) -> None:
-        """Sets the storage."""
+        if self.data_broker.value not in DataBrokerType.list():
+            raise Exception(f"{self.data_broker} cannot be used to retrieve data.")
+        if self.trade_broker.value not in TradeBrokerType.list():
+            raise Exception(f"{self.trade_broker} cannot be used to place trades.")
+
+    def _set_storage(self, storage: StorageType) -> None:
+        """
+        Sets the storage to use.
+        """
         if storage is None:
-            raise Exception("Storage is not specified.")
-        self.storage_str = storage
+            storage = StorageType.BASE
+        self.storage = storage
 
     def _init_attributes(self) -> None:
-
         try:
             signal(SIGINT, self.exit)
-        except:
-            debugger.warning(
-                "Can't use signal, Harvest is running in a non-main thread."
-            )
+        except Exception:
+            debugger.warning("Can't use signal, Harvest is running in a non-main thread.")
 
-        self.start_streamer = True
-        self.skip_init = False
+        self.start_data_broker = True  # If True, the streamer will start when the Trader starts
+        self.skip_init = False  # If True, the Trader will not sync with the broker when it starts
 
         self.watchlist = []  # List of securities specified in this class
         self.algo = []  # List of algorithms to run.
@@ -131,10 +151,6 @@ class BrokerHub:
         if debug:
             debugger.setLevel("DEBUG")
 
-        # debugger.debug(
-        #     f"Streamer: {type(self.streamer).__name__}\nBroker: {type(self.broker).__name__}\nStorage: {type(self.storage).__name__}"
-        # )
-
     def _init_param_streamer_broker(self, interval, aggregations) -> None:
         # Initialize a dict of symbols and the intervals they need to run at
         self._setup_params(self.watchlist, interval, aggregations)
@@ -143,29 +159,25 @@ class BrokerHub:
             raise Exception("No securities were added to watchlist")
 
         # Load and set up streamer and broker
-        self.broker = load_api(self.broker_str)()
-        self.broker.setup(self.stats, self.account, self.main)
-        self.console.print(
-            f"- [cyan]{self.broker.__class__.__name__}[/cyan] setup complete"
-        )
-        if self.broker_str != self.streamer_str:
-            self.streamer = load_api(self.streamer_str)()
-            self.streamer.setup(self.stats, self.account, self.main)
-            self.broker.streamer = self.streamer
-            self.streamer.broker = self.broker
-            self.console.print(
-                f"- [cyan]{self.streamer.__class__.__name__}[/cyan] setup complete"
-            )
+        self.trade_broker_ref = load_broker(self.trade_broker)()
+        self.trade_broker_ref.setup(self.stats, self.account, self.main)
+        self.console.print(f"- [cyan]{self.trade_broker_ref.__class__.__name__}[/cyan] setup complete")
+        if self.trade_broker != self.data_broker:
+            self.data_broker_ref = load_broker(self.data_broker)()
+            self.data_broker_ref.setup(self.stats, self.account, self.main)
+            self.trade_broker_ref.streamer = self.data_broker_ref
+            self.data_broker_ref.broker = self.trade_broker_ref
+            self.console.print(f"- [cyan]{self.data_broker_ref.__class__.__name__}[/cyan] setup complete")
         else:
-            self.streamer = self.broker
+            self.data_broker_ref = self.trade_broker_ref
 
-        self.storage = load_storage(self.storage_str)()
+        self.storage = load_storage(self.storage)()
         self.storage.setup(self.stats)
 
     def start(
         self,
         interval: str = "5MIN",
-        aggregations: List = [],
+        aggregations: List = None,
         sync: bool = True,
         server: bool = False,
         all_history: bool = True,
@@ -180,9 +192,11 @@ class BrokerHub:
         :param bool? all_history: If true, gets all history for all the given assets and if false only get data in the past three days.
         """
         debugger.debug("Setting up Harvest")
-        with self.console.status(
-            "[bold green] Setting up Trader...[/bold green]"
-        ) as status:
+
+        if aggregations == None:
+            aggregations = []
+
+        with self.console.status("[bold green] Setting up Trader...[/bold green]") as _:
             if not self.skip_init:
                 self._init_param_streamer_broker(interval, aggregations)
             # If sync is on, call the broker to load pending orders and all positions currently held.
@@ -193,7 +207,7 @@ class BrokerHub:
                 for s in self.positions.option:
                     self.watchlist.append(s.base_symbol)
                 self.watchlist.extend(self.orders.stock_crypto_symbols)
-                self.console.print(f"- Finished syncing data with broker")
+                self.console.print("- Finished syncing data with broker")
 
             # Initialize the account
             self._setup_account()
@@ -201,9 +215,7 @@ class BrokerHub:
 
             # Initialize the storage
             self._storage_init(all_history)
-            self.console.print(
-                f"- [cyan]{self.storage.__class__.__name__}[/cyan] setup complete"
-            )
+            self.console.print(f"- [cyan]{self.storage.__class__.__name__}[/cyan] setup complete")
 
             for a in self.algo:
                 a.init(self.stats, self.func, self.account)
@@ -218,10 +230,10 @@ class BrokerHub:
         if server:
             self.server.start()
 
-        if self.start_streamer:
+        if self.start_data_broker:
             try:
-                self.streamer.start()
-            except Exception as e:
+                self.data_broker_ref.start()
+            except Exception as _:
                 self.console.print_exception(show_locals=True)
 
     def _print_account(self) -> None:
@@ -253,7 +265,6 @@ class BrokerHub:
                 return f"[bold red]{s}[/bold red]"
 
         def print_table(title, positions):
-
             if len(positions) == 0:
                 return
 
@@ -327,7 +338,7 @@ class BrokerHub:
         """Initializes local cache of stocks, options, and crypto positions."""
 
         # Get any pending orders
-        ret = self.broker.fetch_order_queue()
+        ret = self.trade_broker_ref.fetch_order_queue()
         self.orders.init(ret)
         self._update_order_queue()
 
@@ -336,19 +347,14 @@ class BrokerHub:
         # Get currently held positions
         self._fetch_account_data()
 
-    def _setup_params(
-        self, watchlist: List[str], interval: str, aggregations: List[str]
-    ) -> None:
+    def _setup_params(self, watchlist: List[str], interval: str, aggregations: List[str]) -> None:
         """
         Sets up configuration parameters for the Trader, notably
         the 'interval' attribute.
         """
         interval = interval_string_to_enum(interval)
         aggregations = [interval_string_to_enum(a) for a in aggregations]
-        watchlist_cfg_tmp = {
-            sym: {"interval": interval, "aggregations": aggregations}
-            for sym in watchlist
-        }
+        watchlist_cfg_tmp = {sym: {"interval": interval, "aggregations": aggregations} for sym in watchlist}
 
         debugger.debug(f"Watchlist cfg: {watchlist_cfg_tmp}")
         # Update the dict based on parameters specified in Algo class
@@ -404,7 +410,7 @@ class BrokerHub:
         """Initializes local cache of account info.
         For testing, it should manually be specified
         """
-        ret = self.broker.fetch_account()
+        ret = self.trade_broker_ref.fetch_account()
         if ret is None:
             raise Exception("Failed to load account info from broker.")
         self.account.init(ret)
@@ -416,11 +422,9 @@ class BrokerHub:
         """
 
         for sym in self.stats.watchlist_cfg.keys():
-            for inter in [
-                self.stats.watchlist_cfg[sym]["interval"]
-            ] + self.stats.watchlist_cfg[sym]["aggregations"]:
-                start = None if all_history else now() - dt.timedelta(days=3)
-                df = self.streamer.fetch_price_history(sym, inter, start)
+            for inter in [self.stats.watchlist_cfg[sym]["interval"]] + self.stats.watchlist_cfg[sym]["aggregations"]:
+                start = None if all_history else utc_current_time() - dt.timedelta(days=3)
+                df = self.data_broker_ref.fetch_price_history(sym, inter, start)
                 self.storage.store(sym, inter, df)
 
     # ================== Functions for main routine =====================
@@ -436,22 +440,16 @@ class BrokerHub:
         debugger.debug(f"{df_dict}")
 
         self.storage.add_performance_data(self.account.equity, self.stats.timestamp)
-        self.storage.add_calendar_data(
-            self.streamer.fetch_market_hours(self.stats.timestamp.date())
-        )
+        self.storage.add_calendar_data(self.data_broker_ref.fetch_market_hours(self.stats.timestamp.date()))
 
         # Save the data locally
         for sym in df_dict:
-            self.storage.store(
-                sym, self.stats.watchlist_cfg[sym]["interval"], df_dict[sym]
-            )
+            self.storage.store(sym, self.stats.watchlist_cfg[sym]["interval"], df_dict[sym])
 
         # Aggregate the data to other intervals
         for sym in df_dict:
             for agg in self.stats.watchlist_cfg[sym]["aggregations"]:
-                self.storage.aggregate(
-                    sym, self.stats.watchlist_cfg[sym]["interval"], agg
-                )
+                self.storage.aggregate(sym, self.stats.watchlist_cfg[sym]["interval"], agg)
 
         # If an order was processed, fetch the latest position info from the brokerage.
         # Otherwise, calculate current positions locally
@@ -465,7 +463,7 @@ class BrokerHub:
 
         new_algo = []
         for a in self.algo:
-            if not is_freq(self.stats.timestamp, a.interval):
+            if not check_interval(self.stats.timestamp, a.interval):
                 new_algo.append(a)
                 continue
             try:
@@ -473,9 +471,7 @@ class BrokerHub:
                 a.main()
                 new_algo.append(a)
             except Exception as e:
-                debugger.warning(
-                    f"Algorithm {a} failed, removing from algorithm list.\n"
-                )
+                debugger.warning(f"Algorithm {a} failed, removing from algorithm list.\n")
                 debugger.warning(f"Exception: {e}\n")
                 debugger.warning(f"Traceback: {traceback.format_exc()}\n")
                 self.console.print_exception(show_locals=True)
@@ -486,8 +482,8 @@ class BrokerHub:
 
         self.algo = new_algo
 
-        self.broker.exit()
-        self.streamer.exit()
+        self.trade_broker_ref.exit()
+        self.data_broker_ref.exit()
 
     def _update_order_queue(self) -> bool:
         """Check to see if outstanding orders have been accepted or rejected
@@ -497,11 +493,11 @@ class BrokerHub:
         for order in self.orders.orders:
             typ = order.type
             if typ == "STOCK":
-                stat = self.broker.fetch_stock_order_status(order.order_id)
+                stat = self.trade_broker_ref.fetch_stock_order_status(order.order_id)
             elif typ == "OPTION":
-                stat = self.broker.fetch_option_order_status(order.order_id)
+                stat = self.trade_broker_ref.fetch_option_order_status(order.order_id)
             elif typ == "CRYPTO":
-                stat = self.broker.fetch_crypto_order_status(order.order_id)
+                stat = self.trade_broker_ref.fetch_crypto_order_status(order.order_id)
             debugger.debug(f"Updating status of order {order.order_id}")
             order.update(stat)
 
@@ -510,9 +506,7 @@ class BrokerHub:
             # TODO: handle cancelled orders
             if order.status == "filled":
                 order_filled = True
-                debugger.debug(
-                    f"Order {order.order_id} filled at {order.filled_time} at {order.filled_price}"
-                )
+                debugger.debug(f"Order {order.order_id} filled at {order.filled_time} at {order.filled_price}")
                 self.storage.store_transaction(
                     order.filled_time,
                     "N/A",  # Name of algorithm
@@ -542,16 +536,14 @@ class BrokerHub:
                 sym_df = df_dict[symbol]
                 price_df = sym_df.iloc[-1]
                 price = price_df[symbol]["close"]
-            elif (
-                symbol not in self.watchlist
-            ):  # handle cases when user has an asset not in watchlist
-                price = self.streamer.fetch_latest_price(symbol)
+            elif symbol not in self.watchlist:  # handle cases when user has an asset not in watchlist
+                price = self.data_broker_ref.fetch_latest_price(symbol)
             else:
                 continue
             p.update(price)
         for p in self.positions.option:
             symbol = p.symbol
-            price = self.streamer.fetch_option_market_data(symbol)["price"]
+            price = self.data_broker_ref.fetch_option_market_data(symbol)["price"]
             p.update(price)
 
         self.account.update()
@@ -559,10 +551,9 @@ class BrokerHub:
         debugger.debug(f"Updated positions: {self.positions}")
 
     def _fetch_account_data(self) -> None:
-        debugger.debug(f"Fetching account data")
+        debugger.debug("Fetching account data")
         stock_pos = [
-            Position(p["symbol"], p["quantity"], p["avg_price"])
-            for p in self.broker.fetch_stock_positions()
+            Position(p["symbol"], p["quantity"], p["avg_price"]) for p in self.trade_broker_ref.fetch_stock_positions()
         ]
         option_pos = [
             OptionPosition(
@@ -574,35 +565,34 @@ class BrokerHub:
                 p["type"],
                 p["multiplier"],
             )
-            for p in self.broker.fetch_option_positions()
+            for p in self.trade_broker_ref.fetch_option_positions()
         ]
         crypto_pos = [
-            Position(p["symbol"], p["quantity"], p["avg_price"])
-            for p in self.broker.fetch_crypto_positions()
+            Position(p["symbol"], p["quantity"], p["avg_price"]) for p in self.trade_broker_ref.fetch_crypto_positions()
         ]
         self.positions.update(stock_pos, option_pos, crypto_pos)
         # Get the latest price for all positions
         for p in self.positions.stock_crypto:
-            price = self.streamer.fetch_latest_price(p.symbol)
+            price = self.data_broker_ref.fetch_latest_price(p.symbol)
             p.update(price)
         for p in self.positions.option:
-            price = self.streamer.fetch_option_market_data(p.symbol)["price"]
+            price = self.data_broker_ref.fetch_option_market_data(p.symbol)["price"]
             p.update(price)
 
-        ret = self.broker.fetch_account()
+        ret = self.trade_broker_ref.fetch_account()
 
         self.account.init(ret)
 
     # --------------------- Interface Functions -----------------------
 
     def fetch_chain_info(self, *args, **kwargs):
-        return self.streamer.fetch_chain_info(*args, **kwargs)
+        return self.data_broker_ref.fetch_chain_info(*args, **kwargs)
 
     def fetch_chain_data(self, *args, **kwargs):
-        return self.streamer.fetch_chain_data(*args, **kwargs)
+        return self.data_broker_ref.fetch_chain_data(*args, **kwargs)
 
     def fetch_option_market_data(self, *args, **kwargs):
-        return self.streamer.fetch_option_market_data(*args, **kwargs)
+        return self.data_broker_ref.fetch_option_market_data(*args, **kwargs)
 
     def load(self, *args, **kwargs):
         return self.storage.load(*args, **kwargs)
@@ -617,11 +607,9 @@ class BrokerHub:
         # Check if user has enough buying power
         buy_power = self.account.buying_power
         if symbol_type(symbol) == "OPTION":
-            price = self.streamer.fetch_option_market_data(symbol)["price"]
+            price = self.data_broker_ref.fetch_option_market_data(symbol)["price"]
         else:
-            price = self.storage.load(
-                symbol, self.stats.watchlist_cfg[symbol]["interval"]
-            )[symbol]["close"][-1]
+            price = self.storage.load(symbol, self.stats.watchlist_cfg[symbol]["interval"])[symbol]["close"][-1]
 
         limit_price = mark_up(price)
         total_price = limit_price * quantity
@@ -637,7 +625,7 @@ class BrokerHub:
                 + "Reduce purchase quantity or increase buying power."
             )
             return None
-        ret = self.broker.buy(symbol, quantity, limit_price, in_force, extended)
+        ret = self.trade_broker_ref.buy(symbol, quantity, limit_price, in_force, extended)
         debugger.debug(f"Account info after buy: {self.account}")
 
         if ret is None:
@@ -656,21 +644,17 @@ class BrokerHub:
             debugger.error(f"You do not own any {symbol}")
             return None
         if quantity > owned_qty:
-            debugger.debug(
-                "SELL failed: More quantities are being sold than currently owned."
-            )
+            debugger.debug("SELL failed: More quantities are being sold than currently owned.")
             return None
 
         if symbol_type(symbol) == "OPTION":
-            price = self.streamer.fetch_option_market_data(symbol)["price"]
+            price = self.data_broker_ref.fetch_option_market_data(symbol)["price"]
         else:
-            price = self.storage.load(
-                symbol, self.stats.watchlist_cfg[symbol]["interval"]
-            )[symbol]["close"][-1]
+            price = self.storage.load(symbol, self.stats.watchlist_cfg[symbol]["interval"])[symbol]["close"][-1]
 
         limit_price = mark_down(price)
 
-        ret = self.broker.sell(symbol, quantity, limit_price, in_force, extended)
+        ret = self.trade_broker_ref.sell(symbol, quantity, limit_price, in_force, extended)
         if ret is None:
             debugger.debug("SELL failed")
             return None
@@ -679,9 +663,7 @@ class BrokerHub:
         return ret
 
     # ================ Helper Functions ======================
-    def get_asset_quantity(
-        self, symbol: str, include_pending_buy: bool, include_pending_sell: bool
-    ) -> float:
+    def get_asset_quantity(self, symbol: str, include_pending_buy: bool, include_pending_sell: bool) -> float:
         """Returns the quantity owned of a specified asset.
 
         :param str? symbol:  Symbol of asset. defaults to first symbol in watchlist
@@ -692,31 +674,17 @@ class BrokerHub:
             symbol = self.watchlist[0]
         typ = symbol_type(symbol)
         if typ == "OPTION":
-            owned_qty = sum(
-                p.quantity for p in self.positions.option if p.symbol == symbol
-            )
+            owned_qty = sum(p.quantity for p in self.positions.option if p.symbol == symbol)
         elif typ == "CRYPTO":
-            owned_qty = sum(
-                p.quantity for p in self.positions.crypto if p.symbol == symbol
-            )
+            owned_qty = sum(p.quantity for p in self.positions.crypto if p.symbol == symbol)
         else:
-            owned_qty = sum(
-                p.quantity for p in self.positions.stock if p.symbol == symbol
-            )
+            owned_qty = sum(p.quantity for p in self.positions.stock if p.symbol == symbol)
 
         if include_pending_buy:
-            owned_qty += sum(
-                o.quantity
-                for o in self.orders.orders
-                if o.symbol == symbol and o.side == "buy"
-            )
+            owned_qty += sum(o.quantity for o in self.orders.orders if o.symbol == symbol and o.side == "buy")
 
         if not include_pending_sell:
-            owned_qty -= sum(
-                o.quantity
-                for o in self.orders.orders
-                if o.symbol == symbol and o.side == "sell"
-            )
+            owned_qty -= sum(o.quantity for o in self.orders.orders if o.symbol == symbol and o.side == "sell")
 
         return owned_qty
 
@@ -774,17 +742,15 @@ class PaperTrader(BrokerHub):
     A class for trading in the paper trading environment.
     """
 
-    def __init__(
-        self, streamer: str = None, storage: str = None, debug: bool = False
-    ) -> None:
+    def __init__(self, streamer: BrokerType = None, storage: StorageType = None, debug: bool = False) -> None:
         """Initializes the Trader."""
 
         self._init_checks()
 
         # If streamer is not specified, use YahooStreamer
-        self.streamer_str = "yahoo" if streamer is None else streamer
-        self.broker_str = "paper"
-        self.storage_str = "base" if storage is None else storage
+        self.data_broker = DataBrokerType.DUMMY if streamer is None else streamer
+        self.trade_broker = TradeBrokerType.PAPER
+        self.storage = StorageType.BASE if storage is None else storage
 
         self._init_attributes()
         self._setup_debugger(debug)

@@ -2,11 +2,12 @@
 """
 This code uses the pickle storage class in action.
 """
+
 from harvest.algo import BaseAlgo
-from harvest.trader import Trader
-from harvest.broker.yahoo import YahooStreamer
 from harvest.broker.paper import PaperBroker
+from harvest.broker.yahoo import YahooBroker
 from harvest.storage import PickleStorage
+from harvest.trader import Trader
 
 
 class Watch(BaseAlgo):
@@ -15,9 +16,8 @@ class Watch(BaseAlgo):
 
 
 if __name__ == "__main__":
-
     # Fetch data from yfinance package.
-    streamer = YahooStreamer()
+    streamer = YahooBroker()
 
     # A fake broker that simulates buying and selling assets.
     broker = PaperBroker()
