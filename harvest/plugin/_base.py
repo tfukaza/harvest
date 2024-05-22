@@ -1,5 +1,4 @@
 from typing import List
-from harvest.util.helper import debugger
 
 
 class Plugin:
@@ -11,7 +10,7 @@ class Plugin:
         {Name of source}{Functionality added}Plugin
     """
 
-    def __init__(self, name: str, dependencies: List[str] = []) -> None:
+    def __init__(self, name: str, dependencies: List[str] = None) -> None:
         """
         :name: a string that will serve as the name of the plugin. Must
         be a valid python variable because in the algo class, this plugin
@@ -33,9 +32,10 @@ class Plugin:
         raise NotImplementedError(f"No installation steps for plugin: {type(self).__name__}")
 
     def _check_dependency(self, dep: str) -> None:
-        try:
-            exec(f"import {dep}")
-        except ModuleNotFoundError as e:
-            debugger.error(f"Error importing module!\n {e}")
-            debugger.error(self.installation())
-            raise e
+        # try:
+        #     exec(f"import {dep}")
+        # except ModuleNotFoundError as e:
+        #     debugger.error(f"Error importing module!\n {e}")
+        #     debugger.error(self.installation())
+        #     raise e
+        pass

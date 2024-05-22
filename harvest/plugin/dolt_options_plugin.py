@@ -3,7 +3,7 @@ import pandas as pd
 from harvest.plugin._base import Plugin
 
 
-class DoltOptionsPlugin:
+class DoltOptionsPlugin(Plugin):
     """
     Interfaces with the Dolt CLI to get data from the
     `https://www.dolthub.com/repositories/post-no-preference/options`
@@ -15,8 +15,7 @@ class DoltOptionsPlugin:
         :path: The path to the post-no-preference/options repo.
         """
         super.__init__(name, ["doltpy"])
-        from doltpy.cli import Dolt
-        from doltpy.cli import read
+        from doltpy.cli import Dolt, read
 
         self.dolt = Dolt(path)
         self.read = read

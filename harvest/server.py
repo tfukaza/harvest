@@ -1,18 +1,16 @@
-import logging
-from flask import Flask, render_template, request, redirect
-from werkzeug.security import generate_password_hash, check_password_hash
-from flask_cors import CORS
-import threading
 import json
+import threading
 
+from flask import Flask, redirect, render_template, request
 from flask_login import (
     LoginManager,
-    login_user,
-    login_required,
-    logout_user,
-    current_user,
     UserMixin,
+    current_user,
+    login_required,
+    login_user,
+    logout_user,
 )
+from werkzeug.security import check_password_hash, generate_password_hash
 
 from harvest.util.helper import debugger
 

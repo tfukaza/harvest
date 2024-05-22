@@ -1,13 +1,11 @@
-import re
 from os import listdir, makedirs
 from os.path import isfile, join
-import pandas as pd
-import datetime as dt
-from typing import Tuple
 
+import pandas as pd
+
+from harvest.definitions import Interval
 from harvest.storage import BaseStorage
-from harvest.definitions import *
-from harvest.util.helper import *
+from harvest.util.helper import interval_enum_to_string, interval_string_to_enum
 
 """
 This module serves as a storage system for pandas dataframes in with pickle files.

@@ -1,12 +1,12 @@
-from numpy import ERR_CALL
-import pandas as pd
 import datetime as dt
 from threading import Lock
-from typing import Tuple
-import re
+from typing import Any, Dict
 
-from harvest.definitions import *
-from harvest.util.helper import *
+import pandas as pd
+
+from harvest.definitions import Stats
+from harvest.enum import Interval
+from harvest.util.helper import aggregate_df, debugger, interval_to_timedelta, symbol_type
 
 """
 This module serves as a basic storage system for pandas dataframes in memory.
@@ -132,9 +132,9 @@ class BaseStorage:
                     intervals[interval] = self._append(intervals[interval], data, remove_duplicate=remove_duplicate)
                     if self.price_storage_limit:
                         intervals[interval] = intervals[interval][-self.price_storage_size :]
-                except:
+                except Exception:
                     self.storage_lock.release()
-                    raise Exception("Append Failure, case not found!")
+                    debugger.error("Append Failure, case not found!")
             else:
                 # Add the data as a new interval
                 intervals[interval] = data
@@ -350,7 +350,7 @@ class BaseStorage:
         self.storage_lock.release()
 
     def init_performace_data(self, equity: float, timestamp: dt.datetime) -> None:
-        for interval, days in self.performance_history_intervals:
+        for interval, _ in self.performance_history_intervals:
             self.storage_performance[interval] = pd.DataFrame({"equity": [equity]}, index=[timestamp])
 
     def add_performance_data(self, equity: float, timestamp: dt.datetime) -> None:
