@@ -6,15 +6,13 @@ import numpy as np
 import pandas as pd
 from finta import TA
 
-from harvest.definitions import Interval
+from harvest.enum import Interval
 from harvest.plugin._base import Plugin
-from harvest.util.date import datetime_utc_to_local
+from harvest.util.date import convert_input_to_datetime, datetime_utc_to_local, pandas_timestamp_to_local
 from harvest.util.helper import (
-    convert_input_to_datetime,
     debugger,
     interval_string_to_enum,
     mark_up,
-    pandas_timestamp_to_local,
     symbol_type,
 )
 
@@ -48,7 +46,7 @@ class BaseAlgo:
         - aggregations: A List of strings specifying the intervals to aggregate data. Choose from "1MIN", "5MIN", "15MIN", "30MIN", "1HR", "1DAY".
         - watchlist: A List of strings specifying the stock/crypto assets this algorithm tracks. Crypto assets must be prepended with a '@' symbol.
 
-        Any parameters set to None or an empty List will fall back to respective paramters set in the Trader class.
+        Any parameters set to None or an empty List will fall back to respective parameters set in the Trader class.
 
         Example
         ```python

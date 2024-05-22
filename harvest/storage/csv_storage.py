@@ -4,7 +4,7 @@ from os.path import isfile, join
 
 import pandas as pd
 
-from harvest.definitions import Interval
+from harvest.enum import Interval
 from harvest.storage import BaseStorage
 from harvest.util.helper import debugger, interval_enum_to_string, interval_string_to_enum
 
