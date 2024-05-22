@@ -141,7 +141,7 @@ class DummyDataBroker(Broker):
             "bid": price * 0.95,
         }
 
-    def fetch_chain_data(self, symbol: str, date: str | dt.datetime) -> pd.DataFrame:
+    def fetch_chain_data(self, symbol: str, date: Union[str, dt.datetime]) -> pd.DataFrame:
         price = self.fetch_price_history(symbol, self.poll_interval)[symbol].iloc[-1]["close"] / 100
 
         # Types = call, put
