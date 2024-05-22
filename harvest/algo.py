@@ -1,17 +1,20 @@
-# Builtins
-from datetime import timedelta, timezone
-import datetime as dt
-from typing import Any, List, Tuple
 import math
+from datetime import timezone
+from typing import List, Tuple
 
-# External libraries
-from finta import TA
 import numpy as np
 import pandas as pd
+from finta import TA
 
-from harvest.definitions import *
-from harvest.utils import *
+from harvest.enum import Interval
 from harvest.plugin._base import Plugin
+from harvest.util.date import convert_input_to_datetime, datetime_utc_to_local, pandas_timestamp_to_local
+from harvest.util.helper import (
+    debugger,
+    interval_string_to_enum,
+    mark_up,
+    symbol_type,
+)
 
 """
 Algo class is the main interface between users and the program.
@@ -43,7 +46,7 @@ class BaseAlgo:
         - aggregations: A List of strings specifying the intervals to aggregate data. Choose from "1MIN", "5MIN", "15MIN", "30MIN", "1HR", "1DAY".
         - watchlist: A List of strings specifying the stock/crypto assets this algorithm tracks. Crypto assets must be prepended with a '@' symbol.
 
-        Any parameters set to None or an empty List will fall back to respective paramters set in the Trader class.
+        Any parameters set to None or an empty List will fall back to respective parameters set in the Trader class.
 
         Example
         ```python
@@ -77,9 +80,7 @@ class BaseAlgo:
         if value is None:
             setattr(self, plugin.name, plugin)
         else:
-            debugger.error(
-                f"Plugin name is already in use! {plugin.name} points to {value}."
-            )
+            debugger.error(f"Plugin name is already in use! {plugin.name} points to {value}.")
 
     ############ Functions interfacing with broker through the trader #################
 
@@ -334,9 +335,7 @@ class BaseAlgo:
                                 list to perform calculations and ignore other parameters. defaults to None
         :returns: A list in numpy format, containing RSI values
         """
-        symbol, interval, ref, prices = self._default_param(
-            symbol, interval, ref, prices
-        )
+        symbol, interval, ref, prices = self._default_param(symbol, interval, ref, prices)
 
         if len(prices) < period:
             debugger.warning("Not enough data to calculate RSI, returning None")
@@ -370,9 +369,7 @@ class BaseAlgo:
                                 list to perform calculations and ignore other parameters. defaults to None
         :returns: A list in numpy format, containing SMA values
         """
-        symbol, interval, ref, prices = self._default_param(
-            symbol, interval, ref, prices
-        )
+        symbol, interval, ref, prices = self._default_param(symbol, interval, ref, prices)
 
         if len(prices) < period:
             debugger.warning("Not enough data to calculate SMA, returning None")
@@ -406,9 +403,7 @@ class BaseAlgo:
                                 list to perform calculations and ignore other parameters. defaults to None
         :returns: A list in numpy format, containing EMA values
         """
-        symbol, interval, ref, prices = self._default_param(
-            symbol, interval, ref, prices
-        )
+        symbol, interval, ref, prices = self._default_param(symbol, interval, ref, prices)
 
         if len(prices) < period:
             debugger.warning("Not enough data to calculate EMA, returning None")
@@ -444,9 +439,7 @@ class BaseAlgo:
                                 list to perform calculations and ignore other parameters. defaults to None
         :returns: A tuple of numpy lists, each a list of BBand top, average, and bottom values
         """
-        symbol, interval, ref, prices = self._default_param(
-            symbol, interval, ref, prices
-        )
+        symbol, interval, ref, prices = self._default_param(symbol, interval, ref, prices)
 
         if len(prices) < period:
             debugger.warning("Not enough data to calculate BBands, returning None")
@@ -461,9 +454,7 @@ class BaseAlgo:
             }
         )
 
-        t, m, b = TA.BBANDS(
-            ohlc, period=period, std_multiplier=dev, MA=TA.SMA(ohlc, period)
-        ).T.to_numpy()
+        t, m, b = TA.BBANDS(ohlc, period=period, std_multiplier=dev, MA=TA.SMA(ohlc, period)).T.to_numpy()
         return t, m, b
 
     def crossover(self, prices_0, prices_1):
@@ -476,16 +467,12 @@ class BaseAlgo:
         :raises Exception: If either or both price list has less than 2 values
         """
         if len(prices_0) < 2 or len(prices_1) < 2:
-            raise Exception(
-                "There must be at least 2 datapoints to calculate crossover"
-            )
+            raise Exception("There must be at least 2 datapoints to calculate crossover")
         return prices_0[-2] < prices_1[-2] and prices_0[-1] > prices_1[-1]
 
     ############### Getters for Trader properties #################
 
-    def get_asset_quantity(
-        self, symbol: str = None, include_pending_buy=True, include_pending_sell=False
-    ) -> float:
+    def get_asset_quantity(self, symbol: str = None, include_pending_buy=True, include_pending_sell=False) -> float:
         """Returns the quantity owned of a specified asset.
 
         :param str? symbol:  Symbol of asset. defaults to first symbol in watchlist
@@ -497,9 +484,7 @@ class BaseAlgo:
         if symbol is None:
             symbol = self.watchlist[0]
 
-        return self.func.get_asset_quantity(
-            symbol, include_pending_buy, include_pending_sell
-        )
+        return self.func.get_asset_quantity(symbol, include_pending_buy, include_pending_sell)
 
     def get_asset_avg_cost(self, symbol: str = None) -> float:
         """Returns the average cost of a specified asset.
@@ -533,9 +518,7 @@ class BaseAlgo:
                 return p.current_price * p.multiplier
         return self.func.fetch_option_market_data(symbol)["price"] * 100
 
-    def get_asset_price_list(
-        self, symbol: str = None, interval: str = None, ref: str = "close"
-    ):
+    def get_asset_price_list(self, symbol: str = None, interval: str = None, ref: str = "close"):
         """Returns a list of recent prices for an asset.
 
         This function is not compatible with options.
@@ -583,9 +566,7 @@ class BaseAlgo:
         debugger.warning("Candles not available for options")
         return None
 
-    def get_asset_candle_list(
-        self, symbol: str = None, interval=None
-    ) -> pd.DataFrame():
+    def get_asset_candle_list(self, symbol: str = None, interval=None) -> pd.DataFrame():
         """Returns the candles of an asset as a pandas DataFrame
 
         This function is not compatible with options.

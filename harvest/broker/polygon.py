@@ -1,21 +1,25 @@
-# Builtins
-import json
+import datetime
 import datetime as dt
-from typing import Any, Dict, List, Tuple, Union
+import re
+from typing import Any, Dict, Union
+from zoneinfo import ZoneInfo
+
+import pandas as pd
 import requests
 
-# External libraries
-import pandas as pd
-import pytz
+from harvest.broker._base import Broker
+from harvest.enum import Interval
+from harvest.util.helper import (
+    convert_input_to_datetime,
+    debugger,
+    expand_interval,
+    is_crypto,
+    occ_to_data,
+    utc_current_time,
+)
 
-# Submodule imports
-from harvest.api._base import API
-from harvest.utils import *
-from harvest.definitions import *
 
-
-class PolygonStreamer(API):
-
+class PolygonBroker(Broker):
     interval_list = [Interval.MIN_1, Interval.MIN_5, Interval.HR_1, Interval.DAY_1]
     req_keys = ["polygon_api_key"]
 
@@ -23,14 +27,12 @@ class PolygonStreamer(API):
         super().__init__(path)
 
         if self.config is None:
-            raise Exception(
-                f"Account credentials not found! Expected file path: {path}"
-            )
+            raise Exception(f"Account credentials not found! Expected file path: {path}")
 
         self.basic = is_basic_account
         self.option_cache = {}
 
-    def main(self) -> None:
+    def step(self) -> None:
         df_dict = {}
         combo = self.stats.watchlist_cfg.keys()
         if self.basic and len(combo) > 5:
@@ -41,25 +43,28 @@ class PolygonStreamer(API):
 
         for s in combo:
             df = self.fetch_price_history(
-                s, Interval.MIN_1, now() - dt.timedelta(days=3), now()
+                s,
+                Interval.MIN_1,
+                utc_current_time() - dt.timedelta(days=3),
+                utc_current_time(),
             ).iloc[[-1]]
             df_dict[s] = df
             debugger.debug(df)
-        self.trader_main(df_dict)
+        self.broker_hub_cb(df_dict)
 
     def exit(self) -> None:
         self.option_cache = {}
 
     # -------------- Streamer methods -------------- #
 
-    @API._exception_handler
+    @Broker._exception_handler
     def get_current_time(self) -> dt.datetime:
         key = self.config["polygon_api_key"]
         request = f"https://api.polygon.io/v1/marketstatus/now?apiKey={key}"
         server_time = requests.get(request).json().get("serverTime")
         return dt.datetime.fromisoformat(server_time)
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_price_history(
         self,
         symbol: str,
@@ -67,16 +72,15 @@ class PolygonStreamer(API):
         start: Union[str, dt.datetime] = None,
         end: Union[str, dt.datetime] = None,
     ) -> pd.DataFrame:
-
         debugger.debug(f"Fetching {symbol} {interval} price history")
 
         start = convert_input_to_datetime(start)
         end = convert_input_to_datetime(end)
 
         if start is None:
-            start = now() - dt.timedelta(days=365 * 2)
+            start = utc_current_time() - dt.timedelta(days=365 * 2)
         if end is None:
-            end = now()
+            end = utc_current_time()
 
         if start >= end:
             return pd.DataFrame()
@@ -84,7 +88,7 @@ class PolygonStreamer(API):
         val, unit = expand_interval(interval)
         return self._get_data_from_polygon(symbol, val, unit, start, end)
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_chain_info(self, symbol: str) -> Dict[str, Any]:
         key = self.config["polygon_api_key"]
         request = f"https://api.polygon.io/v3/reference/options/contracts?underlying_ticker={symbol}&apiKey={key}"
@@ -92,24 +96,16 @@ class PolygonStreamer(API):
         if response is None:
             raise Exception(f"Failed to fech chain info for {symbol}.")
 
-        dates = {
-            dt.datetime.strptime(contract["expiration_date"], "%Y-%m-%d")
-            for contract in response
-        }
+        dates = {dt.datetime.strptime(contract["expiration_date"], "%Y-%m-%d") for contract in response}
         return {
             "id": "n/a",
             "exp_dates": list(dates),
             "multiplier": 100,
         }
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_chain_data(self, symbol: str, date: dt.datetime) -> pd.DataFrame:
-
-        if (
-            bool(self.option_cache)
-            and symbol in self.option_cache
-            and date in self.option_cache[symbol]
-        ):
+        if bool(self.option_cache) and symbol in self.option_cache and date in self.option_cache[symbol]:
             return self.option_cache[symbol][date]
 
         exp_date = date.strftime("%Y-%m-%d")
@@ -117,9 +113,7 @@ class PolygonStreamer(API):
         request = f"https://api.polygon.io/v3/reference/options/contracts?underlying_ticker={symbol}&expiration_date={exp_date}&apiKey={key}"
         response = self._handle_request_response(request)
         if response is None:
-            debugger.error(
-                f"Failed to get chain data for {symbol} at {date}. Returning an empty dataframe."
-            )
+            debugger.error(f"Failed to get chain data for {symbol} at {date}. Returning an empty dataframe.")
             return pd.DataFrame()
 
         df = pd.DataFrame.from_dict(response)
@@ -143,7 +137,7 @@ class PolygonStreamer(API):
 
         return df
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_option_market_data(self, occ_symbol: str) -> Dict[str, Any]:
         if self.basic:
             raise Exception("Basic accounts do not have access to options.")
@@ -161,7 +155,7 @@ class PolygonStreamer(API):
             "bid": response["last_quote"]["bid"],
         }
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_market_hours(self, date: datetime.date) -> Dict[str, Any]:
         # Polygon does not support getting market hours,
         # so use the free Tradier API instead.
@@ -227,9 +221,7 @@ class PolygonStreamer(API):
 
         if not should_setup:
             w.println("You can't use Polygon without an API key.")
-            w.println(
-                "You can set up the credentials manually, or use other streamers."
-            )
+            w.println("You can set up the credentials manually, or use other streamers.")
             return False
 
         w.println("Alright! Let's get started")
@@ -257,7 +249,7 @@ class PolygonStreamer(API):
         start: dt.datetime,
         end: dt.datetime,
     ) -> pd.DataFrame:
-        if self.basic and start < now() - dt.timedelta(days=365 * 2):
+        if self.basic and start < utc_current_time() - dt.timedelta(days=365 * 2):
             debugger.warning(
                 "Start time is over two years old! Only data from the past two years will be returned for basic accounts."
             )
@@ -280,7 +272,7 @@ class PolygonStreamer(API):
         response = self._handle_request_response(request)
 
         if response is None:
-            debugger.error(f"Request error! Returning empty dataframe.")
+            debugger.error("Request error! Returning empty dataframe.")
             return pd.DataFrame()
 
         df = pd.DataFrame(response)
@@ -302,9 +294,7 @@ class PolygonStreamer(API):
         )
 
         df = df[["timestamp", "open", "high", "low", "close", "volume"]].astype(float)
-        df.index = pd.DatetimeIndex(
-            pd.to_datetime(df["timestamp"], unit="ms", utc=True), tz=dt.timezone.utc
-        )
+        df.index = pd.DatetimeIndex(pd.to_datetime(df["timestamp"], unit="ms", utc=True), tz=dt.timezone.utc)
         df.drop(columns=["timestamp"], inplace=True)
         df.columns = pd.MultiIndex.from_product([[symbol], df.columns])
 

@@ -1,12 +1,11 @@
-# Builtins
 import unittest
 
 import pandas as pd
 from pandas.testing import assert_frame_equal
 
+from harvest.enum import Interval
 from harvest.storage import BaseStorage
-from harvest.definitions import *
-from harvest.utils import *
+from harvest.util.helper import gen_data
 
 
 class TestBaseStorage(unittest.TestCase):
@@ -99,11 +98,12 @@ class TestBaseStorage(unittest.TestCase):
         data = gen_data("A", 100)
         storage.store("A", Interval.MIN_1, data.copy(True).iloc[:25])
         storage.store("A", Interval.MIN_1, data.copy(True).iloc[75:])
-        loaded_data = storage.load("A", Interval.MIN_1)
+        loaded_data_1 = storage.load("A", Interval.MIN_1)
 
         self.assertTrue(not pd.isnull(data.iloc[0]["A"]["low"]))
-        self.assertTrue(not pd.isnull(loaded_data.iloc[0]["A"]["low"]))
-        assert_frame_equal(loaded_data, data.iloc[:25].append(data.iloc[75:]))
+        self.assertTrue(not pd.isnull(loaded_data_1.iloc[0]["A"]["low"]))
+        loaded_data_2 = pd.concat([data.iloc[:25], data.iloc[75:]])
+        assert_frame_equal(loaded_data_1, loaded_data_2)
 
     # def test_agg_load(self):
     #     storage = BaseStorage()

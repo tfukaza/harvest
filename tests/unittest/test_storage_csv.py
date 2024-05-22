@@ -1,14 +1,13 @@
-# Builtins
-import shutil
 import pathlib
+import shutil
 import unittest
 
 import pandas as pd
 from pandas.testing import assert_frame_equal
 
+from harvest.enum import Interval
 from harvest.storage import CSVStorage
-from harvest.definitions import *
-from harvest.utils import *
+from harvest.util.helper import gen_data
 
 
 class TestCSVStorage(unittest.TestCase):

@@ -1,20 +1,18 @@
-import logging
-from flask import Flask, render_template, request, redirect
-from werkzeug.security import generate_password_hash, check_password_hash
-from flask_cors import CORS
-import threading
 import json
+import threading
 
+from flask import Flask, redirect, render_template, request
 from flask_login import (
     LoginManager,
-    login_user,
-    login_required,
-    logout_user,
-    current_user,
     UserMixin,
+    current_user,
+    login_required,
+    login_user,
+    logout_user,
 )
+from werkzeug.security import check_password_hash, generate_password_hash
 
-from harvest.utils import debugger
+from harvest.util.helper import debugger
 
 
 class User(UserMixin):
@@ -86,7 +84,6 @@ class Server:
 
 @app.route("/api/login", methods=["POST"])
 def api_login():
-
     username = request.json["username"]
     password = request.json["password"]
 
@@ -106,7 +103,6 @@ def api_login():
 @app.route("/api/update_password", methods=["POST"])
 @login_required
 def api_update_password():
-
     username = current_user.get_id()
     new_password = request.json["password"]
 

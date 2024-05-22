@@ -1,9 +1,9 @@
 # HARVEST_SKIP
-from harvest.algo import BaseAlgo
-from harvest.trader import Trader
-from harvest.api.robinhood import Robinhood
-
 import datetime as dt
+
+from harvest.algo import BaseAlgo
+from harvest.broker.robinhood import RobinhoodBroker
+from harvest.trader import Trader
 
 """This algorithm trades options every 5 minutes.
 To keep things simple, the logic is very basic, with emphasis on
@@ -22,7 +22,6 @@ class Option(BaseAlgo):
         self.buy_qty = 0
 
     def main(self):
-
         price = self.get_asset_price()
 
         if not self.hold:
@@ -40,9 +39,7 @@ class Option(BaseAlgo):
         # Sort so the earliest expiration date is first
         dates.sort()
         # Filter out expiration dates that within 5 days (since they are VERY risky)
-        dates = filter(
-            lambda x: x > self.timestamp.date() + dt.timedelta(days=5), dates
-        )
+        dates = filter(lambda x: x > self.timestamp.date() + dt.timedelta(days=5), dates)
         # Get the option chain
         chain = self.get_option_chain("TWTR", dates[0])
         # Strike price should be greater than current price
@@ -67,7 +64,7 @@ class Option(BaseAlgo):
 
 
 if __name__ == "__main__":
-    t = Trader(Robinhood())
+    t = Trader(RobinhoodBroker())
     t.set_algo(Option())
 
     t.start()

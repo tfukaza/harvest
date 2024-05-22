@@ -1,12 +1,13 @@
 import datetime as dt
 from typing import Any, Callable, Dict, Iterable, List
-from harvest.utils import symbol_type, occ_to_data, OPTION_QTY_MULTIPLIER
+
+from harvest.util.helper import occ_to_data, symbol_type
+
+OPTION_QTY_MULTIPLIER = 100
 
 
 class Stats:
-    def __init__(
-        self, timestamp: dt.datetime = None, timezone=None, watchlist_cfg=None
-    ) -> None:
+    def __init__(self, timestamp: dt.datetime = None, timezone=None, watchlist_cfg=None) -> None:
         self._timestamp = timestamp
         self._timezone = timezone
         self._watchlist_cfg = watchlist_cfg
@@ -150,7 +151,7 @@ class Order:
 
     def __str__(self) -> str:
         return f"""
-        order_id:       {self._order_id} 
+        order_id:       {self._order_id}
         symbol:         {self._symbol}
         type:           {self._type}
         side:           {self._side}
@@ -251,9 +252,7 @@ class Orders:
             if o.order_id == order_id:
                 return o
 
-    def add_new_order(
-        self, symbol: str, order_id: Any, side: str, quantity: float, time_in_force
-    ) -> None:
+    def add_new_order(self, symbol: str, order_id: Any, side: str, quantity: float, time_in_force) -> None:
         if symbol_type(symbol) == "OPTION":
             base_symbol, _, _, _ = occ_to_data(symbol)
             self._orders.append(
@@ -341,9 +340,7 @@ class Position:
         # self._profit_percent = self._profit / (self._avg_price * self._quantity)
 
     def buy(self, quantity, price):
-        self._avg_price = (self._avg_price * self._quantity + price * quantity) / (
-            self._quantity + quantity
-        )
+        self._avg_price = (self._avg_price * self._quantity + price * quantity) / (self._quantity + quantity)
         self._quantity += quantity
 
     def sell(self, quantity, price):
@@ -403,7 +400,13 @@ class Position:
 
 
 class Positions:
-    def __init__(self, stock=[], option=[], crypto=[]):
+    def __init__(self, stock=None, option=None, crypto=None):
+        if stock is None:
+            stock = []
+        if option is None:
+            option = []
+        if crypto is None:
+            crypto = []
         self._stock = stock
         self._option = option
         self._crypto = crypto
@@ -471,9 +474,7 @@ class Positions:
 
 
 class OptionPosition(Position):
-    def __init__(
-        self, symbol, quantity, avg_price, strike, expiration, option_type, multiplier
-    ):
+    def __init__(self, symbol, quantity, avg_price, strike, expiration, option_type, multiplier):
         super().__init__(symbol, quantity, avg_price)
         self._base_symbol = occ_to_data(symbol)[0]
         self._strike = strike

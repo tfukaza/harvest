@@ -1,13 +1,10 @@
-# Builtins
 import os
 import unittest
 
-import pandas as pd
 from pandas.testing import assert_frame_equal
 
 from harvest.storage.database_storage import DBStorage
-from harvest.definitions import *
-from harvest.utils import gen_data
+from harvest.util.helper import gen_data
 
 
 class TestDBStorage(unittest.TestCase):
@@ -16,7 +13,7 @@ class TestDBStorage(unittest.TestCase):
         self.db_file = "foo.db"
 
         # Create the database file
-        with open(self.db_file, "w") as f:
+        with open(self.db_file, "w") as _:
             pass
 
     def test_simple_load(self):

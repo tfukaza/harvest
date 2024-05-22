@@ -1,29 +1,24 @@
-import unittest
-from harvest.api.robinhood import Robinhood
-from harvest.api.webull import Webull
-from harvest.api.alpaca import Alpaca
-from harvest.api.kraken import Kraken
-
-# from harvest.api.paper import PaperBroker
-from harvest.api.yahoo import YahooStreamer
-
-from harvest.definitions import *
-from harvest.utils import *
-import time
 import os
+import time
+import unittest
+
+from harvest.broker.robinhood import RobinhoodBroker
+from harvest.definitions import Account, Interval, Stats
+from harvest.util.helper import debugger
 
 secret_path = os.environ["SECRET_PATH"]
 debugger.setLevel("DEBUG")
 
 import functools
 
+
 # A decorator to repeat the same test for all the brokers
-def decorator_repeat_test(api_list):
+def decorator_repeat_test(broker_list):
     def decorator_test(func):
         @functools.wraps(func)
         def wrapper_repeat(*args):
             self = args[0]
-            for api in api_list:
+            for api in broker_list:
                 print(f"Testing {api}")
                 func(self, api)
 
@@ -33,7 +28,7 @@ def decorator_repeat_test(api_list):
 
 
 class TestLiveBroker(unittest.TestCase):
-    @decorator_repeat_test([Robinhood])
+    @decorator_repeat_test([RobinhoodBroker])
     def test_buy_option(self, api):
         api = api(secret_path)
         interval = {
@@ -58,7 +53,7 @@ class TestLiveBroker(unittest.TestCase):
 
         self.assertTrue(True)
 
-    @decorator_repeat_test([Robinhood])
+    @decorator_repeat_test([RobinhoodBroker])
     def test_buy_stock(self, api):
         """
         Test that it can buy stocks
@@ -78,7 +73,7 @@ class TestLiveBroker(unittest.TestCase):
 
         api.cancel_stock_order(ret["order_id"])
 
-    @decorator_repeat_test([Robinhood])
+    @decorator_repeat_test([RobinhoodBroker])
     def test_buy_crypto(self, api):
         """
         Test that it can buy crypto

@@ -1,13 +1,11 @@
-import re
 from os import listdir, makedirs
 from os.path import isfile, join
-import pandas as pd
-import datetime as dt
-from typing import Tuple
 
+import pandas as pd
+
+from harvest.enum import Interval
 from harvest.storage import BaseStorage
-from harvest.definitions import *
-from harvest.utils import *
+from harvest.util.helper import interval_enum_to_string, interval_string_to_enum
 
 """
 This module serves as a storage system for pandas dataframes in with pickle files.
@@ -19,9 +17,7 @@ class PickleStorage(BaseStorage):
     An extension of the basic storage that saves data in pickle files.
     """
 
-    def __init__(
-        self, save_dir: str = "data", queue_size: int = 200, limit_size: bool = True
-    ) -> None:
+    def __init__(self, save_dir: str = "data", queue_size: int = 200, limit_size: bool = True) -> None:
         super().__init__(queue_size, limit_size)
         """
         Adds a directory to save data to. Loads any data that is currently in the

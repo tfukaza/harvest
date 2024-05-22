@@ -3,4 +3,7 @@
     "files.trimTrailingWhitespace": true,
     "editor.formatOnSave": true,
     "editor.defaultFormatter": "trunk.io",
+    "cSpell.words": [
+        "Robinhood"
+    ],
 }

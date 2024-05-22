@@ -1,33 +1,26 @@
-# Builtins
-from harvest.api.dummy import DummyStreamer
-import pathlib
-import unittest
 import datetime as dt
-import os
+import time
+import unittest
 
 import pandas as pd
-
+from _util import delete_save_files
 
 from harvest.algo import BaseAlgo
-from harvest.api._base import API, StreamAPI
-from harvest.api.dummy import DummyStreamer
+from harvest.broker._base import Broker
+from harvest.enum import BrokerType, Interval
 from harvest.trader import PaperTrader
-from harvest.definitions import *
-from harvest.utils import *
-
-from _util import *
+from harvest.util.helper import gen_data, utc_current_time
 
 
-class TestAPI(unittest.TestCase):
-    def test_timeout(self):
-
-        t = PaperTrader("base_stream", debug=True)
+class TestBroker(unittest.TestCase):
+    def test_stream_broker_timeout(self):
+        t = PaperTrader(BrokerType.BASE_STREAMER, debug=True)
         t.set_symbol(["A", "B"])
         t.start_streamer = False
         t.skip_init = True
 
         t._init_param_streamer_broker("1MIN", [])
-        stream = t.streamer
+        stream = t.data_broker_ref
         stream.fetch_price_history = lambda x, y, z: pd.DataFrame()
         stream.fetch_account = lambda: {"cash": 100, "equity": 100}
         stream.trader_main = t.main
@@ -52,7 +45,7 @@ class TestAPI(unittest.TestCase):
         data = gen_data("A", 1)
         data.index = [stream.stats.timestamp + dt.timedelta(minutes=1)]
         data = {"A": data}
-        stream.main(data)
+        stream.step(data)
 
         # Wait for the timeout
         time.sleep(2)
@@ -79,19 +72,19 @@ class TestAPI(unittest.TestCase):
 
         try:
             t._delete_account()
-        except:
+        except Exception:
             pass
 
     @delete_save_files(".")
     def test_timeout_cancel(self):
-        t = PaperTrader("base_stream", debug=True)
+        t = PaperTrader(BrokerType.BASE_STREAMER, debug=True)
         t.set_algo(BaseAlgo())
         t.set_symbol(["A", "B"])
         t.start_streamer = False
         t.skip_init = True
 
         t._init_param_streamer_broker("1MIN", [])
-        stream = t.streamer
+        stream = t.data_broker_ref
         stream.trader = t
         stream.trader_main = t.main
         stream.fetch_price_history = lambda x, y, z: pd.DataFrame()
@@ -115,11 +108,11 @@ class TestAPI(unittest.TestCase):
         data_b = gen_data("B", 1)
         data_b.index = [b_cur.index[-1] + dt.timedelta(minutes=1)]
         data_b = {"B": data_b}
-        stream.main(data_a)
+        stream.step(data_a)
 
         # Wait
         time.sleep(0.1)
-        stream.main(data_b)
+        stream.step(data_b)
 
         # Check if A has been added to storage
         self.assertEqual(
@@ -142,38 +135,34 @@ class TestAPI(unittest.TestCase):
 
         try:
             t._delete_account()
-        except:
+        except Exception:
             pass
 
     def test_exceptions(self):
-        api = API()
+        api = Broker()
 
         self.assertEqual(api.create_secret(), None)
 
         try:
-            api.fetch_price_history("A", Interval.MIN_1, now(), now())
+            api.fetch_price_history("A", Interval.MIN_1, utc_current_time(), utc_current_time())
             self.assertTrue(False)
         except NotImplementedError as e:
             self.assertEqual(
                 str(e),
-                "API does not support this streamer method: `fetch_price_history`.",
+                "Broker class does not support the method fetch_price_history.",
             )
 
         try:
             api.fetch_chain_info("A")
             self.assertTrue(False)
         except NotImplementedError as e:
-            self.assertEqual(
-                str(e), "API does not support this streamer method: `fetch_chain_info`."
-            )
+            self.assertEqual(str(e), "Broker class does not support the method fetch_chain_info.")
 
         try:
-            api.fetch_chain_data("A", now())
+            api.fetch_chain_data("A", utc_current_time())
             self.assertTrue(False)
         except NotImplementedError as e:
-            self.assertEqual(
-                str(e), "API does not support this streamer method: `fetch_chain_data`."
-            )
+            self.assertEqual(str(e), "Broker class does not support the method fetch_chain_data.")
 
         try:
             api.fetch_option_market_data("A")
@@ -181,16 +170,14 @@ class TestAPI(unittest.TestCase):
         except NotImplementedError as e:
             self.assertEqual(
                 str(e),
-                "API does not support this streamer method: `fetch_option_market_data`.",
+                "Broker class does not support the method fetch_option_market_data.",
             )
 
         try:
             api.fetch_account()
             self.assertTrue(False)
         except NotImplementedError as e:
-            self.assertEqual(
-                str(e), "API does not support this broker method: `fetch_account`."
-            )
+            self.assertEqual(str(e), "Broker class does not support the method fetch_account.")
 
         try:
             api.fetch_stock_order_status(0)
@@ -198,7 +185,7 @@ class TestAPI(unittest.TestCase):
         except NotImplementedError as e:
             self.assertEqual(
                 str(e),
-                "API does not support this broker method: `fetch_stock_order_status`.",
+                "Broker class does not support the method fetch_stock_order_status.",
             )
 
         try:
@@ -207,7 +194,7 @@ class TestAPI(unittest.TestCase):
         except NotImplementedError as e:
             self.assertEqual(
                 str(e),
-                "API does not support this broker method: `fetch_option_order_status`.",
+                "Broker class does not support the method fetch_option_order_status.",
             )
 
         try:
@@ -216,51 +203,40 @@ class TestAPI(unittest.TestCase):
         except NotImplementedError as e:
             self.assertEqual(
                 str(e),
-                "API does not support this broker method: `fetch_crypto_order_status`.",
+                "Broker class does not support the method fetch_crypto_order_status.",
             )
 
         try:
             api.order_stock_limit("buy", "A", 5, 7)
             self.assertTrue(False)
         except NotImplementedError as e:
-            self.assertEqual(
-                str(e), "API does not support this broker method: `order_stock_limit`."
-            )
-
+            self.assertEqual(str(e), "Broker class does not support the method order_stock_limit.")
         try:
             api.order_crypto_limit("buy", "@A", 5, 7)
             self.assertTrue(False)
         except NotImplementedError as e:
-            self.assertEqual(
-                str(e), "API does not support this broker method: `order_crypto_limit`."
-            )
+            self.assertEqual(str(e), "Broker class does not support the method order_crypto_limit.")
 
         try:
-            api.order_option_limit("buy", "A", 5, 7, "call", now(), 8)
+            api.order_option_limit("buy", "A", 5, 7, "call", utc_current_time(), 8)
             self.assertTrue(False)
         except NotImplementedError as e:
-            self.assertEqual(
-                str(e), "API does not support this broker method: `order_option_limit`."
-            )
+            self.assertEqual(str(e), "Broker class does not support the method order_option_limit.")
 
         try:
             api.buy("A", -1, 0)
             self.assertTrue(False)
         except NotImplementedError as e:
-            self.assertEqual(
-                str(e), "API does not support this broker method: `order_stock_limit`."
-            )
+            self.assertEqual(str(e), "Broker class does not support the method order_stock_limit.")
 
         try:
             api.sell("A", -1, 0)
             self.assertTrue(False)
         except NotImplementedError as e:
-            self.assertEqual(
-                str(e), "API does not support this broker method: `order_stock_limit`."
-            )
+            self.assertEqual(str(e), "Broker class does not support the method order_stock_limit.")
 
     def test_base_cases(self):
-        api = API()
+        api = Broker()
 
         api.refresh_cred()
         api.exit()
@@ -268,13 +244,6 @@ class TestAPI(unittest.TestCase):
         self.assertEqual(api.fetch_option_positions(), [])
         self.assertEqual(api.fetch_crypto_positions(), [])
         self.assertEqual(api.fetch_order_queue(), [])
-
-    def test_run_once(self):
-        api = API()
-        fn = lambda x: x + 1
-        wrapper = API._run_once(fn)
-        self.assertEqual(wrapper(5), 6)
-        self.assertTrue(wrapper(5) is None)
 
 
 if __name__ == "__main__":

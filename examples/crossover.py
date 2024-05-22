@@ -1,6 +1,6 @@
 # HARVEST_SKIP
 from harvest.algo import BaseAlgo
-from harvest.trader import LiveTrader
+from harvest.trader import BrokerHub
 
 
 class Crossover(BaseAlgo):
@@ -21,6 +21,6 @@ class Crossover(BaseAlgo):
 
 
 if __name__ == "__main__":
-    t = LiveTrader()
+    t = BrokerHub()
     t.set_algo(Crossover())
     t.start()

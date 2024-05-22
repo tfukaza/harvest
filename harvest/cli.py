@@ -1,13 +1,14 @@
+import argparse
+import inspect
 import os
 import sys
-import inspect
-import argparse
-from importlib.util import spec_from_file_location, module_from_spec
-from importlib import import_module
-
+from importlib.util import module_from_spec, spec_from_file_location
 from os import listdir
 from os.path import isfile, join
 from typing import Callable
+
+from harvest.util.helper import str_to_data_broker_type, str_to_storage_type, str_to_trade_broker_type
+
 
 # Lambda functions cannot raise exceptions so using higher order functions.
 def _raise(e) -> Callable:
@@ -17,9 +18,9 @@ def _raise(e) -> Callable:
     return raise_helper
 
 
-from harvest.utils import debugger
-from harvest.util.factory import storages, streamers, brokers
 from harvest.algo import BaseAlgo
+from harvest.enum import DataBrokerType, StorageType, TradeBrokerType
+from harvest.util.helper import debugger
 
 parser = argparse.ArgumentParser(description="Harvest CLI")
 subparsers = parser.add_subparsers(dest="command")
@@ -31,21 +32,21 @@ start_parser.add_argument(
     "--storage",
     default="base",
     help="the way to store asset data",
-    choices=list(storages.keys()),
+    choices=StorageType.list(),
 )
 start_parser.add_argument(
     "-s",
     "--streamer",
     default="yahoo",
     help="fetches asset data",
-    choices=list(streamers.keys()),
+    choices=DataBrokerType.list(),
 )
 start_parser.add_argument(
     "-b",
     "--broker",
     default="streamer",
     help="buys and sells assets on your behalf",
-    choices=list(brokers.keys()),
+    choices=TradeBrokerType.list(),
 )
 
 # Directory with algos that you want to run, default is the current working directory.
@@ -55,9 +56,7 @@ start_parser.add_argument(
     default=".",
     help="directory where algorithms are located",
 )
-start_parser.add_argument(
-    "--debug", default=False, action=argparse.BooleanOptionalAction
-)
+start_parser.add_argument("--debug", default=False, action=argparse.BooleanOptionalAction)
 
 
 # Parser for visualing data
@@ -65,8 +64,8 @@ visualize_parser = subparsers.add_parser("visualize")
 visualize_parser.add_argument("path", help="path to harvest generated data file")
 
 from rich.console import Console
-from rich.tree import Tree
 from rich.padding import Padding
+from rich.tree import Tree
 
 
 def main() -> None:
@@ -98,15 +97,18 @@ def start(args: argparse.Namespace, test: bool = False) -> None:
     broker = args.broker
     debug = args.debug
 
-    from harvest.trader import LiveTrader
+    storage = str_to_storage_type(storage)
+    streamer = str_to_data_broker_type(streamer)
+    broker = str_to_trade_broker_type(broker)
 
-    trader = LiveTrader(streamer=streamer, broker=broker, storage=storage, debug=debug)
+    from harvest.trader import BrokerHub
+
+    trader = BrokerHub(streamer, broker, storage, debug)
 
     console = Console()
-    console.print(f"> [bold green]Welcome to Harvest[/bold green]")
+    console.print("> [bold green]Welcome to Harvest[/bold green]")
 
-    with console.status("[bold green] Loading... [/bold green]") as status:
-
+    with console.status("[bold green] Loading... [/bold green]") as _:
         # Get the directories.
         directory = args.directory
         console.print(f"- Searching directory [bold cyan]{directory}[/bold cyan] 🔎")
@@ -145,11 +147,9 @@ def start(args: argparse.Namespace, test: bool = False) -> None:
 
         dir_pad = Padding(dir_tree, (0, 4))
         console.print(dir_pad)
-        console.print(
-            f"- Found {len(trader.algo)} algo{'' if algo_count == 1 else 's'} 🎉"
-        )
+        console.print(f"- Found {len(trader.algo)} algo{'' if algo_count == 1 else 's'} 🎉")
         # status.stop()
-    console.print(f"> [bold green]Finished loading algorithms[/bold green]")
+    console.print("> [bold green]Finished loading algorithms[/bold green]")
 
     if not test:
         # console.print(f"Starting trader")
@@ -162,8 +162,9 @@ def visualize(args: argparse.Namespace) -> None:
     :args: A Namespace object containing parsed user arguments.
     """
     import re
-    import pandas as pd
+
     import mplfinance as mpf
+    import pandas as pd
 
     # Open the file using the appropriate parser.
     if args.path.endswith(".csv"):
@@ -182,7 +183,8 @@ def visualize(args: argparse.Namespace) -> None:
 
     path = os.path.basename(args.path)
     # File names are asset {ticker name}@{interval}.{file format}
-    file_search = re.search("^(@?[\w]+)@([\w]+).(csv|pickle)$", path)
+    # file_search = re.search("^(@?[\w]+)@([\w]+).(csv|pickle)$", path) TODO Fix linter error
+    file_search = re.search("^(@?[]+)@([]+).(csv|pickle)$", path)  # Temporary fix
     symbol, interval = file_search.group(1), file_search.group(2)
     open_price = df.iloc[0]["open"]
     close_price = df.iloc[-1]["close"]

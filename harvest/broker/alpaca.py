@@ -1,23 +1,30 @@
-# Builtins
-import yaml
 import asyncio
-import threading
 import datetime as dt
-from typing import Any, Dict, List, Tuple
+import threading
+from typing import Any, Callable, Dict, List, Union
 
-# External libraries
 import pandas as pd
-from alpaca_trade_api.rest import REST, TimeFrame, URL
-from alpaca_trade_api.entity import Bar
 from alpaca_trade_api import Stream
+from alpaca_trade_api.entity import Bar
+from alpaca_trade_api.rest import REST, URL, TimeFrame
 
-# Submodule imports
-from harvest.api._base import StreamAPI, API
-from harvest.utils import *
-from harvest.definitions import *
+from harvest.broker._base import Broker, StreamBroker
+from harvest.definitions import Account, Interval, Stats
+from harvest.util.helper import (
+    aggregate_df,
+    convert_input_to_datetime,
+    debugger,
+    expand_interval,
+    is_crypto,
+    utc_current_time,
+)
 
 
-class Alpaca(StreamAPI):
+class AlpacaBroker(StreamBroker):
+    """
+    Class for the Alpaca Broker (alpaca.markets)
+    For live trading, Harvest will use the streaming API provided by Alpaca to get real-time data.
+    """
 
     interval_list = [
         Interval.MIN_1,
@@ -30,23 +37,22 @@ class Alpaca(StreamAPI):
         is_basic_account: bool = False,
         paper_trader: bool = False,
     ) -> None:
+        """
+        Initialize the Alpaca Broker.
+
+        :param path: Path to the account credentials file.
+        :param is_basic_account: The free (basic) plan uses iex for data feed, while the unlimited plan uses sip. (alpaca.markets/support/data-provider-alpaca)
+        :param paper_trader: Whether to use the paper trading API.
+        """
         super().__init__(path)
 
         if self.config is None:
-            raise Exception(
-                f"Account credentials not found! Expected file path: {path}"
-            )
+            raise Exception(f"Account credentials not found! Expected file path: {path}")
 
         self.basic = is_basic_account
 
-        endpoint = (
-            "https://paper-api.alpaca.markets"
-            if paper_trader
-            else "https://api.alpaca.markets"
-        )
-        self.api = REST(
-            self.config["alpaca_api_key"], self.config["alpaca_secret_key"], endpoint
-        )
+        endpoint = "https://paper-api.alpaca.markets" if paper_trader else "https://api.alpaca.markets"
+        self.api = REST(self.config["alpaca_api_key"], self.config["alpaca_secret_key"], endpoint)
 
         data_feed = "iex" if self.basic else "sip"
         self.stream = Stream(
@@ -58,9 +64,7 @@ class Alpaca(StreamAPI):
         self.data_lock = threading.Lock()
         self.data = {}
 
-    def setup(
-        self, stats: Stats, account: Account, trader_main: Callable = None
-    ) -> None:
+    def setup(self, stats: Stats, account: Account, trader_main: Callable = None) -> None:
         super().setup(stats, account, trader_main)
 
         self.watch_stock = []
@@ -87,7 +91,7 @@ class Alpaca(StreamAPI):
 
     # -------------- Streamer methods -------------- #
 
-    @API._exception_handler
+    @Broker._exception_handler
     def get_current_time(self) -> dt.datetime:
         ret = self.api.get_clock().__dict__["_raw"]
         # Convert to ISO 8601 by removing nanoseconds
@@ -95,7 +99,7 @@ class Alpaca(StreamAPI):
         timestamp = ret["timestamp"][:index] + ret["timestamp"][index + 9 :]
         return dt.datetime.fromisoformat(timestamp)
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_price_history(
         self,
         symbol: str,
@@ -103,36 +107,35 @@ class Alpaca(StreamAPI):
         start: Union[str, dt.datetime] = None,
         end: Union[str, dt.datetime] = None,
     ) -> pd.DataFrame:
-
         debugger.debug(f"Fetching {symbol} {interval} price history")
 
         start = convert_input_to_datetime(start)
         end = convert_input_to_datetime(end)
 
         if start is None:
-            start = now() - dt.timedelta(days=365 * 5)
+            start = utc_current_time() - dt.timedelta(days=365 * 5)
         if end is None:
-            end = now()
+            end = utc_current_time()
 
         if start >= end:
             return pd.DataFrame()
 
         return self._get_data_from_alpaca(symbol, interval, start, end)
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_chain_info(self, symbol: str) -> None:
         raise NotImplementedError("Alpaca does not support options.")
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_chain_data(self, symbol: str, date: dt.datetime) -> None:
         raise NotImplementedError("Alpaca does not support options.")
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_option_market_data(self, occ_symbol: str) -> None:
         raise NotImplementedError("Alpaca does not support options.")
 
-    @API._exception_handler
-    def fetch_market_hours(self, date: datetime.date) -> Dict[str, Any]:
+    @Broker._exception_handler
+    def fetch_market_hours(self, date: dt.datetime.date) -> Dict[str, Any]:
         ret = self.api.get_clock().__dict__["_raw"]
         return {
             "is_open": ret["is_open"],
@@ -142,7 +145,7 @@ class Alpaca(StreamAPI):
 
     # ------------- Broker methods ------------- #
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_stock_positions(self) -> List[Dict[str, Any]]:
         def fmt(stock: Dict[str, Any]) -> Dict[str, Any]:
             return {
@@ -152,44 +155,34 @@ class Alpaca(StreamAPI):
                 "alpaca": stock,
             }
 
-        return [
-            fmt(pos.__dict__["_raw"])
-            for pos in self.api.list_positions()
-            if pos.asset_class != "crypto"
-        ]
+        return [fmt(pos.__dict__["_raw"]) for pos in self.api.list_positions() if pos.asset_class != "crypto"]
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_option_positions(self) -> List:
         debugger.error("Alpaca does not support options. Returning an empty list.")
         return []
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_crypto_positions(self) -> List:
         if self.basic:
-            debugger.error(
-                "Alpaca basic accounts do not support crypto. Returning an empty list."
-            )
+            debugger.error("Alpaca basic accounts do not support crypto. Returning an empty list.")
             return []
 
         def fmt(crypto: Dict[str, Any]) -> Dict[str, Any]:
             return {
                 "symbol": "@" + crypto["symbol"],
                 "avg_price": float(crypto["avg_entry_price"]),
-                "quantity": float(stock["qty"]),
+                "quantity": float(crypto["qty"]),
                 "alpaca": crypto,
             }
 
-        return [
-            fmt(pos.__dict__["_raw"])
-            for pos in self.api.list_positions()
-            if pos.asset_class == "crypto"
-        ]
+        return [fmt(pos.__dict__["_raw"]) for pos in self.api.list_positions() if pos.asset_class == "crypto"]
 
-    @API._exception_handler
+    @Broker._exception_handler
     def update_option_positions(self, positions: List[Any]) -> None:
         debugger.error("Alpaca does not support options. Doing nothing.")
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_account(self) -> Dict[str, Any]:
         account = self.api.get_account().__dict__["_raw"]
         return {
@@ -200,26 +193,23 @@ class Alpaca(StreamAPI):
             "alpaca": account,
         }
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_stock_order_status(self, order_id: str) -> Dict[str, Any]:
         return self.api.get_order(order_id).__dict__["_raw"]
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_option_order_status(self, order_id: str) -> None:
         raise NotImplementedError("Alpaca does not support options.")
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_crypto_order_status(self, order_id: str) -> Dict[str, Any]:
         if self.basic:
             raise Exception("Alpaca basic accounts do not support crypto.")
         return self.api.get_order(order_id).__dict__["_raw"]
 
-    @API._exception_handler
+    @Broker._exception_handler
     def fetch_order_queue(self) -> List[Dict[str, Any]]:
-        return [
-            self._format_order_status(pos.__dict__["_raw"])
-            for pos in self.api.list_orders()
-        ]
+        return [self._format_order_status(pos.__dict__["_raw"]) for pos in self.api.list_orders()]
 
     # --------------- Methods for Trading --------------- #
 
@@ -232,7 +222,6 @@ class Alpaca(StreamAPI):
         in_force: str = "gtc",
         extended: bool = False,
     ) -> Dict[str, Any]:
-
         self._validate_order(side, quantity, limit_price)
 
         order = self.api.submit_order(
@@ -299,7 +288,7 @@ class Alpaca(StreamAPI):
         }
 
     def cancel_stock_order(self, order_id: str) -> Dict[str, Any]:
-        ret = self.api.cancel_order(order_id)
+        self.api.cancel_order(order_id)
         return {"id": order_id}
 
     def cancel_option_order(self, order_id: str) -> None:
@@ -308,7 +297,7 @@ class Alpaca(StreamAPI):
     def cancel_crypto_order(self, order_id: str) -> Dict[str, Any]:
         if self.basic:
             raise Exception("Alpaca basic accounts do not support crypto.")
-        ret = self.api.cancel_order(order_id)
+        self.api.cancel_order(order_id)
         return {"id": order_id}
 
     # ------------- Helper methods ------------- #
@@ -323,21 +312,15 @@ class Alpaca(StreamAPI):
 
         if not should_setup:
             w.println("You can't use Alpaca without an API key.")
-            w.println(
-                "You can set up the credentials manually, or use other streamers."
-            )
+            w.println("You can set up the credentials manually, or use other streamers.")
             return False
 
         w.println("Alright! Let's get started")
 
         have_account = w.get_bool("Do you have an Alpaca account?", default="y")
         if not have_account:
-            w.println(
-                "In that case you'll first need to make an account. This takes a few steps."
-            )
-            w.println(
-                "First visit: https://alpaca.markets/ and sign up. Hit Enter or Return for the next step."
-            )
+            w.println("In that case you'll first need to make an account. This takes a few steps.")
+            w.println("First visit: https://alpaca.markets/ and sign up. Hit Enter or Return for the next step.")
             w.wait_for_input()
             w.println("Follow the setups to make an individual or buisness account.")
             w.wait_for_input()
@@ -355,9 +338,7 @@ class Alpaca(StreamAPI):
 
         return {"alpaca_api_key": f"{api_key_id}", "alpaca_secret_key": f"{secret_key}"}
 
-    def _format_order_status(
-        self, order: Dict[str, Any], is_stock: bool = True
-    ) -> Dict[str, Any]:
+    def _format_order_status(self, order: Dict[str, Any], is_stock: bool = True) -> Dict[str, Any]:
         return {
             "type": "STOCK" if is_stock else "CRYPTO",
             "id": order["id"],
@@ -378,12 +359,10 @@ class Alpaca(StreamAPI):
         end: dt.datetime,
     ) -> pd.DataFrame:
         if self.basic and is_crypto(symbol):
-            debugger.error(
-                "Alpaca basic accounts do not support crypto. Returning empty dataframe"
-            )
+            debugger.error("Alpaca basic accounts do not support crypto. Returning empty dataframe")
             return pd.DataFrame()
 
-        current_time = now()
+        current_time = utc_current_time()
         if self.basic and start < current_time - dt.timedelta(days=365 * 5):
             debugger.warning(
                 "Start time is over five years old! Only data from the past five years will be returned for basic accounts."
@@ -408,9 +387,7 @@ class Alpaca(StreamAPI):
         end_str = end.isoformat()
 
         temp_symbol = symbol[1:] if is_crypto(symbol) else symbol
-        bars = self.api.get_bars(
-            temp_symbol, TimeFrame(timespan), start_str, end_str, adjustment="raw"
-        )
+        bars = self.api.get_bars(temp_symbol, TimeFrame(timespan), start_str, end_str, adjustment="raw")
         df = pd.DataFrame((bar.__dict__["_raw"] for bar in bars))
         df = self._format_df(df, symbol)
         df = aggregate_df(df, interval)
@@ -430,9 +407,7 @@ class Alpaca(StreamAPI):
             inplace=True,
         )
 
-        df.index = pd.DatetimeIndex(
-            pd.to_datetime(df["timestamp"], utc=True), tz=dt.timezone.utc
-        )
+        df.index = pd.DatetimeIndex(pd.to_datetime(df["timestamp"], utc=True), tz=dt.timezone.utc)
         df.drop(columns=["timestamp"], inplace=True)
         df.columns = pd.MultiIndex.from_product([[symbol], df.columns])
         return df.dropna()
@@ -463,6 +438,6 @@ class Alpaca(StreamAPI):
             data = self.data
             self.data = {}
             self.data_lock.release()
-            self.trader_main(data)
+            self.broker_hub_cb(data)
         else:
             self.data_lock.release()

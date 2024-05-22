@@ -1,19 +1,20 @@
 # HARVEST_SKIP
 # Builtin imports
-import logging
 import datetime as dt
+import logging
 
-# Harvest imports
-from harvest.algo import BaseAlgo
-from harvest.trader import LiveTrader
-from harvest.api.polygon import PolygonStreamer
-from harvest.api.paper import PaperBroker
-from harvest.storage.csv_storage import CSVStorage
+import matplotlib.pyplot as plt
+import mplfinance as mpf
 
 # Third-party imports
 import pandas as pd
-import matplotlib.pyplot as plt
-import mplfinance as mpf
+
+# Harvest imports
+from harvest.algo import BaseAlgo
+from harvest.broker.paper import PaperBroker
+from harvest.broker.polygon import PolygonBroker
+from harvest.storage.csv_storage import CSVStorage
+from harvest.trader import BrokerHub
 
 
 class EMAlgo(BaseAlgo):
@@ -37,10 +38,8 @@ class EMAlgo(BaseAlgo):
         logging.info("*" * 20)
         logging.info(f"EMAlgo.main ran at: {now}")
 
-        if now - now.replace(hour=0, minute=0, second=0, microsecond=0) <= dt.timedelta(
-            seconds=60
-        ):
-            logger.info(f"It's a new day! Clearning OHLC caches!")
+        if now - now.replace(hour=0, minute=0, second=0, microsecond=0) <= dt.timedelta(seconds=60):
+            logging.info("It's a new day! Cleaning OHLC caches!")
             for ticker_value in self.tickers.values():
                 ticker_value["ohlc"] = pd.DataFrame(
                     columns=["open", "high", "low", "close", "volume"],
@@ -54,9 +53,7 @@ class EMAlgo(BaseAlgo):
                 logging.warn("No ohlc returned!")
                 return
             ticker_value["ohlc"] = ticker_value["ohlc"].append(current_ohlc)
-            ticker_value["ohlc"] = ticker_value["ohlc"][
-                ~ticker_value["ohlc"].index.duplicated(keep="first")
-            ]
+            ticker_value["ohlc"] = ticker_value["ohlc"][~ticker_value["ohlc"].index.duplicated(keep="first")]
 
             if ticker_value["initial_price"] is None:
                 ticker_value["initial_price"] = current_price
@@ -90,12 +87,10 @@ if __name__ == "__main__":
     # Store the OHLC data in a folder called `em_storage` with each file stored as a csv document
     csv_storage = CSVStorage(save_dir="em-polygon-storage")
     # Our streamer will be Polygon and the broker will be Harvest's paper trader. My secret keys are stored in `polygon-secret.yaml`
-    polygon = PolygonStreamer(
-        path="accounts/polygon-secret.yaml", is_basic_account=True
-    )
+    polygon = PolygonBroker(path="accounts/polygon-secret.yaml", is_basic_account=True)
     paper = PaperBroker()
     em_algo = EMAlgo()
-    trader = LiveTrader(streamer=polygon, broker=paper, storage=csv_storage, debug=True)
+    trader = BrokerHub(streamer=polygon, broker=paper, storage=csv_storage, debug=True)
 
     trader.set_algo(em_algo)
 

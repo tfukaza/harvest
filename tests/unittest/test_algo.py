@@ -1,28 +1,20 @@
-# Builtins
-from re import S
 import unittest
-from unittest.mock import patch
 
-# from harvest import algo
-from harvest.trader import PaperTrader
-from harvest.api.dummy import DummyStreamer
+from _util import create_trader_and_api, delete_save_files
+
 from harvest.algo import BaseAlgo
-
-from harvest.definitions import *
-from harvest.utils import *
-
-import logging
-
-from _util import *
+from harvest.enum import DataBrokerType, Interval, TradeBrokerType
 
 prices = [10, 12, 11, 9, 8, 10, 11, 12, 13, 15, 14, 16, 13, 14]
 
 
 class TestAlgo(unittest.TestCase):
-
-    # Watchlist set in the Algo class locally should take precendance over watchlist in Trader class
     @delete_save_files(".")
     def test_config_watchlist_1(self):
+        """
+        Test that the specified watchlist is saved in the Algo class
+        """
+
         class Algo1(BaseAlgo):
             def config(self):
                 self.watchlist = ["A", "B", "C"]
@@ -35,7 +27,7 @@ class TestAlgo(unittest.TestCase):
         algo2 = Algo2()
 
         trader, dummy, paper = create_trader_and_api(
-            "dummy", "paper", "5MIN", ["1", "2", "3"], [algo1, algo2]
+            DataBrokerType.DUMMY, TradeBrokerType.PAPER, "5MIN", ["1", "2", "3"], [algo1, algo2]
         )
 
         # Getting watchlist should return the watchlist of the Algo class
@@ -47,9 +39,7 @@ class TestAlgo(unittest.TestCase):
         # Running methods like get_stock_price_list without a symbol parameter
         # should return the symbol specified in the Algo class
         prices1 = algo1.get_asset_price_list()
-        self.assertListEqual(
-            prices1, list(trader.storage.load("A", Interval.MIN_5)["A"]["close"])
-        )
+        self.assertListEqual(prices1, list(trader.storage.load("A", Interval.MIN_5)["A"]["close"]))
 
     # @patch("harvest.api._base.mark_up")
     # @delete_save_files(".")

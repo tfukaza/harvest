@@ -1,14 +1,12 @@
 import re
 from os import listdir, makedirs
 from os.path import isfile, join
+
 import pandas as pd
-import datetime as dt
-from typing import Tuple
 
+from harvest.enum import Interval
 from harvest.storage import BaseStorage
-from harvest.definitions import *
-from harvest.utils import *
-
+from harvest.util.helper import debugger, interval_enum_to_string, interval_string_to_enum
 
 """
 This module serves as a storage system for pandas dataframes in with csv files.
@@ -35,6 +33,7 @@ class CSVStorage(BaseStorage):
 
         for file in files:
             debugger.debug(file)
+            # trunk-ignore(ruff/W605)
             file_search = re.search("^(@?[\w]+)@([\w]+).csv$", file)
             symbol, interval = file_search.group(1), file_search.group(2)
             interval = interval_string_to_enum(interval)
