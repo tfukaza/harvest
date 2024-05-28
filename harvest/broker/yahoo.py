@@ -11,7 +11,7 @@ import yfinance as yf
 from harvest.broker._base import Broker
 from harvest.definitions import Account, Stats
 from harvest.enum import Interval
-from harvest.util.date import convert_input_to_datetime, date_to_str, utc_current_time, utc_epoch_zero
+from harvest.util.date import convert_input_to_datetime, date_to_str, str_to_datetime, utc_current_time, utc_epoch_zero
 from harvest.util.helper import (
     check_interval,
     debugger,
@@ -172,24 +172,41 @@ class YahooBroker(Broker):
             crypto = True
 
         df = yf.download(symbol, period=period, interval=get_fmt, prepost=True, progress=False)
+        debugger.debug(df)
         if crypto:
             symbol = "@" + symbol[:-4]
         df = self._format_df(df, symbol)
-        df = df.loc[start:end]
         debugger.debug(f"From yfinance got: {df}")
+        debugger.debug(f"Filtering from {start} to {end}")
+        df = df.loc[start:end]
+
         return df
 
     @Broker._exception_handler
     def fetch_chain_info(self, symbol: str) -> Dict[str, Any]:
+        """
+        Return the list of option expirations dates available for the given symbol.
+        YFinance returns option chain data as tuple of expiration dates, formatted as "YYYY-MM-DD".
+        YFinance gets data from  NASDAQ, NYSE, and NYSE America, sp option expiration dates
+        use the Eastern Time Zone. (TODO: Check if this is correct)
+        """
         option_list = self.watch_ticker[symbol].options
         return {
             "id": "n/a",
-            "exp_dates": [convert_input_to_datetime(s, no_tz=True) for s in option_list],
+            "exp_dates": [str_to_datetime(date) for date in option_list],
             "multiplier": 100,
         }
 
     @Broker._exception_handler
     def fetch_chain_data(self, symbol: str, date: dt.datetime) -> pd.DataFrame:
+        """
+        Return the option chain list for a given symbol and expiration date.
+
+        YFinance returns option chain data in the Options class.
+        This class has two attributes: calls and puts, each which are DataFrames in the following format:
+            contractSymbol          lastTradeDate               strike      lastPrice   bid     ask     change  percentChange   volume  openInterest    impliedVolatility   inTheMoney  contractSize    currency
+        0   MSFT240614P00220000     2024-05-13 13:55:14+00:00   220.0       0.02        ...     ...     ...     ...             ...     ...             0.937501            False       REGULAR         USD
+        """
         if bool(self.option_cache) and symbol in self.option_cache and date in self.option_cache[symbol]:
             return self.option_cache[symbol][date]
 
@@ -197,14 +214,11 @@ class YahooBroker(Broker):
 
         chain = self.watch_ticker[symbol].option_chain(date_to_str(date))
 
-        print(f"From yfinance got: {chain}")
-
         puts = chain.puts
         puts["type"] = "put"
         calls = chain.calls
         calls["type"] = "call"
-        df = df.append(puts)
-        df = df.append(calls)
+        df = pd.concat([df, puts, calls])
 
         df = df.rename(columns={"contractSymbol": "occ_symbol"})
         df["exp_date"] = df.apply(lambda x: self.occ_to_data(x["occ_symbol"])[1], axis=1)
@@ -219,13 +233,14 @@ class YahooBroker(Broker):
 
     @Broker._exception_handler
     def fetch_option_market_data(self, occ_symbol: str) -> Dict[str, Any]:
+        """
+        Return the market data for a given option symbol.
+        """
         occ_symbol = occ_symbol.replace(" ", "")
         symbol, date, typ, _ = self.occ_to_data(occ_symbol)
         chain = self.watch_ticker[symbol].option_chain(date_to_str(date))
         chain = chain.calls if typ == "call" else chain.puts
         df = chain[chain["contractSymbol"] == occ_symbol]
-
-        debugger.debug(df)
         return {
             "price": float(df["lastPrice"].iloc[0]),
             "ask": float(df["ask"].iloc[0]),
@@ -234,9 +249,17 @@ class YahooBroker(Broker):
 
     @Broker._exception_handler
     def fetch_market_hours(self, date: datetime.date) -> Dict[str, Any]:
-        # yfinance does not support getting market hours,
-        # so use the free Tradier API instead.
-        # See documentation.tradier.com/brokerage-api/markets/get-clock
+        """
+        Get the market hours for the given date.
+        yfinance does not support getting market hours, so use the free Tradier API instead.
+        See documentation.tradier.com/brokerage-api/markets/get-clock
+
+        This API cannot be used to check market hours on a specific date, only the current day.
+        """
+
+        if date.date() != utc_current_time().date():
+            raise ValueError("Cannot check market hours for a specific date")
+
         response = requests.get(
             "https://api.tradier.com/v1/markets/clock",
             params={"delayed": "false"},
@@ -289,10 +312,25 @@ class YahooBroker(Broker):
     # ------------- Helper methods ------------- #
 
     def _format_df(self, df: pd.DataFrame, symbol: str) -> pd.DataFrame:
-        df = df.copy()
+        """
+        Format the DataFrame returned by yfinance to the format expected by the BrokerHub.
+
+        If the Dataframe contains 1 ticker, Yfinance returns with the following columns:
+            Open        High         Low       Close   Adj Close     Volume
+        Index is a pandas datetime index
+
+        If the Dataframe contains multiple tickers, Yfinance returns the following multi-index columns:
+
+        Price:  Open            High            Low             Close           Adj Close       Volume
+        Ticker: TICK1  TICK2    TICK1  TICK2    TICK1  TICK2    TICK1  TICK2    TICK1  TICK2    TICK1  TICK2
+        Index is a pandas datetime index
+
+        """
+        # df = df.copy()
         df.reset_index(inplace=True)
         ts_name = df.columns[0]
         df["timestamp"] = df[ts_name]
+        print(df)
         df = df.set_index(["timestamp"])
         d = df.index[0]
         if d.tzinfo is None or d.tzinfo.utcoffset(d) is None:
@@ -300,6 +338,9 @@ class YahooBroker(Broker):
         else:
             df = df.tz_convert(tz="UTC")
         df = df.drop([ts_name], axis=1)
+        # Drop adjusted close column
+        df = df.drop(["Adj Close"], axis=1)
+        print(df)
         df = df.rename(
             columns={
                 "Open": "open",
@@ -313,4 +354,8 @@ class YahooBroker(Broker):
 
         df.columns = pd.MultiIndex.from_product([[symbol], df.columns])
 
-        return df.dropna()
+        print(df)
+
+        df.dropna(inplace=True)
+
+        return df
