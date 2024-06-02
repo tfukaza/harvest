@@ -4,7 +4,7 @@ from functools import wraps
 from unittest import mock
 
 import pandas as pd
-from _test_util import mock_get_local_timezone, mock_utc_current_time
+from _util import mock_get_local_timezone, mock_utc_current_time
 
 from harvest.definitions import Account, Stats
 from harvest.enum import Interval
