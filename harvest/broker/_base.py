@@ -241,7 +241,7 @@ class Broker:
         This method is called at the interval specified by the user.
         It should create a dictionary where each key is the symbol for an asset,
         and the value is the corresponding data in the following pandas dataframe format:
-                      Symbol
+                      [TICKER]
                       open   high    low close   volume
             timestamp
             ---       ---    ---     --- ---     ---
@@ -308,7 +308,7 @@ class Broker:
         :param interval: The interval of requested historical data.
         :param start: The starting date of the period, inclusive.
         :param end: The ending date of the period, inclusive.
-        :returns: A pandas dataframe, same format as main()
+        :returns: A pandas dataframe, same format as self.step()
         """
         raise NotImplementedError(
             f"{type(self).__name__} class does not support the method {inspect.currentframe().f_code.co_name}."

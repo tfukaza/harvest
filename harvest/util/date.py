@@ -22,6 +22,13 @@ def utc_epoch_zero() -> dt.datetime:
     return dt.datetime(1970, 1, 1, tzinfo=tz.utc)
 
 
+def get_local_timezone() -> ZoneInfo:
+    """
+    Returns a datetime timezone instance for the user's current timezone using their system time.
+    """
+    return dt.datetime.now(None).astimezone().tzinfo
+
+
 def date_to_str(day: dt.date) -> str:
     """
     Returns a string representation of the date in the format YYYY-MM-DD
@@ -37,21 +44,22 @@ def str_to_date(day: str) -> dt.date:
     return dt.datetime.strptime(day, "%Y-%m-%d")
 
 
-def str_to_datetime(date: str) -> dt.datetime:
+def str_to_datetime(date: str, timezone: ZoneInfo = None) -> dt.datetime:
     """
     Returns a datetime object from a string.
+    If timezone is not specified, the timezone is assumed to be UTC-0.
     :date: A string in the format YYYY-MM-DD hh:mm
     """
     if len(date) <= 10:
-        return dt.datetime.strptime(date, "%Y-%m-%d")
-    return dt.datetime.strptime(date, "%Y-%m-%d %H:%M")
+        ret = dt.datetime.strptime(date, "%Y-%m-%d")
+    else:
+        ret = dt.datetime.strptime(date, "%Y-%m-%d %H:%M")
 
+    if timezone is None:
+        timezone = tz.utc
 
-def get_local_timezone() -> ZoneInfo:
-    """
-    Returns a datetime timezone instance for the user's current timezone using their system time.
-    """
-    return dt.datetime.now(tz.utc).astimezone().tzinfo
+    ret = ret.replace(tzinfo=timezone)
+    return ret
 
 
 def convert_input_to_datetime(datetime: Union[str, dt.datetime], timezone: ZoneInfo = None, no_tz=False) -> dt.datetime:
@@ -62,6 +70,10 @@ def convert_input_to_datetime(datetime: Union[str, dt.datetime], timezone: ZoneI
     covert it to UTC. If timezone is None then the system's local
     timezone is used.
     """
+
+    if timezone is None:
+        timezone = get_local_timezone()
+
     if datetime is None:
         return None
     elif isinstance(datetime, str):
@@ -75,8 +87,6 @@ def convert_input_to_datetime(datetime: Union[str, dt.datetime], timezone: ZoneI
         return datetime
 
     if not has_timezone(datetime):
-        if timezone is None:
-            timezone = get_local_timezone()
         datetime = datetime.replace(tzinfo=timezone)
 
     datetime = datetime.astimezone(tz.utc)

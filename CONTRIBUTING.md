@@ -24,6 +24,7 @@ pip install .
 ### Unit Testing
 After any modifications to the code, conduct unit tests by running:
 ```bash
+pip install . --upgrade --no-deps --force-reinstall
 python -m unittest discover -s tests/unittest
 ```
 from the project's root directory. This will run the tests defined in the `tests` directory.
