@@ -275,7 +275,7 @@ def aggregate_df(df, interval: Interval) -> pd.DataFrame:
     if unit == "HR":
         val = "H"
     elif unit == "MIN":
-        val += "T"
+        val += "min"
     else:
         val = "D"
     df = df.resample(val).agg(op_dict)

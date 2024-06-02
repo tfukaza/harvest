@@ -19,7 +19,6 @@ from harvest.definitions import (
     Stats,
 )
 from harvest.enum import BrokerType, DataBrokerType, Interval, StorageType, TradeBrokerType
-from harvest.server import Server
 from harvest.util.factory import load_broker, load_storage
 from harvest.util.helper import (
     check_interval,
@@ -73,7 +72,6 @@ class BrokerHub:
         self.console = Console()
 
     def _init_checks(self) -> None:
-        # Harvest only supports Python 3.9 or newer.
         if sys.version_info[0] < 3 or sys.version_info[1] < 9:
             raise Exception("Harvest requires Python 3.9 or above.")
 
@@ -125,8 +123,6 @@ class BrokerHub:
 
         self.watchlist = []  # List of securities specified in this class
         self.algo = []  # List of algorithms to run.
-
-        self.server = Server(self)  # Initialize the web interface server
 
         self.stats = Stats(None, tzlocal.get_localzone(), None)
 
@@ -211,7 +207,7 @@ class BrokerHub:
 
             # Initialize the account
             self._setup_account()
-            self.storage.init_performace_data(self.account.equity, self.stats.timestamp)
+            self.storage.init_performance_data(self.account.equity, self.stats.timestamp)
 
             # Initialize the storage
             self._storage_init(all_history)
@@ -228,6 +224,9 @@ class BrokerHub:
         self._print_status()
 
         if server:
+            from harvest.server import Server
+
+            self.server = Server(self)
             self.server.start()
 
         if self.start_data_broker:
