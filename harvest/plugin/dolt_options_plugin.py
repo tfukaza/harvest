@@ -21,9 +21,6 @@ class DoltOptionsPlugin(Plugin):
         self.read = read
 
     def installation(self) -> str:
-        """
-        Returns how to install the necessary prerequsites for this plugin.
-        """
         return """
         Useful Links:
         https://www.dolthub.com/

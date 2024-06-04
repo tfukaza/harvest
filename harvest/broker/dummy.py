@@ -1,4 +1,5 @@
 import datetime as dt
+import itertools
 import time
 from typing import Callable, Dict, Union
 
@@ -153,10 +154,8 @@ class DummyDataBroker(Broker):
 
         # Create a permutation of all the data
         data = []
-        for t in types:
-            for s in strikes:
-                for e in expirations:
-                    data.append([symbol, e, t, s])
+        for typ, strike, expiration in itertools.product(types, strikes, expirations):
+            data.append([symbol, expiration, typ, strike])
 
         # Create a DataFrame from the data
         # Columns are exp_date, strike, and type, with the index being the OCC symbol

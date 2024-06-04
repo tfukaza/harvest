@@ -349,7 +349,7 @@ class BaseStorage:
             self.storage_price[symbol][target] = self.storage_price[symbol][target].iloc[-self.price_storage_size :]
         self.storage_lock.release()
 
-    def init_performace_data(self, equity: float, timestamp: dt.datetime) -> None:
+    def init_performance_data(self, equity: float, timestamp: dt.datetime) -> None:
         for interval, _ in self.performance_history_intervals:
             self.storage_performance[interval] = pd.DataFrame({"equity": [equity]}, index=[timestamp])
 
