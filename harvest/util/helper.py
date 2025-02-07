@@ -4,11 +4,13 @@ import random
 import re
 import sys
 from datetime import timezone as tz
-from typing import Tuple, Union
+from typing import List, Tuple, Union
 
 import pandas as pd
+import polars as pl
 
-from harvest.enum import BrokerType, DataBrokerType, Interval, StorageType, TimeRange, TradeBrokerType
+from harvest.definitions import TickerFrame
+from harvest.enum import BrokerType, DataBrokerType, Interval, IntervalUnit, StorageType, TimeRange, TradeBrokerType
 from harvest.util.date import utc_current_time
 
 # Configure a logger used by all of Harvest.
@@ -81,6 +83,29 @@ def check_interval(time: dt.datetime, interval: Interval):
 
     val, _ = expand_interval(interval)
     return minutes % val == 0
+
+
+def applicable_intervals_for_time(time: dt.datetime) -> List[Interval]:
+    """
+    Returns a list of intervals that are applicable for the given time.
+    For example, 11:45 UTC is applicable for 1MIN, 5MIN and 15MIN, but not 30MIN, 1HR, or 1DAY.
+    """
+    time = time.astimezone(tz.utc)
+    minute = time.minute
+    hour = time.hour
+
+    applicable_intervals = [Interval.MIN_1]
+    if minute % 5 == 0:
+        applicable_intervals.append(Interval.MIN_5)
+    if minute % 15 == 0:
+        applicable_intervals.append(Interval.MIN_15)
+    if minute % 30 == 0:
+        applicable_intervals.append(Interval.MIN_30)
+    if minute == 0:
+        applicable_intervals.append(Interval.HR_1)
+    if hour == 0 and minute == 0:
+        applicable_intervals.append(Interval.DAY_1)
+    return applicable_intervals
 
 
 def expand_interval(interval: Interval) -> Tuple[int, str]:
@@ -284,6 +309,23 @@ def aggregate_df(df, interval: Interval) -> pd.DataFrame:
     return df.dropna()
 
 
+def aggregate_pl_df(df, interval: Interval) -> pl.DataFrame:
+    """
+    Aggregate the dataframe data points to the given interval.
+    """
+    # symbol = df.columns[0]
+    # df = df.filter(pl.col("symbol") == symbol)
+    # df = df.group_by_dynamic("timestamp", every=interval_to_timedelta(interval)).agg(
+    #     pl.col("open").first(),
+    #     pl.col("high").max(),
+    #     pl.col("low").min(),
+    #     pl.col("close").last(),
+    #     pl.col("volume").sum(),
+    # )
+    df = df.group_by_dynamic("timestamp", every=interval_to_timedelta(interval)).agg(pl.col("price").last())
+    return df
+
+
 def floor_trim_df(df, base_interval: Interval, agg_interval: Interval):
     """
     This function takes a dataframe, and trims off rows
@@ -351,3 +393,36 @@ def gen_data(symbol: str, points: int = 50) -> pd.DataFrame:
     df.columns = pd.MultiIndex.from_product([[symbol], df.columns])
 
     return df
+
+
+def generate_ticker_frame(
+    symbol: str,
+    interval: Interval,
+    count: int = 50,
+    start: dt.datetime | None = None,
+) -> TickerFrame:
+    if start is None:
+        start = dt.datetime(1970, 1, 1)
+
+    delta_param = {}
+    if interval.unit == IntervalUnit.MIN:
+        delta_param["minutes"] = interval.interval_value
+    elif interval.unit == IntervalUnit.HR:
+        delta_param["hours"] = interval.interval_value
+    elif interval.unit == IntervalUnit.DAY:
+        delta_param["days"] = interval.interval_value
+
+    df = pl.DataFrame(
+        {
+            "timestamp": [start + dt.timedelta(**delta_param) * i for i in range(count)],
+            "symbol": [symbol] * count,
+            "interval": [str(interval)] * count,
+            "open": [random.random() for _ in range(count)],
+            "high": [random.random() for _ in range(count)],
+            "low": [random.random() for _ in range(count)],
+            "close": [random.random() for _ in range(count)],
+            "volume": [random.random() for _ in range(count)],
+        }
+    )
+
+    return TickerFrame(df)

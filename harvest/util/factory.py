@@ -29,7 +29,7 @@ def load_storage(storage_type: StorageType) -> BaseStorage:
 
 def load_broker(broker_type: BrokerType):
     if broker_type.value == BrokerType.DUMMY.value:
-        from harvest.broker.dummy import DummyDataBroker
+        from harvest.broker.mock import DummyDataBroker
 
         return DummyDataBroker
     elif broker_type.value == BrokerType.YAHOO.value:

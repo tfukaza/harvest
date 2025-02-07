@@ -4,7 +4,7 @@ import unittest
 import pandas as pd
 from pandas.testing import assert_frame_equal
 
-from harvest.broker.dummy import DummyDataBroker
+from harvest.broker.mock import DummyDataBroker
 from harvest.definitions import Account, Stats
 from harvest.enum import Interval
 from harvest.util.date import get_local_timezone

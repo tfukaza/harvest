@@ -1,11 +1,14 @@
 import math
 from datetime import timezone
-from typing import List, Tuple
+from typing import List, Literal
 
 import numpy as np
 import pandas as pd
 from finta import TA
 
+# from harvest.broker import Broker
+from harvest.client import Client
+from harvest.definitions import Account, RuntimeData
 from harvest.enum import Interval
 from harvest.plugin._base import Plugin
 from harvest.util.date import convert_input_to_datetime, datetime_utc_to_local, pandas_timestamp_to_local
@@ -21,44 +24,28 @@ Algo class is the main interface between users and the program.
 """
 
 
-class BaseAlgo:
-    """The BaseAlgo class is an abstract class defining the interface for users to
+class Algorithm:
+    """The Algorithm class is an abstract class defining the interface for users to
     track assets, monitor their accounts, and place orders.
     It also provides function for technical analysis.
     """
 
-    def __init__(self):
-        self.interval = None  # Interval to run the algorithm
-        self.aggregations = None  # Intervals to aggregate data
-        self.watchlist = []  # List of assets this algorithm tracks
+    watch_list: List[str]  # List of assets this algorithm tracks
+    interval: Interval  # Interval to run the algorithm
 
-    def init(self, stats, func, account):
+    client: Client  # Broker object
+    stats: RuntimeData  # Stats object
+    account: Account  # Account object
+
+    def __init__(self, watch_list: List[str], interval: Interval, aggregations: List[Interval]):
+        self.interval = interval
+        self.aggregations = aggregations
+        self.watch_list = watch_list
+
+    def initialize_algorithm(self, client: Client, stats: RuntimeData, account: Account):
+        self.client = client
         self.stats = stats
-        self.func = func
         self.account = account
-        self.positions = account.positions
-
-    def config(self):
-        """
-        This method is called before all other methods (except for __init__) and initializes parameters for this class.
-
-        - interval: The string specifying the interval to run the algorithm. Choose from "15SEC", "1MIN", "5MIN", "15MIN", "30MIN", "1HR", "1DAY".
-        - aggregations: A List of strings specifying the intervals to aggregate data. Choose from "1MIN", "5MIN", "15MIN", "30MIN", "1HR", "1DAY".
-        - watchlist: A List of strings specifying the stock/crypto assets this algorithm tracks. Crypto assets must be prepended with a '@' symbol.
-
-        Any parameters set to None or an empty List will fall back to respective parameters set in the Trader class.
-
-        Example
-        ```python
-        def config(self):
-            self.interval = "5MIN"
-            self.aggregations = ["15MIN", "30MIN", "1DAY"]
-            self.watchlist = ["AAPL", "@BTC"]
-        ```
-        """
-        self.interval = None
-        self.aggregations = None
-        self.watchlist = []
 
     def setup(self):
         """
@@ -86,9 +73,9 @@ class BaseAlgo:
 
     def buy(
         self,
-        symbol: str = None,
-        quantity: int = None,
-        in_force: str = "gtc",
+        symbol: str,
+        quantity: float,
+        in_force: Literal["gtc", "gtd"] = "gtc",
         extended: bool = False,
     ):
         """
@@ -98,15 +85,13 @@ class BaseAlgo:
         price 5% higher than the current price. This is a general function that can
         be used to buy stocks, crypto, and options.
 
-        :param str? symbol: Symbol of the asset to buy.
-            If not specified, defaults to first symbol in watchlist.
+        :param str symbol: Symbol of the asset to buy.
             Crypto assets must be prepended with a '@' symbol.
             When buying options, the symbol must be formatted in OCC format.
-        :param float? quantity: Quantity of asset to buy. If not specified,
-            it will buy as many as possible given the current buying power.
-        :param str? in_force: Duration the order is in force.
-            Choose from 'gtc' (Good 'til canceled) or 'gtd' (). defaults to 'gtc'
-        :param str? extended: Whether to trade in extended hours or not. Defaults to False
+        :param float quantity: Quantity of asset to buy. Note that this number can be a decimal only if the broker supports fractional trades.
+        :param Literal["gtc", "gtd"]? in_force: Duration the order is in force.
+            Choose from 'gtc' (Good 'til canceled) or 'gtd' (Good 'til date). defaults to 'gtc'
+        :param bool? extended: Whether to trade in extended hours or not. Defaults to False
 
         :returns: The following Python dictionary
             - order_id: str, ID of order
@@ -114,19 +99,14 @@ class BaseAlgo:
 
         :raises Exception: There is an error in the order process.
         """
-        if symbol is None:
-            symbol = self.watchlist[0]
-        if quantity is None:
-            quantity = self.get_asset_max_quantity(symbol)
-
-        debugger.debug(f"Algo BUY: {symbol}, {quantity}")
-        return self.func.buy(symbol, quantity, in_force, extended)
+        debugger.debug(f"Submitted buy order for {symbol} with quantity {quantity}")
+        return self.client.buy(symbol, quantity, in_force, extended)
 
     def sell(
         self,
-        symbol: str = None,
-        quantity: int = None,
-        in_force: str = "gtc",
+        symbol: str,
+        quantity: float,
+        in_force: Literal["gtc", "gtd"] = "gtc",
         extended: bool = False,
     ):
         """Sells the specified asset.
@@ -135,15 +115,14 @@ class BaseAlgo:
         price 5% lower than the current price. This is a general function that can
         be used to sell stocks, crypto, and options.
 
-        :param str? symbol: Symbol of the asset to sell.
-            If not specified, defaults to first symbol in watchlist.
+        :param str symbol: Symbol of the asset to sell.
             Crypto assets must be prepended with a '@' symbol.
             When selling options, the symbol must be formatted in OCC format.
-        :param float? quantity: Quantity of asset to sell. If not specified,
+        :param float quantity: Quantity of asset to sell. If not specified,
             it will sell all currently owned quantity.
-        :param str? in_force: Duration the order is in force.
-            Choose from 'gtc' (Good 'til canceled) or 'gtd' (). Defaults to 'gtc'
-        :param str? extended: Whether to trade in extended hours or not. Defaults to False
+        :param Literal["gtc", "gtd"]? in_force: Duration the order is in force.
+            Choose from 'gtc' (Good 'til canceled) or 'gtd' (Good 'til date). Defaults to 'gtc'
+        :param bool? extended: Whether to trade in extended hours or not. Defaults to False
 
         :returns: A dictionary with the following keys:
             - order_id: str, ID of order
@@ -151,12 +130,8 @@ class BaseAlgo:
 
         :raises Exception: There is an error in the order process.
         """
-        if symbol is None:
-            symbol = self.watchlist[0]
-        if quantity is None:
-            quantity = self.get_asset_quantity(symbol)
 
-        debugger.debug(f"Algo SELL: {symbol}, {quantity}")
+        debugger.debug(f"Submitted sell order for {symbol} with quantity {quantity}")
         return self.func.sell(symbol, quantity, in_force, extended)
 
     def sell_all_options(self, symbol: str = None, in_force: str = "gtc"):
