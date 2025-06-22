@@ -6,7 +6,6 @@ from typing import Callable, Dict
 from zoneinfo import ZoneInfo
 
 import numpy as np
-import pandas as pd
 import polars as pl
 
 from harvest.broker._base import Broker
@@ -43,7 +42,7 @@ class MockBroker(Broker):
 
     def __init__(
         self,
-        current_time: dt.datetime | None = None,
+        current_time: dt.datetime | str | None = None,
         epoch: dt.datetime | None = None,
         stock_market_times: bool = False,
         realistic_simulation: bool = True,
@@ -57,6 +56,9 @@ class MockBroker(Broker):
         # The current_time is used to let users go back in time.
         if current_time is None:
             self.current_time = utc_current_time()
+        elif isinstance(current_time, str):
+            # Parse string datetime in format "YYYY-MM-DD HH:MM"
+            self.current_time = dt.datetime.strptime(current_time, "%Y-%m-%d %H:%M").replace(tzinfo=dt.timezone.utc)
         else:
             self.current_time = current_time
 
@@ -85,7 +87,7 @@ class MockBroker(Broker):
     def start(
         self,
         watch_dict: dict[Interval, list[str]],
-        step_callback: Callable[[dict[Interval, dict[str, pd.DataFrame]]], None],
+        step_callback: Callable[[dict[Interval, dict[str, pl.DataFrame]]], None],
     ) -> None:
         self.watch_dict = watch_dict
         self.step_callback = step_callback
@@ -136,23 +138,24 @@ class MockBroker(Broker):
 
         count = int((end - start).total_seconds() // interval_to_timedelta(interval).total_seconds())
 
-        start = self.stats.utc_timestamp
+        # Calculate the aligned start time for the current time
+        aligned_start = self.stats.utc_timestamp
         if interval.unit == IntervalUnit.MIN:
-            start = start.replace(
-                minute=start.minute // interval.interval_value * interval.interval_value, second=0, microsecond=0
+            aligned_start = aligned_start.replace(
+                minute=aligned_start.minute // interval.interval_value * interval.interval_value, second=0, microsecond=0
             )
         elif interval.unit == IntervalUnit.HR:
-            start = start.replace(hour=start.hour, minute=0, second=0, microsecond=0)
+            aligned_start = aligned_start.replace(hour=aligned_start.hour, minute=0, second=0, microsecond=0)
         elif interval.unit == IntervalUnit.DAY:
-            start = start.replace(hour=0, minute=0, second=0, microsecond=0)
+            aligned_start = aligned_start.replace(hour=0, minute=0, second=0, microsecond=0)
 
-        start = start - interval_to_timedelta(interval) * count
+        aligned_start = aligned_start - interval_to_timedelta(interval) * count
 
         frame = generate_ticker_frame(
             symbol,
             interval,
             count,
-            start,
+            aligned_start,
         )
         # Frame will have candles for intervals up to but not including the current time.
         # For example if the current time is 10:00 AM and interval is 5 minute,
@@ -286,7 +289,7 @@ class MockBroker(Broker):
 
     # ------------- Helper methods ------------- #
 
-    # def fetch_latest_ohlc(self) -> Dict[str, pd.DataFrame]:
+    # def fetch_latest_ohlc(self) -> Dict[str, pl.DataFrame]:
     #     df_dict = {}
     #     end = self.get_current_time()
     #     start = end - dt.timedelta(days=3)
@@ -401,13 +404,10 @@ class MockBroker(Broker):
         else:
             raise Exception(f"Unsupported interval {interval}.")
 
-        print(original_start, original_end, start, end)
-
         start_index = int((start - self.epoch).total_seconds() // divider)
         end_index = int(((end - self.epoch).total_seconds() - divider) // divider) + 1
         num_of_random = end_index - start_index
 
-        print(start_index, end_index, num_of_random, interval)
 
         if symbol in self.mock_price_history:
             if interval in self.mock_price_history[symbol]:
@@ -423,9 +423,6 @@ class MockBroker(Broker):
                 else:
                     one_min_history = self.mock_price_history[symbol][Interval.MIN_1]
                     history = aggregate_pl_df(one_min_history, interval)
-                    print(one_min_history)
-                    print(f"Aggregated {interval} from {Interval.MIN_1} for {symbol}")
-                    print(history)
                 # else:
                 #     self.generate_history(symbol, Interval.MIN_1, original_start, original_end)
                 #     one_min_history = self.mock_price_history[symbol][Interval.MIN_1]
@@ -433,7 +430,6 @@ class MockBroker(Broker):
 
             # If there is not enough data to generate the new interval, we generate more data
             if len(history) < num_of_random:
-                print("Generating more data")
                 rng = self.rng[symbol]
                 adjusted_num_of_random = num_of_random - len(history)
                 if interval == Interval.MIN_1:
@@ -481,7 +477,6 @@ class MockBroker(Broker):
         # get the rows by index
         prices = prices.filter(pl.col("timestamp") >= start, pl.col("timestamp") <= end)
         # Prevent prices from going negative
-        print(prices)
         prices = prices.with_columns(pl.when(pl.col("price") < 0).then(0.01).otherwise(pl.col("price")))
 
         # Calculate ohlc from the prices

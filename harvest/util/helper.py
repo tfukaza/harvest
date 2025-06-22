@@ -4,9 +4,8 @@ import random
 import re
 import sys
 from datetime import timezone as tz
-from typing import List, Tuple, Union
+from typing import List, Union
 
-import pandas as pd
 import polars as pl
 
 from harvest.definitions import TickerFrame
@@ -108,7 +107,7 @@ def applicable_intervals_for_time(time: dt.datetime) -> List[Interval]:
     return applicable_intervals
 
 
-def expand_interval(interval: Interval) -> Tuple[int, str]:
+def expand_interval(interval: Interval) -> tuple[int, str]:
     """
     Given a IntEnum interval, returns the unit of time and the number of units.
     """
@@ -117,7 +116,7 @@ def expand_interval(interval: Interval) -> Tuple[int, str]:
     return int(value), unit
 
 
-def expand_string_interval(interval: str) -> Tuple[int, str]:
+def expand_string_interval(interval: str) -> tuple[int, str]:
     """
     Given a string interval, returns the unit of time and the number of units.
     For example, "3DAY" should return (3, "DAY")
@@ -151,7 +150,7 @@ def symbol_type(symbol: str) -> str:
         return "STOCK"
 
 
-def occ_to_data(symbol: str) -> Tuple[str, dt.datetime, str, float]:
+def occ_to_data(symbol: str) -> tuple[str, dt.datetime, str, float]:
     """
     Converts options OCC symbol to data.
     For example, "AAPL  210319C00123000" should return ("AAPL", dt.datetime(2021, 3, 19), "call", 123)
@@ -278,11 +277,12 @@ def str_to_storage_type(name: str) -> StorageType:
 # =========== DataFrame utils ===========
 
 
-def normalize_pandas_dt_index(df: pd.DataFrame) -> pd.Index:
-    return df.index.floor("min")
+# def normalize_pandas_dt_index(df: pl.DataFrame) -> pd.Index:
+#     # Deprecated: pandas-specific, not needed with polars
+#     pass
 
 
-def aggregate_df(df, interval: Interval) -> pd.DataFrame:
+def aggregate_df(df, interval: Interval) -> pl.DataFrame:
     """
     Aggregate the dataframe data points to the given interval.
     """
@@ -379,10 +379,10 @@ def is_crypto(symbol: str) -> bool:
 ############ Functions used for testing #################
 
 
-def gen_data(symbol: str, points: int = 50) -> pd.DataFrame:
+def gen_data(symbol: str, points: int = 50) -> pl.DataFrame:
     n = utc_current_time()
     index = [n - dt.timedelta(minutes=1) * i for i in range(points)][::-1]
-    df = pd.DataFrame(index=index, columns=["low", "high", "close", "open", "volume"])
+    df = pl.DataFrame(index=index, columns=["low", "high", "close", "open", "volume"])
     df.index.rename("timestamp", inplace=True)
     df["low"] = [random.random() for _ in range(points)]
     df["high"] = [random.random() for _ in range(points)]

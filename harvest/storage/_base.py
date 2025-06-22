@@ -1,7 +1,6 @@
 import datetime as dt
 import sqlite3
 
-import pandas as pd
 import polars as pl
 import sqlalchemy
 from sqlalchemy.dialects.sqlite import insert
@@ -13,7 +12,7 @@ from harvest.enum import Interval
 from harvest.util.helper import debugger
 
 """
-This module serves as a basic storage system for pandas dataframes in memory.
+This module serves as a basic storage system for polars dataframes in memory.
 It is made to be a simplistic interface for the trader class to store various data,
 such as stock price history and transaction history of the algorithm.
 
@@ -46,7 +45,7 @@ All implementations of Storage class must store the following data:
     duration increases.
 - Algorithm Performance History: Same as account performance history, but for individual algorithms.
 
-The exact implementation of these databases is up to the classes that inherit from BaseStorage,
+The exact implementation of these databases is up to the classes that inherit from Storage,
 as long as they implement the API properly.
 """
 
@@ -145,8 +144,8 @@ class Storage:
         # self.transaction_storage_limit = transaction_storage_limit
         # self.performance_storage_limit = performance_storage_limit
 
-        # BaseStorage uses a python dictionary to store the data,
-        # where key is asset symbol and value is a pandas dataframe.
+        # Storage uses a python dictionary to store the data,
+        # where key is asset symbol and value is a polars dataframe.
 
         # price_history_schema = pl.DataFrame(
         #     schema={
@@ -185,8 +184,8 @@ class Storage:
         #     connection=self.db_engine,
         # )
 
-        # # self.storage_daytrade = pd.DataFrame(columns=["timestamp", "symbol"])
-        # # self.storage_calendar = pd.DataFrame(columns=["is_open", "open_at", "close_at"], index=[])
+        # # self.storage_daytrade = pl.DataFrame(columns=["timestamp", "symbol"])
+        # # self.storage_calendar = pl.DataFrame(columns=["is_open", "open_at", "close_at"], index=[])
 
         # account_performance_history_schema = pl.DataFrame(
         #     schema={
@@ -349,7 +348,7 @@ class Storage:
     #     is_open = data["is_open"]
     #     open_at = data["open_at"]
     #     close_at = data["close_at"]
-    #     df = pd.DataFrame(
+    #     df = pl.DataFrame(
     #         [[is_open, open_at, close_at]],
     #         columns=["is_open", "open_at", "close_at"],
     #         index=[timestamp],
@@ -438,10 +437,10 @@ class Storage:
 
         return TransactionFrame(frame)
 
-    # def load_daytrade(self) -> pd.DataFrame:
+    # def load_daytrade(self) -> pl.DataFrame:
     #     return self.storage_daytrade
 
-    # def load_calendar(self) -> pd.DataFrame:
+    # def load_calendar(self) -> pl.DataFrame:
     #     return self.storage_calendar
 
     # def reset(self, symbol: str, interval: Interval) -> None:
@@ -449,15 +448,15 @@ class Storage:
     #     Resets to an empty dataframe
     #     """
     #     self.storage_lock.acquire()
-    #     self.price_history = pd.DataFrame()
+    #     self.price_history = pl.DataFrame()
     #     self.storage_lock.release()
 
     def _append(
         self,
-        current_data: pd.DataFrame,
-        new_data: pd.DataFrame,
+        current_data: pl.DataFrame,
+        new_data: pl.DataFrame,
         remove_duplicate: bool = True,
-    ) -> pd.DataFrame:
+    ) -> pl.DataFrame:
         """
         Appends the data as best it can with gaps in the data for weekends
         and time when no data is collected.
@@ -466,7 +465,7 @@ class Storage:
         :new_data: data coming from the the broker's API call
         """
 
-        new_df = pd.concat([current_data, new_data])
+        new_df = pl.concat([current_data, new_data])
         if remove_duplicate:
             new_df = new_df[~new_df.index.duplicated(keep="last")].sort_index()
         return new_df
@@ -495,7 +494,7 @@ class Storage:
 
     # def init_performance_data(self, equity: float, timestamp: dt.datetime) -> None:
     #     for interval, _ in self.performance_history_intervals:
-    #         self.storage_performance[interval] = pd.DataFrame({"equity": [equity]}, index=[timestamp])
+    #         self.storage_performance[interval] = pl.DataFrame({"equity": [equity]}, index=[timestamp])
 
     def add_performance_data(self, equity: float, timestamp: dt.datetime) -> None:
         """
@@ -515,7 +514,7 @@ class Storage:
         #     cutoff = timestamp - dt.timedelta(days=days)
         #     if df.index[0] < cutoff:
         #         df = df.loc[df.index >= cutoff]
-        #     df = pd.concat([df, pd.DataFrame({"equity": [equity]}, index=[timestamp])])
+        #     df = pl.concat([df, pl.DataFrame({"equity": [equity]}, index=[timestamp])])
         #     self.storage_performance[interval] = df
 
         # # Performance history intervals after '3 MONTHS' are populated
@@ -524,9 +523,9 @@ class Storage:
         #     df = self.storage_performance[interval]
         #     if df.index[-1].date() == timestamp.date():
         #         df = df.iloc[:-1]
-        #         df = pd.concat([df, pd.DataFrame({"equity": [equity]}, index=[timestamp])])
+        #         df = pl.concat([df, pl.DataFrame({"equity": [equity]}, index=[timestamp])])
         #     else:
-        #         df = pd.concat([df, pd.DataFrame({"equity": [equity]}, index=[timestamp])])
+        #         df = pl.concat([df, pl.DataFrame({"equity": [equity]}, index=[timestamp])])
         #         cutoff = timestamp - dt.timedelta(days=days)
         #         if df.index[0] < cutoff:
         #             df = df.loc[df.index >= cutoff]
@@ -535,11 +534,11 @@ class Storage:
         # df = self.storage_performance["ALL"]
         # if df.index[-1].date() == timestamp.date():
         #     df = df.iloc[:-1]
-        # df = pd.concat([df, pd.DataFrame({"equity": [equity]}, index=[timestamp])])
+        # df = pl.concat([df, pl.DataFrame({"equity": [equity]}, index=[timestamp])])
         # self.storage_performance["ALL"] = df
 
-        self.account_performance_history = pd.concat(
-            [self.account_performance_history, pd.DataFrame({"equity": [equity]}, index=[timestamp])]
+        self.account_performance_history = pl.concat(
+            [self.account_performance_history, pl.DataFrame({"equity": [equity]}, index=[timestamp])]
         )
 
         debugger.debug("Performance data added")

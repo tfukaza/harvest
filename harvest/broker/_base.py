@@ -3,7 +3,7 @@ import datetime as dt
 import time
 from abc import abstractmethod
 from os.path import exists
-from typing import Any, Callable, Dict, Tuple
+from typing import Any, Callable, Dict
 
 # Third-party imports
 import pandas as pd
@@ -766,7 +766,7 @@ class Broker:
     def data_to_occ(self, symbol: str, date: dt.datetime, option_type: str, price: float) -> str:
         return data_to_occ(symbol, date, option_type, price)
 
-    def occ_to_data(self, symbol: str) -> Tuple[str, dt.datetime, str, float]:
+    def occ_to_data(self, symbol: str) -> tuple[str, dt.datetime, str, float]:
         return occ_to_data(symbol)
 
     def current_timestamp(self) -> dt.datetime:

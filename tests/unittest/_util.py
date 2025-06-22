@@ -1,9 +1,13 @@
 import datetime as dt
 import functools
 import os
+from typing import TYPE_CHECKING
 
-from harvest.algo import BaseAlgo
 from harvest.trader.trader import BrokerHub
+from harvest.enum import Interval
+
+# Import Algorithm for runtime use
+from harvest.algorithm import Algorithm
 
 """
 For testing purposes, assume:
@@ -36,8 +40,9 @@ def create_trader_and_api(
     init_algos=None,
 ):
     # Empty algo for testing purposes
-    class EmptyAlgo(BaseAlgo):
-        pass
+    class EmptyAlgo(Algorithm):
+        def __init__(self):
+            super().__init__(watch_list=["AAPL"], interval=Interval.MIN_1, aggregations=[])
 
     bh = BrokerHub(data_broker=streamer, trade_broker=broker, debug=True)
     bh.set_symbol(symbols)

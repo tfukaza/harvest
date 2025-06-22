@@ -3,7 +3,7 @@ from datetime import timezone as tz
 from typing import Union
 from zoneinfo import ZoneInfo
 
-import pandas as pd
+import polars as pl
 
 # ========== Date utils ==========
 
@@ -97,26 +97,23 @@ def has_timezone(date: dt.datetime) -> bool:
     return date.tzinfo is not None and date.tzinfo.utcoffset(date) is not None
 
 
-def pandas_timestamp_to_local(df: pd.DataFrame, timezone: ZoneInfo) -> pd.DataFrame:
+def pandas_timestamp_to_local(df: pl.DataFrame, timezone: ZoneInfo) -> pl.DataFrame:
     """
-    Converts the timestamp of a Pandas dataframe to a timezone naive DateTime object in local time.
+    Converts the timestamp column of a polars DataFrame to a timezone naive DateTime object in local time.
     """
-    df.index = pd.DatetimeIndex(
-        map(
-            lambda x: x.astimezone(timezone).replace(tzinfo=None),
-            df.index.to_pydatetime(),
-        )
+    return df.with_columns(
+        pl.col("timestamp").dt.convert_time_zone(str(timezone)).dt.replace_time_zone(None)
     )
-    return df
 
 
-def pandas_datetime_to_utc(df: pd.DataFrame, timezone: ZoneInfo) -> pd.DataFrame:
+def pandas_datetime_to_utc(df: pl.DataFrame, timezone: ZoneInfo) -> pl.DataFrame:
     """
-    Converts timezone naive datetime index of dataframes to a timezone aware datetime index
+    Converts timezone naive datetime column of polars dataframes to a timezone aware datetime column
     adjusted to UTC timezone.
     """
-    df.index = df.index.map(lambda x: x.replace(tzinfo=timezone).astimezone(tz.utc))
-    return df
+    return df.with_columns(
+        pl.col("timestamp").dt.replace_time_zone(str(timezone)).dt.convert_time_zone("UTC")
+    )
 
 
 def datetime_utc_to_local(date_time: dt.datetime, timezone: ZoneInfo) -> dt.datetime:

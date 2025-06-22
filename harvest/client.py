@@ -2,7 +2,7 @@ import sys
 from sys import exit
 from typing import Dict, List, Union
 
-import pandas as pd
+import polars as pl
 from rich.console import Console
 
 from harvest.algorithm import Algorithm
@@ -282,7 +282,7 @@ class Client:
 
     # ================== Functions for main routine =====================
 
-    def tick(self, df_dict: Dict[str, pd.DataFrame]) -> None:
+    def tick(self, df_dict: Dict[str, pl.DataFrame]) -> None:
         """
         Main loop of the Trader.
         """
@@ -374,7 +374,7 @@ class Client:
         # if an order was processed, update the positions and account info
         return order_filled
 
-    def _update_local_cache(self, df_dict: Dict[str, pd.DataFrame]) -> None:
+    def _update_local_cache(self, df_dict: Dict[str, pl.DataFrame]) -> None:
         """Update local cache of stocks, options, and crypto positions"""
         # Update entries in local cache
         # API should also be called if load_watch is false, as there is a high chance
