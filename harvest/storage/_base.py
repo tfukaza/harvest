@@ -307,12 +307,20 @@ class LocalAlgorithmStorage:
 
             self.transaction_history_oldest_timestamp[symbol] = new_oldest_timestamp
 
-        # Insert new transaction
-        df.write_database(
-            table_name="transaction_history",
-            connection=self.db_engine,
-            if_table_exists="append",
-        )
+        # Insert new transaction using SQLAlchemy directly
+        stmt = insert(TransactionHistory).values([{
+            "timestamp": transaction.timestamp,
+            "symbol": transaction.symbol,
+            "event": transaction.event,
+            "algorithm_name": transaction.algorithm_name,
+            "side": transaction.side.value,
+            "quantity": transaction.quantity,
+            "price": transaction.price,
+        }])
+
+        with Session(self.db_engine) as session:
+            session.execute(stmt)
+            session.commit()
 
     def get_transaction_history(
         self,
