@@ -96,7 +96,7 @@ class MockBroker(Broker):
     def start(
         self,
         watch_dict: dict[Interval, list[str]],
-        step_callback: Callable[[dict[Interval, dict[str, pl.DataFrame]]], None],
+        step_callback: Callable[[dict[Interval, dict[str, pl.DataFrame]]], None] | None = None,
     ) -> None:
         self.watch_dict = watch_dict
         self.step_callback = step_callback
@@ -521,3 +521,24 @@ class MockBroker(Broker):
         results = results.filter(pl.col("timestamp") <= end)
 
         return results
+
+    def _get_supported_intervals_tickers(self) -> dict[Interval, list[str]]:
+        """
+        Get mapping of supported intervals to supported tickers for MockBroker.
+
+        MockBroker supports common tickers for all intervals.
+        """
+        # Common test tickers
+        common_tickers = ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", "META", "NVDA", "NFLX", "DIS"]
+
+        # MockBroker supports all intervals with the same ticker set
+        return {interval: common_tickers for interval in self.interval_list}
+
+    def supports_symbol(self, symbol: str) -> bool:
+        """
+        Check if MockBroker supports the specified symbol.
+
+        MockBroker supports common test symbols.
+        """
+        supported_symbols = ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", "META", "NVDA", "NFLX", "DIS"]
+        return symbol in supported_symbols

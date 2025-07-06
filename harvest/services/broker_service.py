@@ -3,7 +3,8 @@ from typing import TYPE_CHECKING, Dict, Any
 
 from .service_interface import Service
 from ..events.event_bus import EventBus
-from ..definitions import Order, Account, Position, OrderSide
+from ..definitions import Order, Account, Position, OrderSide, BrokerCapabilities, AssetType
+from ..enum import Interval
 from ..util.helper import mark_up, mark_down
 
 if TYPE_CHECKING:
@@ -272,3 +273,68 @@ class BrokerService(Service):
         # This would be implemented as a background monitoring task
         # that checks for order fills and publishes events
         pass
+
+    def get_broker_capabilities(self, brokerage: str = "default") -> BrokerCapabilities:
+        """
+        Get capabilities of a specific broker.
+
+        :brokerage: Name of the brokerage to query
+        :returns: BrokerCapabilities object containing broker capabilities
+        """
+        broker = self._get_broker(brokerage)
+        if hasattr(broker, 'get_broker_capabilities'):
+            return broker.get_broker_capabilities()
+
+        # Fallback for older broker implementations
+        return BrokerCapabilities(
+            broker_id=broker.__class__.__name__,
+            supported_intervals_tickers={},  # Empty dict for legacy brokers
+            exchange=getattr(broker, 'exchange', 'unknown'),
+            supported_asset_types=[AssetType.STOCK, AssetType.CRYPTO, AssetType.OPTION],
+            features=["basic_trading"]
+        )
+
+    def get_all_broker_capabilities(self) -> dict[str, BrokerCapabilities]:
+        """Get capabilities of all available brokers"""
+        capabilities = {}
+        for brokerage_name, broker in self.brokers.items():
+            try:
+                capabilities[brokerage_name] = self.get_broker_capabilities(brokerage_name)
+            except Exception as e:
+                # Create a minimal capabilities object for error cases
+                capabilities[brokerage_name] = BrokerCapabilities(
+                    broker_id=f"{brokerage_name}_error",
+                    supported_intervals_tickers={},
+                    exchange="unknown",
+                    supported_asset_types=[],
+                    features=[]
+                )
+        return capabilities
+
+    def supports_symbol_and_interval(self, symbol: str, interval: str, brokerage: str = "default") -> bool:
+        """
+        Check if a broker supports trading a specific symbol at a specific interval.
+
+        :symbol: Symbol to check
+        :interval: Interval to check (string representation)
+        :brokerage: Broker to check
+        :returns: True if supported, False otherwise
+        """
+        try:
+            capabilities = self.get_broker_capabilities(brokerage)
+
+            # Convert string to Interval enum if needed
+            interval_enum = None
+            for enum_val in Interval:
+                if str(enum_val) == interval or enum_val.value == interval:
+                    interval_enum = enum_val
+                    break
+
+            if interval_enum is None:
+                return False
+
+            # Check if the broker supports this specific symbol for this interval
+            return capabilities.supports_symbol_for_interval(symbol, interval_enum)
+
+        except Exception:
+            return False

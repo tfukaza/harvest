@@ -133,9 +133,86 @@ class Algorithm:
 
     def setup_event_subscriptions(self) -> None:
         """Subscribe to relevant events"""
-        self.event_bus.subscribe('price_update', self._handle_price_update)
-        self.event_bus.subscribe('order_filled', self._handle_order_filled)
-        self.event_bus.subscribe('account_update', self._handle_account_update)
+        self.event_bus.subscribe('price_update', self._handle_price_update_event)
+        self.event_bus.subscribe('order_filled', self._handle_order_filled_event)
+        self.event_bus.subscribe('account_update', self._handle_account_update_event)
+
+    def subscribe_to_price_updates(self, symbols: list[str] | None = None,
+                                 intervals: list[Interval] | None = None,
+                                 broker_id: str | None = None) -> str:
+        """
+        Subscribe to price updates with optional filtering.
+
+        :symbols: List of symbols to filter by (None for all symbols in watchlist)
+        :intervals: List of intervals to filter by (None for all intervals)
+        :broker_id: Specific broker ID to filter by (None for all brokers)
+        :returns: Subscription ID for later unsubscription
+        """
+        # Use watchlist if no specific symbols provided
+        if symbols is None:
+            symbols = self.watch_list
+
+        # Create filters for the subscription
+        filters = {}
+
+        # Add symbol filter if specific symbols requested
+        if symbols and len(symbols) == 1:
+            filters['symbol'] = symbols[0]
+
+        # Add interval filter if specific interval requested
+        if intervals and len(intervals) == 1:
+            filters['interval'] = intervals[0].value
+
+        # Add broker filter if specific broker requested
+        if broker_id:
+            filters['broker_id'] = broker_id
+
+        # Subscribe with filters
+        return self.event_bus.subscribe('price_update', self._handle_filtered_price_update, filters)
+
+    def _handle_filtered_price_update(self, event_data: dict) -> None:
+        """Handle filtered price update events"""
+        # Check if symbol is in our watchlist (additional validation)
+        symbol = event_data.get('symbol', '')
+        if symbol in self.watch_list:
+            self._handle_price_update_event(event_data)
+
+    def _handle_price_update_event(self, event_data: dict) -> None:
+        """Handle incoming price update events from event bus"""
+        # Convert dict to PriceUpdateEvent dataclass
+        event = PriceUpdateEvent(
+         **event_data  # Unpack the event data directly
+        )
+        self._handle_price_update(event)
+
+    def _handle_order_filled_event(self, event_data: dict) -> None:
+        """Handle order fill events from event bus"""
+        # Convert dict to OrderFilledEvent
+        event = OrderFilledEvent(
+            order_id=event_data['order_id'],
+            algorithm_name=event_data['algorithm_name'],
+            symbol=event_data['symbol'],
+            fill_price=event_data['fill_price'],
+            fill_quantity=event_data['fill_quantity'],
+            side=event_data['side'],
+            timestamp=event_data['timestamp'],
+            order=event_data.get('order')
+        )
+        self._handle_order_filled(event)
+
+    def _handle_account_update_event(self, event_data: dict) -> None:
+        """Handle account update events from event bus"""
+        # Convert dict to AccountUpdateEvent
+        event = AccountUpdateEvent(
+            algorithm_name=event_data['algorithm_name'],
+            equity=event_data['equity'],
+            buying_power=event_data['buying_power'],
+            cash=event_data['cash'],
+            asset_value=event_data['asset_value'],
+            timestamp=event_data['timestamp'],
+            account=event_data.get('account')
+        )
+        self._handle_account_update(event)
 
     def _handle_price_update(self, event: PriceUpdateEvent) -> None:
         """Handle incoming price updates"""
@@ -988,6 +1065,45 @@ class Algorithm:
         else:
             # Fallback to current UTC time if stats not available
             return dt.datetime.utcnow()
+
+    async def check_broker_capabilities(self, symbols: list[str] | None = None,
+                                       intervals: list[Interval] | None = None) -> dict[str, bool]:
+        """
+        Check if the current broker service supports the required symbols and intervals.
+
+        :symbols: List of symbols to check (defaults to watchlist)
+        :intervals: List of intervals to check (defaults to algorithm intervals)
+        :returns: Dictionary indicating support status for each requirement
+        """
+        if not self.broker_service:
+            await self.discover_services()
+
+        symbols = symbols or self.watch_list
+        intervals = intervals or self.aggregations
+
+        results = {}
+
+        if self.broker_service:
+            # Check broker capabilities
+            try:
+                capabilities = self.broker_service.get_all_broker_capabilities()
+                results['brokers_available'] = len(capabilities) > 0
+
+                # Check symbol and interval support for default broker
+                for symbol in symbols:
+                    for interval in intervals:
+                        key = f"{symbol}_{interval}"
+                        results[key] = self.broker_service.supports_symbol_and_interval(
+                            symbol, str(interval), "default"
+                        )
+
+            except Exception as e:
+                results['error'] = str(e)
+                results['brokers_available'] = False
+        else:
+            results['brokers_available'] = False
+
+        return results
 
     # def is_day_trade(self, symbol=None, action="buy") -> bool:
     #     """

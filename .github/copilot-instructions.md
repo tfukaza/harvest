@@ -4,6 +4,8 @@ The primary focus is ease of use and flexibility, rather than raw performance.
 
 ## Tech Stack
 - Python 3.11+
+- Polars for data manipulation
+- pytest for testing
 
 ## Coding Standards
 - Use modern Python type hints rather than the typing module. E.g. use `list[str]` instead of `List[str]`.

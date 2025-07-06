@@ -10,6 +10,7 @@ from ..definitions import (
     Account,
     Position
 )
+from ..enum import Interval
 
 
 class HealthStatus(StrEnum):
@@ -54,6 +55,9 @@ class PriceUpdateEvent:
     symbol: str
     price_data: TickerFrame
     timestamp: dt.datetime
+    interval: Interval
+    broker_id: str
+    exchange: str
 
 
 @dataclass

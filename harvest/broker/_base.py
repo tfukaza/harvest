@@ -7,11 +7,14 @@ from typing import Any, Callable, Dict
 
 # Third-party imports
 import pandas as pd
+import polars as pl
 import yaml
 
 # Local imports
 from harvest.definitions import (
     Account,
+    AssetType,
+    BrokerCapabilities,
     ChainData,
     ChainInfo,
     OptionData,
@@ -35,6 +38,8 @@ from harvest.util.helper import (
     symbol_type,
     utc_current_time,
 )
+from harvest.events.event_bus import EventBus
+from harvest.events.events import PriceUpdateEvent
 
 
 class Broker:
@@ -79,6 +84,7 @@ class Broker:
 
         self.secret_path = secret_path
         self.watch_dict = {}
+        self.event_bus: EventBus | None = None
 
     def setup(self, runtime_data: RuntimeData) -> None:
         """
@@ -110,6 +116,48 @@ class Broker:
         self.stats = runtime_data
         # debugger.debug(f"Poll Interval: {interval_enum_to_string(self.poll_interval)}")
         debugger.debug(f"{type(self).__name__} setup finished")
+
+    def set_event_bus(self, event_bus: EventBus) -> None:
+        """
+        Set the event bus for publishing price update events.
+
+        :event_bus: The event bus instance to use for publishing events
+        """
+        self.event_bus = event_bus
+
+    def _publish_price_update(self, symbol: str, price_data: TickerCandle, interval: Interval) -> None:
+        """
+        Publish a price update event to the event bus.
+
+        :symbol: The symbol that was updated
+        :price_data: The new price data as a TickerCandle
+        :interval: The interval this data represents
+        """
+        # Convert TickerCandle to TickerFrame for consistency
+        df = pl.DataFrame({
+            "timestamp": [price_data.timestamp],
+            "symbol": [price_data.symbol],
+            "open": [price_data.open],
+            "high": [price_data.high],
+            "low": [price_data.low],
+            "close": [price_data.close],
+            "volume": [price_data.volume],
+        })
+        ticker_frame = TickerFrame(df)
+
+        # Create the event with broker and interval information
+        event = PriceUpdateEvent(
+            symbol=symbol,
+            price_data=ticker_frame,
+            timestamp=price_data.timestamp,
+            interval=interval,
+            broker_id=self.__class__.__name__,
+            exchange=self.exchange
+        )
+
+        # Publish to event bus if available
+        if self.event_bus:
+            self.event_bus.publish('price_update', event.__dict__)
 
     # def _poll_sec(self, interval_sec) -> None:
     #     """
@@ -205,37 +253,29 @@ class Broker:
     def start(
         self,
         watch_dict: dict[Interval, list[str]],
-        step_callback: Callable[[dict[Interval, dict[str, pd.DataFrame]]], None],
+        step_callback: Callable[[dict[Interval, dict[str, pd.DataFrame]]], None] | None = None,
     ) -> None:
         """
-        Tells broker to start fetching data at the specified interval.
+        Tells broker to start fetching data at the specified intervals.
+
+        This method now implements an event-driven approach where the broker
+        continuously polls for price updates and publishes them as events.
+        Algorithms can subscribe to these events instead of being polled.
 
         The default implementation below is for polling the API.
         If a brokerage provides a streaming API, this method should be overridden
         to use the streaming API.
-        Make sure to call self.step() in the overridden method.
         """
         self.watch_dict = watch_dict
         self.step_callback = step_callback
-        debugger.debug(f"{type(self).__name__} started...")
+        debugger.debug(f"{type(self).__name__} started with event-driven approach...")
 
-        # if unit == "SEC":
-        #     self._poll_sec(val)
-        # elif unit == "MIN":
-        #     self._poll_min(val)
-        # elif unit == "HR":
-        #     self._poll_hr(val)
-        # elif unit == "DAY":
-        #     self._poll_day(val)
-        # else:
-        #     raise Exception(f"Unsupported interval {tick_interval}.")
-
-        # Find the lowest interval in the watch_dict
+        # Find the lowest interval in the watch_dict for polling frequency
         lowest_interval = min(watch_dict.keys())
         self.polling_interval = lowest_interval
         value, unit = expand_interval(lowest_interval)
 
-        # For now, simply convert the interval to seconds and poll at that interval
+        # Convert interval to seconds for polling
         poll_seconds = 0
         if unit == "SEC":
             poll_seconds = value
@@ -248,9 +288,28 @@ class Broker:
         else:
             raise Exception(f"Unsupported interval {lowest_interval}.")
 
+        # Start the polling loop that publishes events
         while self.continue_polling():
-            self.tick()
+            self._poll_and_publish_events()
             time.sleep(poll_seconds)
+
+    def _poll_and_publish_events(self) -> None:
+        """
+        Poll for new price data and publish events for each update.
+        This replaces the old tick() method with an event-driven approach.
+        """
+        for interval, symbols in self.watch_dict.items():
+            if not check_interval(self.stats.utc_timestamp, interval):
+                continue
+
+            for symbol in symbols:
+                try:
+                    candle = self.fetch_latest_price(symbol, interval)
+                    if self.check_if_latest_candle(interval, candle):
+                        # Publish price update event with interval information
+                        self._publish_price_update(symbol, candle, interval)
+                except Exception as e:
+                    debugger.error(f"Error fetching price for {symbol}: {e}")
 
     def check_if_latest_candle(self, interval: Interval, candle: TickerCandle) -> bool:
         """
@@ -307,7 +366,10 @@ class Broker:
             else:
                 retry_queue.append((symbol, interval, timestamp))
                 retries -= 1
-        self.step_callback(df_dict)
+
+        # Only call step_callback if it exists
+        if self.step_callback:
+            self.step_callback(df_dict)
 
     def exit(self) -> None:
         """
@@ -686,7 +748,7 @@ class Broker:
         debugger.debug(f"{type(self).__name__} ordered a buy of {quantity} {symbol}")
         typ = symbol_type(symbol)
         if typ == "STOCK":
-            return self.order_stock_limit("buy", symbol, quantity, limit_price, in_force, extended)
+            return self.order_stock_limit(OrderSide.BUY, symbol, quantity, limit_price, OrderTimeInForce.GTC if in_force == "gtc" else OrderTimeInForce.GTD, extended)
         elif typ == "CRYPTO":
             return self.order_crypto_limit("buy", symbol[1:], quantity, limit_price, in_force, extended)
         elif typ == "OPTION":
@@ -728,7 +790,7 @@ class Broker:
 
         typ = symbol_type(symbol)
         if typ == "STOCK":
-            return self.order_stock_limit("sell", symbol, quantity, limit_price, in_force, extended)
+            return self.order_stock_limit(OrderSide.SELL, symbol, quantity, limit_price, OrderTimeInForce.GTC if in_force == "gtc" else OrderTimeInForce.GTD, extended)
         elif typ == "CRYPTO":
             return self.order_crypto_limit("sell", symbol[1:], quantity, limit_price, in_force, extended)
         elif typ == "OPTION":
@@ -747,16 +809,53 @@ class Broker:
             debugger.error(f"Invalid asset type for {symbol}")
             raise Exception(f"Invalid asset type for {symbol}")
 
-    # def cancel(self, order_id) -> None:
-    #     for o in self.account.orders.orders:
-    #         if o.order_id == order_id:
-    #             asset_type = symbol_type(o.symbol)
-    #             if asset_type == "STOCK":
-    #                 self.cancel_stock_order(order_id)
-    #             elif asset_type == "CRYPTO":
-    #                 self.cancel_crypto_order(order_id)
-    #             elif asset_type == "OPTION":
-    #                 self.cancel_option_order(order_id)
+    def get_broker_capabilities(self) -> BrokerCapabilities:
+        """
+        Get broker capabilities including supported intervals and tickers.
+
+        :returns: BrokerCapabilities object containing broker capabilities
+        """
+        return BrokerCapabilities(
+            broker_id=self.__class__.__name__,
+            exchange=self.exchange,
+            supported_intervals_tickers=self._get_supported_intervals_tickers(),
+            supported_asset_types=self._get_supported_asset_types(),
+            features=self._get_broker_features()
+        )
+
+    def _get_supported_intervals_tickers(self) -> dict[Interval, list[str]]:
+        """
+        Get mapping of supported intervals to supported tickers.
+
+        Default implementation returns all intervals with empty ticker lists.
+        Subclasses should override this to provide actual ticker support.
+        """
+        # Default implementation - subclasses should override with actual ticker support
+        return {interval: [] for interval in self.interval_list}
+
+    def _get_supported_asset_types(self) -> list[AssetType]:
+        """Get list of supported asset types (stocks, crypto, options)"""
+        # Default implementation - subclasses should override if they have limitations
+        return [AssetType.STOCK, AssetType.CRYPTO, AssetType.OPTION]
+
+    def _get_broker_features(self) -> list[str]:
+        """Get list of broker-specific features"""
+        # Default implementation - subclasses should override
+        return ["real_time_data", "historical_data", "order_placement"]
+
+    def supports_interval(self, interval: Interval) -> bool:
+        """Check if broker supports the specified interval"""
+        return interval in self.interval_list
+
+    def supports_symbol(self, symbol: str) -> bool:
+        """
+        Check if broker supports trading the specified symbol.
+        Default implementation always returns True - subclasses should override.
+        """
+        # Default implementation - real brokers should implement symbol validation
+        return True
+
+    # ...existing code...
 
     # -------------- Helper methods -------------- #
 
