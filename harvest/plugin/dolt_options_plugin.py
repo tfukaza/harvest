@@ -1,4 +1,4 @@
-import pandas as pd
+import polars as pl
 
 from harvest.plugin._base import Plugin
 
@@ -38,5 +38,5 @@ class DoltOptionsPlugin(Plugin):
 
     # -------------- Plugin specific methods -------------- #
 
-    def query(self, query: str) -> pd.DataFrame:
-        return self.read.read_pandas_sql(self.dolt, query)
+    def query(self, query: str) -> pl.DataFrame:
+        return self.read.read_polars_sql(self.dolt, query)

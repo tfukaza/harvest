@@ -1,15 +1,14 @@
 import datetime as dt
-from typing import Tuple
 
-import pandas as pd
+import polars as pl
 from sqlalchemy import Column, DateTime, Float, String, create_engine, select
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-from harvest.storage import BaseStorage
-from harvest.util.helper import aggregate_df, normalize_pandas_dt_index
+from harvest.storage import Storage
+from harvest.util.helper import aggregate_df
 
 """
-This module serves as a storage system for pandas dataframes in with SQL tables.
+This module serves as a storage system for polars dataframes in with SQL tables.
 """
 
 Base = declarative_base()
@@ -35,7 +34,7 @@ class Asset(Base):
         open: {self.open_} \t high: {self.high} \t low: {self.low} \t close: {self.close} \t volume: {self.volume}"""
 
 
-class DBStorage(BaseStorage):
+class DBStorage(Storage):
     """
     An extension of the basic storage that saves data in SQL tables.
     """
@@ -53,7 +52,7 @@ class DBStorage(BaseStorage):
         self,
         symbol: str,
         interval: str,
-        data: pd.DataFrame,
+        data: pl.DataFrame,
         remove_duplicate: bool = True,
     ) -> None:
         """
@@ -61,12 +60,11 @@ class DBStorage(BaseStorage):
         :symbol: a stock or crypto
         :interval: the interval between each data point, must be atleast
              1 minute
-        :data: a pandas dataframe that has stock data and has a datetime
+        :data: a polars dataframe that has stock data and has a datetime
             index
         """
 
-        if not data.empty:
-            data.index = normalize_pandas_dt_index(data)
+        if not data.is_empty():
             data.columns = [column[1] for column in data.columns]
             data.rename(columns={"open": "open_"}, inplace=True)
             data["timestamp"] = data.index
@@ -102,7 +100,7 @@ class DBStorage(BaseStorage):
         interval: str = "",
         start: dt.datetime = None,
         end: dt.datetime = None,
-    ) -> pd.DataFrame:
+    ) -> pl.DataFrame:
         """
         Loads the stock data given the symbol and interval. May return only
         a subset of the data if start and end are given and there is a gap
@@ -127,7 +125,7 @@ class DBStorage(BaseStorage):
                     Asset.volume,
                 ).where(Asset.symbol == symbol and Asset.interval == interval)
             )
-            data = pd.DataFrame(data, columns=["timestamp", "open_", "close", "high", "low", "volume"])
+            data = pl.DataFrame(data, columns=["timestamp", "open_", "close", "high", "low", "volume"])
 
             if data.empty:
                 return None
@@ -146,13 +144,13 @@ class DBStorage(BaseStorage):
 
         return data.loc[(data.index >= start) & (data.index <= end)]
 
-    def data_range(self, symbol: str, interval: str) -> Tuple[dt.datetime]:
+    def data_range(self, symbol: str, interval: str) -> tuple[dt.datetime]:
         return super().data_range(symbol, interval)
 
     def _append(
         self,
-        current_data: pd.DataFrame,
-        new_data: pd.DataFrame,
+        current_data: pl.DataFrame,
+        new_data: pl.DataFrame,
         remove_duplicate: bool = True,
-    ) -> pd.DataFrame:
+    ) -> pl.DataFrame:
         return super()._append(current_data, new_data, remove_duplicate)

@@ -5,7 +5,7 @@ from signal import SIGINT, signal
 from sys import exit
 from typing import Dict, List, Union
 
-import pandas as pd
+import polars as pl
 import tzlocal
 from rich import box
 from rich.console import Console
@@ -13,10 +13,10 @@ from rich.table import Table
 
 from harvest.definitions import (
     Account,
-    Functions,
+
     OptionPosition,
     Position,
-    Stats,
+    RuntimeData,
 )
 from harvest.enum import BrokerType, DataBrokerType, Interval, StorageType, TradeBrokerType
 from harvest.util.factory import load_broker, load_storage
@@ -124,20 +124,9 @@ class BrokerHub:
         self.watchlist = []  # List of securities specified in this class
         self.algo = []  # List of algorithms to run.
 
-        self.stats = Stats(None, tzlocal.get_localzone(), None)
+        self.stats = RuntimeData(None, tzlocal.get_localzone(), None)
 
-        self.func = Functions(
-            self.buy,
-            self.sell,
-            self.fetch_chain_data,
-            self.fetch_chain_info,
-            self.fetch_option_market_data,
-            self.get_asset_quantity,
-            self.load,
-            self.store,
-            self.load_daytrade,
-        )
-
+        
         self.account = Account()
         self.positions = self.account.positions
         self.orders = self.account.orders
@@ -428,7 +417,7 @@ class BrokerHub:
 
     # ================== Functions for main routine =====================
 
-    def main(self, df_dict: Dict[str, pd.DataFrame]) -> None:
+    def main(self, df_dict: Dict[str, pl.DataFrame]) -> None:
         """
         Main loop of the Trader.
         """
@@ -520,7 +509,7 @@ class BrokerHub:
         # if an order was processed, update the positions and account info
         return order_filled
 
-    def _update_local_cache(self, df_dict: Dict[str, pd.DataFrame]) -> None:
+    def _update_local_cache(self, df_dict: Dict[str, pl.DataFrame]) -> None:
         """Update local cache of stocks, options, and crypto positions"""
         # Update entries in local cache
         # API should also be called if load_watch is false, as there is a high chance

@@ -8,7 +8,7 @@ from typing import Any, Callable, Dict, List, Union
 from harvest.broker._base import Broker
 from harvest.definitions import OPTION_QTY_MULTIPLIER, Account, Stats
 from harvest.enum import DataBrokerType, Interval
-from harvest.storage import BaseStorage
+from harvest.storage import Storage
 from harvest.util.factory import load_broker
 from harvest.util.helper import data_to_occ, debugger, is_crypto
 
@@ -140,7 +140,7 @@ class PaperBroker(Broker):
         super().setup(stats, account, trader_main)
         self.backtest = False
 
-    def setup_backtest(self, storage: BaseStorage) -> None:
+    def setup_backtest(self, storage: Storage) -> None:
         self.backtest = True
         self.storage = storage
 

@@ -1,397 +1,205 @@
 import datetime as dt
-from typing import Any, Callable, Dict, Iterable, List
+from dataclasses import dataclass
+from enum import Enum, StrEnum
+from typing import Any, Iterator, List
+from zoneinfo import ZoneInfo
 
-from harvest.util.helper import occ_to_data, symbol_type
-
-OPTION_QTY_MULTIPLIER = 100
-
-
-class Stats:
-    def __init__(self, timestamp: dt.datetime = None, timezone=None, watchlist_cfg=None) -> None:
-        self._timestamp = timestamp
-        self._timezone = timezone
-        self._watchlist_cfg = watchlist_cfg
-
-    def __str__(self) -> str:
-        return f"{self.timestamp} {self.timezone} {self.watchlist_cfg}"
-
-    @property
-    def timestamp(self) -> dt.datetime:
-        return self._timestamp
-
-    @timestamp.setter
-    def timestamp(self, value: dt.datetime) -> None:
-        self._timestamp = value
-
-    @property
-    def timezone(self):
-        return self._timezone
-
-    @timezone.setter
-    def timezone(self, value) -> None:
-        self._timezone = value
-
-    @property
-    def watchlist_cfg(self):
-        return self._watchlist_cfg
-
-    @watchlist_cfg.setter
-    def watchlist_cfg(self, value) -> None:
-        self._watchlist_cfg = value
+import polars as pl
 
 
-class Functions:
-    def __init__(
-        self,
-        buy: Callable = None,
-        sell: Callable = None,
-        fetch_chain_data: Callable = None,
-        fetch_chain_info: Callable = None,
-        fetch_option_market_data: Callable = None,
-        get_asset_quantity: Callable = None,
-        load: Callable = None,
-        save: Callable = None,
-        load_daytrade: Callable = None,
-    ) -> None:
-        self.buy = buy
-        self.sell = sell
-        self.fetch_chain_data = fetch_chain_data
-        self.fetch_chain_info = fetch_chain_info
-        self.fetch_option_market_data = fetch_option_market_data
-        self.get_asset_quantity = get_asset_quantity
-        self.load = load
-        self.save = save
-        self.load_daytrade = load_daytrade
+class AssetType(StrEnum):
+    STOCK = "stock"
+    OPTION = "option"
+    CRYPTO = "cryptocurrency"
 
 
-class Account:
-    def __init__(self, account_name: str = None) -> None:
-        self._account_name = account_name or "MyAccount"
-        self._positions = Positions()
-        self._orders = Orders()
+class Interval(StrEnum):
+    MIN_1 = "1min"
+    MIN_5 = "5min"
+    MIN_15 = "15min"
+    MIN_30 = "30min"
+    HOUR_1 = "1hour"
+    DAY_1 = "1day"
 
-        self._asset_value = 0
-        self._cash = 0
-        self._equity = 0
 
-        self._buying_power = 0
-        self._multiplier = 1
+class TimeSpan(StrEnum):
+    SECOND = "second"
+    MINUTE = "minute"
+    HOUR = "hour"
+    DAY = "day"
+    WEEK = "week"
+
+
+class TimeDelta:
+    def __init__(self, unit: TimeSpan, value: int):
+        self.unit = unit
+        self.value = value
 
     def __str__(self) -> str:
-        return (
-            f"Account:\t{self._account_name}\n"
-            + f"Cash:\t{self._cash}\n"
-            + f"Equity:\t{self._equity}\n"
-            + f"Buying Power:\t{self._buying_power}\n"
-            + f"Multiplier:\t{self._multiplier}\n\n"
-            + f"Positions:\n{self._positions}\n\n"
-            + f"Orders:\n{self._orders}"
-        )
-
-    def init(self, dict: Dict[str, float]) -> None:
-        self._equity = dict["equity"]
-        self._cash = dict["cash"]
-        self._buying_power = dict["buying_power"]
-        self._multiplier = dict["multiplier"]
-
-    def update(self) -> None:
-        self._asset_value = self._positions.value
-        self._equity = self._asset_value + self._cash
+        return f"{self.value} {self.unit}"
 
     @property
-    def account_name(self) -> str:
-        return self._account_name
+    def delta_datetime(self) -> dt.timedelta:
+        if self.unit == TimeSpan.MINUTE:
+            return dt.timedelta(minutes=self.value)
+        elif self.unit == TimeSpan.HOUR:
+            return dt.timedelta(hours=self.value)
+        elif self.unit == TimeSpan.DAY:
+            return dt.timedelta(days=self.value)
+        elif self.unit == TimeSpan.WEEK:
+            return dt.timedelta(weeks=self.value)
+        else:
+            raise ValueError(f"Invalid time span unit: {self.unit}")
+
+
+@dataclass
+class RuntimeData:
+    broker_timezone: ZoneInfo
+    utc_timestamp: dt.datetime
+
+    def __str__(self) -> str:
+        return f"Timestamp: {self.utc_timestamp}\nTimezone: {self.broker_timezone}"
 
     @property
-    def positions(self) -> List:
-        return self._positions
-
-    @property
-    def orders(self) -> List:
-        return self._orders
-
-    @property
-    def equity(self) -> float:
-        return self._equity
-
-    @property
-    def cash(self) -> float:
-        return self._cash
-
-    @property
-    def buying_power(self) -> float:
-        return self._buying_power
-
-    @property
-    def multiplier(self) -> float:
-        return self._multiplier
+    def broker_timestamp(self) -> dt.datetime:
+        return self.utc_timestamp.astimezone(self.broker_timezone)
 
 
+class OrderTimeInForce(str, Enum):
+    GTC = "gtc"
+    GTD = "gtd"
+
+
+class OrderSide(str, Enum):
+    BUY = "buy"
+    SELL = "sell"
+
+
+class OrderStatus(str, Enum):
+    OPEN = "open"
+    FILLED = "filled"
+
+
+class OrderEvent(str, Enum):
+    ORDER = "ORDER"
+    FILL = "FILL"
+
+
+@dataclass
 class Order:
-    def __init__(
-        self,
-        order_type: str,
-        symbol: str,
-        quantity: float,
-        time_in_force,
-        side: str,
-        order_id: Any,
-    ) -> None:
-        self._type = order_type
-        self._symbol = symbol
-        self._quantity = quantity
-        self._time_in_force = time_in_force
-        self._side = side
-        self._order_id = order_id
-
-        self._status = "open"
-        self._filled_time = None
-        self._filled_price = None
-        self._filled_quantity = None
+    order_type: AssetType
+    symbol: str
+    quantity: float
+    time_in_force: OrderTimeInForce
+    side: OrderSide
+    order_id: Any
+    status: OrderStatus = OrderStatus.OPEN
+    filled_time: dt.datetime | None = None
+    filled_price: float | None = None
+    filled_quantity: float | None = None
+    base_symbol: str | None = None
 
     def __str__(self) -> str:
         return f"""
-        order_id:       {self._order_id}
-        symbol:         {self._symbol}
-        type:           {self._type}
-        side:           {self._side}
-        quantity:       {self._quantity}
-        time_in_force:  {self._time_in_force}
-        status:         {self._status}
-        filled_time:    {self._filled_time}
-        filled_price:   {self._filled_price}
-        filled_quantity:{self._filled_quantity}
+        order_id:       {self.order_id}
+        symbol:         {self.symbol}
+        type:           {self.order_type}
+        side:           {self.side}
+        quantity:       {self.quantity}
+        time_in_force:  {self.time_in_force}
+        status:         {self.status}
+        filled_time:    {self.filled_time}
+        filled_price:   {self.filled_price}
+        filled_quantity:{self.filled_quantity}
+
         """
 
-    @property
-    def symbol(self) -> str:
-        return self._symbol
-
-    @property
-    def type(self) -> str:
-        return self._type
-
-    @property
-    def quantity(self) -> float:
-        return self._quantity
-
-    @property
-    def filled_quantity(self) -> float:
-        return self._filled_quantity
-
-    @property
-    def order_id(self) -> Any:
-        return self._order_id
-
-    @property
-    def time_in_force(self):
-        return self._time_in_force
-
-    @property
-    def status(self) -> str:
-        return self._status
-
-    @property
-    def filled_time(self):
-        return self._filled_time
-
-    @property
-    def filled_price(self):
-        return self._filled_price
-
-    @property
-    def side(self) -> str:
-        return self._side
-
-    def update(self, val: Dict[str, Any]) -> None:
-        self._filled_quantity = val["quantity"]
-        self._status = val["status"]
-        self._filled_price = val["filled_price"]
-        self._filled_time = val["filled_time"]
+    # def update(self, val: Dict[str, Any]) -> None:
+    #     self._filled_quantity = val["quantity"]
+    #     self._status = val["status"]
+    #     self._filled_price = val["filled_price"]
+    #     self._filled_time = val["filled_time"]
 
 
-class Orders:
-    def __init__(self) -> None:
-        self._orders = []
+@dataclass
+class OrderList:
+    orders: dict[str, Order]
 
     def __str__(self) -> str:
-        return "\n".join(str(order) for order in self._orders)
+        return "\n".join(str(order) for order in self.orders)
 
-    def init(self, orders: Iterable[Dict[str, Any]]) -> None:
-        for o in orders:
-            if o["order_type"] == "OPTION":
-                self._orders.append(
-                    OptionOrder(
-                        o["order_type"],
-                        o["symbol"],
-                        o["base_symbol"],
-                        o["quantity"],
-                        o["time_in_force"],
-                        o["side"],
-                        o["order_id"],
-                    )
-                )
-            else:
-                self._orders.append(
-                    Order(
-                        o["order_type"],
-                        o["symbol"],
-                        o["quantity"],
-                        o["time_in_force"],
-                        o["side"],
-                        o["order_id"],
-                    )
-                )
+    def __getitem__(self, key: str) -> Order | None:
+        return self.orders.get(key, None)
 
-    @property
-    def orders(self) -> List[Order]:
-        return self._orders
+    def __setitem__(self, key: str, value: Order) -> None:
+        self.orders[key] = value
 
-    def get_order(self, order_id: Any) -> Order:
-        for o in self._orders:
-            if o.order_id == order_id:
-                return o
+    def __contains__(self, key: str) -> bool:
+        return key in self.orders
 
-    def add_new_order(self, symbol: str, order_id: Any, side: str, quantity: float, time_in_force) -> None:
-        if symbol_type(symbol) == "OPTION":
-            base_symbol, _, _, _ = occ_to_data(symbol)
-            self._orders.append(
-                OptionOrder(
-                    "OPTION",
-                    symbol,
-                    base_symbol,
-                    quantity,
-                    time_in_force,
-                    side,
-                    order_id,
-                )
-            )
-        else:
-            self._orders.append(
-                Order(
-                    symbol_type(symbol),
-                    symbol,
-                    quantity,
-                    time_in_force,
-                    side,
-                    order_id,
-                )
-            )
+    def __iter__(self) -> Iterator[Order]:
+        return iter(self.orders.values())
 
-    def remove_non_open(self) -> None:
-        print(self._orders)
-        self._orders = list(filter(lambda x: x.status != "filled", self._orders))
-        print(self._orders)
+    def __len__(self) -> int:
+        return len(self.orders)
+
+    def add_order(self, order: Order) -> None:
+        self.orders[order.order_id] = order
+
+    def remove_filled_orders(self) -> None:
+        for order_id in list(self.orders.keys()):
+            if self.orders[order_id].status == OrderStatus.FILLED:
+                del self.orders[order_id]
 
     @property
     def symbols(self) -> List[str]:
-        return [o.symbol for o in self._orders]
-
-    @property
-    def stock_crypto_symbols(self) -> List[str]:
-        return [o.base_symbol if o.type == "OPTION" else o.symbol for o in self._orders]
+        return [o.symbol for o in self.orders.values()]
 
 
-class OptionOrder(Order):
-    def __init__(
-        self,
-        order_type,
-        symbol,
-        base_symbol,
-        quantity,
-        time_in_force,
-        side,
-        order_id,
-    ):
-        super().__init__(
-            order_type,
-            symbol,
-            quantity,
-            time_in_force,
-            side,
-            order_id,
-        )
-        self._base_symbol = base_symbol
-
-    def __str__(self):
-        s = super().__str__()
-        return f"{s}base_symbol: {self.base_symbol}"
-
-    @property
-    def base_symbol(self):
-        return self._base_symbol
-
-
+@dataclass
 class Position:
-    def __init__(self, symbol, quantity, avg_price):
-        self._symbol = symbol
-        self._quantity = quantity
-        self._avg_price = avg_price
+    symbol: str
+    quantity: float
+    avg_price: float
+    value: float = 0
+    profit: float = 0
+    profit_percent: float = 0
+    _current_price: float = 0
 
-        self._current_price = 0
-        self._value = 0
-        self._profit = 0
-        self._profit_percent = 0
-
-    def update(self, current_price: float):
-        self._current_price = current_price
-        # self._value = self._current_price * self._quantity
-        # self._profit = self._value - self._avg_price * self._quantity
-        # self._profit_percent = self._profit / (self._avg_price * self._quantity)
-
-    def buy(self, quantity, price):
-        self._avg_price = (self._avg_price * self._quantity + price * quantity) / (self._quantity + quantity)
-        self._quantity += quantity
-
-    def sell(self, quantity, price):
-        self._quantity -= quantity
-
+    # Warning: These perform local calculations that may deviate from the actual values
+    # in the broker's database.
     @property
-    def symbol(self):
-        return self._symbol
-
-    @property
-    def quantity(self):
-        return self._quantity
-
-    @property
-    def avg_price(self):
-        return self._avg_price
-
-    @property
-    def avg_cost(self):
-        return self._avg_price
-
-    @property
-    def asset_type(self):
-        return symbol_type(self._symbol)
-
-    @property
-    def current_price(self):
+    def current_price(self) -> float:
         return self._current_price
 
-    @property
-    def value(self):
-        return self.current_price * self.quantity
+    @current_price.setter
+    def current_price(self, value: float) -> None:
+        self._current_price = value
+        self.value = self._current_price * self.quantity
+        self.profit = self.value - self.avg_price * self.quantity
+        self.profit_percent = self.profit / (self.avg_price * self.quantity)
 
-    @property
-    def total_cost(self):
-        return self.avg_price * self.quantity
+    def apply_order(self, order: Order) -> None:
+        if order.status != OrderStatus.FILLED:
+            raise ValueError(f"Order {order.order_id} is not filled")
+        if order.side == OrderSide.BUY:
+            self.buy(order.quantity, order.filled_price)
+        else:
+            self.sell(order.quantity, order.filled_price)
 
-    @property
-    def profit(self):
-        return self.value - self.total_cost
+    def buy(self, quantity, price):
+        self.avg_price = (self.avg_price * self.quantity + price * quantity) / (self.quantity + quantity)
+        self.quantity += quantity
 
-    @property
-    def profit_percent(self):
-        return self.profit / self.total_cost
+    def sell(self, quantity, price):
+        self.quantity -= quantity
 
     def __str__(self):
         return (
-            f"\n[{self._symbol}]\n"
-            + f" Quantity:\t{self._quantity}\n"
-            + f" Avg. Cost:\t${self._avg_price}\n"
-            + f" Price:  \t${self._current_price}\n"
+            f"\n[{self.symbol}]\n"
+            + f" Quantity:\t{self.quantity}\n"
+            + f" Avg. Cost:\t${self.avg_price}\n"
+            + f" Price:  \t${self.current_price}\n"
             + f" Value:  \t${self.value}\n"
             + f" Profit:\t${self.profit}\n"
             + f" Returns:\t{'▲' if self.profit_percent > 0 else '▼'}{self.profit_percent * 100}%\n"
@@ -399,113 +207,202 @@ class Position:
         )
 
 
+OPTION_QTY_MULTIPLIER = 100
+
+
+@dataclass(kw_only=True)
+class OptionPosition(Position):
+    base_symbol: str
+    strike: float
+    expiration: dt.datetime
+    option_type: str
+    multiplier: float = OPTION_QTY_MULTIPLIER
+
+
+def symbol_type(symbol: str) -> AssetType:
+    if symbol.startswith("@"):
+        return AssetType.CRYPTO
+    elif len(symbol) > 6:
+        return AssetType.OPTION
+    else:
+        return AssetType.STOCK
+
+
+@dataclass
 class Positions:
-    def __init__(self, stock=None, option=None, crypto=None):
-        if stock is None:
-            stock = []
-        if option is None:
-            option = []
-        if crypto is None:
-            crypto = []
-        self._stock = stock
-        self._option = option
-        self._crypto = crypto
+    positions: dict[str, Position]
 
-        for p in self._stock + self._option:
-            setattr(self, p.symbol, p)
-        for p in self._crypto:
-            setattr(self, "c_" + p.symbol[1:], p)
+    def __init__(self, positions: dict[str, Position]):
+        self.positions = positions
 
-    def update(self, stock=None, option=None, crypto=None):
-        current_symbols = [p.symbol for p in self.all]
-        self._stock = stock
-        self._option = option
-        self._crypto = crypto
-        new_symbols = [p.symbol for p in self.all]
-        for p in self._stock + self._option:
-            setattr(self, p.symbol, p)
-        for p in self._crypto:
-            setattr(self, "c_" + p.symbol[1:], p)
+    def __getitem__(self, key: str) -> Position | None:
+        return self.positions.get(key, None)
 
-        deleted_symbols = list(set(current_symbols) - set(new_symbols))
-        for s in deleted_symbols:
-            if symbol_type(s) == "CRYPTO":
-                delattr(self, "c_" + s[1:])
-            else:
-                delattr(self, s)
+    def __setitem__(self, key: str, value: Position) -> None:
+        self.positions[key] = value
 
-    def get(self, symbol):
-        for p in self.all:
-            if p.symbol == symbol:
-                return p
-        return None
+    def add_position(self, value: Position) -> None:
+        self.positions[value.symbol] = value
 
     @property
-    def stock(self):
-        return self._stock
+    def stock(self) -> List[Position]:
+        return [p for p in self.positions.values() if symbol_type(p.symbol) == AssetType.STOCK]
 
     @property
-    def option(self):
-        return self._option
+    def option(self) -> List[Position]:
+        return [p for p in self.positions.values() if symbol_type(p.symbol) == AssetType.OPTION]
 
     @property
-    def crypto(self):
-        return self._crypto
+    def crypto(self) -> List[Position]:
+        return [p for p in self.positions.values() if symbol_type(p.symbol) == AssetType.CRYPTO]
 
     @property
-    def all(self):
-        return self._stock + self._option + self._crypto
-
-    @property
-    def stock_crypto(self):
-        return self._stock + self._crypto
-
-    @property
-    def value(self):
-        return sum(p.value for p in self.all)
+    def all(self) -> List[Position]:
+        return list(self.positions.values())
 
     def __str__(self):
         return (
             "Positions: \n"
-            + f"\tStocks : {'='.join(str(p) for p in self._stock)}\n"
-            + f"\tOptions: {'='.join(str(p) for p in self._option)}\n"
-            + f"\tCrypto : {'='.join(str(p) for p in self._crypto)}"
+            + f"\tStocks : {'='.join(str(p) for p in self.stock)}\n"
+            + f"\tOptions: {'='.join(str(p) for p in self.option)}\n"
+            + f"\tCrypto : {'='.join(str(p) for p in self.crypto)}"
         )
 
 
-class OptionPosition(Position):
-    def __init__(self, symbol, quantity, avg_price, strike, expiration, option_type, multiplier):
-        super().__init__(symbol, quantity, avg_price)
-        self._base_symbol = occ_to_data(symbol)[0]
-        self._strike = strike
-        self._expiration = expiration
-        self._option_type = option_type
-        self._multiplier = multiplier
+@dataclass
+class Account:
+    """
+    Maintains account data for the broker.
+    """
+
+    account_name: str
+    positions: Positions
+    orders: OrderList
+    asset_value: float
+    cash: float
+    equity: float
+    buying_power: float
+    multiplier: float
+
+    def __str__(self) -> str:
+        return (
+            f"Account:\t{self.account_name}\n"
+            + f"Cash:\t{self.cash}\n"
+            + f"Equity:\t{self.equity}\n"
+            + f"Buying Power:\t{self.buying_power}\n"
+            + f"Multiplier:\t{self.multiplier}\n\n"
+            + f"Positions:\n{self.positions}\n\n"
+            + f"Orders:\n{self.orders}"
+        )
+
+
+@dataclass
+class TickerCandle:
+    timestamp: dt.datetime
+    symbol: str
+    open: float
+    high: float
+    low: float
+    close: float
+    volume: float
+
+    def __eq__(self, value: object) -> bool:
+        if not isinstance(value, TickerCandle):
+            return False
+        return (
+            self.timestamp == value.timestamp
+            and self.symbol == value.symbol
+            and self.open == value.open
+            and self.high == value.high
+            and self.low == value.low
+            and self.close == value.close
+            and self.volume == value.volume
+        )
+
+
+class TickerFrame:
+    """
+    A wrapper around a polars dataframe to provide type hints and additional functionality.
+    """
+
+    _df: pl.DataFrame
+
+    def __init__(self, df: pl.DataFrame):
+        self._df = df
 
     @property
-    def symbol(self):
-        return self._symbol.replace(" ", "")
+    def df(self) -> pl.DataFrame:
+        return self._df
+
+    def __getitem__(self, index: int) -> TickerCandle:
+        if index < 0:
+            index = len(self._df) + index
+        df = self._df.row(index, named=True)
+        data = {
+            "timestamp": df["timestamp"],
+            "symbol": df["symbol"],
+            "open": df["open"],
+            "high": df["high"],
+            "low": df["low"],
+            "close": df["close"],
+            "volume": df["volume"],
+        }
+        return TickerCandle(**data)
+
+
+@dataclass
+class Transaction:
+    timestamp: dt.datetime
+    symbol: str
+    side: OrderSide
+    quantity: float
+    price: float
+    event: OrderEvent
+    algorithm_name: str
+
+
+class TransactionFrame:
+    _df: pl.DataFrame
+
+    def __init__(self, df: pl.DataFrame):
+        self._df = df
 
     @property
-    def base_symbol(self):
-        return self._base_symbol
+    def df(self) -> pl.DataFrame:
+        return self._df
 
-    @property
-    def strike(self):
-        return self._strike
+    def __getitem__(self, index: int) -> Transaction:
+        df = self._df.row(index, named=True)
+        data = {
+            "timestamp": df["timestamp"],
+            "symbol": df["symbol"],
+            "side": df["side"],
+            "quantity": df["quantity"],
+            "price": df["price"],
+            "event": df["event"],
+            "algorithm_name": df["algorithm_name"],
+        }
+        return Transaction(**data)
 
-    @property
-    def expiration(self):
-        return self._expiration
 
-    @property
-    def option_type(self):
-        return self._option_type
+@dataclass
+class ChainInfo:
+    chain_id: str
+    expiration_list: list[dt.date]
 
-    @property
-    def value(self):
-        return self._current_price * self._quantity * OPTION_QTY_MULTIPLIER
 
-    @property
-    def total_cost(self):
-        return self._avg_price * self._quantity * OPTION_QTY_MULTIPLIER
+class ChainData:
+    _df: pl.DataFrame
+
+    def __init__(self, df: pl.DataFrame):
+        self._df = df
+
+
+@dataclass
+class OptionData:
+    symbol: str
+    price: float
+    ask: float
+    bid: float
+    expiration: dt.datetime
+    strike: float
