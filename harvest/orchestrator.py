@@ -35,8 +35,8 @@ class Orchestrator:
 
     def __init__(
         self,
-        broker: Broker,
-        storage: Storage,
+        broker: Broker | Dict[str, Broker],
+        storage: Storage | Dict[str, Storage],
         algorithm_list: List[Algorithm],
         secret_path: str = "./secret.yaml",
         debug: bool = False,
@@ -45,8 +45,8 @@ class Orchestrator:
         Initialize the orchestrator with required components.
 
         Args:
-            broker: The broker instance to use for trading
-            storage: The storage instance for data persistence
+            broker: The broker instance(s) to use for trading
+            storage: The storage instance(s) for data persistence
             algorithm_list: List of algorithms to manage
             secret_path: Path to secret configuration file
             debug: Enable debug logging
@@ -62,10 +62,28 @@ class Orchestrator:
         self.service_registry = ServiceRegistry()
         self.event_bus = EventBus()
 
+        # Handle broker configuration
+        if isinstance(broker, dict):
+            # Multiple brokers provided
+            brokers = broker
+            primary_broker = next(iter(broker.values()))  # Use first broker for market data
+        else:
+            # Single broker provided - wrap in dictionary
+            brokers = {"default": broker}
+            primary_broker = broker
+
+        # Handle storage configuration
+        if isinstance(storage, dict):
+            # Multiple storages provided
+            storages = storage
+        else:
+            # Single storage provided - wrap in dictionary
+            storages = {"default": storage}
+
         # Initialize services
-        self.central_storage_service = CentralStorageService()
-        self.market_data_service = MarketDataService(broker)
-        self.broker_service = BrokerService(broker)
+        self.central_storage_service = CentralStorageService(storages)
+        self.market_data_service = MarketDataService(primary_broker)
+        self.broker_service = BrokerService(brokers)
         self.algorithm_service = AlgorithmService()
 
         # Setup services

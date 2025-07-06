@@ -7,7 +7,7 @@ information across all algorithms in the trading system.
 
 import datetime as dt
 import os
-from typing import Any
+from typing import Any, Dict
 
 from harvest.services.service_interface import Service
 from harvest.storage._base import CentralStorage
@@ -18,31 +18,50 @@ from harvest.events.events import PriceUpdateEvent
 
 class CentralStorageService(Service):
     """
-    Central storage service that manages shared market data.
+    Central storage service that manages shared market data across multiple storage instances.
 
     This service provides:
-    - Centralized price history storage
+    - Centralized price history storage with multiplexing
     - Market data distribution via events
-    - Shared database for all algorithms
+    - Multiple storage backends support
     - Service discovery integration
     """
 
-    def __init__(self, db_path: str | None = None):
+    def __init__(self, storages: Dict[str, CentralStorage] | CentralStorage | None = None):
         """
         Initialize the central storage service.
 
         Args:
-            db_path: Database path. If None, uses default shared database location.
+            storages: Dictionary of storage instances keyed by name, or a single CentralStorage instance,
+                     or None to use default storage.
         """
         super().__init__("central_storage")
 
-        # Set default shared database path
-        if db_path is None:
+        # Handle different storage configuration types
+        if storages is None:
+            # Default single storage
             db_path = "sqlite:///shared/market_data.db"
             self._ensure_shared_directory_exists()
+            self.storages = {"default": CentralStorage(db_path=db_path)}
+        elif isinstance(storages, dict):
+            # Multiple storages provided
+            self.storages = storages
+        else:
+            # Single storage provided - wrap in dictionary
+            self.storages = {"default": storages}
 
-        self.storage = CentralStorage(db_path=db_path)
         self.event_bus = None
+
+    @property
+    def storage(self) -> CentralStorage:
+        """Returns the default storage instance for backward compatibility."""
+        return self.storages["default"]
+
+    def _get_storage(self, storage_name: str = "default") -> CentralStorage:
+        """Retrieve the storage instance for the specified name."""
+        if storage_name not in self.storages:
+            raise ValueError(f"Storage {storage_name} not found")
+        return self.storages[storage_name]
 
     def _ensure_shared_directory_exists(self) -> None:
         """
@@ -69,26 +88,38 @@ class CentralStorageService(Service):
 
     def health_check(self) -> dict[str, Any]:
         """
-        Perform health check on the storage service.
+        Perform health check on the storage service and all managed storages.
 
         Returns:
             Dict containing health status and service details
         """
-        try:
-            # Test database connection by attempting a simple query
-            # This is a basic health check - could be expanded
-            return {
-                "status": "healthy" if self.is_running else "stopped",
-                "database_accessible": True,
-                "uptime": self.get_uptime()
-            }
-        except Exception as e:
-            return {
-                "status": "unhealthy",
-                "database_accessible": False,
-                "error": str(e),
-                "uptime": self.get_uptime()
-            }
+        storage_statuses = {}
+        all_storages_healthy = True
+
+        for storage_name, storage in self.storages.items():
+            try:
+                # Test database connection by attempting a simple query
+                # This is a basic health check - could be expanded
+                storage_status = {
+                    "status": "healthy",
+                    "database_accessible": True,
+                    "database_url": str(storage.db_engine.url)
+                }
+                storage_statuses[storage_name] = storage_status
+            except Exception as e:
+                storage_status = {
+                    "status": "unhealthy",
+                    "database_accessible": False,
+                    "error": str(e)
+                }
+                storage_statuses[storage_name] = storage_status
+                all_storages_healthy = False
+
+        return {
+            "status": "healthy" if self.is_running and all_storages_healthy else "degraded",
+            "storages": storage_statuses,
+            "uptime": self.get_uptime()
+        }
 
     def get_capabilities(self) -> list[str]:
         """
@@ -118,31 +149,36 @@ class CentralStorageService(Service):
         symbol: str,
         interval: Interval,
         start: dt.datetime | None = None,
-        end: dt.datetime | None = None
+        end: dt.datetime | None = None,
+        storage_name: str = "default"
     ) -> TickerFrame:
         """
-        Retrieve price history from central storage.
+        Retrieve price history from the specified storage.
 
         Args:
             symbol: Stock/crypto symbol to retrieve
             interval: Time interval for the data
             start: Start datetime (optional)
             end: End datetime (optional)
+            storage_name: Name of the storage to use
 
         Returns:
             TickerFrame containing the requested price data
         """
-        return self.storage.get_price_history(symbol, interval, start, end)
+        storage = self._get_storage(storage_name)
+        return storage.get_price_history(symbol, interval, start, end)
 
-    def store_price_data(self, data: TickerFrame) -> None:
+    def store_price_data(self, data: TickerFrame, storage_name: str = "default") -> None:
         """
         Store price data and publish update events.
 
         Args:
             data: TickerFrame containing price data to store
+            storage_name: Name of the storage to use
         """
-        # Store the data in central storage
-        self.storage.insert_price_history(data)
+        # Store the data in the specified storage
+        storage = self._get_storage(storage_name)
+        storage.insert_price_history(data)
 
         # Publish price update event if event bus is available
         if self.event_bus:
@@ -163,42 +199,85 @@ class CentralStorageService(Service):
         self,
         interval: str,
         start: dt.datetime | None = None,
-        end: dt.datetime | None = None
+        end: dt.datetime | None = None,
+        storage_name: str = "default"
     ) -> Any:
         """
-        Retrieve account performance history.
+        Retrieve account performance history from the specified storage.
 
         Args:
             interval: Performance interval (e.g., '1day', '1hour')
             start: Start datetime (optional)
             end: End datetime (optional)
+            storage_name: Name of the storage to use
 
         Returns:
             Account performance data
         """
-        return self.storage.get_account_performance_history(interval, start, end)
+        storage = self._get_storage(storage_name)
+        return storage.get_account_performance_history(interval, start, end)
 
-    def store_account_performance(self, performance_data: dict) -> None:
+    def store_account_performance(self, performance_data: dict, storage_name: str = "default") -> None:
         """
-        Store account performance data.
+        Store account performance data in the specified storage.
 
         Args:
             performance_data: Dictionary containing performance metrics
+            storage_name: Name of the storage to use
         """
-        # This would need to be implemented based on the actual
-        # account performance storage method in CentralStorage
-        pass
+        storage = self._get_storage(storage_name)
+        # Extract data from performance_data dict and call appropriate storage method
+        if all(key in performance_data for key in ['timestamp', 'interval', 'equity']):
+            storage.insert_account_performance(
+                timestamp=performance_data['timestamp'],
+                interval=performance_data['interval'],
+                equity=performance_data['equity'],
+                return_percentage=performance_data.get('return_percentage', 0.0),
+                return_absolute=performance_data.get('return_absolute', 0.0)
+            )
+        else:
+            raise ValueError("Performance data must contain timestamp, interval, and equity")
+
+    def get_latest_account_performance(self, interval: str, storage_name: str = "default") -> dict | None:
+        """
+        Get the latest account performance data from the specified storage.
+
+        Args:
+            interval: Performance interval
+            storage_name: Name of the storage to use
+
+        Returns:
+            Latest performance data or None
+        """
+        storage = self._get_storage(storage_name)
+        return storage.get_latest_account_performance(interval)
+
+    def get_available_storages(self) -> list[str]:
+        """
+        Get list of available storage names.
+
+        Returns:
+            List of storage names
+        """
+        return list(self.storages.keys())
 
     def get_storage_stats(self) -> dict[str, Any]:
         """
-        Get statistics about the stored data.
+        Get statistics about the stored data across all storages.
 
         Returns:
             Dictionary containing storage statistics
         """
+        storage_info = {}
+        for storage_name, storage in self.storages.items():
+            storage_info[storage_name] = {
+                "database_path": str(storage.db_engine.url),
+                "capabilities": ["price_history", "account_performance"]
+            }
+
         return {
             "service_name": self.service_name,
             "is_running": self.is_running,
-            "database_path": str(self.storage.db_engine.url),
+            "storages": storage_info,
             "capabilities": self.get_capabilities()
         }
