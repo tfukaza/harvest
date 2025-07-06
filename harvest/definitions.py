@@ -334,6 +334,14 @@ class TickerFrame:
     def df(self) -> pl.DataFrame:
         return self._df
 
+    def get_column(self, column_name: str) -> pl.Series:
+        """Get a column from the dataframe"""
+        return self._df.get_column(column_name)
+
+    def tail(self, n: int = 5) -> "TickerFrame":
+        """Get the last n rows"""
+        return TickerFrame(self._df.tail(n))
+
     def __getitem__(self, index: int) -> TickerCandle:
         if index < 0:
             index = len(self._df) + index

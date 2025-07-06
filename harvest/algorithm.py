@@ -7,10 +7,7 @@ import numpy as np
 import polars as pl
 from finta import TA
 
-from harvest.definitions import Account, RuntimeData, OptionData, ChainInfo, ChainData, Order, TickerFrame, Position, OptionPosition
-
-if TYPE_CHECKING:
-    from harvest.client import Client
+from harvest.definitions import Account, RuntimeData, OptionData, ChainInfo, ChainData, Order, TickerFrame, Position, OptionPosition, Transaction, TransactionFrame, OrderSide, OrderEvent
 from harvest.enum import Interval
 from harvest.plugin._base import Plugin
 from harvest.util.date import convert_input_to_datetime, datetime_utc_to_local, pandas_timestamp_to_local
@@ -20,7 +17,15 @@ from harvest.util.helper import (
     mark_up,
     symbol_type,
 )
-from harvest.trader.trader import BrokerHub
+from harvest.storage._base import LocalAlgorithmStorage
+from harvest.services.discovery import ServiceRegistry
+from harvest.events.event_bus import EventBus
+from harvest.events.events import PriceUpdateEvent, OrderFilledEvent, AccountUpdateEvent
+
+if TYPE_CHECKING:
+    from harvest.services.market_data_service import MarketDataService
+    from harvest.services.broker_service import BrokerService
+    from harvest.services.central_storage_service import CentralStorageService
 
 from zoneinfo import ZoneInfo
 
@@ -39,20 +44,75 @@ class Algorithm:
     interval: Interval  # Interval to run the algorithm
     aggregations: list[Interval]  # List of aggregation intervals
 
-    client: "Client"  # Broker object
-    stats: RuntimeData  # Stats object
-    account: Account  # Account object
-    trader: BrokerHub | None = None  # Reference to the owning trader (set externally)
+    # Algorithm-owned storage
+    local_storage: LocalAlgorithmStorage
+
+    # Service discovery and events
+    service_registry: ServiceRegistry
+    event_bus: EventBus
+
+    # Shared services (will be discovered)
+    market_data_service: "MarketDataService | None" = None
+    broker_service: "BrokerService | None" = None
+    central_storage_service: "CentralStorageService | None" = None
+
+    # Runtime data
+    stats: RuntimeData | None = None
+    account: Account | None = None
 
     def __init__(self, watch_list: list[str], interval: Interval, aggregations: list[Interval]):
         self.interval = interval
         self.aggregations = aggregations
         self.watch_list = watch_list
 
-    def initialize_algorithm(self, client: "Client", stats: RuntimeData, account: Account) -> None:
-        self.client = client
-        self.stats = stats
-        self.account = account
+        # Algorithm-owned storage
+        self.local_storage = LocalAlgorithmStorage(
+            algorithm_name=self.__class__.__name__,
+            db_path=f"sqlite:///algorithms/{self.__class__.__name__}.db"
+        )
+
+        # Service discovery and events
+        self.service_registry = ServiceRegistry()
+        self.event_bus = EventBus()
+
+        # Shared services (will be discovered)
+        self.market_data_service = None
+        self.broker_service = None
+        self.central_storage_service = None
+
+        # Runtime data
+        self.stats = None
+        self.account = None
+
+    async def discover_services(self) -> None:
+        """Discover and connect to required services"""
+        self.market_data_service = self.service_registry.discover_service("market_data")  # type: ignore
+        self.broker_service = self.service_registry.discover_service("broker")  # type: ignore
+        self.central_storage_service = self.service_registry.discover_service("central_storage")  # type: ignore
+
+        if not all([self.market_data_service, self.broker_service, self.central_storage_service]):
+            raise Exception("Required services not found")
+
+    def setup_event_subscriptions(self) -> None:
+        """Subscribe to relevant events"""
+        self.event_bus.subscribe('price_update', self._handle_price_update)
+        self.event_bus.subscribe('order_filled', self._handle_order_filled)
+        self.event_bus.subscribe('account_update', self._handle_account_update)
+
+    def _handle_price_update(self, event: PriceUpdateEvent) -> None:
+        """Handle incoming price updates"""
+        if event.symbol in self.watch_list:
+            # Update internal state, trigger algorithm logic if needed
+            pass
+
+    def _handle_order_filled(self, event: OrderFilledEvent) -> None:
+        """Handle order fill notifications"""
+        # Update local performance tracking
+        pass
+
+    def _handle_account_update(self, event: AccountUpdateEvent) -> None:
+        """Handle account updates"""
+        self.account = event.account
 
     def setup(self) -> None:
         """
@@ -60,7 +120,7 @@ class Algorithm:
         """
         pass
 
-    def main(self) -> None:
+    async def main(self) -> None:
         """
         Main method to run the algorithm.
         """
@@ -78,7 +138,7 @@ class Algorithm:
 
     ############ Functions interfacing with broker through the trader #################
 
-    def buy(
+    async def buy(
         self,
         symbol: str,
         quantity: int,
@@ -107,10 +167,35 @@ class Algorithm:
         :raises Exception: There is an error in the order process.
         """
         debugger.debug(f"Submitted buy order for {symbol} with quantity {quantity}")
-        assert self.trader is not None, "Trader is not set. Please set the trader before calling this function."
-        return self.trader.buy(symbol, quantity, in_force, extended)
 
-    def sell(
+        if not self.broker_service:
+            await self.discover_services()
+
+        order = await self.broker_service.place_order(  # type: ignore
+            symbol=symbol,
+            side=OrderSide.BUY,
+            quantity=quantity,
+            order_type="market",  # or limit with price calculation
+            time_in_force=in_force,
+            extended_hours=extended
+        )
+
+        if order:
+            # Store in local transaction history
+            transaction = Transaction(
+                timestamp=dt.datetime.utcnow(),
+                symbol=symbol,
+                side=OrderSide.BUY,
+                quantity=quantity,
+                price=0.0,  # Will be updated on fill
+                event=OrderEvent.ORDER,
+                algorithm_name=self.__class__.__name__
+            )
+            self.local_storage.insert_transaction(transaction)
+
+        return order
+
+    async def sell(
         self,
         symbol: str,
         quantity: int,
@@ -140,10 +225,58 @@ class Algorithm:
         """
 
         debugger.debug(f"Submitted sell order for {symbol} with quantity {quantity}")
-        assert self.trader is not None, "Trader is not set. Please set the trader before calling this function."
-        return self.trader.sell(symbol, quantity, in_force, extended)
 
-    def sell_all_options(self, symbol: str | None = None, in_force: str = "gtc") -> list[Order | None]:
+        if not self.broker_service:
+            await self.discover_services()
+
+        order = await self.broker_service.place_order(  # type: ignore
+            symbol=symbol,
+            side=OrderSide.SELL,
+            quantity=quantity,
+            order_type="market",  # or limit with price calculation
+            time_in_force=in_force,
+            extended_hours=extended
+        )
+
+        if order:
+            # Store in local transaction history
+            transaction = Transaction(
+                timestamp=dt.datetime.utcnow(),
+                symbol=symbol,
+                side=OrderSide.SELL,
+                quantity=quantity,
+                price=0.0,  # Will be updated on fill
+                event=OrderEvent.ORDER,
+                algorithm_name=self.__class__.__name__
+            )
+            self.local_storage.insert_transaction(transaction)
+
+        return order
+
+    def get_price_history(self, symbol: str, interval: Interval | None = None,
+                         start: dt.datetime | None = None, end: dt.datetime | None = None) -> TickerFrame:
+        """Get market data from central storage service"""
+        if not self.central_storage_service:
+            raise Exception("Central storage service not available")
+
+        return self.central_storage_service.get_price_history(symbol, interval or self.interval, start, end)  # type: ignore
+
+    def get_my_transactions(self, symbol: str) -> TransactionFrame:
+        """Get this algorithm's transaction history"""
+        return self.local_storage.get_transaction_history(symbol)
+
+    def update_my_performance(self, equity: float) -> None:
+        """Update this algorithm's performance metrics"""
+        previous_performance = self.local_storage.get_latest_performance("5min_1day")
+        previous_equity = previous_performance["equity"] if previous_performance else None
+
+        self.local_storage.update_performance_data(
+            timestamp=dt.datetime.utcnow(),
+            equity=equity,
+            previous_equity=previous_equity
+        )
+
+    async def sell_all_options(self, symbol: str | None = None, in_force: str = "gtc") -> list[Order | None]:
         """Sells all options based on the specified stock.
 
         For example, if you call this function with `symbol` set to "TWTR", it will sell
@@ -157,20 +290,23 @@ class Algorithm:
         if symbol is None:
             symbol = self.watch_list[0]
 
-        assert self.trader is not None, "Trader is not set. Please set the trader before calling this function."
-        # Filter option positions by parsing the symbol to get the base stock symbol
-        symbols = [pos for pos in self.trader.positions.option
-                  if pos.symbol.startswith(symbol) and symbol_type(pos.symbol) == "OPTION"]
+        if not self.broker_service:
+            await self.discover_services()
+
+        # Get option positions from broker service
+        assert self.broker_service is not None
+        positions = await self.broker_service.get_positions()
+        option_positions = [pos for pos in positions if pos.symbol.startswith(symbol) and symbol_type(pos.symbol) == "OPTION"]
 
         ret = []
-        for s in symbols:
-            debugger.debug(f"Algo SELL OPTION: {s}")
-            quantity = self.get_asset_quantity(s.symbol)
-            ret.append(self.trader.sell(s.symbol, int(quantity), in_force, True))
+        for pos in option_positions:
+            debugger.debug(f"Algo SELL OPTION: {pos.symbol}")
+            order = await self.sell(pos.symbol, int(pos.quantity), in_force, True)  # type: ignore
+            ret.append(order)
 
         return ret
 
-    def filter_option_chain(
+    async def filter_option_chain(
         self,
         symbol: str | None = None,
         type: str | None = None,
@@ -203,7 +339,8 @@ class Algorithm:
         upper_exp = convert_input_to_datetime(upper_exp, utc_zone) if upper_exp is not None else None
         # Remove timezone from datetime objects
 
-        exp_dates = self.get_option_chain_info(symbol).expiration_list
+        chain_info = await self.get_option_chain_info(symbol)
+        exp_dates = chain_info.expiration_list
         if lower_exp is not None:
             lower_exp = lower_exp.replace(tzinfo=None)
             exp_dates = list(filter(lambda x: x >= lower_exp, exp_dates))
@@ -214,7 +351,7 @@ class Algorithm:
 
         exp_date = exp_dates[0]
 
-        chain = self.get_option_chain(symbol, exp_date)
+        chain = await self.get_option_chain(symbol, exp_date)
         chain_df = chain._df
         if lower_strike is not None:
             chain_df = chain_df.filter(pl.col("strike") >= lower_strike)
@@ -230,7 +367,7 @@ class Algorithm:
 
     # ------------------ Functions to trade options ----------------------
 
-    def get_option_chain_info(self, symbol: str | None = None) -> ChainInfo:
+    async def get_option_chain_info(self, symbol: str | None = None) -> ChainInfo:
         """Returns data of a stock's option chain.
 
         Given a stock's symbol, this function returns a ChainInfo dataclass with two data.
@@ -248,11 +385,15 @@ class Algorithm:
         """
         if symbol is None:
             symbol = self.watch_list[0]
-        assert self.trader is not None, "Trader is not set. Please set the trader before calling this function."
-        assert symbol is not None, "Symbol cannot be None"
-        return self.trader.data_broker_ref.fetch_chain_info(symbol)
 
-    def get_option_chain(self, symbol: str | None, date) -> ChainData:
+        if not self.market_data_service:
+            await self.discover_services()
+
+        assert symbol is not None, "Symbol cannot be None"
+        assert self.market_data_service is not None
+        return await self.market_data_service.fetch_chain_info(symbol)
+
+    async def get_option_chain(self, symbol: str | None, date) -> ChainData:
         """Returns the option chain for the specified symbol and expiration date.
 
         The date parameter can either be a string in the format "YYYY-MM-DD" or a datetime object.
@@ -272,11 +413,18 @@ class Algorithm:
         """
         if symbol is None:
             symbol = self.watch_list[0]
-        assert self.trader is not None, "Trader is not set. Please set the trader before calling this function."
-        assert symbol is not None, "Symbol cannot be None"
-        date = convert_input_to_datetime(date, self.stats.broker_timezone)
 
-        result = self.trader.data_broker_ref.fetch_chain_data(symbol, date)
+        if not self.market_data_service:
+            await self.discover_services()
+
+        assert symbol is not None, "Symbol cannot be None"
+
+        # Use UTC timezone as default if stats not available
+        timezone = self.stats.broker_timezone if self.stats else ZoneInfo("UTC")
+        date = convert_input_to_datetime(date, timezone)
+
+        assert self.market_data_service is not None
+        result = await self.market_data_service.fetch_chain_data(symbol, date)
         # Handle brokers that might return different types
         if isinstance(result, ChainData):
             return result
@@ -285,7 +433,7 @@ class Algorithm:
             # For now, assume it should be ChainData and let runtime handle it
             return result  # type: ignore
 
-    def get_option_market_data(self, symbol: str | None = None) -> OptionData:
+    async def get_option_market_data(self, symbol: str | None = None) -> OptionData:
         """Retrieves data of specified option.
 
         Note that the price returned by this function returns the price per contract,
@@ -302,9 +450,13 @@ class Algorithm:
         """
         if symbol is None:
             symbol = self.watch_list[0]
-        assert self.trader is not None, "Trader is not set. Please set the trader before calling this function."
+
+        if not self.market_data_service:
+            await self.discover_services()
+
         assert symbol is not None, "Symbol cannot be None"
-        result = self.trader.data_broker_ref.fetch_option_market_data(symbol)
+        assert self.market_data_service is not None
+        result = await self.market_data_service.fetch_option_market_data(symbol)
         return result
 
     # ------------------ Technical Indicators -------------------
@@ -320,9 +472,10 @@ class Algorithm:
             interval = interval_string_to_enum(interval)
 
         if prices is None:
-            assert self.trader is not None, "Trader is not set. Please set the trader before calling this function."
-            storage_data = self.trader.load(symbol, interval)
-            prices = list(storage_data[symbol][ref])
+            if not self.central_storage_service:
+                raise Exception("Central storage service not available")
+            ticker_frame = self.central_storage_service.get_price_history(symbol, interval)
+            prices = list(ticker_frame.get_column(ref))
 
         return symbol, interval, ref, prices
 
@@ -482,7 +635,7 @@ class Algorithm:
 
     ############### Getters for Trader properties #################
 
-    def get_asset_quantity(self, symbol: str | None = None, include_pending_buy=True, include_pending_sell=False) -> float:
+    async def get_asset_quantity(self, symbol: str | None = None, include_pending_buy=True, include_pending_sell=False) -> float:
         """Returns the quantity owned of a specified asset.
 
         :param str? symbol:  Symbol of asset. defaults to first symbol in watchlist
@@ -494,10 +647,18 @@ class Algorithm:
         if symbol is None:
             symbol = self.watch_list[0]
 
-        assert self.trader is not None, "Trader is not set. Please set the trader before calling this function."
-        return self.trader.get_asset_quantity(symbol, include_pending_buy, include_pending_sell)
+        if not self.broker_service:
+            await self.discover_services()
 
-    def get_asset_avg_cost(self, symbol: str | None = None) -> float:
+        assert self.broker_service is not None
+        positions = await self.broker_service.get_positions()
+        for position in positions:
+            if position.symbol == symbol:
+                return position.quantity
+
+        return 0.0
+
+    async def get_asset_avg_cost(self, symbol: str | None = None) -> float:
         """Returns the average cost of a specified asset.
 
         :param str? symbol:  Symbol of asset. defaults to first symbol in watchlist
@@ -507,13 +668,19 @@ class Algorithm:
         if symbol is None:
             symbol = self.watch_list[0]
         symbol = symbol.replace(" ", "")
-        assert self.trader is not None, "Trader is not set. Please set the trader before calling this function."
-        asset = self.trader.positions[symbol]
-        if asset is None:
-            raise Exception(f"{symbol} is not currently owned")
-        return asset.avg_price
 
-    def get_asset_current_price(self, symbol: str | None = None) -> float:
+        if not self.broker_service:
+            await self.discover_services()
+
+        assert self.broker_service is not None
+        positions = await self.broker_service.get_positions()
+        for position in positions:
+            if position.symbol == symbol:
+                return position.avg_price
+
+        raise Exception(f"{symbol} is not currently owned")
+
+    async def get_asset_current_price(self, symbol: str | None = None) -> float:
         """Returns the current price of a specified asset.
 
         :param str? symbol: Symbol of asset. defaults to first symbol in watchlist
@@ -522,14 +689,25 @@ class Algorithm:
         """
         if symbol is None:
             symbol = self.watch_list[0]
-        assert self.trader is not None, "Trader is not set. Please set the trader before calling this function."
-        if symbol_type(symbol) != "OPTION":
-            return self.trader.load(symbol, self.interval)[symbol]["close"][-1]
 
-        for p in self.trader.positions.option:
-            if p.symbol == symbol:
-                return p.current_price * 100  # Remove multiplier reference
-        option_data = self.trader.fetch_option_market_data(symbol)
+        if symbol_type(symbol) != "OPTION":
+            if not self.central_storage_service:
+                raise Exception("Central storage service not available")
+            ticker_frame = self.central_storage_service.get_price_history(symbol, self.interval)
+            return ticker_frame.get_column("close")[-1]
+
+        # For options, first check positions
+        if not self.broker_service:
+            await self.discover_services()
+
+        assert self.broker_service is not None
+        positions = await self.broker_service.get_positions()
+        for pos in positions:
+            if pos.symbol == symbol:
+                return pos.current_price * 100  # Remove multiplier reference
+
+        # If not in positions, get from market data
+        option_data = await self.get_option_market_data(symbol)
         return option_data.price * 100
 
     def get_asset_price_list(self, symbol: str | None = None, interval: str | None = None, ref: str = "close") -> list[float] | None:
@@ -544,14 +722,17 @@ class Algorithm:
         """
         if symbol is None:
             symbol = self.watch_list[0]
-        assert self.trader is not None, "Trader is not set. Please set the trader before calling this function."
 
         interval_enum = self.interval
         if interval is not None:
             interval_enum = interval_string_to_enum(interval)
+
         if symbol_type(symbol) != "OPTION":
-            storage_data = self.trader.load(symbol, interval_enum)
-            return list(storage_data[symbol][ref])
+            if not self.central_storage_service:
+                raise Exception("Central storage service not available")
+            ticker_frame = self.central_storage_service.get_price_history(symbol, interval_enum)
+            return list(ticker_frame.get_column(ref))
+
         debugger.warning("Price list not available for options")
         return None
 
@@ -574,17 +755,23 @@ class Algorithm:
         """
         if symbol is None:
             symbol = self.watch_list[0]
-        assert self.trader is not None, "Trader is not set. Please set the trader before calling this function."
 
         interval_enum = self.interval
         if interval is not None:
             interval_enum = interval_string_to_enum(interval) if isinstance(interval, str) else interval
 
         if len(symbol) <= 6:  # Stock or crypto symbol
-            storage_data = self.trader.load(symbol, interval_enum)
-            df = storage_data[symbol].tail(1)  # Get last row
-            df_with_timezone = pandas_timestamp_to_local(df, self.stats.broker_timezone)
-            return TickerFrame(df_with_timezone)
+            if not self.central_storage_service:
+                raise Exception("Central storage service not available")
+            ticker_frame = self.central_storage_service.get_price_history(symbol, interval_enum)
+            # Get last row
+            last_row = ticker_frame.tail(1)
+            # Add timezone handling if stats available
+            if self.stats:
+                last_row_with_timezone = pandas_timestamp_to_local(last_row._df, self.stats.broker_timezone)
+                return TickerFrame(last_row_with_timezone)
+            return last_row
+
         debugger.warning("Candles not available for options")
         return None
 
@@ -607,18 +794,22 @@ class Algorithm:
         """
         if symbol is None:
             symbol = self.watch_list[0]
-        assert self.trader is not None, "Trader is not set. Please set the trader before calling this function."
 
         interval_enum = self.interval
         if interval is not None:
             interval_enum = interval_string_to_enum(interval) if isinstance(interval, str) else interval
 
-        storage_data = self.trader.load(symbol, interval_enum)
-        df = storage_data[symbol]
-        df_with_timezone = pandas_timestamp_to_local(df, self.stats.broker_timezone)
-        return TickerFrame(df_with_timezone)
+        if not self.central_storage_service:
+            raise Exception("Central storage service not available")
 
-    def get_asset_profit_percent(self, symbol: str | None = None) -> float | None:
+        ticker_frame = self.central_storage_service.get_price_history(symbol, interval_enum)
+        # Add timezone handling if stats available
+        if self.stats:
+            df_with_timezone = pandas_timestamp_to_local(ticker_frame._df, self.stats.broker_timezone)
+            return TickerFrame(df_with_timezone)
+        return ticker_frame
+
+    async def get_asset_profit_percent(self, symbol: str | None = None) -> float | None:
         """Returns the return of a specified asset.
 
         :param str? symbol:  Symbol of stock, crypto, or option. Options should be in OCC format.
@@ -627,16 +818,22 @@ class Algorithm:
         """
         if symbol is None:
             symbol = self.watch_list[0]
-        assert self.trader is not None, "Trader is not set. Please set the trader before calling this function."
-        asset = self.trader.positions[symbol]
-        if asset is None:
-            debugger.warning(
-                f"{symbol} is not currently owned. You either don't have it or it's still in the order queue."
-            )
-            return None
-        return asset.profit_percent
 
-    def get_asset_max_quantity(self, symbol: str | None = None) -> float:
+        if not self.broker_service:
+            await self.discover_services()
+
+        assert self.broker_service is not None
+        positions = await self.broker_service.get_positions()
+        for position in positions:
+            if position.symbol == symbol:
+                return position.profit_percent
+
+        debugger.warning(
+            f"{symbol} is not currently owned. You either don't have it or it's still in the order queue."
+        )
+        return None
+
+    async def get_asset_max_quantity(self, symbol: str | None = None) -> float:
         """Calculates the maximum quantity of an asset that can be bought given the current buying power.
 
         :param str? symbol:  Symbol of stock, crypto, or option. Options should be in OCC format.
@@ -647,7 +844,7 @@ class Algorithm:
             symbol = self.watch_list[0]
 
         power = self.get_account_buying_power()
-        price = self.get_asset_current_price(symbol)
+        price = await self.get_asset_current_price(symbol)
 
         if symbol_type(symbol) == "CRYPTO":
             price = mark_up(price)
@@ -661,6 +858,8 @@ class Algorithm:
 
         :returns: The current buying power as a float.
         """
+        if not self.account:
+            return 0.0
         return self.account.buying_power
 
     def get_account_equity(self) -> float:
@@ -668,31 +867,45 @@ class Algorithm:
 
         :returns: The current equity as a float.
         """
+        if not self.account:
+            return 0.0
         return self.account.equity
 
-    def get_account_stock_positions(self) -> list[Position]:
+    async def get_account_stock_positions(self) -> list[Position]:
         """Returns the current stock positions.
 
         :returns: A list of Position objects for all currently owned stocks.
         """
-        assert self.trader is not None, "Trader is not set. Please set the trader before calling this function."
-        return self.trader.positions.stock
+        if not self.broker_service:
+            await self.discover_services()
 
-    def get_account_crypto_positions(self) -> list[Position]:
+        assert self.broker_service is not None
+        positions = await self.broker_service.get_positions()
+        return [pos for pos in positions if symbol_type(pos.symbol) == "STOCK"]
+
+    async def get_account_crypto_positions(self) -> list[Position]:
         """Returns the current crypto positions.
 
         :returns: A list of Position objects for all currently owned crypto.
         """
-        assert self.trader is not None, "Trader is not set. Please set the trader before calling this function."
-        return self.trader.positions.crypto
+        if not self.broker_service:
+            await self.discover_services()
 
-    def get_account_option_positions(self) -> list[Position]:
+        assert self.broker_service is not None
+        positions = await self.broker_service.get_positions()
+        return [pos for pos in positions if symbol_type(pos.symbol) == "CRYPTO"]
+
+    async def get_account_option_positions(self) -> list[Position]:
         """Returns the current option positions.
 
         :returns: A list of Position objects for all currently owned options.
         """
-        assert self.trader is not None, "Trader is not set. Please set the trader before calling this function."
-        return self.trader.positions.option
+        if not self.broker_service:
+            await self.discover_services()
+
+        assert self.broker_service is not None
+        positions = await self.broker_service.get_positions()
+        return [pos for pos in positions if symbol_type(pos.symbol) == "OPTION"]
 
     def get_watchlist(self) -> list[str]:
         """Returns the current watchlist."""
@@ -732,7 +945,11 @@ class Algorithm:
 
         :returns: The current date and time as a datetime object
         """
-        return datetime_utc_to_local(self.stats.utc_timestamp, self.stats.broker_timezone)
+        if self.stats and self.stats.utc_timestamp and self.stats.broker_timezone:
+            return datetime_utc_to_local(self.stats.utc_timestamp, self.stats.broker_timezone)
+        else:
+            # Fallback to current UTC time if stats not available
+            return dt.datetime.utcnow()
 
     # def is_day_trade(self, symbol=None, action="buy") -> bool:
     #     """
@@ -752,3 +969,6 @@ class Algorithm:
         :param str symbol: Symbol of stock or crypto asset.
         """
         self.watch_list.append(symbol)
+
+# mypy: disable-error-code="attr-defined"
+# Service method calls are properly typed at runtime through service discovery
