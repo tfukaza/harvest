@@ -259,6 +259,7 @@ class Algorithm:
         quantity: int,
         in_force: Literal["gtc", "gtd"] = "gtc",
         extended: bool = False,
+        broker: str | None = None,
     ) -> Order | None:
         """
         Buys the specified asset.
@@ -274,6 +275,7 @@ class Algorithm:
         :param Literal["gtc", "gtd"]? in_force: Duration the order is in force.
             Choose from 'gtc' (Good 'til canceled) or 'gtd' (Good 'til date). defaults to 'gtc'
         :param bool? extended: Whether to trade in extended hours or not. Defaults to False
+        :param str? broker: Name of broker to use (optional, defaults to first)
 
         :returns: The following Python dictionary
             - order_id: str, ID of order
@@ -283,10 +285,16 @@ class Algorithm:
         """
         debugger.debug(f"Submitted buy order for {symbol} with quantity {quantity}")
 
-        if not self.broker_service:
+        # Get the specified broker service
+        broker_service = self.get_broker_service(name=broker)
+        if not broker_service:
             await self.discover_services()
+            broker_service = self.get_broker_service(name=broker)
 
-        order = await self.broker_service.place_order(  # type: ignore
+        if not broker_service:
+            raise Exception(f"Broker service not found (name: {broker})")
+
+        order = await broker_service.place_order(  # type: ignore
             symbol=symbol,
             side=OrderSide.BUY,
             quantity=quantity,
@@ -316,6 +324,7 @@ class Algorithm:
         quantity: int,
         in_force: Literal["gtc", "gtd"] = "gtc",
         extended: bool = False,
+        broker: str | None = None,
     ) -> Order | None:
         """Sells the specified asset.
 
@@ -331,6 +340,7 @@ class Algorithm:
         :param Literal["gtc", "gtd"]? in_force: Duration the order is in force.
             Choose from 'gtc' (Good 'til canceled) or 'gtd' (Good 'til date). Defaults to 'gtc'
         :param bool? extended: Whether to trade in extended hours or not. Defaults to False
+        :param str? broker: Name of broker to use (optional, defaults to first)
 
         :returns: A dictionary with the following keys:
             - order_id: str, ID of order
@@ -341,10 +351,15 @@ class Algorithm:
 
         debugger.debug(f"Submitted sell order for {symbol} with quantity {quantity}")
 
-        if not self.broker_service:
+        broker_service = self.get_broker_service(name=broker)
+        if not broker_service:
             await self.discover_services()
+            broker_service = self.get_broker_service(name=broker)
 
-        order = await self.broker_service.place_order(  # type: ignore
+        if not broker_service:
+            raise Exception("Broker service not available")
+
+        order = await broker_service.place_order(  # type: ignore
             symbol=symbol,
             side=OrderSide.SELL,
             quantity=quantity,
@@ -369,12 +384,22 @@ class Algorithm:
         return order
 
     def get_price_history(self, symbol: str, interval: Interval | None = None,
-                         start: dt.datetime | None = None, end: dt.datetime | None = None) -> TickerFrame:
-        """Get market data from central storage service"""
-        if not self.central_storage_service:
+                         start: dt.datetime | None = None, end: dt.datetime | None = None,
+                         storage: str | None = None) -> TickerFrame:
+        """Get market data from central storage service
+
+        :param str symbol: Symbol to get price history for
+        :param Interval? interval: Interval for price data (defaults to algorithm interval)
+        :param datetime? start: Start time for price history
+        :param datetime? end: End time for price history
+        :param str? storage: Name of storage to use (optional, defaults to first)
+        :returns: TickerFrame with price history
+        """
+        storage_service = self.get_central_storage_service(name=storage)
+        if not storage_service:
             raise Exception("Central storage service not available")
 
-        return self.central_storage_service.get_price_history(symbol, interval or self.interval, start, end)  # type: ignore
+        return storage_service.get_price_history(symbol, interval or self.interval, start, end)  # type: ignore
 
     def get_my_transactions(self, symbol: str) -> TransactionFrame:
         """Get this algorithm's transaction history"""
@@ -391,13 +416,16 @@ class Algorithm:
             previous_equity=previous_equity
         )
 
-    async def sell_all_options(self, symbol: str | None = None, in_force: str = "gtc") -> list[Order | None]:
+    async def sell_all_options(self, symbol: str | None = None, in_force: str = "gtc",
+                              broker: str | None = None) -> list[Order | None]:
         """Sells all options based on the specified stock.
 
         For example, if you call this function with `symbol` set to "TWTR", it will sell
         all options you own that is related to TWTR.
 
         :param str? symbol: symbol of stock. defaults to first symbol in watchlist
+        :param str? in_force: Duration the order is in force. defaults to "gtc"
+        :param str? broker: Name of broker to use (optional, defaults to first)
         :returns: A list of dictionaries with the following keys:
             - order_id: str, ID of order
             - symbol: str, symbol of asset
@@ -405,18 +433,22 @@ class Algorithm:
         if symbol is None:
             symbol = self.watch_list[0]
 
-        if not self.broker_service:
+        broker_service = self.get_broker_service(name=broker)
+        if not broker_service:
             await self.discover_services()
+            broker_service = self.get_broker_service(name=broker)
+
+        if not broker_service:
+            raise Exception("Broker service not available")
 
         # Get option positions from broker service
-        assert self.broker_service is not None
-        positions = await self.broker_service.get_positions()
+        positions = await broker_service.get_positions()
         option_positions = [pos for pos in positions if pos.symbol.startswith(symbol) and symbol_type(pos.symbol) == "OPTION"]
 
         ret = []
         for pos in option_positions:
             debugger.debug(f"Algo SELL OPTION: {pos.symbol}")
-            order = await self.sell(pos.symbol, int(pos.quantity), in_force, True)  # type: ignore
+            order = await self.sell(pos.symbol, int(pos.quantity), in_force, True, broker)  # type: ignore
             ret.append(order)
 
         return ret
@@ -576,7 +608,8 @@ class Algorithm:
 
     # ------------------ Technical Indicators -------------------
 
-    def _default_param(self, symbol: str | None, interval: Interval | str | None, ref: str, prices: list | None) -> tuple[str, Interval, str, list]:
+    def _default_param(self, symbol: str | None, interval: Interval | str | None, ref: str, prices: list | None,
+                      storage: str | None = None) -> tuple[str, Interval, str, list]:
         if symbol is None:
             symbol = self.watch_list[0]
 
@@ -587,9 +620,10 @@ class Algorithm:
             interval = interval_string_to_enum(interval)
 
         if prices is None:
-            if not self.central_storage_service:
+            storage_service = self.get_central_storage_service(name=storage)
+            if not storage_service:
                 raise Exception("Central storage service not available")
-            ticker_frame = self.central_storage_service.get_price_history(symbol, interval)
+            ticker_frame = storage_service.get_price_history(symbol, interval)
             prices = list(ticker_frame.get_column(ref))
 
         return symbol, interval, ref, prices
@@ -601,6 +635,7 @@ class Algorithm:
         interval: Interval | None = None,
         ref: str = "close",
         prices=None,
+        storage: str | None = None,
     ) -> np.ndarray | None:
         """Calculate RSI
 
@@ -610,9 +645,10 @@ class Algorithm:
         :param str? ref:        'close', 'open', 'high', or 'low'. defaults to 'close'
         :param list? prices:    When specified, this function will use the values provided in the
                                 list to perform calculations and ignore other parameters. defaults to None
+        :param str? storage: Name of storage to use (optional, defaults to first)
         :returns: A list in numpy format, containing RSI values
         """
-        symbol, interval, ref, prices = self._default_param(symbol, interval, ref, prices)
+        symbol, interval, ref, prices = self._default_param(symbol, interval, ref, prices, storage)
 
         if len(prices) < period:
             debugger.warning("Not enough data to calculate RSI, returning None")
@@ -635,6 +671,7 @@ class Algorithm:
         interval: Interval | None = None,
         ref: str = "close",
         prices=None,
+        storage: str | None = None,
     ) -> np.ndarray | None:
         """Calculate SMA
 
@@ -644,9 +681,10 @@ class Algorithm:
         :param str? ref:       'close', 'open', 'high', or 'low'. defaults to 'close'
         :param list? prices:    When specified, this function will use the values provided in the
                                 list to perform calculations and ignore other parameters. defaults to None
+        :param str? storage: Name of storage to use (optional, defaults to first)
         :returns: A list in numpy format, containing SMA values
         """
-        symbol, interval, ref, prices = self._default_param(symbol, interval, ref, prices)
+        symbol, interval, ref, prices = self._default_param(symbol, interval, ref, prices, storage)
 
         if len(prices) < period:
             debugger.warning("Not enough data to calculate SMA, returning None")
@@ -669,6 +707,7 @@ class Algorithm:
         interval: Interval | None = None,
         ref: str = "close",
         prices=None,
+        storage: str | None = None,
     ) -> np.ndarray | None:
         """Calculate EMA
 
@@ -678,9 +717,10 @@ class Algorithm:
         :param str? ref:       'close', 'open', 'high', or 'low'. defaults to 'close'
         :param list? prices:    When specified, this function will use the values provided in the
                                 list to perform calculations and ignore other parameters. defaults to None
+        :param str? storage: Name of storage to use (optional, defaults to first)
         :returns: A list in numpy format, containing EMA values
         """
-        symbol, interval, ref, prices = self._default_param(symbol, interval, ref, prices)
+        symbol, interval, ref, prices = self._default_param(symbol, interval, ref, prices, storage)
 
         if len(prices) < period:
             debugger.warning("Not enough data to calculate EMA, returning None")
@@ -704,6 +744,7 @@ class Algorithm:
         ref: str = "close",
         dev: float = 1.0,
         prices=None,
+        storage: str | None = None,
     ) -> tuple[np.ndarray | None, np.ndarray | None, np.ndarray | None]:
         """Calculate Bollinger Bands
 
@@ -714,9 +755,10 @@ class Algorithm:
         :param float? dev:         Standard deviation of the bands. defaults to 1.0
         :param list? prices:    When specified, this function will use the values provided in the
                                 list to perform calculations and ignore other parameters. defaults to None
+        :param str? storage: Name of storage to use (optional, defaults to first)
         :returns: A tuple of numpy lists, each a list of BBand top, average, and bottom values
         """
-        symbol, interval, ref, prices = self._default_param(symbol, interval, ref, prices)
+        symbol, interval, ref, prices = self._default_param(symbol, interval, ref, prices, storage)
 
         if len(prices) < period:
             debugger.warning("Not enough data to calculate BBands, returning None")
@@ -750,33 +792,41 @@ class Algorithm:
 
     ############### Getters for Trader properties #################
 
-    async def get_asset_quantity(self, symbol: str | None = None, include_pending_buy=True, include_pending_sell=False) -> float:
+    async def get_asset_quantity(self, symbol: str | None = None, include_pending_buy=True, include_pending_sell=False,
+                                broker: str | None = None) -> float:
         """Returns the quantity owned of a specified asset.
 
         :param str? symbol:  Symbol of asset. defaults to first symbol in watchlist
         :param bool? include_pending_buy:  Include pending buy orders in quantity. defaults to True
         :param bool? include_pending_sell:  Include pending sell orders in quantity. defaults to False
+        :param str? broker: Name of broker to use (optional, defaults to first)
         :returns: Quantity of asset as float. 0 if quantity is not owned.
         :raises:
         """
         if symbol is None:
             symbol = self.watch_list[0]
 
-        if not self.broker_service:
+        broker_service = self.get_broker_service(name=broker)
+        if not broker_service:
             await self.discover_services()
+            broker_service = self.get_broker_service(name=broker)
 
-        assert self.broker_service is not None
-        positions = await self.broker_service.get_positions()
+        if not broker_service:
+            raise Exception("Broker service not available")
+
+        positions = await broker_service.get_positions()
         for position in positions:
             if position.symbol == symbol:
                 return position.quantity
 
         return 0.0
 
-    async def get_asset_avg_cost(self, symbol: str | None = None) -> float:
+    async def get_asset_avg_cost(self, symbol: str | None = None,
+                                broker: str | None = None) -> float:
         """Returns the average cost of a specified asset.
 
         :param str? symbol:  Symbol of asset. defaults to first symbol in watchlist
+        :param str? broker: Name of broker to use (optional, defaults to first)
         :returns: Average cost of asset. Returns None if asset is not being tracked.
         :raises Exception: If symbol is not currently owned.
         """
@@ -784,21 +834,29 @@ class Algorithm:
             symbol = self.watch_list[0]
         symbol = symbol.replace(" ", "")
 
-        if not self.broker_service:
+        broker_service = self.get_broker_service(name=broker)
+        if not broker_service:
             await self.discover_services()
+            broker_service = self.get_broker_service(name=broker)
 
-        assert self.broker_service is not None
-        positions = await self.broker_service.get_positions()
+        if not broker_service:
+            raise Exception("Broker service not available")
+
+        positions = await broker_service.get_positions()
         for position in positions:
             if position.symbol == symbol:
                 return position.avg_price
 
         raise Exception(f"{symbol} is not currently owned")
 
-    async def get_asset_current_price(self, symbol: str | None = None) -> float:
+    async def get_asset_current_price(self, symbol: str | None = None,
+                                     broker: str | None = None,
+                                     storage: str | None = None) -> float:
         """Returns the current price of a specified asset.
 
         :param str? symbol: Symbol of asset. defaults to first symbol in watchlist
+        :param str? broker: Name of broker to use (optional, defaults to first)
+        :param str? storage: Name of storage to use (optional, defaults to first)
         :returns:           Price of asset.
         :raises Exception:  If symbol is not in the watchlist.
         """
@@ -806,17 +864,22 @@ class Algorithm:
             symbol = self.watch_list[0]
 
         if symbol_type(symbol) != "OPTION":
-            if not self.central_storage_service:
+            storage_service = self.get_central_storage_service(name=storage)
+            if not storage_service:
                 raise Exception("Central storage service not available")
-            ticker_frame = self.central_storage_service.get_price_history(symbol, self.interval)
+            ticker_frame = storage_service.get_price_history(symbol, self.interval)
             return ticker_frame.get_column("close")[-1]
 
         # For options, first check positions
-        if not self.broker_service:
+        broker_service = self.get_broker_service(name=broker)
+        if not broker_service:
             await self.discover_services()
+            broker_service = self.get_broker_service(name=broker)
 
-        assert self.broker_service is not None
-        positions = await self.broker_service.get_positions()
+        if not broker_service:
+            raise Exception("Broker service not available")
+
+        positions = await broker_service.get_positions()
         for pos in positions:
             if pos.symbol == symbol:
                 return pos.current_price * 100  # Remove multiplier reference
@@ -825,7 +888,8 @@ class Algorithm:
         option_data = await self.get_option_market_data(symbol)
         return option_data.price * 100
 
-    def get_asset_price_list(self, symbol: str | None = None, interval: str | None = None, ref: str = "close") -> list[float] | None:
+    def get_asset_price_list(self, symbol: str | None = None, interval: str | None = None, ref: str = "close",
+                            storage: str | None = None) -> list[float] | None:
         """Returns a list of recent prices for an asset.
 
         This function is not compatible with options.
@@ -833,6 +897,7 @@ class Algorithm:
         :param str? symbol:     Symbol of stock or crypto asset. defaults to first symbol in watchlist
         :param str? interval:   Interval of data. defaults to the interval of the algorithm
         :param str? ref:        'close', 'open', 'high', or 'low'. defaults to 'close'
+        :param str? storage: Name of storage to use (optional, defaults to first)
         :returns: List of prices
         """
         if symbol is None:
@@ -843,20 +908,23 @@ class Algorithm:
             interval_enum = interval_string_to_enum(interval)
 
         if symbol_type(symbol) != "OPTION":
-            if not self.central_storage_service:
+            storage_service = self.get_central_storage_service(name=storage)
+            if not storage_service:
                 raise Exception("Central storage service not available")
-            ticker_frame = self.central_storage_service.get_price_history(symbol, interval_enum)
+            ticker_frame = storage_service.get_price_history(symbol, interval_enum)
             return list(ticker_frame.get_column(ref))
 
         debugger.warning("Price list not available for options")
         return None
 
-    def get_asset_current_candle(self, symbol: str | None = None, interval=None) -> TickerFrame | None:
+    def get_asset_current_candle(self, symbol: str | None = None, interval=None,
+                                storage: str | None = None) -> TickerFrame | None:
         """Returns the most recent candle as a TickerFrame
 
         This function is not compatible with options.
 
         :param str? symbol:  Symbol of stock or crypto asset. defaults to first symbol in watchlist
+        :param str? storage: Name of storage to use (optional, defaults to first)
         :returns: Price of asset as a TickerFrame with the following columns:
             - timestamp
             - symbol
@@ -876,9 +944,10 @@ class Algorithm:
             interval_enum = interval_string_to_enum(interval) if isinstance(interval, str) else interval
 
         if len(symbol) <= 6:  # Stock or crypto symbol
-            if not self.central_storage_service:
+            storage_service = self.get_central_storage_service(name=storage)
+            if not storage_service:
                 raise Exception("Central storage service not available")
-            ticker_frame = self.central_storage_service.get_price_history(symbol, interval_enum)
+            ticker_frame = storage_service.get_price_history(symbol, interval_enum)
             # Get last row
             last_row = ticker_frame.tail(1)
             # Add timezone handling if stats available
@@ -890,12 +959,14 @@ class Algorithm:
         debugger.warning("Candles not available for options")
         return None
 
-    def get_asset_candle_list(self, symbol: str | None = None, interval=None) -> TickerFrame | None:
+    def get_asset_candle_list(self, symbol: str | None = None, interval=None,
+                             storage: str | None = None) -> TickerFrame | None:
         """Returns the candles of an asset as a TickerFrame
 
         This function is not compatible with options.
 
         :param str? symbol:  Symbol of stock or crypto asset. defaults to first symbol in watchlist
+        :param str? storage: Name of storage to use (optional, defaults to first)
         :returns: Prices of asset as a TickerFrame with the following columns:
             - timestamp
             - symbol
@@ -914,31 +985,38 @@ class Algorithm:
         if interval is not None:
             interval_enum = interval_string_to_enum(interval) if isinstance(interval, str) else interval
 
-        if not self.central_storage_service:
+        storage_service = self.get_central_storage_service(name=storage)
+        if not storage_service:
             raise Exception("Central storage service not available")
 
-        ticker_frame = self.central_storage_service.get_price_history(symbol, interval_enum)
+        ticker_frame = storage_service.get_price_history(symbol, interval_enum)
         # Add timezone handling if stats available
         if self.stats:
             df_with_timezone = pandas_timestamp_to_local(ticker_frame._df, self.stats.broker_timezone)
             return TickerFrame(df_with_timezone)
         return ticker_frame
 
-    async def get_asset_profit_percent(self, symbol: str | None = None) -> float | None:
+    async def get_asset_profit_percent(self, symbol: str | None = None,
+                                      broker: str | None = None) -> float | None:
         """Returns the return of a specified asset.
 
         :param str? symbol:  Symbol of stock, crypto, or option. Options should be in OCC format.
                         defaults to first symbol in watchlist
+        :param str? broker: Name of broker to use (optional, defaults to first)
         :returns: Return of asset, expressed as a decimal.
         """
         if symbol is None:
             symbol = self.watch_list[0]
 
-        if not self.broker_service:
+        broker_service = self.get_broker_service(name=broker)
+        if not broker_service:
             await self.discover_services()
+            broker_service = self.get_broker_service(name=broker)
 
-        assert self.broker_service is not None
-        positions = await self.broker_service.get_positions()
+        if not broker_service:
+            raise Exception("Broker service not available")
+
+        positions = await broker_service.get_positions()
         for position in positions:
             if position.symbol == symbol:
                 return position.profit_percent
@@ -986,40 +1064,55 @@ class Algorithm:
             return 0.0
         return self.account.equity
 
-    async def get_account_stock_positions(self) -> list[Position]:
+    async def get_account_stock_positions(self, broker: str | None = None) -> list[Position]:
         """Returns the current stock positions.
 
+        :param str? broker: Name of broker to use (optional, defaults to first)
         :returns: A list of Position objects for all currently owned stocks.
         """
-        if not self.broker_service:
+        broker_service = self.get_broker_service(name=broker)
+        if not broker_service:
             await self.discover_services()
+            broker_service = self.get_broker_service(name=broker)
 
-        assert self.broker_service is not None
-        positions = await self.broker_service.get_positions()
+        if not broker_service:
+            raise Exception("Broker service not available")
+
+        positions = await broker_service.get_positions()
         return [pos for pos in positions if symbol_type(pos.symbol) == "STOCK"]
 
-    async def get_account_crypto_positions(self) -> list[Position]:
+    async def get_account_crypto_positions(self, broker: str | None = None) -> list[Position]:
         """Returns the current crypto positions.
 
+        :param str? broker: Name of broker to use (optional, defaults to first)
         :returns: A list of Position objects for all currently owned crypto.
         """
-        if not self.broker_service:
+        broker_service = self.get_broker_service(name=broker)
+        if not broker_service:
             await self.discover_services()
+            broker_service = self.get_broker_service(name=broker)
 
-        assert self.broker_service is not None
-        positions = await self.broker_service.get_positions()
+        if not broker_service:
+            raise Exception("Broker service not available")
+
+        positions = await broker_service.get_positions()
         return [pos for pos in positions if symbol_type(pos.symbol) == "CRYPTO"]
 
-    async def get_account_option_positions(self) -> list[Position]:
+    async def get_account_option_positions(self, broker: str | None = None) -> list[Position]:
         """Returns the current option positions.
 
+        :param str? broker: Name of broker to use (optional, defaults to first)
         :returns: A list of Position objects for all currently owned options.
         """
-        if not self.broker_service:
+        broker_service = self.get_broker_service(name=broker)
+        if not broker_service:
             await self.discover_services()
+            broker_service = self.get_broker_service(name=broker)
 
-        assert self.broker_service is not None
-        positions = await self.broker_service.get_positions()
+        if not broker_service:
+            raise Exception("Broker service not available")
+
+        positions = await broker_service.get_positions()
         return [pos for pos in positions if symbol_type(pos.symbol) == "OPTION"]
 
     def get_watchlist(self) -> list[str]:
@@ -1104,6 +1197,44 @@ class Algorithm:
             results['brokers_available'] = False
 
         return results
+
+    def get_broker_service(self, name: str | None = None) -> "BrokerService | None":
+        """
+        Get a specific broker service by name.
+
+        :name: Name of the broker service (optional, defaults to first)
+        :returns: BrokerService instance or None if not found
+        """
+        if name is not None:
+            # Search by name
+            for service in self.broker_services:
+                if hasattr(service, 'service_name') and service.service_name == name:
+                    return service
+            return None
+
+        # Get first service by default
+        if len(self.broker_services) > 0:
+            return self.broker_services[0]
+        return None
+
+    def get_central_storage_service(self, name: str | None = None) -> "CentralStorageService | None":
+        """
+        Get a specific central storage service by name.
+
+        :name: Name of the storage service (optional, defaults to first)
+        :returns: CentralStorageService instance or None if not found
+        """
+        if name is not None:
+            # Search by name
+            for service in self.central_storage_services:
+                if hasattr(service, 'service_name') and service.service_name == name:
+                    return service
+            return None
+
+        # Get first service by default
+        if len(self.central_storage_services) > 0:
+            return self.central_storage_services[0]
+        return None
 
     # def is_day_trade(self, symbol=None, action="buy") -> bool:
     #     """
