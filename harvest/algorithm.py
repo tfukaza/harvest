@@ -1,7 +1,9 @@
+import dataclasses
 import math
 import datetime as dt
 from datetime import timezone
-from typing import TYPE_CHECKING, Literal
+from enum import StrEnum
+from typing import TYPE_CHECKING, Literal, Any
 
 import numpy as np
 import polars as pl
@@ -29,6 +31,26 @@ if TYPE_CHECKING:
 
 from zoneinfo import ZoneInfo
 
+
+class AlgorithmStatus(StrEnum):
+    PENDING = "pending"
+    STARTING = "starting"
+    RUNNING = "running"
+    STOPPED = "stopped"
+    CRASHED = "crashed"
+    COMPLETED = "completed"
+    CANCELLED = "cancelled"
+    FAILED = "failed"
+
+
+@dataclasses.dataclass
+class AlgorithmHealth:
+    status: AlgorithmStatus = AlgorithmStatus.PENDING
+    last_update: dt.datetime | None = None
+    error_count: int = 0
+    last_error: str | None = None
+
+
 """
 Algo class is the main interface between users and the program.
 """
@@ -53,12 +75,13 @@ class Algorithm:
 
     # Shared services (will be discovered)
     market_data_service: "MarketDataService | None" = None
-    broker_service: "BrokerService | None" = None
-    central_storage_service: "CentralStorageService | None" = None
+    broker_services: list["BrokerService"] = []
+    central_storage_services: list["CentralStorageService"] = []
 
     # Runtime data
     stats: RuntimeData | None = None
     account: Account | None = None
+    health: AlgorithmHealth
 
     def __init__(self, watch_list: list[str], interval: Interval, aggregations: list[Interval]):
         self.interval = interval
@@ -77,20 +100,35 @@ class Algorithm:
 
         # Shared services (will be discovered)
         self.market_data_service = None
-        self.broker_service = None
-        self.central_storage_service = None
+        self.broker_services = []
+        self.central_storage_services = []
 
         # Runtime data
         self.stats = None
         self.account = None
+        self.health = AlgorithmHealth()
+
+    @property
+    def broker_service(self) -> "BrokerService | None":
+        """Returns the default broker service."""
+        if self.broker_services:
+            return self.broker_services[0]
+        return None
+
+    @property
+    def central_storage_service(self) -> "CentralStorageService | None":
+        """Returns the default central storage service."""
+        if self.central_storage_services:
+            return self.central_storage_services[0]
+        return None
 
     async def discover_services(self) -> None:
         """Discover and connect to required services"""
         self.market_data_service = self.service_registry.discover_service("market_data")  # type: ignore
-        self.broker_service = self.service_registry.discover_service("broker")  # type: ignore
-        self.central_storage_service = self.service_registry.discover_service("central_storage")  # type: ignore
+        self.broker_services = self.service_registry.discover_services("broker")  # type: ignore
+        self.central_storage_services = self.service_registry.discover_services("central_storage")  # type: ignore
 
-        if not all([self.market_data_service, self.broker_service, self.central_storage_service]):
+        if not all([self.market_data_service, self.broker_services, self.central_storage_services]):
             raise Exception("Required services not found")
 
     def setup_event_subscriptions(self) -> None:
