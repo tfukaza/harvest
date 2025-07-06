@@ -1,6 +1,6 @@
 import datetime as dt
 from dataclasses import dataclass
-from typing import Optional
+from enum import StrEnum
 
 from ..definitions import (
     TickerFrame,
@@ -10,6 +10,42 @@ from ..definitions import (
     Account,
     Position
 )
+
+
+class HealthStatus(StrEnum):
+    """Health status enumeration."""
+    HEALTHY = "healthy"
+    DEGRADED = "degraded"
+    UNHEALTHY = "unhealthy"
+    UNKNOWN = "unknown"
+    ERROR = "error"
+
+
+class LogLevel(StrEnum):
+    """Log level enumeration."""
+    DEBUG = "DEBUG"
+    INFO = "INFO"
+    WARNING = "WARNING"
+    ERROR = "ERROR"
+    CRITICAL = "CRITICAL"
+
+
+class ComponentType(StrEnum):
+    """Component type enumeration."""
+    ALGORITHM = "algorithm"
+    BROKER = "broker"
+    SERVICE = "service"
+    SYSTEM = "system"
+    MAIN = "main"
+
+
+class DataType(StrEnum):
+    """Market data type enumeration."""
+    CANDLE = "candle"
+    QUOTE = "quote"
+    TRADE = "trade"
+    ORDERBOOK = "orderbook"
+    NEWS = "news"
 
 
 @dataclass
@@ -30,7 +66,7 @@ class OrderPlacedEvent:
     quantity: float
     order_type: str
     timestamp: dt.datetime
-    order: Optional[Order] = None
+    order: Order | None = None
 
 
 @dataclass
@@ -43,7 +79,7 @@ class OrderFilledEvent:
     fill_quantity: float
     side: OrderSide
     timestamp: dt.datetime
-    order: Optional[Order] = None
+    order: Order | None = None
 
 
 @dataclass
@@ -53,7 +89,7 @@ class OrderCancelledEvent:
     algorithm_name: str
     symbol: str
     timestamp: dt.datetime
-    reason: Optional[str] = None
+    reason: str | None = None
 
 
 @dataclass
@@ -73,7 +109,7 @@ class AccountUpdateEvent:
     cash: float
     asset_value: float
     timestamp: dt.datetime
-    account: Optional[Account] = None
+    account: Account | None = None
 
 
 @dataclass
@@ -90,7 +126,7 @@ class AlgorithmStartedEvent:
     """Event fired when an algorithm starts running."""
     algorithm_name: str
     timestamp: dt.datetime
-    metadata: Optional[dict] = None
+    metadata: dict | None = None
 
 
 @dataclass
@@ -98,14 +134,14 @@ class AlgorithmStoppedEvent:
     """Event fired when an algorithm stops running."""
     algorithm_name: str
     timestamp: dt.datetime
-    reason: Optional[str] = None
+    reason: str | None = None
 
 
 @dataclass
 class MarketDataEvent:
     """Event fired for general market data updates."""
     symbol: str
-    data_type: str  # 'candle', 'quote', 'trade', etc.
+    data_type: DataType
     data: dict
     timestamp: dt.datetime
 
@@ -113,36 +149,36 @@ class MarketDataEvent:
 @dataclass
 class ErrorEvent:
     """Event fired when an error occurs in the system."""
-    component: str  # 'algorithm', 'broker', 'service', etc.
+    component: ComponentType
     error_type: str
     error_message: str
     timestamp: dt.datetime
-    algorithm_name: Optional[str] = None
-    metadata: Optional[dict] = None
+    algorithm_name: str | None = None
+    metadata: dict | None = None
 
 
 @dataclass
 class ServiceHealthEvent:
     """Event fired when a service health status changes."""
     service_name: str
-    health_status: str  # 'healthy', 'degraded', 'unhealthy'
+    health_status: HealthStatus
     timestamp: dt.datetime
-    metadata: Optional[dict] = None
+    metadata: dict | None = None
 
 
 @dataclass
 class LogEvent:
     """Event fired for structured logging across the system."""
-    level: str  # 'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'
+    level: LogLevel
     message: str
-    component: str
+    component: ComponentType
     timestamp: dt.datetime
-    algorithm_name: Optional[str] = None
-    metadata: Optional[dict] = None
+    algorithm_name: str | None = None
+    metadata: dict | None = None
 
 
 # Event type constants for easy reference
-class EventTypes:
+class EventTypes(StrEnum):
     PRICE_UPDATE = "price_update"
     ORDER_PLACED = "order_placed"
     ORDER_FILLED = "order_filled"

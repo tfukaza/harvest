@@ -1,5 +1,5 @@
 import asyncio
-from typing import Callable, Dict, List, Any, Optional
+from typing import Callable, Any
 from uuid import uuid4
 import logging
 
@@ -13,7 +13,7 @@ class EventBus:
     """
 
     def __init__(self):
-        self._event_handlers: Dict[str, List[Dict[str, Any]]] = {}
+        self._event_handlers: dict[str, list[dict[str, Any]]] = {}
         self._lock = asyncio.Lock()
 
     def publish(self, event_type: str, data: dict) -> None:
@@ -78,7 +78,7 @@ class EventBus:
         if tasks:
             await asyncio.gather(*tasks, return_exceptions=True)
 
-    def subscribe(self, event_type: str, callback: Callable, filters: Optional[dict] = None) -> str:
+    def subscribe(self, event_type: str, callback: Callable, filters: dict | None = None) -> str:
         """
         Subscribe to an event type with optional filtering.
 
@@ -127,7 +127,7 @@ class EventBus:
 
         logger.debug(f"Unsubscribed: {subscription_id}")
 
-    def get_subscription_count(self, event_type: Optional[str] = None) -> int:
+    def get_subscription_count(self, event_type: str | None = None) -> int:
         """
         Get the number of subscriptions for an event type or all events.
 

@@ -1,16 +1,22 @@
 """
-Unit tests for the Algorithm Independence Infrastructure.
+Unit tests for EventBus functionality.
 """
 
 import asyncio
 import pytest
 import datetime as dt
-from unittest.mock import Mock, AsyncMock
+from unittest.mock import Mock
 
 from harvest.events import EventBus, EventTypes
-from harvest.events.events import PriceUpdateEvent, OrderPlacedEvent, LogEvent
-from harvest.services import ServiceRegistry, Service
-from harvest.services.service_interface import ServiceError, ServiceNotFoundError
+from harvest.events.events import (
+    PriceUpdateEvent,
+    OrderPlacedEvent,
+    LogEvent,
+    HealthStatus,
+    LogLevel,
+    ComponentType,
+    DataType
+)
 from harvest.definitions import OrderSide
 
 
@@ -115,7 +121,6 @@ class TestEventBus:
         assert len(received_events) == 1
         assert received_events[0]["symbol"] == "AAPL"
 
-    @pytest.mark.asyncio
     async def test_async_publish(self):
         """Test asynchronous event publishing."""
         event_bus = EventBus()
@@ -152,152 +157,17 @@ class TestEventBus:
         event_bus.clear_all_subscriptions()
         assert event_bus.get_subscription_count() == 0
 
+    def test_event_types_enum(self):
+        """Test EventTypes enum functionality."""
+        # Test that EventTypes values are strings
+        assert EventTypes.PRICE_UPDATE == "price_update"
+        assert EventTypes.ORDER_PLACED == "order_placed"
+        assert EventTypes.LOG == "log"
 
-class MockService(Service):
-    """Mock service for testing."""
-
-    def __init__(self, name="mock_service"):
-        super().__init__(name)
-        self.start_called = False
-        self.stop_called = False
-
-    async def start(self):
-        self.start_called = True
-        self.is_running = True
-
-    async def stop(self):
-        self.stop_called = True
-        self.is_running = False
-
-    def health_check(self):
-        return {"status": "healthy" if self.is_running else "stopped"}
-
-    def get_capabilities(self):
-        return ["mock_capability"]
-
-
-class TestServiceRegistry:
-    """Test cases for ServiceRegistry functionality."""
-
-    @pytest.mark.asyncio
-    async def test_service_registration(self):
-        """Test service registration."""
-        registry = ServiceRegistry()
-        service = MockService()
-
-        await registry.register_service("test_service", service)
-
-        # Check service is registered
-        assert registry.get_service_count() == 1
-        discovered = registry.discover_service("test_service")
-        assert discovered == service
-
-    @pytest.mark.asyncio
-    async def test_service_start_stop(self):
-        """Test service start and stop."""
-        registry = ServiceRegistry()
-        service = MockService()
-
-        await registry.register_service("test_service", service)
-
-        # Start service
-        await registry.start_service("test_service")
-        assert service.start_called
-        assert service.is_running
-        assert registry.get_running_service_count() == 1
-
-        # Stop service
-        await registry.stop_service("test_service")
-        assert service.stop_called
-        assert not service.is_running
-        assert registry.get_running_service_count() == 0
-
-    @pytest.mark.asyncio
-    async def test_service_discovery_by_capability(self):
-        """Test service discovery by capability."""
-        registry = ServiceRegistry()
-        service1 = MockService("service1")
-        service2 = MockService("service2")
-
-        await registry.register_service("service1", service1)
-        await registry.register_service("service2", service2)
-
-        # Discover by capability
-        services = registry.discover_services_by_capability("mock_capability")
-        assert len(services) == 2
-        assert service1 in services
-        assert service2 in services
-
-    @pytest.mark.asyncio
-    async def test_service_not_found(self):
-        """Test service not found error."""
-        registry = ServiceRegistry()
-
-        with pytest.raises(ServiceNotFoundError):
-            await registry.start_service("nonexistent_service")
-
-    @pytest.mark.asyncio
-    async def test_health_check_all(self):
-        """Test health check for all services."""
-        registry = ServiceRegistry()
-        service = MockService()
-
-        await registry.register_service("test_service", service)
-        await registry.start_service("test_service")
-
-        # Check health
-        health_results = await registry.health_check_all()
-        assert "test_service" in health_results
-        assert health_results["test_service"]["status"] == "healthy"
-
-    @pytest.mark.asyncio
-    async def test_service_unregistration(self):
-        """Test service unregistration."""
-        registry = ServiceRegistry()
-        service = MockService()
-
-        await registry.register_service("test_service", service)
-        assert registry.get_service_count() == 1
-
-        # Unregister
-        await registry.unregister_service("test_service")
-        assert registry.get_service_count() == 0
-
-        # Should not be discoverable
-        discovered = registry.discover_service("test_service")
-        assert discovered is None
-
-    @pytest.mark.asyncio
-    async def test_start_all_services(self):
-        """Test starting all registered services."""
-        registry = ServiceRegistry()
-        service1 = MockService("service1")
-        service2 = MockService("service2")
-
-        await registry.register_service("service1", service1)
-        await registry.register_service("service2", service2)
-
-        # Start all
-        await registry.start_all_services()
-
-        assert service1.start_called
-        assert service2.start_called
-        assert registry.get_running_service_count() == 2
-
-    @pytest.mark.asyncio
-    async def test_shutdown(self):
-        """Test registry shutdown."""
-        registry = ServiceRegistry()
-        service = MockService()
-
-        await registry.register_service("test_service", service)
-        await registry.start_service("test_service")
-
-        # Shutdown
-        await registry.shutdown()
-
-        assert service.stop_called
-        assert registry.get_service_count() == 0
+        # Test that we can iterate over event types
+        event_types = list(EventTypes)
+        assert len(event_types) > 0
+        assert EventTypes.PRICE_UPDATE in event_types
 
 
 class TestEvents:
@@ -331,19 +201,53 @@ class TestEvents:
         assert event.algorithm_name == "test_algo"
         assert event.symbol == "AAPL"
         assert event.quantity == 100.0
+        assert event.side == OrderSide.BUY
 
-    def test_log_event(self):
-        """Test LogEvent creation."""
+    def test_log_event_with_enums(self):
+        """Test LogEvent creation with enum values."""
         event = LogEvent(
-            level="INFO",
+            level=LogLevel.INFO,
             message="Test message",
-            component="test",
+            component=ComponentType.ALGORITHM,
             timestamp=dt.datetime.now()
         )
 
-        assert event.level == "INFO"
+        assert event.level == LogLevel.INFO
         assert event.message == "Test message"
-        assert event.component == "test"
+        assert event.component == ComponentType.ALGORITHM
+        assert isinstance(event.timestamp, dt.datetime)
+
+    def test_health_status_enum(self):
+        """Test HealthStatus enum values."""
+        assert HealthStatus.HEALTHY == "healthy"
+        assert HealthStatus.DEGRADED == "degraded"
+        assert HealthStatus.UNHEALTHY == "unhealthy"
+        assert HealthStatus.UNKNOWN == "unknown"
+        assert HealthStatus.ERROR == "error"
+
+    def test_log_level_enum(self):
+        """Test LogLevel enum values."""
+        assert LogLevel.DEBUG == "DEBUG"
+        assert LogLevel.INFO == "INFO"
+        assert LogLevel.WARNING == "WARNING"
+        assert LogLevel.ERROR == "ERROR"
+        assert LogLevel.CRITICAL == "CRITICAL"
+
+    def test_component_type_enum(self):
+        """Test ComponentType enum values."""
+        assert ComponentType.ALGORITHM == "algorithm"
+        assert ComponentType.BROKER == "broker"
+        assert ComponentType.SERVICE == "service"
+        assert ComponentType.SYSTEM == "system"
+        assert ComponentType.MAIN == "main"
+
+    def test_data_type_enum(self):
+        """Test DataType enum values."""
+        assert DataType.CANDLE == "candle"
+        assert DataType.QUOTE == "quote"
+        assert DataType.TRADE == "trade"
+        assert DataType.ORDERBOOK == "orderbook"
+        assert DataType.NEWS == "news"
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 import asyncio
 from abc import ABC, abstractmethod
-from typing import Dict, List, Any, Optional
+from typing import Any
 import logging
 
 logger = logging.getLogger(__name__)
@@ -15,9 +15,9 @@ class Service(ABC):
     def __init__(self, service_name: str):
         self.service_name = service_name
         self.is_running = False
-        self._start_time: Optional[float] = None
-        self._metadata: Dict[str, Any] = {}
-        self._dependencies: List[str] = []
+        self._start_time: float | None = None
+        self._metadata: dict[str, Any] = {}
+        self._dependencies: list[str] = []
 
     @abstractmethod
     async def start(self) -> None:
@@ -36,7 +36,7 @@ class Service(ABC):
         pass
 
     @abstractmethod
-    def health_check(self) -> Dict[str, Any]:
+    def health_check(self) -> dict[str, Any]:
         """
         Perform a health check on the service.
 
@@ -46,7 +46,7 @@ class Service(ABC):
         pass
 
     @abstractmethod
-    def get_capabilities(self) -> List[str]:
+    def get_capabilities(self) -> list[str]:
         """
         Get the capabilities this service provides.
 
@@ -55,7 +55,7 @@ class Service(ABC):
         """
         pass
 
-    def get_metadata(self) -> Dict[str, Any]:
+    def get_metadata(self) -> dict[str, Any]:
         """
         Get service metadata.
 
@@ -91,7 +91,7 @@ class Service(ABC):
         if service_name not in self._dependencies:
             self._dependencies.append(service_name)
 
-    def get_uptime(self) -> Optional[float]:
+    def get_uptime(self) -> float | None:
         """
         Get the service uptime in seconds.
 

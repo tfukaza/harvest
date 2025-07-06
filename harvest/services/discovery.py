@@ -1,5 +1,5 @@
 import asyncio
-from typing import Dict, List, Optional, Any
+from typing import Any
 import logging
 from datetime import datetime
 
@@ -15,16 +15,16 @@ class ServiceRegistry:
     """
 
     def __init__(self):
-        self._services: Dict[str, Dict[str, Any]] = {}
+        self._services: dict[str, dict[str, Any]] = {}
         self._health_check_interval: float = 30.0  # seconds
-        self._health_check_task: Optional[asyncio.Task] = None
+        self._health_check_task: asyncio.Task | None = None
         self._lock = asyncio.Lock()
 
     async def register_service(
         self,
         service_name: str,
         service_instance: Service,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: dict[str, Any] | None = None
     ) -> None:
         """
         Register a service with the registry.
@@ -84,7 +84,7 @@ class ServiceRegistry:
                 self._health_check_task.cancel()
                 self._health_check_task = None
 
-    def discover_service(self, service_name: str) -> Optional[Service]:
+    def discover_service(self, service_name: str) -> Service | None:
         """
         Discover a service by name.
 
@@ -99,7 +99,7 @@ class ServiceRegistry:
             return service_data["instance"]
         return None
 
-    def discover_services_by_capability(self, capability: str) -> List[Service]:
+    def discover_services_by_capability(self, capability: str) -> list[Service]:
         """
         Discover services that provide a specific capability.
 
@@ -115,7 +115,7 @@ class ServiceRegistry:
                 matching_services.append(service_data["instance"])
         return matching_services
 
-    def list_services(self) -> Dict[str, Dict[str, Any]]:
+    def list_services(self) -> dict[str, dict[str, Any]]:
         """
         List all registered services with their metadata.
 
@@ -136,7 +136,7 @@ class ServiceRegistry:
             }
         return service_info
 
-    async def health_check_all(self) -> Dict[str, Dict[str, Any]]:
+    async def health_check_all(self) -> dict[str, dict[str, Any]]:
         """
         Perform health checks on all registered services.
 
@@ -287,7 +287,7 @@ class ServiceRegistry:
 
 
 # Global service registry instance
-_global_registry: Optional[ServiceRegistry] = None
+_global_registry: ServiceRegistry | None = None
 
 
 def get_service_registry() -> ServiceRegistry:
@@ -301,14 +301,14 @@ def get_service_registry() -> ServiceRegistry:
 async def register_service(
     service_name: str,
     service_instance: Service,
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: dict[str, Any] | None = None
 ) -> None:
     """Convenience function to register a service with the global registry."""
     registry = get_service_registry()
     await registry.register_service(service_name, service_instance, metadata)
 
 
-def discover_service(service_name: str) -> Optional[Service]:
+def discover_service(service_name: str) -> Service | None:
     """Convenience function to discover a service from the global registry."""
     registry = get_service_registry()
     return registry.discover_service(service_name)
