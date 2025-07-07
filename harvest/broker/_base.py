@@ -29,7 +29,7 @@ from harvest.definitions import (
     TickerCandle,
     TickerFrame,
 )
-from harvest.enum import Interval
+from harvest.enum import Interval, IntervalUnit
 from harvest.util.helper import (
     check_interval,
     data_to_occ,
@@ -258,47 +258,33 @@ class Broker:
         # Find the lowest interval in the watch_dict for polling frequency
         lowest_interval = min(self.watch_dict.keys())
         self.polling_interval = lowest_interval
-        value, unit = expand_interval(lowest_interval)
-
-        # Convert interval to seconds for polling
-        poll_seconds = 0
-        if unit == "SEC":
-            poll_seconds = value
-        elif unit == "MIN":
-            poll_seconds = value * 60
-        elif unit == "HR":
-            poll_seconds = value * 60 * 60
-        elif unit == "DAY":
-            poll_seconds = value * 60 * 60 * 24
-        else:
-            raise Exception(f"Unsupported interval {lowest_interval}.")
 
         # Start single polling thread
         self._polling_thread = threading.Thread(
             target=self._polling_loop,
-            args=(poll_seconds,),
+            args=(lowest_interval,),
             daemon=True
         )
         self._polling_thread.start()
 
-    def _polling_loop(self, poll_seconds: float) -> None:
+    def _polling_loop(self, poll_interval: Interval) -> None:
         """
         Main polling loop that handles both price data events and periodic events.
 
         This method tracks time and calls the appropriate functions at the correct intervals.
 
         Args:
-            poll_seconds: Seconds to sleep between polling cycles
+            poll_interval: Interval enum representing the polling frequency
         """
-        # Define the polling tasks for this broker type
+        # Define the polling tasks for this broker type using Interval enums
         polling_tasks = [
             {
                 'function': self._poll_and_publish_price_events,
-                'interval': poll_seconds,
+                'interval': poll_interval,
             },
             {
                 'function': self._publish_periodic_events,
-                'interval': 1.0,  # Check every second
+                'interval': Interval.SEC_15,  # Check every 15 seconds for periodic events
             }
         ]
 
@@ -312,19 +298,21 @@ class Broker:
         time boundaries (e.g., :00, :15, :30, :45 for 15-minute intervals) to ensure
         accurate and synchronized timing across all brokers.
 
+        All time operations use UTC timezone for consistency.
+
         Args:
             polling_tasks: List of dictionaries, each containing:
                 - 'function': The function to call
-                - 'interval': How often to call it (in seconds)
-                - 'next_fire_time': When this task should next execute (timestamp)
+                - 'interval': Interval enum representing how often to call it
+                - 'next_fire_time': When this task should next execute (UTC timestamp)
         """
-        # Initialize next fire times for all tasks based on time alignment
-        current_time = time.time()
+        # Initialize next fire times for all tasks based on time alignment (UTC)
+        current_time = utc_current_time().timestamp()
         for task in polling_tasks:
             task['next_fire_time'] = self._calculate_next_aligned_time(current_time, task['interval'])
 
         while self.continue_polling():
-            current_time = time.time()
+            current_time = utc_current_time().timestamp()
 
             # Find the earliest next fire time among all tasks
             next_fire_time = min(task['next_fire_time'] for task in polling_tasks)
@@ -346,68 +334,81 @@ class Broker:
                 if sleep_duration > 0:
                     time.sleep(sleep_duration)
 
-    def _calculate_next_aligned_time(self, current_time: float, interval_seconds: float) -> float:
+    def _calculate_next_aligned_time(self, current_time: float, interval: Interval) -> float:
         """
-        Calculate the next time-aligned firing time for a given interval.
+        Calculate the next time-aligned firing time for a given Interval enum.
 
-        This ensures events fire at exact time boundaries:
+        This ensures events fire at exact time boundaries in UTC:
         - 15-second intervals: fire at :00, :15, :30, :45
         - 1-minute intervals: fire at :00 of each minute
         - 5-minute intervals: fire at :00, :05, :10, :15, etc.
         - 1-hour intervals: fire at :00 of each hour
         - 1-day intervals: fire at midnight UTC
 
+        All calculations are performed in UTC timezone to ensure consistency
+        across different system timezones.
+
         Args:
-            current_time: Current timestamp
-            interval_seconds: Interval duration in seconds
+            current_time: Current UTC timestamp (seconds since Unix epoch)
+            interval: Interval enum representing the interval
 
         Returns:
-            Timestamp for the next aligned firing time
+            UTC timestamp for the next aligned firing time
         """
         import math
 
-        # For intervals less than a minute, align to the interval within the current minute
-        if interval_seconds < 60:
-            # Get the current minute boundary
+        # Handle different interval units directly using UTC-based calculations
+        if interval.unit == "SEC":
+            # For second intervals, align within the current minute
             minute_start = math.floor(current_time / 60) * 60
-            # Find how many intervals have passed since the minute started
             elapsed_in_minute = current_time - minute_start
-            intervals_passed = math.floor(elapsed_in_minute / interval_seconds)
-            # Calculate next aligned time within this minute
-            next_time = minute_start + (intervals_passed + 1) * interval_seconds
+            intervals_passed = math.floor(elapsed_in_minute / interval.interval_value)
+            next_time = minute_start + (intervals_passed + 1) * interval.interval_value
 
             # If we've gone past this minute, move to the next minute
             if next_time >= minute_start + 60:
                 next_time = minute_start + 60
 
-        # For intervals of 1 minute or more, align to larger time boundaries
-        elif interval_seconds == 60:  # 1 minute
-            # Align to the next minute boundary
-            next_time = math.ceil(current_time / 60) * 60
+        elif interval.unit == "MIN":
+            if interval.interval_value == 1:
+                # Align to the next minute boundary
+                next_time = math.ceil(current_time / 60) * 60
+            else:
+                # Align to interval boundaries within the hour
+                hour_start = math.floor(current_time / 3600) * 3600
+                elapsed_in_hour = current_time - hour_start
+                minute_interval = interval.interval_value * 60
+                intervals_passed = math.floor(elapsed_in_hour / minute_interval)
+                next_time = hour_start + (intervals_passed + 1) * minute_interval
 
-        elif interval_seconds < 3600:  # Less than 1 hour
-            # Align to interval boundaries within the hour
-            hour_start = math.floor(current_time / 3600) * 3600
-            elapsed_in_hour = current_time - hour_start
-            intervals_passed = math.floor(elapsed_in_hour / interval_seconds)
-            next_time = hour_start + (intervals_passed + 1) * interval_seconds
+        elif interval.unit == "HR":
+            if interval.interval_value == 1:
+                # Align to the next hour boundary
+                next_time = math.ceil(current_time / 3600) * 3600
+            else:
+                # Align to interval boundaries within the day
+                day_start = math.floor(current_time / 86400) * 86400
+                elapsed_in_day = current_time - day_start
+                hour_interval = interval.interval_value * 3600
+                intervals_passed = math.floor(elapsed_in_day / hour_interval)
+                next_time = day_start + (intervals_passed + 1) * hour_interval
 
-        elif interval_seconds == 3600:  # 1 hour
-            # Align to the next hour boundary
-            next_time = math.ceil(current_time / 3600) * 3600
-
-        elif interval_seconds < 86400:  # Less than 1 day
-            # Align to interval boundaries within the day
-            day_start = math.floor(current_time / 86400) * 86400
-            elapsed_in_day = current_time - day_start
-            intervals_passed = math.floor(elapsed_in_day / interval_seconds)
-            next_time = day_start + (intervals_passed + 1) * interval_seconds
-
-        else:  # 1 day or more
+        elif interval.unit == "DAY":
             # Align to day boundaries (midnight UTC)
-            next_time = math.ceil(current_time / 86400) * 86400
+            if interval.interval_value == 1:
+                next_time = math.ceil(current_time / 86400) * 86400
+            else:
+                # Multi-day intervals align to interval boundaries from Unix epoch
+                day_interval = interval.interval_value * 86400
+                intervals_passed = math.floor(current_time / day_interval)
+                next_time = (intervals_passed + 1) * day_interval
+
+        else:
+            raise ValueError(f"Unsupported interval unit: {interval.unit}")
 
         return next_time
+
+
 
     def _poll_and_publish_price_events(self) -> None:
         """
@@ -1028,6 +1029,7 @@ class Broker:
 
 
 
+
 class StreamBroker(Broker):
     """
     Class for brokers that support streaming APIs.
@@ -1262,7 +1264,7 @@ class StreamBroker(Broker):
         """
         pass
 
-    def _polling_loop(self, poll_seconds: float) -> None:
+    def _polling_loop(self, poll_interval: Interval) -> None:
         """
         Overridden polling loop for StreamBroker that only handles periodic events.
 
@@ -1270,13 +1272,13 @@ class StreamBroker(Broker):
         so this polling loop only needs to handle periodic events.
 
         Args:
-            poll_seconds: Seconds to sleep between polling cycles (inherited but not used for timing)
+            poll_interval: Interval enum representing the polling frequency (inherited but not used for timing)
         """
         # Define the polling tasks for StreamBroker (only periodic events)
         polling_tasks = [
             {
                 'function': self._publish_periodic_events,
-                'interval': 1.0,  # Check every second
+                'interval': Interval.SEC_15,  # Check every 15 seconds for periodic events
             }
         ]
 
