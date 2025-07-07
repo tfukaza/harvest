@@ -29,3 +29,8 @@ The primary focus is ease of use and flexibility, rather than raw performance.
 - Use type hints to clarify the expected types of parameters and return values.
 - Note return values and types in the docstring.
 - Note any Exceptions that may be raised in the docstring.
+
+## Naming Conventions
+- When a function has to make a network request, use the prefix `fetch_` for the function name.
+- Use `get_` for functions that retrieve data without side effects from source local to the system.
+- Use `set_` for functions that modify data or state.
