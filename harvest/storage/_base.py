@@ -1,11 +1,16 @@
 import datetime as dt
 import sqlite3
+import os
+from typing import TYPE_CHECKING
 
 import polars as pl
 import sqlalchemy
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 from sqlalchemy.schema import UniqueConstraint
+
+if TYPE_CHECKING:
+    from harvest.events.event_bus import EventBus
 
 from harvest.definitions import OrderSide, RuntimeData, TickerFrame, TimeDelta, TimeSpan, Transaction, TransactionFrame
 from harvest.enum import Interval
@@ -225,12 +230,15 @@ class LocalAlgorithmStorage:
             sqlalchemy.exc.DatabaseError: If database connection fails
         """
         self.algorithm_name = algorithm_name
+        self.event_bus: "EventBus | None" = None  # Will be set by the algorithm or service
+        self.is_running = True  # Storage is always running once initialized
 
-        if db_path:
-            self.db_engine = sqlalchemy.create_engine(db_path)
-        else:
-            # Use in-memory SQLite for fast local caching
-            self.db_engine = sqlalchemy.create_engine("sqlite:///:memory:")
+        # Set default db_path to algorithm-specific database
+        if db_path is None:
+            db_path = f"sqlite:///algorithms/{algorithm_name}.db"
+            self.ensure_directory_exists()
+
+        self.db_engine = sqlalchemy.create_engine(db_path)
 
         # Transaction storage limits
         if not transaction_storage_limit:
@@ -260,6 +268,60 @@ class LocalAlgorithmStorage:
         # Create tables
         LocalBase.metadata.drop_all(self.db_engine)
         LocalBase.metadata.create_all(self.db_engine)
+
+    def ensure_directory_exists(self) -> None:
+        """
+        Ensure the algorithms directory exists for the database file.
+
+        Creates the algorithms/ directory if it doesn't exist to store
+        algorithm-specific database files.
+        """
+        algorithms_dir = "algorithms"
+        if not os.path.exists(algorithms_dir):
+            os.makedirs(algorithms_dir)
+
+    def get_capabilities(self) -> list[str]:
+        """
+        Get the capabilities provided by this algorithm storage.
+
+        Returns:
+            List of capability strings
+        """
+        return [
+            "algorithm_storage",
+            "transaction_history",
+            "performance_tracking",
+            "local_database"
+        ]
+
+    async def register_with_discovery(self, service_registry) -> None:
+        """
+        Register this storage instance with service discovery.
+
+        Args:
+            service_registry: ServiceRegistry instance to register with
+        """
+        await service_registry.register_service(
+            f"storage_{self.algorithm_name}",
+            self,
+            {"type": "algorithm_storage", "algorithm": self.algorithm_name}
+        )
+
+    def publish_transaction_event(self, transaction: Transaction) -> None:
+        """
+        Publish transaction events to event bus.
+
+        Args:
+            transaction: Transaction object to publish as an event
+        """
+        if hasattr(self, 'event_bus') and self.event_bus is not None:
+            from harvest.events.events import TransactionEvent
+            event = TransactionEvent(
+                algorithm_name=self.algorithm_name,
+                transaction=transaction,
+                timestamp=transaction.timestamp
+            )
+            self.event_bus.publish('transaction', event.__dict__)
 
     def insert_transaction(self, transaction: Transaction) -> None:
         """

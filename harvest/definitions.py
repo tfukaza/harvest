@@ -6,20 +6,13 @@ from zoneinfo import ZoneInfo
 
 import polars as pl
 
+from harvest.enum import Interval
+
 
 class AssetType(StrEnum):
     STOCK = "stock"
     OPTION = "option"
     CRYPTO = "cryptocurrency"
-
-
-class Interval(StrEnum):
-    MIN_1 = "1min"
-    MIN_5 = "5min"
-    MIN_15 = "15min"
-    MIN_30 = "30min"
-    HOUR_1 = "1hour"
-    DAY_1 = "1day"
 
 
 class TimeSpan(StrEnum):
@@ -334,6 +327,14 @@ class TickerFrame:
     def df(self) -> pl.DataFrame:
         return self._df
 
+    def get_column(self, column_name: str) -> pl.Series:
+        """Get a column from the dataframe"""
+        return self._df.get_column(column_name)
+
+    def tail(self, n: int = 5) -> "TickerFrame":
+        """Get the last n rows"""
+        return TickerFrame(self._df.tail(n))
+
     def __getitem__(self, index: int) -> TickerCandle:
         if index < 0:
             index = len(self._df) + index
@@ -406,3 +407,41 @@ class OptionData:
     bid: float
     expiration: dt.datetime
     strike: float
+
+
+@dataclass
+class BrokerCapabilities:
+    """
+    Broker capabilities indicating which intervals and tickers are supported.
+
+    The supported_intervals_tickers maps each supported interval to a list of
+    supported ticker symbols for that interval. This allows brokers to have
+    different ticker support for different intervals.
+    """
+    broker_id: str
+    exchange: str
+    supported_intervals_tickers: dict[Interval, list[str]]
+    supported_asset_types: list[AssetType]
+    features: list[str]
+
+    def supports_interval(self, interval: Interval) -> bool:
+        """Check if broker supports the specified interval"""
+        return interval in self.supported_intervals_tickers
+
+    def supports_symbol(self, symbol: str) -> bool:
+        """Check if broker supports the specified symbol for any interval"""
+        return any(
+            symbol in tickers
+            for tickers in self.supported_intervals_tickers.values()
+        )
+
+    def supports_symbol_for_interval(self, symbol: str, interval: Interval) -> bool:
+        """Check if broker supports the specified symbol for the given interval"""
+        return (
+            interval in self.supported_intervals_tickers and
+            symbol in self.supported_intervals_tickers[interval]
+        )
+
+    def get_supported_symbols_for_interval(self, interval: Interval) -> list[str]:
+        """Get list of supported symbols for the specified interval"""
+        return self.supported_intervals_tickers.get(interval, [])

@@ -24,6 +24,8 @@ from harvest.definitions import (
     TickerFrame,
 )
 from harvest.enum import Interval, IntervalUnit
+from harvest.events.events import PriceUpdateEvent
+from harvest.events.event_bus import EventBus
 from harvest.util.helper import (
     aggregate_pl_df,
     data_to_occ,
@@ -76,6 +78,13 @@ class MockBroker(Broker):
         # Set a default poll interval in case `setup` is not called.
         self.poll_interval = Interval.MIN_1
 
+        # Event bus for publishing market data updates
+        self.event_bus: EventBus | None = None
+
+    def set_event_bus(self, event_bus: EventBus) -> None:
+        """Set the event bus for publishing market data updates"""
+        self.event_bus = event_bus
+
         self.stats = RuntimeData(broker_timezone=ZoneInfo("UTC"), utc_timestamp=self.current_time)
 
         self.orders: Dict[str, Order] = {}
@@ -87,7 +96,7 @@ class MockBroker(Broker):
     def start(
         self,
         watch_dict: dict[Interval, list[str]],
-        step_callback: Callable[[dict[Interval, dict[str, pl.DataFrame]]], None],
+        step_callback: Callable[[dict[Interval, dict[str, pl.DataFrame]]], None] | None = None,
     ) -> None:
         self.watch_dict = watch_dict
         self.step_callback = step_callback
@@ -118,6 +127,11 @@ class MockBroker(Broker):
 
     def tick(self) -> None:
         super().tick()
+
+        # Note: In the new service-oriented architecture,
+        # the MarketDataService will handle publishing price updates
+        # This method is kept for compatibility but event publishing
+        # should be handled by the MarketDataService
 
     # -------------- Streamer methods -------------- #
 
@@ -507,3 +521,24 @@ class MockBroker(Broker):
         results = results.filter(pl.col("timestamp") <= end)
 
         return results
+
+    def _get_supported_intervals_tickers(self) -> dict[Interval, list[str]]:
+        """
+        Get mapping of supported intervals to supported tickers for MockBroker.
+
+        MockBroker supports common tickers for all intervals.
+        """
+        # Common test tickers
+        common_tickers = ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", "META", "NVDA", "NFLX", "DIS"]
+
+        # MockBroker supports all intervals with the same ticker set
+        return {interval: common_tickers for interval in self.interval_list}
+
+    def supports_symbol(self, symbol: str) -> bool:
+        """
+        Check if MockBroker supports the specified symbol.
+
+        MockBroker supports common test symbols.
+        """
+        supported_symbols = ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", "META", "NVDA", "NFLX", "DIS"]
+        return symbol in supported_symbols
