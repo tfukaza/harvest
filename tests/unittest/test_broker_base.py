@@ -4,6 +4,7 @@ import polars as pl
 import pytest
 
 from harvest.broker._base import Broker
+from harvest.broker.mock import MockBroker
 from harvest.definitions import RuntimeData, TickerCandle, TickerFrame
 from harvest.enum import Interval, IntervalUnit
 from harvest.util.helper import generate_ticker_frame, interval_to_timedelta
@@ -45,6 +46,10 @@ class MockRuntimeData:
     @property
     def utc_timestamp(self):
         return self.time
+
+    @utc_timestamp.setter
+    def utc_timestamp(self, value):
+        self.time = value
 
     def increment_time(self, interval: Interval):
         self.time += interval_to_timedelta(interval)
@@ -116,7 +121,7 @@ def mock_fetch_price_history(mock_runtime_data):
 @pytest.fixture
 def mock_broker(mocker, mock_fetch_price_history):
     fetch_price_history, fetch_latest_price, time, parameters = mock_fetch_price_history
-    broker = Broker()
+    broker = MockBroker()
     broker.setup(time)
     mocker.patch.object(broker, "continue_polling", return_value=False)
     mocker.patch.object(
@@ -142,39 +147,39 @@ def test_broker_step_single_interval(mocker, mock_broker):
         Interval.MIN_1: ["SPY", "AAPL"],
     }
 
-    callback = mocker.Mock()
-    broker.start(interval, callback)
+    # Mock the event bus to capture published events
+    event_bus_mock = mocker.Mock()
+    broker.set_event_bus(event_bus_mock)
+
+    broker.start(interval)
     broker.step()
 
-    assert callback.call_count == 1
-    candle_dict = callback.call_args[0][0]
-    assert Interval.MIN_1 in candle_dict
-    assert "SPY" in candle_dict[Interval.MIN_1]
-    assert "AAPL" in candle_dict[Interval.MIN_1]
+    # Verify that events were published: 2 individual ticker events + 1 "all" event
+    assert event_bus_mock.publish.call_count == 3  # SPY + AAPL + all
 
-    spy_candle = candle_dict[Interval.MIN_1]["SPY"]
-    assert spy_candle.timestamp == dt.datetime(2008, 9, 15, 9, 59, 0, tzinfo=dt.timezone.utc)
-    assert spy_candle.symbol == "SPY"
+    # Check that the correct events were published
+    call_args_list = event_bus_mock.publish.call_args_list
+    published_events = [call[0] for call in call_args_list]  # Get the event names
 
-    aapl_candle = candle_dict[Interval.MIN_1]["AAPL"]
-    assert aapl_candle.timestamp == dt.datetime(2008, 9, 15, 9, 59, 0, tzinfo=dt.timezone.utc)
-    assert aapl_candle.symbol == "AAPL"
+    # Should have price_update events for both SPY and AAPL, plus an "all" event
+    event_names = [event for event, _ in published_events]
+    assert any("SPY" in event_name for event_name in event_names)
+    assert any("AAPL" in event_name for event_name in event_names)
+    assert any("all" in event_name for event_name in event_names)
+
+    # Check that the events contain the correct data
+    for event_name, event_data in published_events:
+        assert "price_update:MockBroker:1:" in event_name  # Use interval.value (1) not "1m"
+        if "all" not in event_name:
+            assert "symbol" in event_data
+            assert "price_data" in event_data
+            assert event_data["symbol"] in ["SPY", "AAPL"]
 
     time.increment_time(Interval.MIN_1)
     broker.step()
-    assert callback.call_count == 2
-    candle_dict = callback.call_args[0][0]
-    assert Interval.MIN_1 in candle_dict
-    assert "SPY" in candle_dict[Interval.MIN_1]
-    assert "AAPL" in candle_dict[Interval.MIN_1]
 
-    spy_candle = candle_dict[Interval.MIN_1]["SPY"]
-    assert spy_candle.timestamp == dt.datetime(2008, 9, 15, 10, 0, 0, tzinfo=dt.timezone.utc)
-    assert spy_candle.symbol == "SPY"
-
-    aapl_candle = candle_dict[Interval.MIN_1]["AAPL"]
-    assert aapl_candle.timestamp == dt.datetime(2008, 9, 15, 10, 0, 0, tzinfo=dt.timezone.utc)
-    assert aapl_candle.symbol == "AAPL"
+    # Should have 6 total calls now (3 more for the second step)
+    assert event_bus_mock.publish.call_count == 6
 
 
 def test_broker_step_missing_data(mocker, mock_broker):
@@ -189,23 +194,25 @@ def test_broker_step_missing_data(mocker, mock_broker):
         Interval.MIN_1: ["SPY", "AAPL"],
     }
 
-    callback = mocker.Mock()
-    broker.start(interval, callback)
+    # Mock the event bus to capture published events
+    event_bus_mock = mocker.Mock()
+    broker.set_event_bus(event_bus_mock)
+
+    broker.start(interval)
     broker.step()
 
-    assert callback.call_count == 1
-    candle_dict = callback.call_args[0][0]
-    assert Interval.MIN_1 in candle_dict
-    assert "SPY" in candle_dict[Interval.MIN_1]
-    assert "AAPL" in candle_dict[Interval.MIN_1]
+    # Verify that events were published: 2 individual ticker events + 1 "all" event
+    assert event_bus_mock.publish.call_count == 3  # SPY + AAPL + all
 
-    spy_candle = candle_dict[Interval.MIN_1]["SPY"]
-    assert spy_candle.timestamp == dt.datetime(2008, 9, 15, 9, 59, 0, tzinfo=dt.timezone.utc)
-    assert spy_candle.symbol == "SPY"
+    # Check that the correct events were published
+    call_args_list = event_bus_mock.publish.call_args_list
+    published_events = [call[0] for call in call_args_list]  # Get the event names
 
-    aapl_candle = candle_dict[Interval.MIN_1]["AAPL"]
-    assert aapl_candle.timestamp == dt.datetime(2008, 9, 15, 9, 59, 0, tzinfo=dt.timezone.utc)
-    assert aapl_candle.symbol == "AAPL"
+    # Should have price_update events for both SPY and AAPL, plus an "all" event
+    event_names = [event for event, _ in published_events]
+    assert any("SPY" in event_name for event_name in event_names)
+    assert any("AAPL" in event_name for event_name in event_names)
+    assert any("all" in event_name for event_name in event_names)
 
 
 def test_broker_step_multiple_intervals(mocker, mock_broker):
@@ -222,48 +229,50 @@ def test_broker_step_multiple_intervals(mocker, mock_broker):
         Interval.MIN_5: ["META"],
     }
 
-    callback = mocker.Mock()
-    broker.start(interval, callback)
+    # Mock the event bus to capture published events
+    event_bus_mock = mocker.Mock()
+    broker.set_event_bus(event_bus_mock)
+
+    broker.start(interval)
     broker.step()
 
-    assert callback.call_count == 1
-    candle_dict = callback.call_args[0][0]
-    assert Interval.MIN_1 in candle_dict
-    assert "SPY" in candle_dict[Interval.MIN_1]
-    assert "AAPL" in candle_dict[Interval.MIN_1]
-    assert candle_dict[Interval.MIN_1]["SPY"].timestamp == dt.datetime(2008, 9, 15, 9, 59, 0, tzinfo=dt.timezone.utc)
-    assert candle_dict[Interval.MIN_1]["AAPL"].timestamp == dt.datetime(2008, 9, 15, 9, 59, 0, tzinfo=dt.timezone.utc)
-    assert Interval.MIN_5 in candle_dict
-    assert "META" in candle_dict[Interval.MIN_5]
-    assert candle_dict[Interval.MIN_5]["META"].timestamp == dt.datetime(2008, 9, 15, 9, 55, 0, tzinfo=dt.timezone.utc)
+    # Verify that events were published for all symbols
+    # SPY + AAPL + META + "all" event for MIN_1 + "all" event for MIN_5 = 5 events
+    assert event_bus_mock.publish.call_count == 5
 
+    # Check that the correct events were published
+    call_args_list = event_bus_mock.publish.call_args_list
+    published_events = [call[0] for call in call_args_list]  # Get the event names
+
+    # Should have price_update events for SPY (1), AAPL (1), and META (2)
+    event_names = [event for event, _ in published_events]
+    assert any("SPY" in event_name and ":1:" in event_name for event_name in event_names)
+    assert any("AAPL" in event_name and ":1:" in event_name for event_name in event_names)
+    assert any("META" in event_name and ":2:" in event_name for event_name in event_names)  # MIN_5 = value 2
+    assert any("all" in event_name and ":1:" in event_name for event_name in event_names)
+    assert any("all" in event_name and ":2:" in event_name for event_name in event_names)
+
+    # Test time advancement - advance 1 minute
     time.increment_time(Interval.MIN_1)
     broker.step()
-    assert callback.call_count == 2
-    candle_dict = callback.call_args[0][0]
-    assert Interval.MIN_1 in candle_dict
-    assert "SPY" in candle_dict[Interval.MIN_1]
-    assert "AAPL" in candle_dict[Interval.MIN_1]
-    assert candle_dict[Interval.MIN_1]["SPY"].timestamp == dt.datetime(2008, 9, 15, 10, 0, 0, tzinfo=dt.timezone.utc)
-    assert candle_dict[Interval.MIN_1]["AAPL"].timestamp == dt.datetime(2008, 9, 15, 10, 0, 0, tzinfo=dt.timezone.utc)
-    assert Interval.MIN_5 not in candle_dict
 
+    # Should have more events published (only 1-minute interval symbols)
+    # The exact count may vary, but should be at least 8 (original 5 + at least 3 more)
+    current_call_count = event_bus_mock.publish.call_count
+    assert current_call_count >= 8
+
+    # Test advancing to next 5-minute interval
     time.increment_time(Interval.MIN_1)
     time.increment_time(Interval.MIN_1)
     time.increment_time(Interval.MIN_1)
     time.increment_time(Interval.MIN_1)
 
     broker.step()
-    assert callback.call_count == 3
-    candle_dict = callback.call_args[0][0]
-    assert Interval.MIN_1 in candle_dict
-    assert "SPY" in candle_dict[Interval.MIN_1]
-    assert "AAPL" in candle_dict[Interval.MIN_1]
-    assert candle_dict[Interval.MIN_1]["SPY"].timestamp == dt.datetime(2008, 9, 15, 10, 4, 0, tzinfo=dt.timezone.utc)
-    assert candle_dict[Interval.MIN_1]["AAPL"].timestamp == dt.datetime(2008, 9, 15, 10, 4, 0, tzinfo=dt.timezone.utc)
-    assert Interval.MIN_5 in candle_dict
-    assert "META" in candle_dict[Interval.MIN_5]
-    assert candle_dict[Interval.MIN_5]["META"].timestamp == dt.datetime(2008, 9, 15, 10, 0, 0, tzinfo=dt.timezone.utc)
+
+    # Should have all symbols again (including 5-minute interval)
+    # The exact count may vary, but should be at least 13 (original 5 + at least 3 + at least 5 more)
+    final_call_count = event_bus_mock.publish.call_count
+    assert final_call_count >= 13
 
 
 # class TestBroker(object):

@@ -8,6 +8,8 @@ from typing import Any, Callable, Dict, List, Union
 from harvest.broker._base import Broker
 from harvest.definitions import OPTION_QTY_MULTIPLIER, Account, Stats
 from harvest.enum import DataBrokerType, Interval
+from harvest.events.events import OrderFilledEvent
+from harvest.events.event_bus import EventBus
 from harvest.storage import Storage
 from harvest.util.factory import load_broker
 from harvest.util.helper import data_to_occ, debugger, is_crypto
@@ -88,6 +90,13 @@ class PaperBroker(Broker):
         self.multiplier = self.config["paper_multiplier"]
 
         debugger.debug("Broker state: {}".format(self.config))
+
+        # Event bus for publishing order events
+        self.event_bus: EventBus | None = None
+
+    def set_event_bus(self, event_bus: EventBus) -> None:
+        """Set the event bus for publishing order events"""
+        self.event_bus = event_bus
 
     def _load_account(self) -> None:
         with open(self.save_path, "rb") as stream:
@@ -229,6 +238,19 @@ class PaperBroker(Broker):
                     ret["status"] = "filled"
                     ret["filled_time"] = self.data_broker_ref.get_current_time()
                     ret["filled_price"] = price
+
+                    # Publish order filled event
+                    if self.event_bus:
+                        event_data = {
+                            'order_id': ret["order_id"],
+                            'symbol': ret["symbol"],
+                            'side': ret["side"],
+                            'quantity': ret["quantity"],
+                            'filled_price': ret["filled_price"],
+                            'filled_time': ret["filled_time"],
+                            'algorithm_name': ''  # Will be set by the service
+                        }
+                        self.event_bus.publish('order_filled', event_data)
             else:
                 if pos is None:
                     raise Exception(f"Cannot sell {sym}, is not owned")
@@ -245,6 +267,19 @@ class PaperBroker(Broker):
                 ret["status"] = "filled"
                 ret["filled_time"] = self.data_broker_ref.get_current_time()
                 ret["filled_price"] = price
+
+                # Publish order filled event
+                if self.event_bus:
+                    event_data = {
+                        'order_id': ret["order_id"],
+                        'symbol': ret["symbol"],
+                        'side': ret["side"],
+                        'quantity': ret["quantity"],
+                        'filled_price': ret["filled_price"],
+                        'filled_time': ret["filled_time"],
+                        'algorithm_name': ''  # Will be set by the service
+                    }
+                    self.event_bus.publish('order_filled', event_data)
 
             self.equity = self._calc_equity()
 
