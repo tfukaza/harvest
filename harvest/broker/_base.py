@@ -1081,7 +1081,6 @@ class StreamBroker(Broker):
 
         Args:
             watch_dict: Dictionary mapping intervals to lists of symbols to watch
-            step_callback: Optional callback function for backward compatibility
         """
         self.watch_dict = watch_dict
 

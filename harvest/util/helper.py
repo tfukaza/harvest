@@ -6,6 +6,7 @@ import sys
 from datetime import timezone as tz
 from typing import List, Union
 
+import numpy as np
 import polars as pl
 
 from harvest.definitions import TickerFrame
@@ -401,6 +402,23 @@ def generate_ticker_frame(
     count: int = 50,
     start: dt.datetime | None = None,
 ) -> TickerFrame:
+    """Generate a mock ticker frame with random data.
+
+    Args:
+        symbol: The symbol to generate data for
+        interval: The time interval for each candle
+        count: Number of candles to generate (limited to 10000 for performance)
+        start: Start datetime for the data
+
+    Returns:
+        TickerFrame with mock data
+
+    Raises:
+        ValueError: If count is too large (>10000)
+    """
+    if count > 10000:
+        raise ValueError(f"Count {count} is too large. Maximum is 10000 for performance reasons.")
+
     if start is None:
         start = dt.datetime(1970, 1, 1)
 
@@ -412,16 +430,38 @@ def generate_ticker_frame(
     elif interval.unit == IntervalUnit.DAY:
         delta_param["days"] = interval.interval_value
 
+    # Generate timestamps efficiently
+    timestamps = [start + dt.timedelta(**delta_param) * i for i in range(count)]
+
+    # Generate random data more efficiently
+    rng = np.random.default_rng(hash(symbol) % (2**32))  # Deterministic seed based on symbol
+    base_price = 100.0  # Base price for mock data
+
+    # Generate realistic price movements
+    price_changes = rng.normal(0, 0.02, count)  # 2% volatility
+    prices = base_price * np.exp(np.cumsum(price_changes))
+
+    # Generate OHLC data based on the closing prices
+    high_multiplier = 1 + rng.uniform(0, 0.01, count)  # Up to 1% higher
+    low_multiplier = 1 - rng.uniform(0, 0.01, count)   # Up to 1% lower
+    open_shift = rng.uniform(-0.005, 0.005, count)     # Up to 0.5% shift for open
+
+    opens = prices * (1 + open_shift)
+    highs = prices * high_multiplier
+    lows = prices * low_multiplier
+    closes = prices
+    volumes = rng.uniform(1000, 10000, count).astype(int)
+
     df = pl.DataFrame(
         {
-            "timestamp": [start + dt.timedelta(**delta_param) * i for i in range(count)],
+            "timestamp": timestamps,
             "symbol": [symbol] * count,
             "interval": [str(interval)] * count,
-            "open": [random.random() for _ in range(count)],
-            "high": [random.random() for _ in range(count)],
-            "low": [random.random() for _ in range(count)],
-            "close": [random.random() for _ in range(count)],
-            "volume": [random.random() for _ in range(count)],
+            "open": opens,
+            "high": highs,
+            "low": lows,
+            "close": closes,
+            "volume": volumes,
         }
     )
 

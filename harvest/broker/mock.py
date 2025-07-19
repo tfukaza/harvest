@@ -2,7 +2,7 @@ import datetime as dt
 import itertools
 import time
 import uuid
-from typing import Callable, Dict
+from typing import Callable, Dict, Any
 from zoneinfo import ZoneInfo
 
 import numpy as np
@@ -10,15 +10,18 @@ import polars as pl
 
 from harvest.broker._base import Broker
 from harvest.definitions import (
+    Account,
     AssetType,
     ChainData,
     ChainInfo,
     OptionData,
     Order,
+    OrderList,
     OrderSide,
     OrderStatus,
     OrderTimeInForce,
     Position,
+    Positions,
     RuntimeData,
     TickerCandle,
     TickerFrame,
@@ -48,7 +51,25 @@ class MockBroker(Broker):
         epoch: dt.datetime | None = None,
         stock_market_times: bool = False,
         realistic_simulation: bool = True,
+        secret_path: str | None = None,
+        time_provider: Callable[[], dt.datetime] | None = None,
+        sleep_function: Callable[[float], None] | None = None,
     ) -> None:
+        super().__init__(secret_path)
+
+        # Set up exchange and supported intervals
+        self.exchange = "MOCK"
+        self.interval_list = [
+            Interval.SEC_15,
+            Interval.MIN_1,
+            Interval.MIN_5,
+            Interval.MIN_15,
+            Interval.MIN_30,
+            Interval.HR_1,
+            Interval.DAY_1,
+        ]
+        self.req_keys = []
+
         # Whether or not to include time outside of the typical time that US stock market operates.
         self.stock_market_times = stock_market_times
 
@@ -78,28 +99,53 @@ class MockBroker(Broker):
         # Set a default poll interval in case `setup` is not called.
         self.poll_interval = Interval.MIN_1
 
-        # Event bus for publishing market data updates
-        self.event_bus: EventBus | None = None
-
-    def set_event_bus(self, event_bus: EventBus) -> None:
-        """Set the event bus for publishing market data updates"""
-        self.event_bus = event_bus
-
-        self.stats = RuntimeData(broker_timezone=ZoneInfo("UTC"), utc_timestamp=self.current_time)
-
+        # Initialize broker state
         self.orders: Dict[str, Order] = {}
         self.positions: Dict[str, Position] = {}
 
+        # Initialize RuntimeData with current time and timezone
+        broker_timezone = ZoneInfo("UTC") if self.current_time.tzinfo is None else self.current_time.tzinfo
+        if not isinstance(broker_timezone, ZoneInfo):
+            broker_timezone = ZoneInfo("UTC")
+
+        self.stats = RuntimeData(
+            utc_timestamp=self.current_time,
+            broker_timezone=broker_timezone,
+        )
+
+        self._continue_polling = True
+
+        # Testing control - injectable dependencies
+        self.time_provider = time_provider or self._default_time_provider
+        self.sleep_function = sleep_function or time.sleep
+
+        # Testing control - tick limits for deterministic testing
+        self._max_ticks: int | None = None  # Limit number of ticks for testing
+        self._tick_count: int = 0  # Current tick count
+
     def setup(self, runtime_data: RuntimeData) -> None:
-        pass
+        """Setup the mock broker with runtime data"""
+        self.stats = runtime_data
+
+    def continue_polling(self) -> bool:
+        """Check if polling should continue"""
+        return self._continue_polling
+
+    def stop_polling(self) -> None:
+        """Stop the polling loop"""
+        self._continue_polling = False
 
     def start(
         self,
         watch_dict: dict[Interval, list[str]],
-        step_callback: Callable[[dict[Interval, dict[str, pl.DataFrame]]], None] | None = None,
     ) -> None:
+        """
+        Start the mock broker with the specified intervals and symbols.
+
+        Args:
+            watch_dict: Dictionary mapping intervals to lists of symbols to watch
+        """
         self.watch_dict = watch_dict
-        self.step_callback = step_callback
         debugger.debug(f"{type(self).__name__} started...")
 
         # Find the lowest interval in the watch_dict
@@ -120,13 +166,25 @@ class MockBroker(Broker):
         else:
             raise Exception(f"Unsupported interval {lowest_interval}.")
 
+        # Reset tick counter
+        self._tick_count = 0
+
         while self.continue_polling():
+            # Check if we've exceeded max ticks (for testing)
+            if self._max_ticks is not None and self._tick_count >= self._max_ticks:
+                break
+
             self.tick()
+            self._tick_count += 1
+
+            # Only sleep if realistic_simulation is True
             if self.realistic_simulation:
-                time.sleep(poll_seconds)
+                self.sleep_function(poll_seconds)
+            # In fast mode, we don't sleep at all - tests run as fast as possible
 
     def tick(self) -> None:
-        super().tick()
+        # Update the current time to simulate time passing
+        self.advance_time()
 
         # Note: In the new service-oriented architecture,
         # the MarketDataService will handle publishing price updates
@@ -136,7 +194,8 @@ class MockBroker(Broker):
     # -------------- Streamer methods -------------- #
 
     def get_current_time(self) -> dt.datetime:
-        return self.stats.utc_timestamp
+        """Get the current time for the mock broker"""
+        return self.stats.utc_timestamp if self.stats else self.current_time
 
     def fetch_price_history(
         self,
@@ -148,50 +207,29 @@ class MockBroker(Broker):
         if not start:
             start = self.epoch
         if not end:
-            end = self.stats.utc_timestamp
+            end = self.get_current_time()
 
         count = int((end - start).total_seconds() // interval_to_timedelta(interval).total_seconds())
 
-        # Calculate the aligned start time for the current time
-        aligned_start = self.stats.utc_timestamp
-        if interval.unit == IntervalUnit.MIN:
-            aligned_start = aligned_start.replace(
-                minute=aligned_start.minute // interval.interval_value * interval.interval_value, second=0, microsecond=0
-            )
-        elif interval.unit == IntervalUnit.HR:
-            aligned_start = aligned_start.replace(hour=aligned_start.hour, minute=0, second=0, microsecond=0)
-        elif interval.unit == IntervalUnit.DAY:
-            aligned_start = aligned_start.replace(hour=0, minute=0, second=0, microsecond=0)
-
-        aligned_start = aligned_start - interval_to_timedelta(interval) * count
-
+        # Use the generate_ticker_frame function to create mock data
         frame = generate_ticker_frame(
             symbol,
             interval,
             count,
-            aligned_start,
+            start,
         )
-        # Frame will have candles for intervals up to but not including the current time.
-        # For example if the current time is 10:00 AM and interval is 5 minute,
-        # the frame will have candles up to 9:55 AM.
-        frame = frame.df
+
+        # Filter by the requested time range
+        frame_df = frame.df
         if start:
-            frame = frame.filter(pl.col("timestamp") >= start)
+            frame_df = frame_df.filter(pl.col("timestamp") >= start)
         if end:
-            frame = frame.filter(pl.col("timestamp") <= end)
+            frame_df = frame_df.filter(pl.col("timestamp") <= end)
 
-        # if self.stock_market_times:
-        #     open_time = dt.time(hour=13, minute=30)
-        #     close_time = dt.time(hour=20)
-
-        #     # Removes data points when the stock marked is closed. Does not handle holidays.
-        #     results = results.loc[(open_time < results.index.time) & (results.index.time < close_time)]
-        #     results = results[(results.index.dayofweek != 5) & (results.index.dayofweek != 6)]
-
-        return TickerFrame(frame)
+        return TickerFrame(frame_df)
 
     def fetch_latest_price(self, symbol: str, interval: Interval) -> TickerCandle:
-        return self.fetch_price_history(symbol, interval, end=self.stats.utc_timestamp)[-1]
+        return self.fetch_price_history(symbol, interval, end=self.get_current_time())[-1]
 
     def fetch_option_market_data(self, symbol: str) -> OptionData:
         price = self.fetch_latest_price(symbol, self.poll_interval).close
@@ -248,16 +286,114 @@ class MockBroker(Broker):
 
     # ------------- Broker methods ------------- #
 
-    # Not implemented:
-    #   fetch_stock_positions
-    #   fetch_option_positions
-    #   fetch_crypto_positions
-    #   update_option_positions
-    #   fetch_account
-    #   fetch_stock_order_status
-    #   fetch_option_order_status
-    #   fetch_crypto_order_status
-    #   fetch_order_queue
+    # ------------- Abstract methods implementation ------------- #
+
+    def create_secret(self) -> Dict[str, str]:
+        """Mock broker doesn't need real credentials"""
+        return {}
+
+    def refresh_cred(self) -> None:
+        """Mock broker doesn't need credential refresh"""
+        pass
+
+    def fetch_market_hours(self, date: dt.date) -> Dict[str, Any]:
+        """Return mock market hours - always open for testing"""
+        return {
+            "is_open": True,
+            "open_at": dt.datetime.combine(date, dt.time(9, 30), tzinfo=dt.timezone.utc),
+            "close_at": dt.datetime.combine(date, dt.time(16, 0), tzinfo=dt.timezone.utc),
+        }
+
+    def fetch_stock_positions(self) -> Positions:
+        """Return mock stock positions"""
+        return Positions(self.positions)
+
+    def fetch_option_positions(self) -> Positions:
+        """Return mock option positions"""
+        option_positions = {k: v for k, v in self.positions.items() if v.symbol.count(":") > 0}
+        return Positions(option_positions)
+
+    def fetch_crypto_positions(self) -> Positions:
+        """Return mock crypto positions"""
+        crypto_positions = {k: v for k, v in self.positions.items() if v.symbol.startswith("@")}
+        return Positions(crypto_positions)
+
+    def fetch_account(self) -> Account:
+        """Return mock account information"""
+        return Account(
+            account_name="MockAccount",
+            positions=Positions(self.positions),
+            orders=OrderList(self.orders),
+            asset_value=sum(p.value for p in self.positions.values()),
+            cash=10000.0,
+            equity=10000.0 + sum(p.value for p in self.positions.values()),
+            buying_power=20000.0,
+            multiplier=1.0
+        )
+
+    def fetch_stock_order_status(self, id) -> Order:
+        """Return mock stock order status"""
+        if id in self.orders:
+            return self.orders[id]
+        else:
+            # Return a filled mock order
+            return Order(
+                order_type=AssetType.STOCK,
+                symbol="SPY",
+                quantity=100.0,
+                time_in_force=OrderTimeInForce.GTC,
+                side=OrderSide.BUY,
+                order_id=id,
+                status=OrderStatus.FILLED,
+                filled_time=self.get_current_time(),
+                filled_price=400.0,
+                filled_quantity=100.0,
+                base_symbol=None,
+            )
+
+    def fetch_option_order_status(self, id) -> Order:
+        """Return mock option order status"""
+        if id in self.orders:
+            return self.orders[id]
+        else:
+            # Return a filled mock order
+            return Order(
+                order_type=AssetType.OPTION,
+                symbol="SPY:20241215:400:C",
+                quantity=1.0,
+                time_in_force=OrderTimeInForce.GTC,
+                side=OrderSide.BUY,
+                order_id=id,
+                status=OrderStatus.FILLED,
+                filled_time=self.get_current_time(),
+                filled_price=5.0,
+                filled_quantity=1.0,
+                base_symbol="SPY",
+            )
+
+    def fetch_crypto_order_status(self, id) -> Order:
+        """Return mock crypto order status"""
+        if id in self.orders:
+            return self.orders[id]
+        else:
+            # Return a filled mock order
+            return Order(
+                order_type=AssetType.CRYPTO,
+                symbol="@BTC",
+                quantity=0.1,
+                time_in_force=OrderTimeInForce.GTC,
+                side=OrderSide.BUY,
+                order_id=id,
+                status=OrderStatus.FILLED,
+                filled_time=self.get_current_time(),
+                filled_price=50000.0,
+                filled_quantity=0.1,
+                base_symbol=None,
+            )
+
+    def fetch_order_queue(self) -> OrderList:
+        """Return mock order queue"""
+        return OrderList(self.orders)
 
     # --------------- Methods for Trading --------------- #
 
@@ -277,7 +413,7 @@ class MockBroker(Broker):
             quantity=quantity,
             time_in_force=in_force,
             side=side,
-            order_id=uuid.uuid4(),
+            order_id=str(uuid.uuid4()),
             status=OrderStatus.OPEN,
             filled_time=None,
             filled_price=None,
@@ -287,7 +423,86 @@ class MockBroker(Broker):
         self.orders[order.order_id] = order
         return order
 
-    def test_fulfill_order(self, order: Order) -> None:
+    def order_crypto_limit(
+        self,
+        side: str,
+        symbol: str,
+        quantity: float,
+        limit_price: float,
+        in_force: str = "gtc",
+        extended: bool = False,
+    ) -> Order:
+        """Place a crypto limit order"""
+        order_side = OrderSide.BUY if side.lower() == "buy" else OrderSide.SELL
+        time_in_force = OrderTimeInForce.GTC if in_force.lower() == "gtc" else OrderTimeInForce.GTD
+
+        order = Order(
+            order_type=AssetType.CRYPTO,
+            symbol=symbol,
+            quantity=quantity,
+            time_in_force=time_in_force,
+            side=order_side,
+            order_id=str(uuid.uuid4()),
+            status=OrderStatus.OPEN,
+            filled_time=None,
+            filled_price=None,
+            filled_quantity=None,
+            base_symbol=None,
+        )
+        self.orders[order.order_id] = order
+        return order
+
+    def order_option_limit(
+        self,
+        side: str,
+        symbol: str,
+        quantity: float,
+        limit_price: float,
+        option_type: str,
+        exp_date: dt.datetime,
+        strike: float,
+        in_force: str = "gtc",
+    ) -> Order:
+        """Place an option limit order"""
+        order_side = OrderSide.BUY if side.lower() == "buy" else OrderSide.SELL
+        time_in_force = OrderTimeInForce.GTC if in_force.lower() == "gtc" else OrderTimeInForce.GTD
+
+        # Create OCC symbol for the option
+        occ_symbol = data_to_occ(symbol, exp_date, option_type, strike)
+
+        order = Order(
+            order_type=AssetType.OPTION,
+            symbol=occ_symbol,
+            quantity=quantity,
+            time_in_force=time_in_force,
+            side=order_side,
+            order_id=str(uuid.uuid4()),
+            status=OrderStatus.OPEN,
+            filled_time=None,
+            filled_price=None,
+            filled_quantity=None,
+            base_symbol=symbol,
+        )
+        self.orders[order.order_id] = order
+        return order
+
+    def cancel_stock_order(self, order_id) -> None:
+        """Cancel a stock order"""
+        if order_id in self.orders:
+            del self.orders[order_id]
+
+    def cancel_crypto_order(self, order_id) -> None:
+        """Cancel a crypto order"""
+        if order_id in self.orders:
+            del self.orders[order_id]
+
+    def cancel_option_order(self, order_id) -> None:
+        """Cancel an option order"""
+        if order_id in self.orders:
+            del self.orders[order_id]
+
+    def fulfill_order(self, order: Order) -> None:
+        """Fulfill an order for testing purposes"""
         order.status = OrderStatus.FILLED
         order.filled_time = self.get_current_time()
         order.filled_price = self.fetch_latest_price(order.symbol, self.poll_interval).close
@@ -316,18 +531,45 @@ class MockBroker(Broker):
     #     return df_dict
 
     def advance_time(self) -> None:
-        self.stats.utc_timestamp += interval_to_timedelta(self.poll_interval)
+        """Advance the mock time by the poll interval"""
+        if self.stats:
+            self.stats.utc_timestamp += interval_to_timedelta(self.poll_interval)
+        else:
+            self.current_time += interval_to_timedelta(self.poll_interval)
+
+    def clear_mock_data(self) -> None:
+        """Clear all mock price history data to free memory"""
+        self.mock_price_history.clear()
+        self.rng.clear()
+
+    def limit_mock_data_size(self, max_candles_per_symbol: int = 10000) -> None:
+        """Limit the size of mock data to prevent memory issues"""
+        for symbol in self.mock_price_history:
+            for interval in self.mock_price_history[symbol]:
+                df = self.mock_price_history[symbol][interval]
+                if len(df) > max_candles_per_symbol:
+                    # Keep only the most recent candles
+                    self.mock_price_history[symbol][interval] = df.tail(max_candles_per_symbol)
 
     def generate_random_data(
         self, symbol: str, start: dt.datetime, num_of_random: int, rng: np.random.Generator | None = None
     ) -> tuple[np.random.Generator, pl.DataFrame]:
+        """Generate random price data with size limits for performance"""
+        if num_of_random > 1000000:  # Increased limit from 100000 to 1000000
+            raise ValueError(f"Requested {num_of_random} candles, but maximum is 1000000 for performance.")
+
         rng = rng or np.random.default_rng(int.from_bytes(symbol.encode("ascii"), "big"))
         returns = rng.normal(loc=1e-12, scale=1e-12, size=num_of_random)
-        df = {
-            "timestamp": [start + dt.timedelta(minutes=i) for i in range(num_of_random)],
+
+        # Generate timestamps efficiently
+        timestamps = [start + dt.timedelta(minutes=i) for i in range(num_of_random)]
+
+        df = pl.DataFrame({
+            "timestamp": timestamps,
             "price": returns,
-        }
-        return rng, pl.DataFrame(df)
+        })
+
+        return rng, df
 
     def generate_history(
         self, symbol: str, interval: Interval, start: dt.datetime | None = None, end: dt.datetime | None = None
@@ -335,7 +577,7 @@ class MockBroker(Broker):
         if start is None:
             start = self.epoch
         if end is None:
-            end = self.stats.utc_timestamp
+            end = self.get_current_time()
 
         original_start = start
         original_end = end
@@ -480,45 +722,43 @@ class MockBroker(Broker):
             history = history.filter(pl.col("timestamp") >= start, pl.col("timestamp") <= end)
             self.mock_price_history[symbol][interval] = history
 
-        # The initial price is arbitrarily calculated from the first change in price
-        # start_price = 100 * self.mock_price_history[symbol][interval].select("price").row(0)[0]
+        # Generate OHLC data more efficiently
+        prices_df = self.mock_price_history[symbol][interval]
 
-        times = []
-        # current_time = start
+        # Filter once and reuse
+        filtered_prices = prices_df.filter(pl.col("timestamp") >= start, pl.col("timestamp") <= end)
 
-        # Get the prices for the current interval
-        prices = self.mock_price_history[symbol][interval]
-        # get the rows by index
-        prices = prices.filter(pl.col("timestamp") >= start, pl.col("timestamp") <= end)
         # Prevent prices from going negative
-        prices = prices.with_columns(pl.when(pl.col("price") < 0).then(0.01).otherwise(pl.col("price")))
+        filtered_prices = filtered_prices.with_columns(
+            pl.when(pl.col("price") < 0).then(0.01).otherwise(pl.col("price")).alias("price")
+        )
 
-        # Calculate ohlc from the prices
-        open_s = prices - 50
-        low = prices - 100
-        high = prices + 100
-        close = prices + 50
-        volume = (1000 * (prices + 20)).cast(pl.Int64)
+        # Calculate OHLC from the prices using vectorized operations
+        price_col = filtered_prices.select("price").to_series()
+        timestamp_col = filtered_prices.select("timestamp").to_series()
 
-        # Fake the timestamps
-        for row in prices.iter_rows():
-            times.append(row[0])
+        # Generate realistic OHLC data
+        opens = price_col - 50
+        lows = price_col - 100
+        highs = price_col + 100
+        closes = price_col + 50
+        volumes = (1000 * (price_col + 20)).cast(pl.Int64)
 
-        d = {
-            "timestamp": times,
-            "open": open_s,
-            "high": high,
-            "low": low,
-            "close": close,
-            "volume": volume,
-        }
+        # Create result DataFrame efficiently
+        results = pl.DataFrame({
+            "timestamp": timestamp_col,
+            "open": opens,
+            "high": highs,
+            "low": lows,
+            "close": closes,
+            "volume": volumes,
+        })
 
-        results = pl.DataFrame(data=d)
-        results = results.with_columns(pl.col("timestamp").cast(pl.Datetime(time_zone="UTC")))
-        results = results.with_columns(pl.col("open").alias(symbol))
-        # results = aggregate_df(results, interval)
-        results = results.filter(pl.col("timestamp") >= start)
-        results = results.filter(pl.col("timestamp") <= end)
+        # Apply timezone and symbol column efficiently
+        results = results.with_columns([
+            pl.col("timestamp").cast(pl.Datetime(time_zone="UTC")),
+            pl.col("open").alias(symbol)
+        ])
 
         return results
 
@@ -542,3 +782,80 @@ class MockBroker(Broker):
         """
         supported_symbols = ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", "META", "NVDA", "NFLX", "DIS"]
         return symbol in supported_symbols
+
+    # ------------- Testing Helper Methods ------------- #
+
+    def set_price_data(self, symbol: str, candle: TickerCandle) -> None:
+        """Set mock price data for testing."""
+        if symbol not in self.mock_price_history:
+            self.mock_price_history[symbol] = {}
+
+        # Create a simple DataFrame with the candle data
+        df = pl.DataFrame({
+            "timestamp": [candle.timestamp],
+            "open": [candle.open],
+            "high": [candle.high],
+            "low": [candle.low],
+            "close": [candle.close],
+            "volume": [candle.volume],
+        })
+
+        # Store for MIN_1 interval by default (can be extended for other intervals)
+        self.mock_price_history[symbol][Interval.MIN_1] = df
+
+    def reset_state(self) -> None:
+        """Reset broker state for testing"""
+        self.orders.clear()
+        self.positions.clear()
+        self.mock_price_history.clear()
+        self.rng.clear()
+        self.rng.clear()
+
+    def _default_time_provider(self) -> dt.datetime:
+        """Default time provider that returns current UTC time"""
+        return self.get_current_time()
+
+    def set_max_ticks(self, max_ticks: int | None) -> None:
+        """Set maximum number of ticks for testing control"""
+        self._max_ticks = max_ticks
+        self._tick_count = 0
+
+    def get_tick_count(self) -> int:
+        """Get current tick count"""
+        return self._tick_count
+
+    def reset_tick_count(self) -> None:
+        """Reset tick counter"""
+        self._tick_count = 0
+
+    def step(self) -> None:
+        """
+        Perform one step of the broker's operation for testing purposes.
+        This method fetches the latest data for all watched symbols and publishes
+        price update events through the event bus system.
+
+        Note: This method does not advance time - that should be done externally
+        via time.increment_time() in tests.
+        """
+        if not self.watch_dict:
+            return
+
+        # Build the data dictionary for event publishing
+        df_dict: dict[Interval, dict[str, TickerCandle]] = {}
+
+        # Fetch data and publish events
+        for interval, symbols in self.watch_dict.items():
+            df_dict[interval] = {}
+            for symbol in symbols:
+                try:
+                    candle = self.fetch_latest_price(symbol, interval)
+                    df_dict[interval][symbol] = candle
+                    # Publish individual ticker event
+                    self._publish_ticker_candle(symbol, candle, interval)
+                except Exception as e:
+                    debugger.error(f"Error fetching price for {symbol}: {e}")
+                    continue
+
+            # Publish "all tickers ready" event for this interval
+            if df_dict[interval]:
+                self._publish_all_ticker_candle(interval, df_dict[interval])

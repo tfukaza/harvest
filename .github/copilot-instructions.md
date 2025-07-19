@@ -6,6 +6,7 @@ The primary focus is ease of use and flexibility, rather than raw performance.
 - Python 3.11+
 - Polars for data manipulation
 - pytest for testing
+- ZoneInfo module for timezone handling
 
 ## Coding Standards
 - Use modern Python type hints rather than the typing module. E.g. use `list[str]` instead of `List[str]`.
@@ -37,4 +38,4 @@ The primary focus is ease of use and flexibility, rather than raw performance.
 
 # Notes
 - The entire system should use UTC as the timezone for all timestamps.
-
+- Avoid using `python -c` for running scripts, as it can cause hangs in the CLI.
