@@ -152,11 +152,7 @@ class TestMockBrokerOrderManagement:
         broker = MockBroker()
 
         order = broker.order_stock_limit(
-            side=OrderSide.BUY,
-            symbol="AAPL",
-            quantity=100.0,
-            limit_price=150.0,
-            in_force=OrderTimeInForce.GTC
+            side=OrderSide.BUY, symbol="AAPL", quantity=100.0, limit_price=150.0, in_force=OrderTimeInForce.GTC
         )
 
         assert isinstance(order, Order)
@@ -172,13 +168,7 @@ class TestMockBrokerOrderManagement:
         """Test placing a crypto limit order."""
         broker = MockBroker()
 
-        order = broker.order_crypto_limit(
-            side="buy",
-            symbol="@BTC",
-            quantity=0.5,
-            limit_price=50000.0,
-            in_force="gtc"
-        )
+        order = broker.order_crypto_limit(side="buy", symbol="@BTC", quantity=0.5, limit_price=50000.0, in_force="gtc")
 
         assert isinstance(order, Order)
         assert order.order_type == AssetType.CRYPTO
@@ -201,7 +191,7 @@ class TestMockBrokerOrderManagement:
             option_type="call",
             exp_date=exp_date,
             strike=400.0,
-            in_force="gtc"
+            in_force="gtc",
         )
 
         assert isinstance(order, Order)
@@ -217,12 +207,7 @@ class TestMockBrokerOrderManagement:
         broker = MockBroker()
 
         # Place an order
-        order = broker.order_stock_limit(
-            side=OrderSide.BUY,
-            symbol="AAPL",
-            quantity=100.0,
-            limit_price=150.0
-        )
+        order = broker.order_stock_limit(side=OrderSide.BUY, symbol="AAPL", quantity=100.0, limit_price=150.0)
 
         assert order.order_id in broker.orders
 
@@ -236,12 +221,7 @@ class TestMockBrokerOrderManagement:
         broker = MockBroker()
 
         # Place an order
-        order = broker.order_stock_limit(
-            side=OrderSide.BUY,
-            symbol="AAPL",
-            quantity=100.0,
-            limit_price=150.0
-        )
+        order = broker.order_stock_limit(side=OrderSide.BUY, symbol="AAPL", quantity=100.0, limit_price=150.0)
 
         # Fetch the order status
         fetched_order = broker.fetch_stock_order_status(order.order_id)
@@ -272,7 +252,7 @@ class TestMockBrokerMarketData:
         ticker_frame = broker.fetch_price_history("AAPL", Interval.MIN_1)
 
         assert ticker_frame is not None
-        assert hasattr(ticker_frame, 'df')
+        assert hasattr(ticker_frame, "df")
         assert isinstance(ticker_frame.df, pl.DataFrame)
 
         # Check that the DataFrame has expected columns
@@ -324,7 +304,7 @@ class TestMockBrokerMarketData:
         chain_data = broker.fetch_chain_data("SPY", test_date)
 
         assert chain_data is not None
-        assert hasattr(chain_data, 'df')
+        assert hasattr(chain_data, "df")
         assert isinstance(chain_data.df, pl.DataFrame)
         assert len(chain_data.df) > 0
 
@@ -336,10 +316,10 @@ class TestMockBrokerMarketData:
         """Test fetching chain info."""
         broker = MockBroker()
 
-        chain_info = broker.fetch_chain_info("SPY")
+        chain_info = broker.fetch_chain("SPY")
 
         assert chain_info is not None
-        assert hasattr(chain_info, 'exp_dates')
+        assert hasattr(chain_info, "exp_dates")
         assert len(chain_info.exp_dates) > 0
         assert all(isinstance(date, dt.date) for date in chain_info.exp_dates)
 
@@ -358,7 +338,7 @@ class TestMockBrokerHelperMethods:
             high=155.0,
             low=149.0,
             close=152.0,
-            volume=1000000
+            volume=1000000,
         )
 
         broker.set_price_data("AAPL", candle)
@@ -375,12 +355,7 @@ class TestMockBrokerHelperMethods:
         broker = MockBroker()
 
         # Create an order
-        order = broker.order_stock_limit(
-            side=OrderSide.BUY,
-            symbol="AAPL",
-            quantity=100.0,
-            limit_price=150.0
-        )
+        order = broker.order_stock_limit(side=OrderSide.BUY, symbol="AAPL", quantity=100.0, limit_price=150.0)
 
         # Set some price data first
         candle = TickerCandle(
@@ -390,7 +365,7 @@ class TestMockBrokerHelperMethods:
             high=155.0,
             low=149.0,
             close=152.0,
-            volume=1000000
+            volume=1000000,
         )
         broker.set_price_data("AAPL", candle)
 
@@ -416,12 +391,7 @@ class TestMockBrokerHelperMethods:
         broker = MockBroker()
 
         # Add some data
-        order = broker.order_stock_limit(
-            side=OrderSide.BUY,
-            symbol="AAPL",
-            quantity=100.0,
-            limit_price=150.0
-        )
+        order = broker.order_stock_limit(side=OrderSide.BUY, symbol="AAPL", quantity=100.0, limit_price=150.0)
 
         candle = TickerCandle(
             symbol="AAPL",
@@ -430,7 +400,7 @@ class TestMockBrokerHelperMethods:
             high=155.0,
             low=149.0,
             close=152.0,
-            volume=1000000
+            volume=1000000,
         )
         broker.set_price_data("AAPL", candle)
         broker.fulfill_order(order)

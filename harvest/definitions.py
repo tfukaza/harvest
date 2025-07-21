@@ -291,6 +291,9 @@ class Account:
 
 @dataclass
 class TickerCandle:
+    """
+    Represents a single candle for a ticker symbol.
+    """
     timestamp: dt.datetime
     symbol: str
     open: float
@@ -313,9 +316,10 @@ class TickerCandle:
         )
 
 
-class TickerFrame:
+class TickerCandleList:
     """
     A wrapper around a polars dataframe to provide type hints and additional functionality.
+    When a single candle is retrieved using the `[]` operator, it converts the row to a TickerCandle object.
     """
 
     _df: pl.DataFrame
@@ -325,15 +329,16 @@ class TickerFrame:
 
     @property
     def df(self) -> pl.DataFrame:
+        """Get the underlying polars dataframe"""
         return self._df
 
     def get_column(self, column_name: str) -> pl.Series:
         """Get a column from the dataframe"""
         return self._df.get_column(column_name)
 
-    def tail(self, n: int = 5) -> "TickerFrame":
+    def tail(self, n: int = 5) -> "TickerCandleList":
         """Get the last n rows"""
-        return TickerFrame(self._df.tail(n))
+        return TickerCandleList(self._df.tail(n))
 
     def __getitem__(self, index: int) -> TickerCandle:
         if index < 0:

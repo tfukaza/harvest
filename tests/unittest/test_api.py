@@ -153,7 +153,7 @@ class TestBroker(unittest.TestCase):
             )
 
         try:
-            api.fetch_chain_info("A")
+            api.fetch_chain("A")
             self.assertTrue(False)
         except NotImplementedError as e:
             self.assertEqual(str(e), "Broker class does not support the method fetch_chain_info.")

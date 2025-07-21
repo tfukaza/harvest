@@ -12,7 +12,7 @@ from sqlalchemy.schema import UniqueConstraint
 if TYPE_CHECKING:
     from harvest.events.event_bus import EventBus
 
-from harvest.definitions import OrderSide, RuntimeData, TickerFrame, TimeDelta, TimeSpan, Transaction, TransactionFrame
+from harvest.definitions import OrderSide, RuntimeData, TickerCandleList, TimeDelta, TimeSpan, Transaction, TransactionFrame
 from harvest.enum import Interval
 from harvest.util.helper import debugger
 
@@ -785,7 +785,7 @@ class CentralStorage:
         """
         self.stats = stats
 
-    def insert_price_history(self, data: TickerFrame) -> None:
+    def insert_price_history(self, data: TickerCandleList) -> None:
         """
         Store stock price data in the central database.
 
@@ -853,7 +853,7 @@ class CentralStorage:
         interval: Interval | None = None,
         start: dt.datetime | None = None,
         end: dt.datetime | None = None,
-    ) -> TickerFrame:
+    ) -> TickerCandleList:
         """
         Retrieve stock price history from the central database.
 
@@ -901,7 +901,7 @@ class CentralStorage:
         frame = frame.with_columns(pl.col("timestamp").str.to_datetime("%Y-%m-%d %H:%M:%S%.f"))
         frame = frame.drop("id")
 
-        return TickerFrame(frame)
+        return TickerCandleList(frame)
 
     def insert_account_performance(
         self,

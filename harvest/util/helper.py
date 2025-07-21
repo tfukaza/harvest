@@ -9,7 +9,7 @@ from typing import List, Union
 import numpy as np
 import polars as pl
 
-from harvest.definitions import TickerFrame
+from harvest.definitions import TickerCandleList
 from harvest.enum import BrokerType, DataBrokerType, Interval, IntervalUnit, StorageType, TimeRange, TradeBrokerType
 from harvest.util.date import utc_current_time
 
@@ -401,7 +401,7 @@ def generate_ticker_frame(
     interval: Interval,
     count: int = 50,
     start: dt.datetime | None = None,
-) -> TickerFrame:
+) -> TickerCandleList:
     """Generate a mock ticker frame with random data.
 
     Args:
@@ -465,4 +465,4 @@ def generate_ticker_frame(
         }
     )
 
-    return TickerFrame(df)
+    return TickerCandleList(df)

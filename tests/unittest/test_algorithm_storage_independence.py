@@ -16,7 +16,7 @@ from harvest.services.central_storage_service import CentralStorageService
 from harvest.services.discovery import ServiceRegistry
 from harvest.events.event_bus import EventBus
 from harvest.events.events import TransactionEvent, PriceUpdateEvent
-from harvest.definitions import Transaction, TickerFrame, OrderSide, OrderEvent
+from harvest.definitions import Transaction, TickerCandleList, OrderSide, OrderEvent
 from harvest.enum import Interval
 import polars as pl
 
@@ -42,7 +42,7 @@ class TestAlgorithmStorageIndependence(unittest.TestCase):
         )
 
         # Create sample price data for testing
-        self.sample_price_data = TickerFrame(pl.DataFrame({
+        self.sample_price_data = TickerCandleList(pl.DataFrame({
             "timestamp": [dt.datetime.utcnow()],
             "symbol": ["AAPL"],
             "interval": ["MIN_1"],

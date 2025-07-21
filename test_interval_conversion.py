@@ -4,16 +4,26 @@
 
 import sys
 import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '.'))
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "."))
 
 from harvest.broker._base import Broker
 from harvest.enum import Interval
+
 
 # Create a test broker class that implements the abstract methods
 class TestBroker(Broker):
     def __init__(self):
         super().__init__()
-        self.interval_list = [Interval.SEC_15, Interval.MIN_1, Interval.MIN_5, Interval.MIN_15, Interval.MIN_30, Interval.HR_1, Interval.DAY_1]
+        self.interval_list = [
+            Interval.SEC_15,
+            Interval.MIN_1,
+            Interval.MIN_5,
+            Interval.MIN_15,
+            Interval.MIN_30,
+            Interval.HR_1,
+            Interval.DAY_1,
+        ]
         self.exchange = "TEST"
         self.req_keys = []
 
@@ -25,6 +35,7 @@ class TestBroker(Broker):
 
     def get_current_time(self):
         import datetime as dt
+
         return dt.datetime.now(dt.timezone.utc)
 
     def fetch_price_history(self, symbol, interval, start=None, end=None):
@@ -33,7 +44,7 @@ class TestBroker(Broker):
     def fetch_latest_price(self, symbol, interval):
         pass
 
-    def fetch_chain_info(self, symbol):
+    def fetch_chain(self, symbol):
         pass
 
     def fetch_chain_data(self, symbol, date):
@@ -87,6 +98,7 @@ class TestBroker(Broker):
     def cancel_option_order(self, order_id):
         pass
 
+
 def test_interval_conversion():
     """Test the interval to seconds conversion."""
     broker = TestBroker()
@@ -109,6 +121,7 @@ def test_interval_conversion():
         assert result == expected_seconds, f"Expected {expected_seconds}, got {result}"
 
     print("✓ All interval conversion tests passed!")
+
 
 if __name__ == "__main__":
     test_interval_conversion()

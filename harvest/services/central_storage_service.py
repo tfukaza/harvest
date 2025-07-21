@@ -11,7 +11,7 @@ from typing import Any, Dict
 
 from harvest.services.service_interface import Service
 from harvest.storage._base import CentralStorage
-from harvest.definitions import TickerFrame
+from harvest.definitions import TickerCandleList
 from harvest.enum import Interval
 from harvest.events.events import PriceUpdateEvent
 
@@ -151,7 +151,7 @@ class CentralStorageService(Service):
         start: dt.datetime | None = None,
         end: dt.datetime | None = None,
         storage_name: str = "default"
-    ) -> TickerFrame:
+    ) -> TickerCandleList:
         """
         Retrieve price history from the specified storage.
 
@@ -168,7 +168,7 @@ class CentralStorageService(Service):
         storage = self._get_storage(storage_name)
         return storage.get_price_history(symbol, interval, start, end)
 
-    def store_price_data(self, data: TickerFrame, storage_name: str = "default") -> None:
+    def store_price_data(self, data: TickerCandleList, storage_name: str = "default") -> None:
         """
         Store price data and publish update events.
 

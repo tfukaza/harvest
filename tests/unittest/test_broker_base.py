@@ -5,7 +5,7 @@ import pytest
 
 from harvest.broker._base import Broker
 from harvest.broker.mock import MockBroker
-from harvest.definitions import RuntimeData, TickerCandle, TickerFrame
+from harvest.definitions import RuntimeData, TickerCandle, TickerCandleList
 from harvest.enum import Interval, IntervalUnit
 from harvest.util.helper import generate_ticker_frame, interval_to_timedelta
 
@@ -73,7 +73,7 @@ def mock_fetch_price_history(mock_runtime_data):
         # TODO: Allow param per interval and symbol
     }
 
-    def fetch_price_history(symbol, interval, start, end) -> TickerFrame:
+    def fetch_price_history(symbol, interval, start, end) -> TickerCandleList:
         count = 100
         if parameters["required_retries"] > 0:
             count -= 1
@@ -110,7 +110,7 @@ def mock_fetch_price_history(mock_runtime_data):
             frame = frame.filter(pl.col("timestamp") <= end)
 
         # print(frame)
-        return TickerFrame(frame)
+        return TickerCandleList(frame)
 
     def fetch_latest_price(symbol: str, interval: Interval) -> TickerCandle:
         return fetch_price_history(symbol, interval, None, None)[-1]

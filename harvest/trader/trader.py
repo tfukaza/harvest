@@ -13,7 +13,6 @@ from rich.table import Table
 
 from harvest.definitions import (
     Account,
-
     OptionPosition,
     Position,
     RuntimeData,
@@ -126,7 +125,6 @@ class BrokerHub:
 
         self.stats = RuntimeData(None, tzlocal.get_localzone(), None)
 
-        
         self.account = Account()
         self.positions = self.account.positions
         self.orders = self.account.orders
@@ -574,7 +572,7 @@ class BrokerHub:
     # --------------------- Interface Functions -----------------------
 
     def fetch_chain_info(self, *args, **kwargs):
-        return self.data_broker_ref.fetch_chain_info(*args, **kwargs)
+        return self.data_broker_ref.fetch_chain(*args, **kwargs)
 
     def fetch_chain_data(self, *args, **kwargs):
         return self.data_broker_ref.fetch_chain_data(*args, **kwargs)

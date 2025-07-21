@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 from .service_interface import Service
 from ..events.event_bus import EventBus
 from ..events.events import PriceUpdateEvent
-from ..definitions import TickerFrame, ChainInfo, ChainData, OptionData
+from ..definitions import TickerCandleList, ChainInfo, ChainData, OptionData
 from ..enum import Interval
 
 if TYPE_CHECKING:
@@ -36,7 +36,7 @@ class MarketDataService(Service):
         # Stop all active feeds
         for feed_id in list(self._active_feeds.keys()):
             await self.stop_data_feed(feed_id)
-        
+
         self.is_running = False
 
     def health_check(self) -> dict[str, any]:  # type: ignore
@@ -54,7 +54,7 @@ class MarketDataService(Service):
         """Get list of service capabilities"""
         return [
             "real_time_data",
-            "historical_data", 
+            "historical_data",
             "option_chains",
             "market_data_distribution",
             "data_storage_integration"
@@ -71,16 +71,16 @@ class MarketDataService(Service):
     async def start_data_feed(self, symbols: list[str], interval: Interval) -> str:
         """
         Start real-time data feed for symbols
-        
+
         Args:
             symbols: List of symbols to track
             interval: Data update interval
-            
+
         Returns:
             Feed ID for managing the feed
         """
         feed_id = f"feed_{len(self._active_feeds)}_{dt.datetime.utcnow().timestamp()}"
-        
+
         # Implementation depends on broker type
         # This is a placeholder - actual implementation would start broker-specific data streams
         feed_config = {
@@ -89,12 +89,12 @@ class MarketDataService(Service):
             "active": True,
             "start_time": dt.datetime.utcnow()
         }
-        
+
         self._active_feeds[feed_id] = feed_config
-        
+
         # Start the actual data feed (broker-specific implementation)
         # await self._start_broker_feed(feed_id, symbols, interval)
-        
+
         return feed_id
 
     async def stop_data_feed(self, feed_id: str) -> None:
@@ -102,13 +102,13 @@ class MarketDataService(Service):
         if feed_id in self._active_feeds:
             # Stop broker-specific feed
             # await self._stop_broker_feed(feed_id)
-            
+
             del self._active_feeds[feed_id]
 
-    def publish_price_update(self, symbol: str, price_data: TickerFrame) -> None:
+    def publish_price_update(self, symbol: str, price_data: TickerCandleList) -> None:
         """
         Publish price update and store in central storage
-        
+
         Args:
             symbol: Symbol that was updated
             price_data: Updated price data as TickerFrame
@@ -130,67 +130,67 @@ class MarketDataService(Service):
     async def fetch_chain_info(self, symbol: str) -> ChainInfo:
         """
         Fetch option chain information for a symbol
-        
+
         Args:
             symbol: Stock symbol
-            
+
         Returns:
             ChainInfo with expiration dates and metadata
         """
         if not self.broker:
             raise Exception("No broker instance available")
-        
+
         return self.broker.fetch_chain_info(symbol)
 
     async def fetch_chain_data(self, symbol: str, expiration_date: dt.datetime) -> ChainData:
         """
         Fetch option chain data for specific expiration
-        
+
         Args:
             symbol: Stock symbol
             expiration_date: Option expiration date
-            
+
         Returns:
             ChainData with option contracts
         """
         if not self.broker:
             raise Exception("No broker instance available")
-        
+
         return self.broker.fetch_chain_data(symbol, expiration_date)
 
     async def fetch_option_market_data(self, option_symbol: str) -> OptionData:
         """
         Fetch market data for a specific option
-        
+
         Args:
             option_symbol: OCC format option symbol
-            
+
         Returns:
             OptionData with current market information
         """
         if not self.broker:
             raise Exception("No broker instance available")
-        
+
         return self.broker.fetch_option_market_data(option_symbol)
 
-    async def get_historical_data(self, symbol: str, interval: Interval, 
-                                start: dt.datetime | None = None, 
-                                end: dt.datetime | None = None) -> TickerFrame:
+    async def get_historical_data(self, symbol: str, interval: Interval,
+                                start: dt.datetime | None = None,
+                                end: dt.datetime | None = None) -> TickerCandleList:
         """
         Get historical market data
-        
+
         Args:
             symbol: Symbol to fetch data for
             interval: Data interval
             start: Start date (optional)
             end: End date (optional)
-            
+
         Returns:
             TickerFrame with historical data
         """
         if not self.broker:
             raise Exception("No broker instance available")
-        
+
         # This would typically call broker's historical data method
         # For now, return empty TickerFrame as placeholder
         import polars as pl
@@ -203,7 +203,7 @@ class MarketDataService(Service):
             "close": [],
             "volume": []
         })
-        return TickerFrame(empty_df)
+        return TickerCandleList(empty_df)
 
     def add_subscriber(self, subscriber_id: str) -> None:
         """Add a subscriber for market data updates"""

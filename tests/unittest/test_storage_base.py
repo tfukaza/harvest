@@ -57,7 +57,7 @@ from harvest.definitions import (
     OrderSide,
     OrderEvent,
     RuntimeData,
-    TickerFrame,
+    TickerCandleList,
     TimeDelta,
     TimeSpan,
     Transaction,
@@ -483,7 +483,7 @@ class TestCentralStorage:
             "volume": [1000.0, 1100.0],
         })
 
-        ticker_frame = TickerFrame(df)
+        ticker_frame = TickerCandleList(df)
         self.storage.insert_price_history(ticker_frame)
 
         # Verify price data was stored
@@ -510,7 +510,7 @@ class TestCentralStorage:
             "volume": [1000.0],
         })
 
-        self.storage.insert_price_history(TickerFrame(df1))
+        self.storage.insert_price_history(TickerCandleList(df1))
 
         # Insert updated data for same timestamp
         df2 = pl.DataFrame({
@@ -524,7 +524,7 @@ class TestCentralStorage:
             "volume": [1200.0],  # Updated volume
         })
 
-        self.storage.insert_price_history(TickerFrame(df2))
+        self.storage.insert_price_history(TickerCandleList(df2))
 
         # Verify only one record exists with updated values
         history = self.storage.get_price_history("AAPL", Interval.MIN_1)
@@ -550,7 +550,7 @@ class TestCentralStorage:
             "volume": [1000.0 + i*100 for i in range(5)],
         })
 
-        self.storage.insert_price_history(TickerFrame(df))
+        self.storage.insert_price_history(TickerCandleList(df))
 
         # Test getting all data
         all_history = self.storage.get_price_history("AAPL", Interval.MIN_1)
@@ -738,7 +738,7 @@ class TestCentralStorage:
             "close": [151.0],
             "volume": [1000.0],
         })
-        short_storage.insert_price_history(TickerFrame(old_df))
+        short_storage.insert_price_history(TickerCandleList(old_df))
 
         # Insert new price data (should trigger cleanup)
         new_df = pl.DataFrame({
@@ -751,7 +751,7 @@ class TestCentralStorage:
             "close": [156.0],
             "volume": [1200.0],
         })
-        short_storage.insert_price_history(TickerFrame(new_df))
+        short_storage.insert_price_history(TickerCandleList(new_df))
 
         # Old price data should be cleaned up
         history = short_storage.get_price_history("AAPL", Interval.MIN_1)
@@ -849,7 +849,7 @@ class TestIntegration:
             "close": [151.0],
             "volume": [1000.0],
         })
-        central_storage.insert_price_history(TickerFrame(df))
+        central_storage.insert_price_history(TickerCandleList(df))
 
         # Both algorithms should be able to access the same price data
         price_history = central_storage.get_price_history("AAPL", Interval.MIN_1)

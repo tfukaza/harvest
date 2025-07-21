@@ -24,7 +24,7 @@ from harvest.definitions import (
     Positions,
     RuntimeData,
     TickerCandle,
-    TickerFrame,
+    TickerCandleList,
 )
 from harvest.enum import Interval, IntervalUnit
 from harvest.events.events import PriceUpdateEvent
@@ -203,7 +203,7 @@ class MockBroker(Broker):
         interval: Interval,
         start: dt.datetime | None = None,
         end: dt.datetime | None = None,
-    ) -> TickerFrame:
+    ) -> TickerCandleList:
         if not start:
             start = self.epoch
         if not end:
@@ -226,7 +226,7 @@ class MockBroker(Broker):
         if end:
             frame_df = frame_df.filter(pl.col("timestamp") <= end)
 
-        return TickerFrame(frame_df)
+        return TickerCandleList(frame_df)
 
     def fetch_latest_price(self, symbol: str, interval: Interval) -> TickerCandle:
         return self.fetch_price_history(symbol, interval, end=self.get_current_time())[-1]
@@ -273,7 +273,7 @@ class MockBroker(Broker):
 
         return ChainData(df)
 
-    def fetch_chain_info(self, symbol: str) -> ChainInfo:
+    def fetch_chain(self, symbol: str) -> ChainInfo:
         cur_date = self.get_current_time().date()
         return ChainInfo(
             "123456",
@@ -328,7 +328,7 @@ class MockBroker(Broker):
             cash=10000.0,
             equity=10000.0 + sum(p.value for p in self.positions.values()),
             buying_power=20000.0,
-            multiplier=1.0
+            multiplier=1.0,
         )
 
     def fetch_stock_order_status(self, id) -> Order:
@@ -564,10 +564,12 @@ class MockBroker(Broker):
         # Generate timestamps efficiently
         timestamps = [start + dt.timedelta(minutes=i) for i in range(num_of_random)]
 
-        df = pl.DataFrame({
-            "timestamp": timestamps,
-            "price": returns,
-        })
+        df = pl.DataFrame(
+            {
+                "timestamp": timestamps,
+                "price": returns,
+            }
+        )
 
         return rng, df
 
@@ -664,7 +666,6 @@ class MockBroker(Broker):
         end_index = int(((end - self.epoch).total_seconds() - divider) // divider) + 1
         num_of_random = end_index - start_index
 
-
         if symbol in self.mock_price_history:
             if interval in self.mock_price_history[symbol]:
                 history = self.mock_price_history[symbol][interval]
@@ -745,20 +746,21 @@ class MockBroker(Broker):
         volumes = (1000 * (price_col + 20)).cast(pl.Int64)
 
         # Create result DataFrame efficiently
-        results = pl.DataFrame({
-            "timestamp": timestamp_col,
-            "open": opens,
-            "high": highs,
-            "low": lows,
-            "close": closes,
-            "volume": volumes,
-        })
+        results = pl.DataFrame(
+            {
+                "timestamp": timestamp_col,
+                "open": opens,
+                "high": highs,
+                "low": lows,
+                "close": closes,
+                "volume": volumes,
+            }
+        )
 
         # Apply timezone and symbol column efficiently
-        results = results.with_columns([
-            pl.col("timestamp").cast(pl.Datetime(time_zone="UTC")),
-            pl.col("open").alias(symbol)
-        ])
+        results = results.with_columns(
+            [pl.col("timestamp").cast(pl.Datetime(time_zone="UTC")), pl.col("open").alias(symbol)]
+        )
 
         return results
 
@@ -791,14 +793,16 @@ class MockBroker(Broker):
             self.mock_price_history[symbol] = {}
 
         # Create a simple DataFrame with the candle data
-        df = pl.DataFrame({
-            "timestamp": [candle.timestamp],
-            "open": [candle.open],
-            "high": [candle.high],
-            "low": [candle.low],
-            "close": [candle.close],
-            "volume": [candle.volume],
-        })
+        df = pl.DataFrame(
+            {
+                "timestamp": [candle.timestamp],
+                "open": [candle.open],
+                "high": [candle.high],
+                "low": [candle.low],
+                "close": [candle.close],
+                "volume": [candle.volume],
+            }
+        )
 
         # Store for MIN_1 interval by default (can be extended for other intervals)
         self.mock_price_history[symbol][Interval.MIN_1] = df

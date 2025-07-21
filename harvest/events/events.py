@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 from ..definitions import (
-    TickerFrame,
+    TickerCandleList,
     Transaction,
     OrderSide,
     Order,
@@ -53,7 +53,7 @@ class DataType(StrEnum):
 class PriceUpdateEvent:
     """Event fired when price data is updated for a symbol."""
     symbol: str
-    price_data: TickerFrame
+    price_data: TickerCandleList
     timestamp: dt.datetime
     interval: Interval
     broker_id: str

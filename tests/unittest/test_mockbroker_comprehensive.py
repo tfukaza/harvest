@@ -53,12 +53,7 @@ class TestMockBrokerInitialization:
         custom_time = dt.datetime(2023, 1, 1, 12, 0, 0, tzinfo=dt.timezone.utc)
         epoch = dt.datetime(2022, 1, 1, tzinfo=dt.timezone.utc)
 
-        broker = MockBroker(
-            current_time=custom_time,
-            epoch=epoch,
-            realistic_simulation=False,
-            stock_market_times=True
-        )
+        broker = MockBroker(current_time=custom_time, epoch=epoch, realistic_simulation=False, stock_market_times=True)
 
         assert broker.current_time == custom_time
         assert broker.epoch == epoch
@@ -92,10 +87,7 @@ class TestMockBrokerInitialization:
         mock_time_provider = Mock(return_value=dt.datetime(2023, 1, 1, tzinfo=dt.timezone.utc))
         mock_sleep = Mock()
 
-        broker = MockBroker(
-            time_provider=mock_time_provider,
-            sleep_function=mock_sleep
-        )
+        broker = MockBroker(time_provider=mock_time_provider, sleep_function=mock_sleep)
 
         assert broker.time_provider == mock_time_provider
         assert broker.sleep_function == mock_sleep
@@ -108,14 +100,14 @@ class TestMockBrokerPriceHistory:
         """Test basic price history fetching."""
         broker = MockBroker(
             current_time=dt.datetime(2023, 1, 1, 12, 0, 0, tzinfo=dt.timezone.utc),
-            epoch=dt.datetime(2023, 1, 1, 0, 0, 0, tzinfo=dt.timezone.utc)
+            epoch=dt.datetime(2023, 1, 1, 0, 0, 0, tzinfo=dt.timezone.utc),
         )
 
         frame = broker.fetch_price_history(
             "AAPL",
             Interval.MIN_1,
             dt.datetime(2023, 1, 1, 10, 0, 0, tzinfo=dt.timezone.utc),
-            dt.datetime(2023, 1, 1, 11, 0, 0, tzinfo=dt.timezone.utc)
+            dt.datetime(2023, 1, 1, 11, 0, 0, tzinfo=dt.timezone.utc),
         )
 
         assert len(frame.df) == 60  # 60 minutes
@@ -128,9 +120,7 @@ class TestMockBrokerPriceHistory:
 
     def test_fetch_price_history_time_range(self):
         """Test price history with specific time ranges."""
-        broker = MockBroker(
-            current_time=dt.datetime(2023, 1, 1, 12, 0, 0, tzinfo=dt.timezone.utc)
-        )
+        broker = MockBroker(current_time=dt.datetime(2023, 1, 1, 12, 0, 0, tzinfo=dt.timezone.utc))
 
         start_time = dt.datetime(2023, 1, 1, 10, 0, 0, tzinfo=dt.timezone.utc)
         end_time = dt.datetime(2023, 1, 1, 10, 30, 0, tzinfo=dt.timezone.utc)
@@ -143,9 +133,7 @@ class TestMockBrokerPriceHistory:
 
     def test_fetch_price_history_different_intervals(self):
         """Test price history with different intervals."""
-        broker = MockBroker(
-            current_time=dt.datetime(2023, 1, 1, 12, 0, 0, tzinfo=dt.timezone.utc)
-        )
+        broker = MockBroker(current_time=dt.datetime(2023, 1, 1, 12, 0, 0, tzinfo=dt.timezone.utc))
 
         start_time = dt.datetime(2023, 1, 1, 0, 0, 0, tzinfo=dt.timezone.utc)
         end_time = dt.datetime(2023, 1, 1, 6, 0, 0, tzinfo=dt.timezone.utc)
@@ -166,17 +154,17 @@ class TestMockBrokerPriceHistory:
         """Test fetching the latest price."""
         broker = MockBroker(
             current_time=dt.datetime(2023, 1, 1, 12, 0, 0, tzinfo=dt.timezone.utc),
-            epoch=dt.datetime(2023, 1, 1, 11, 0, 0, tzinfo=dt.timezone.utc)  # Only 1 hour of data
+            epoch=dt.datetime(2023, 1, 1, 11, 0, 0, tzinfo=dt.timezone.utc),  # Only 1 hour of data
         )
 
         latest_candle = broker.fetch_latest_price("AAPL", Interval.MIN_1)
 
-        assert hasattr(latest_candle, 'open')
-        assert hasattr(latest_candle, 'high')
-        assert hasattr(latest_candle, 'low')
-        assert hasattr(latest_candle, 'close')
-        assert hasattr(latest_candle, 'volume')
-        assert hasattr(latest_candle, 'timestamp')
+        assert hasattr(latest_candle, "open")
+        assert hasattr(latest_candle, "high")
+        assert hasattr(latest_candle, "low")
+        assert hasattr(latest_candle, "close")
+        assert hasattr(latest_candle, "volume")
+        assert hasattr(latest_candle, "timestamp")
 
     def test_set_price_data(self):
         """Test setting custom price data."""
@@ -189,7 +177,7 @@ class TestMockBrokerPriceHistory:
             low=95.0,
             close=102.0,
             volume=1000,
-            symbol="AAPL"
+            symbol="AAPL",
         )
 
         broker.set_price_data("AAPL", custom_candle)
@@ -222,13 +210,7 @@ class TestMockBrokerOrders:
         """Test creating stock orders."""
         broker = MockBroker()
 
-        order = broker.order_stock_limit(
-            OrderSide.BUY,
-            "AAPL",
-            100.0,
-            150.0,
-            OrderTimeInForce.GTC
-        )
+        order = broker.order_stock_limit(OrderSide.BUY, "AAPL", 100.0, 150.0, OrderTimeInForce.GTC)
 
         assert order.order_type == AssetType.STOCK
         assert order.symbol == "AAPL"
@@ -241,13 +223,7 @@ class TestMockBrokerOrders:
         """Test creating crypto orders."""
         broker = MockBroker()
 
-        order = broker.order_crypto_limit(
-            "buy",
-            "@BTC",
-            0.5,
-            50000.0,
-            "gtc"
-        )
+        order = broker.order_crypto_limit("buy", "@BTC", 0.5, 50000.0, "gtc")
 
         assert order.order_type == AssetType.CRYPTO
         assert order.symbol == "@BTC"
@@ -268,7 +244,7 @@ class TestMockBrokerOrders:
             "call",
             exp_date,
             150.0,
-            "gtc"
+            "gtc",
         )
 
         assert order.order_type == AssetType.OPTION
@@ -280,16 +256,11 @@ class TestMockBrokerOrders:
         """Test order fulfillment functionality."""
         broker = MockBroker(
             current_time=dt.datetime(2023, 1, 1, 12, 0, 0, tzinfo=dt.timezone.utc),
-            epoch=dt.datetime(2023, 1, 1, 11, 0, 0, tzinfo=dt.timezone.utc)  # Only 1 hour of data
+            epoch=dt.datetime(2023, 1, 1, 11, 0, 0, tzinfo=dt.timezone.utc),  # Only 1 hour of data
         )
 
         # Create an order
-        order = broker.order_stock_limit(
-            OrderSide.BUY,
-            "AAPL",
-            100.0,
-            150.0
-        )
+        order = broker.order_stock_limit(OrderSide.BUY, "AAPL", 100.0, 150.0)
 
         # Fulfill the order
         broker.fulfill_order(order)
@@ -352,9 +323,7 @@ class TestMockBrokerPositions:
 
         # Add stock and option positions
         broker.positions["AAPL"] = Position(symbol="AAPL", quantity=100.0, avg_price=150.0)
-        broker.positions["AAPL:20231215:150:C"] = Position(
-            symbol="AAPL:20231215:150:C", quantity=1.0, avg_price=5.0
-        )
+        broker.positions["AAPL:20231215:150:C"] = Position(symbol="AAPL:20231215:150:C", quantity=1.0, avg_price=5.0)
 
         option_positions = broker.fetch_option_positions()
         assert len(option_positions.positions) == 1
@@ -392,9 +361,7 @@ class TestMockBrokerTimeManagement:
 
     def test_time_advancement(self):
         """Test time advancement functionality."""
-        broker = MockBroker(
-            current_time=dt.datetime(2023, 1, 1, 12, 0, 0, tzinfo=dt.timezone.utc)
-        )
+        broker = MockBroker(current_time=dt.datetime(2023, 1, 1, 12, 0, 0, tzinfo=dt.timezone.utc))
 
         initial_time = broker.get_current_time()
         broker.advance_time()
@@ -406,9 +373,7 @@ class TestMockBrokerTimeManagement:
 
     def test_tick_functionality(self):
         """Test tick functionality."""
-        broker = MockBroker(
-            current_time=dt.datetime(2023, 1, 1, 12, 0, 0, tzinfo=dt.timezone.utc)
-        )
+        broker = MockBroker(current_time=dt.datetime(2023, 1, 1, 12, 0, 0, tzinfo=dt.timezone.utc))
 
         initial_time = broker.get_current_time()
         broker.tick()
@@ -470,10 +435,7 @@ class TestMockBrokerPerformance:
     def test_realistic_simulation_false(self):
         """Test fast simulation mode (no sleep)."""
         mock_sleep = Mock()
-        broker = MockBroker(
-            realistic_simulation=False,
-            sleep_function=mock_sleep
-        )
+        broker = MockBroker(realistic_simulation=False, sleep_function=mock_sleep)
         broker.set_max_ticks(2)
 
         start_time = time.time()
@@ -488,10 +450,7 @@ class TestMockBrokerPerformance:
     def test_realistic_simulation_true(self):
         """Test realistic simulation mode with mock sleep."""
         mock_sleep = Mock()
-        broker = MockBroker(
-            realistic_simulation=True,
-            sleep_function=mock_sleep
-        )
+        broker = MockBroker(realistic_simulation=True, sleep_function=mock_sleep)
         broker.set_max_ticks(2)
 
         broker.start({Interval.MIN_1: ["AAPL"]})
@@ -505,7 +464,7 @@ class TestMockBrokerPerformance:
         """Test clearing mock data for memory management."""
         broker = MockBroker(
             current_time=dt.datetime(2023, 1, 1, 12, 0, 0, tzinfo=dt.timezone.utc),
-            epoch=dt.datetime(2023, 1, 1, 11, 0, 0, tzinfo=dt.timezone.utc)  # Only 1 hour of data
+            epoch=dt.datetime(2023, 1, 1, 11, 0, 0, tzinfo=dt.timezone.utc),  # Only 1 hour of data
         )
 
         # Generate some data
@@ -522,10 +481,12 @@ class TestMockBrokerPerformance:
         broker = MockBroker()
 
         # Create mock data with more than limit
-        large_df = pl.DataFrame({
-            "timestamp": [dt.datetime(2023, 1, 1) + dt.timedelta(minutes=i) for i in range(20000)],
-            "price": [100.0] * 20000
-        })
+        large_df = pl.DataFrame(
+            {
+                "timestamp": [dt.datetime(2023, 1, 1) + dt.timedelta(minutes=i) for i in range(20000)],
+                "price": [100.0] * 20000,
+            }
+        )
         broker.mock_price_history["AAPL"] = {Interval.MIN_1: large_df}
 
         # Apply size limit
@@ -574,7 +535,7 @@ class TestMockBrokerMarketData:
         """Test fetching option market data."""
         broker = MockBroker(
             current_time=dt.datetime(2023, 1, 1, 12, 0, 0, tzinfo=dt.timezone.utc),
-            epoch=dt.datetime(2023, 1, 1, 11, 0, 0, tzinfo=dt.timezone.utc)  # Only 1 hour of data
+            epoch=dt.datetime(2023, 1, 1, 11, 0, 0, tzinfo=dt.timezone.utc),  # Only 1 hour of data
         )
 
         option_data = broker.fetch_option_market_data("AAPL")
@@ -590,7 +551,7 @@ class TestMockBrokerMarketData:
         """Test fetching option chain data."""
         broker = MockBroker(
             current_time=dt.datetime(2023, 1, 1, 12, 0, 0, tzinfo=dt.timezone.utc),
-            epoch=dt.datetime(2023, 1, 1, 11, 0, 0, tzinfo=dt.timezone.utc)  # Only 1 hour of data
+            epoch=dt.datetime(2023, 1, 1, 11, 0, 0, tzinfo=dt.timezone.utc),  # Only 1 hour of data
         )
 
         test_date = dt.datetime(2023, 1, 1, tzinfo=dt.timezone.utc)
@@ -604,11 +565,9 @@ class TestMockBrokerMarketData:
 
     def test_fetch_chain_info(self):
         """Test fetching chain info."""
-        broker = MockBroker(
-            current_time=dt.datetime(2023, 1, 1, tzinfo=dt.timezone.utc)
-        )
+        broker = MockBroker(current_time=dt.datetime(2023, 1, 1, tzinfo=dt.timezone.utc))
 
-        chain_info = broker.fetch_chain_info("AAPL")
+        chain_info = broker.fetch_chain("AAPL")
 
         assert chain_info.chain_id == "123456"
         assert len(chain_info.expiration_list) == 3

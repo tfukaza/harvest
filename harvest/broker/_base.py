@@ -8,7 +8,6 @@ from os.path import exists
 from typing import Any, Callable, Dict
 
 # Third-party imports
-import pandas as pd
 import polars as pl
 import yaml
 
@@ -27,7 +26,7 @@ from harvest.definitions import (
     Positions,
     RuntimeData,
     TickerCandle,
-    TickerFrame,
+    TickerCandleList,
 )
 from harvest.enum import Interval, IntervalUnit
 from harvest.util.helper import (
@@ -48,23 +47,13 @@ class Broker:
     """
     The Broker class is used to communicate with various API endpoints of the respective broker.
 
-    It is used to perform operations like fetching historical data and placing orders,
+    It performs operations like fetching historical data and placing orders,
     as well as generating events for price updates and order statuses.
 
-    Note that some brokers may not support all features, such as options trading or crypto trading.
-    Furthermore, some brokers are specialized for specific role, such as data retrieval or order placement.
+    Note that some brokers may not support all features.
     For example, PaperBroker is specialized for order placement and does not support data retrieval.
     """
 
-    # List of supported intervals
-    # interval_list = [
-    #     Interval.MIN_1,
-    #     Interval.MIN_5,
-    #     Interval.MIN_15,
-    #     Interval.MIN_30,
-    #     Interval.HR_1,
-    #     Interval.DAY_1,
-    # ]
     interval_list: list[Interval]
     # Name of the exchange this API trades on
     exchange: str
@@ -86,8 +75,8 @@ class Broker:
             secret_path = "./secret.yaml"
 
         self.secret_path = secret_path
-        self.watch_dict: dict[Interval, list[str]] = {} # Maps intervals to lists of symbols to watch
-        self.event_bus: EventBus | None = None   # Event bus for publishing price updates
+        self.watch_dict: dict[Interval, list[str]] = {}  # Maps intervals to lists of symbols to watch for that interval
+        self.event_bus: EventBus | None = None  # Event bus for publishing price updates
 
     def setup(self, runtime_data: RuntimeData) -> None:
         """
@@ -95,9 +84,7 @@ class Broker:
         and initializes several runtime parameters like
         the symbols to watch and what interval data is needed.
 
-        :stats: The Stats object that contains the watchlist and other configurations.
-        :account: The Account object that contains the user's account information.
-        :broker_hub_cb: The callback function that the broker calls every time it fetches new data.
+        :runtime_data: Runtime data object containing the current UTC timestamp and other runtime parameters.
         """
 
         config = {}
@@ -108,7 +95,7 @@ class Broker:
         else:
             with open(self.secret_path, "r") as stream:
                 config = yaml.safe_load(stream)
-                # Check if the file contains all the required parameters
+                # If keys are missing, launch the secret creation wizard
                 if any(key not in config for key in self.req_keys):
                     config.update(self.create_secret())
 
@@ -117,7 +104,6 @@ class Broker:
 
         self.config = config
         self.stats = runtime_data
-        # debugger.debug(f"Poll Interval: {interval_enum_to_string(self.poll_interval)}")
         debugger.debug(f"{type(self).__name__} setup finished")
 
     def set_event_bus(self, event_bus: EventBus) -> None:
@@ -139,17 +125,19 @@ class Broker:
         :price_data: The new price data as a TickerCandle
         :interval: The interval this data represents
         """
-        # Convert TickerCandle to TickerFrame for consistency
-        df = pl.DataFrame({
-            "timestamp": [price_data.timestamp],
-            "symbol": [price_data.symbol],
-            "open": [price_data.open],
-            "high": [price_data.high],
-            "low": [price_data.low],
-            "close": [price_data.close],
-            "volume": [price_data.volume],
-        })
-        ticker_frame = TickerFrame(df)
+        # Convert TickerCandle to TickerCandleList, so other parts of the system can operate on dataframes
+        df = pl.DataFrame(
+            {
+                "timestamp": [price_data.timestamp],
+                "symbol": [price_data.symbol],
+                "open": [price_data.open],
+                "high": [price_data.high],
+                "low": [price_data.low],
+                "close": [price_data.close],
+                "volume": [price_data.volume],
+            }
+        )
+        ticker_frame = TickerCandleList(df)
 
         # Create the event with broker and interval information
         event = PriceUpdateEvent(
@@ -158,7 +146,7 @@ class Broker:
             timestamp=price_data.timestamp,
             interval=interval,
             broker_id=self.__class__.__name__,
-            exchange=self.exchange
+            exchange=self.exchange,
         )
 
         # Publish single ticker event if available
@@ -188,28 +176,30 @@ class Broker:
             "exchange": self.exchange,
             "timestamp": self.stats.utc_timestamp if self.stats else None,
             "symbols": list(all_data.keys()),
-            "ticker_data": {}
+            "ticker_data": {},
         }
 
         # Convert all ticker candles to ticker frames
         for symbol, candle in all_data.items():
-            df = pl.DataFrame({
-                "timestamp": [candle.timestamp],
-                "symbol": [candle.symbol],
-                "open": [candle.open],
-                "high": [candle.high],
-                "low": [candle.low],
-                "close": [candle.close],
-                "volume": [candle.volume],
-            })
-            combined_event["ticker_data"][symbol] = TickerFrame(df).__dict__
+            df = pl.DataFrame(
+                {
+                    "timestamp": [candle.timestamp],
+                    "symbol": [candle.symbol],
+                    "open": [candle.open],
+                    "high": [candle.high],
+                    "low": [candle.low],
+                    "close": [candle.close],
+                    "volume": [candle.volume],
+                }
+            )
+            combined_event["ticker_data"][symbol] = TickerCandleList(df).__dict__
 
         event_name = f"price_update:{broker_name}:{interval.value}:all"
         self.event_bus.publish(event_name, combined_event)
 
     def _publish_periodic_event(self, interval: Interval) -> None:
         """
-        Publish a periodic event regardless of ticker data availability.
+        Publish a periodic event, useful for chron-like tasks.
 
         Event format: `price_update:[broker_name]:[interval]`
 
@@ -225,15 +215,26 @@ class Broker:
             "broker_id": broker_name,
             "exchange": self.exchange,
             "timestamp": self.stats.utc_timestamp if self.stats else None,
-            "event_type": "periodic"
+            "event_type": "periodic",
         }
 
         event_name = f"price_update:{broker_name}:{interval.value}"
         self.event_bus.publish(event_name, periodic_event)
 
-
+    @property
     def continue_polling(self) -> bool:
-        return True
+        """
+        Check if the broker is set to continue polling.
+        """
+        return self.continue_polling
+
+    @continue_polling.setter
+    def continue_polling(self, value: bool) -> None:
+        """
+        Set whether the broker should continue polling for data.
+        This is used to control the polling loop.
+        """
+        self._continue_polling = value
 
     def start(
         self,
@@ -260,11 +261,7 @@ class Broker:
         self.polling_interval = lowest_interval
 
         # Start single polling thread
-        self._polling_thread = threading.Thread(
-            target=self._polling_loop,
-            args=(lowest_interval,),
-            daemon=True
-        )
+        self._polling_thread = threading.Thread(target=self._polling_loop, args=(lowest_interval,), daemon=True)
         self._polling_thread.start()
 
     def _polling_loop(self, poll_interval: Interval) -> None:
@@ -279,13 +276,13 @@ class Broker:
         # Define the polling tasks for this broker type using Interval enums
         polling_tasks = [
             {
-                'function': self._poll_and_publish_price_events,
-                'interval': poll_interval,
+                "function": self._poll_and_publish_price_events,
+                "interval": poll_interval,
             },
             {
-                'function': self._publish_periodic_events,
-                'interval': Interval.SEC_15,  # Check every 15 seconds for periodic events
-            }
+                "function": self._publish_periodic_events,
+                "interval": Interval.SEC_15,  # Check every 15 seconds for periodic events
+            },
         ]
 
         self._common_polling_loop(polling_tasks)
@@ -309,22 +306,22 @@ class Broker:
         # Initialize next fire times for all tasks based on time alignment (UTC)
         current_time = utc_current_time().timestamp()
         for task in polling_tasks:
-            task['next_fire_time'] = self._calculate_next_aligned_time(current_time, task['interval'])
+            task["next_fire_time"] = self._calculate_next_aligned_time(current_time, task["interval"])
 
-        while self.continue_polling():
+        while self.continue_polling:
             current_time = utc_current_time().timestamp()
 
             # Find the earliest next fire time among all tasks
-            next_fire_time = min(task['next_fire_time'] for task in polling_tasks)
+            next_fire_time = min(task["next_fire_time"] for task in polling_tasks)
 
             # If it's time to fire the earliest task(s)
             if current_time >= next_fire_time:
                 # Execute all tasks that are ready to fire
                 for task in polling_tasks:
-                    if current_time >= task['next_fire_time']:
-                        task['function']()
-                        # Recalculate next fire time from current actual time to prevent drift
-                        task['next_fire_time'] = self._calculate_next_aligned_time(current_time, task['interval'])
+                    if current_time >= task["next_fire_time"]:
+                        task["function"]()
+                        # Recalculate next fire time from current timestamp to prevent drift
+                        task["next_fire_time"] = self._calculate_next_aligned_time(current_time, task["interval"])
 
                 # Short sleep to prevent excessive CPU usage when firing multiple tasks
                 time.sleep(0.01)
@@ -348,6 +345,11 @@ class Broker:
         All calculations are performed in UTC timezone to ensure consistency
         across different system timezones.
 
+        For example, if the current time is 10:23:45 UTC and the interval is 5 minutes,
+        the next aligned firing time would be 10:25:00 UTC.
+
+        Note that for the second intervals, the lowest interval is 5 seconds.
+
         Args:
             current_time: Current UTC timestamp (seconds since Unix epoch)
             interval: Interval enum representing the interval
@@ -359,15 +361,15 @@ class Broker:
 
         # Handle different interval units directly using UTC-based calculations
         if interval.unit == "SEC":
-            # For second intervals, align within the current minute
-            minute_start = math.floor(current_time / 60) * 60
-            elapsed_in_minute = current_time - minute_start
-            intervals_passed = math.floor(elapsed_in_minute / interval.interval_value)
-            next_time = minute_start + (intervals_passed + 1) * interval.interval_value
+            # For second intervals, first align with the closest 5 seconds
+            five_second_start = math.floor(current_time / 5) * 5
+            elapsed_in_five_seconds = current_time - five_second_start
+            intervals_passed = math.floor(elapsed_in_five_seconds / interval.interval_value)
+            next_time = five_second_start + (intervals_passed + 1) * interval.interval_value
 
-            # If we've gone past this minute, move to the next minute
-            if next_time >= minute_start + 60:
-                next_time = minute_start + 60
+            # If we've gone past this 5-second boundary, align back to the next 5 seconds
+            if next_time >= five_second_start + 5:
+                next_time = five_second_start + 5
 
         elif interval.unit == "MIN":
             if interval.interval_value == 1:
@@ -408,8 +410,6 @@ class Broker:
 
         return next_time
 
-
-
     def _poll_and_publish_price_events(self) -> None:
         """
         Poll for new price data and publish price update events.
@@ -423,7 +423,7 @@ class Broker:
         df_dict = {}
         retry_queue = []
         interval_completion = {}  # Track completed tickers per interval
-        interval_expected = {}    # Track expected tickers per interval
+        interval_expected = {}  # Track expected tickers per interval
 
         # Initialize tracking for each interval
         for interval, symbols in self.watch_dict.items():
@@ -491,13 +491,11 @@ class Broker:
     def _publish_periodic_events(self) -> None:
         """
         Publish periodic events for all active intervals.
-
-        This method publishes periodic events regardless of ticker data availability.
+        Useful for tasks that need to run at regular intervals,
         """
         for interval in self.watch_dict.keys():
             if check_interval(self.stats.utc_timestamp, interval):
                 self._publish_periodic_event(interval)
-
 
     @classmethod
     def get_single_ticker_event_name(cls, interval: Interval, symbol: str) -> str:
@@ -537,8 +535,8 @@ class Broker:
         """
         Checks if the candle is the latest candle for the given interval for the current time.
         This function only returns true for full candles, not partial candles.
-        For example, if the current time is 10:23 AM, interval is 5 minute, and the candle timestamp is 10:00 AM,
-        this function will return false since the candle is not a full candle.
+        For example, if the current time is 10:23 AM, interval is 5 minute, and the candle timestamp is 10:20 AM,
+        this function will return false since the candle only covers 10:20 AM to 10:23 AM.
         """
         timestamp = candle.timestamp
         return timestamp == self.stats.utc_timestamp - interval_to_timedelta(interval)
@@ -581,7 +579,7 @@ class Broker:
         interval: Interval,
         start: dt.datetime | None = None,
         end: dt.datetime | None = None,
-    ) -> TickerFrame:
+    ) -> TickerCandleList:
         """
         Fetches historical price data for the specified asset and period
         using the API. The first row is the earliest entry and the last
@@ -605,7 +603,7 @@ class Broker:
         pass
 
     @abstractmethod
-    def fetch_chain_info(self, symbol: str) -> ChainInfo:
+    def fetch_chain(self, symbol: str) -> ChainInfo:
         """
         Returns information about the symbol's options
 
@@ -920,7 +918,14 @@ class Broker:
         debugger.debug(f"{type(self).__name__} ordered a buy of {quantity} {symbol}")
         typ = symbol_type(symbol)
         if typ == "STOCK":
-            return self.order_stock_limit(OrderSide.BUY, symbol, quantity, limit_price, OrderTimeInForce.GTC if in_force == "gtc" else OrderTimeInForce.GTD, extended)
+            return self.order_stock_limit(
+                OrderSide.BUY,
+                symbol,
+                quantity,
+                limit_price,
+                OrderTimeInForce.GTC if in_force == "gtc" else OrderTimeInForce.GTD,
+                extended,
+            )
         elif typ == "CRYPTO":
             return self.order_crypto_limit("buy", symbol[1:], quantity, limit_price, in_force, extended)
         elif typ == "OPTION":
@@ -962,7 +967,14 @@ class Broker:
 
         typ = symbol_type(symbol)
         if typ == "STOCK":
-            return self.order_stock_limit(OrderSide.SELL, symbol, quantity, limit_price, OrderTimeInForce.GTC if in_force == "gtc" else OrderTimeInForce.GTD, extended)
+            return self.order_stock_limit(
+                OrderSide.SELL,
+                symbol,
+                quantity,
+                limit_price,
+                OrderTimeInForce.GTC if in_force == "gtc" else OrderTimeInForce.GTD,
+                extended,
+            )
         elif typ == "CRYPTO":
             return self.order_crypto_limit("sell", symbol[1:], quantity, limit_price, in_force, extended)
         elif typ == "OPTION":
@@ -992,7 +1004,7 @@ class Broker:
             exchange=self.exchange,
             supported_intervals_tickers=self._get_supported_intervals_tickers(),
             supported_asset_types=self._get_supported_asset_types(),
-            features=self._get_broker_features()
+            features=self._get_broker_features(),
         )
 
     def _get_supported_intervals_tickers(self) -> dict[Interval, list[str]]:
@@ -1026,8 +1038,6 @@ class Broker:
         """
         # Default implementation - real brokers should implement symbol validation
         return True
-
-
 
 
 class StreamBroker(Broker):
@@ -1117,7 +1127,6 @@ class StreamBroker(Broker):
         """
         pass
 
-
     def stop_streaming(self) -> None:
         """
         Stop the streaming broker and cleanup resources.
@@ -1183,10 +1192,7 @@ class StreamBroker(Broker):
             self._timeout_timers[interval].cancel()
 
         # Start new timer
-        timer = threading.Timer(
-            self._timeout_duration,
-            lambda: self._handle_timeout(interval)
-        )
+        timer = threading.Timer(self._timeout_duration, lambda: self._handle_timeout(interval))
         self._timeout_timers[interval] = timer
         timer.start()
 
@@ -1276,8 +1282,8 @@ class StreamBroker(Broker):
         # Define the polling tasks for StreamBroker (only periodic events)
         polling_tasks = [
             {
-                'function': self._publish_periodic_events,
-                'interval': Interval.SEC_15,  # Check every 15 seconds for periodic events
+                "function": self._publish_periodic_events,
+                "interval": Interval.SEC_15,  # Check every 15 seconds for periodic events
             }
         ]
 

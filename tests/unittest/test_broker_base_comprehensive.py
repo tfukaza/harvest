@@ -27,7 +27,7 @@ from harvest.definitions import (
     Positions,
     RuntimeData,
     TickerCandle,
-    TickerFrame,
+    TickerCandleList,
 )
 from harvest.enum import Interval
 from harvest.events.event_bus import EventBus
@@ -288,7 +288,7 @@ class TestBrokerBaseWithMockBroker:
             end=end_time,
         )
 
-        assert isinstance(price_history, TickerFrame)
+        assert isinstance(price_history, TickerCandleList)
         assert len(price_history.df) > 0
         assert "timestamp" in price_history.df.columns
         assert "symbol" in price_history.df.columns
@@ -394,7 +394,7 @@ class TestBrokerBaseWithMockBroker:
         symbol = "AAPL"
 
         # Test chain info
-        chain_info = mock_broker.fetch_chain_info(symbol)
+        chain_info = mock_broker.fetch_chain(symbol)
 
         # Basic validation - just test that we get some response
         assert chain_info is not None
@@ -494,7 +494,7 @@ class TestBrokerBaseWithMockBroker:
 
         # MockBroker with empty req_keys should complete setup without error
         # The main test is that setup() doesn't raise an exception
-        assert hasattr(broker, 'stats')
+        assert hasattr(broker, "stats")
         assert broker.stats is runtime_data
 
     def test_error_handling_in_polling(self, mock_broker: MockBroker) -> None:
@@ -624,14 +624,14 @@ class TestBrokerBaseWithMockBroker:
 
         # fetch_price_history
         history = mock_broker.fetch_price_history(symbol, interval)
-        assert isinstance(history, TickerFrame)
+        assert isinstance(history, TickerCandleList)
 
         # fetch_latest_price
         latest = mock_broker.fetch_latest_price(symbol, interval)
         assert isinstance(latest, TickerCandle)
 
         # Test option methods
-        chain_info = mock_broker.fetch_chain_info(symbol)
+        chain_info = mock_broker.fetch_chain(symbol)
         assert chain_info is not None
 
         exp_date = dt.datetime(2023, 7, 21, tzinfo=dt.timezone.utc)
@@ -664,6 +664,6 @@ class TestBrokerBaseWithMockBroker:
 
         # Test order queue
         order_queue = mock_broker.fetch_order_queue()
-        assert hasattr(order_queue, '__iter__')  # Should be iterable
+        assert hasattr(order_queue, "__iter__")  # Should be iterable
 
         # All abstract methods should be implemented without raising NotImplementedError

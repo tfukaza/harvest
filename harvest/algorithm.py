@@ -9,7 +9,7 @@ import numpy as np
 import polars as pl
 from finta import TA
 
-from harvest.definitions import Account, RuntimeData, OptionData, ChainInfo, ChainData, Order, TickerFrame, Position, OptionPosition, Transaction, TransactionFrame, OrderSide, OrderEvent
+from harvest.definitions import Account, RuntimeData, OptionData, ChainInfo, ChainData, Order, TickerCandleList, Position, OptionPosition, Transaction, TransactionFrame, OrderSide, OrderEvent
 from harvest.enum import Interval
 from harvest.plugin._base import Plugin
 from harvest.util.date import convert_input_to_datetime, datetime_utc_to_local, pandas_timestamp_to_local
@@ -385,7 +385,7 @@ class Algorithm:
 
     def get_price_history(self, symbol: str, interval: Interval | None = None,
                          start: dt.datetime | None = None, end: dt.datetime | None = None,
-                         storage: str | None = None) -> TickerFrame:
+                         storage: str | None = None) -> TickerCandleList:
         """Get market data from central storage service
 
         :param str symbol: Symbol to get price history for
@@ -461,7 +461,7 @@ class Algorithm:
         upper_exp: str | dt.datetime | None = None,
         lower_strike: float | None = None,
         upper_strike: float | None = None,
-    ) -> TickerFrame:
+    ) -> TickerCandleList:
         """Returns a TickerFrame of options that satisfies the criteria specified.
 
         The lower_exp and upper_exp input can either be a string in the format "YYYY-MM-DD" or a datetime object.
@@ -510,7 +510,7 @@ class Algorithm:
 
         chain_df = chain_df.sort(["strike", "exp_date"])
 
-        return TickerFrame(chain_df)
+        return TickerCandleList(chain_df)
 
     # ------------------ Functions to trade options ----------------------
 
@@ -918,7 +918,7 @@ class Algorithm:
         return None
 
     def get_asset_current_candle(self, symbol: str | None = None, interval=None,
-                                storage: str | None = None) -> TickerFrame | None:
+                                storage: str | None = None) -> TickerCandleList | None:
         """Returns the most recent candle as a TickerFrame
 
         This function is not compatible with options.
@@ -953,14 +953,14 @@ class Algorithm:
             # Add timezone handling if stats available
             if self.stats:
                 last_row_with_timezone = pandas_timestamp_to_local(last_row._df, self.stats.broker_timezone)
-                return TickerFrame(last_row_with_timezone)
+                return TickerCandleList(last_row_with_timezone)
             return last_row
 
         debugger.warning("Candles not available for options")
         return None
 
     def get_asset_candle_list(self, symbol: str | None = None, interval=None,
-                             storage: str | None = None) -> TickerFrame | None:
+                             storage: str | None = None) -> TickerCandleList | None:
         """Returns the candles of an asset as a TickerFrame
 
         This function is not compatible with options.
@@ -993,7 +993,7 @@ class Algorithm:
         # Add timezone handling if stats available
         if self.stats:
             df_with_timezone = pandas_timestamp_to_local(ticker_frame._df, self.stats.broker_timezone)
-            return TickerFrame(df_with_timezone)
+            return TickerCandleList(df_with_timezone)
         return ticker_frame
 
     async def get_asset_profit_percent(self, symbol: str | None = None,

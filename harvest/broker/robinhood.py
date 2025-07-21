@@ -169,7 +169,7 @@ class RobinhoodBroker(Broker):
         return df
 
     @Broker._exception_handler
-    def fetch_chain_info(self, symbol: str):
+    def fetch_chain(self, symbol: str):
         ret = rh.get_chains(symbol)
         return {
             "chain_id": "n/a",
