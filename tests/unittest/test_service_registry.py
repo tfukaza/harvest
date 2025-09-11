@@ -2,11 +2,12 @@
 Unit tests for Service Discovery and Registry functionality.
 """
 
-import pytest
 import asyncio
-from unittest.mock import Mock, AsyncMock
+from unittest.mock import AsyncMock, Mock
 
-from harvest.services import ServiceRegistry, Service
+import pytest
+
+from harvest.services import Service, ServiceRegistry
 from harvest.services.service_interface import ServiceError, ServiceNotFoundError
 
 

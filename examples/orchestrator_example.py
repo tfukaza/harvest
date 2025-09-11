@@ -23,7 +23,7 @@ class SimpleMonitoringAlgorithm(Algorithm):
         super().__init__(
             watch_list=["AAPL", "MSFT", "GOOGL"],
             interval=Interval.MIN_5,
-            aggregations=[Interval.MIN_5, Interval.MIN_15]
+            aggregations=[Interval.MIN_5, Interval.MIN_15],
         )
 
     def setup(self) -> None:
@@ -61,9 +61,7 @@ class TradingAlgorithm(Algorithm):
 
     def __init__(self):
         super().__init__(
-            watch_list=["SPY"],
-            interval=Interval.MIN_5,
-            aggregations=[Interval.MIN_5, Interval.MIN_15, Interval.MIN_30]
+            watch_list=["SPY"], interval=Interval.MIN_5, aggregations=[Interval.MIN_5, Interval.MIN_15, Interval.MIN_30]
         )
         self.position_size = 100
 
@@ -125,26 +123,15 @@ async def main():
     debugger.info("Starting Service-Oriented Trading System")
 
     # Create broker and storage instances
-    broker = MockBroker(
-        current_time="2024-01-15 09:30",
-        realistic_simulation=False
-    )
+    broker = MockBroker(current_time="2024-01-15 09:30", realistic_simulation=False)
 
     storage = PickleStorage()
 
     # Create algorithms
-    algorithms = [
-        SimpleMonitoringAlgorithm(),
-        TradingAlgorithm()
-    ]
+    algorithms = [SimpleMonitoringAlgorithm(), TradingAlgorithm()]
 
     # Create the orchestrator (replaces the old Client class)
-    orchestrator = Orchestrator(
-        broker=broker,
-        storage=storage,
-        algorithm_list=algorithms,
-        debug=True
-    )
+    orchestrator = Orchestrator(broker=broker, storage=storage, algorithm_list=algorithms, debug=True)
 
     try:
         # Start the orchestrator and all services

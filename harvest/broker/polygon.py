@@ -268,7 +268,7 @@ class PolygonBroker(Broker):
         if is_crypto(symbol):
             temp_symbol = "X:" + temp_symbol[1:] + "USD"
 
-        request = f"https://api.polygon.io/v2/aggs/ticker/{ temp_symbol }/range/{ multiplier }/{ timespan }/{ start_str }/{ end_str }?adjusted=true&sort=asc&apiKey={ key }"
+        request = f"https://api.polygon.io/v2/aggs/ticker/{temp_symbol}/range/{multiplier}/{timespan}/{start_str}/{end_str}?adjusted=true&sort=asc&apiKey={key}"
         response = self._handle_request_response(request)
 
         if response is None:

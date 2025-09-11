@@ -21,10 +21,7 @@ class ServiceRegistry:
         self._lock = asyncio.Lock()
 
     async def register_service(
-        self,
-        service_name: str,
-        service_instance: Service,
-        metadata: dict[str, Any] | None = None
+        self, service_name: str, service_instance: Service, metadata: dict[str, Any] | None = None
     ) -> None:
         """
         Register a service with the registry.
@@ -45,7 +42,7 @@ class ServiceRegistry:
                 "last_health_check": None,
                 "health_status": "unknown",
                 "health_details": {},
-                "capabilities": service_instance.get_capabilities()
+                "capabilities": service_instance.get_capabilities(),
             }
 
             self._services[service_name] = service_data
@@ -132,7 +129,7 @@ class ServiceRegistry:
                 "registration_time": data["registration_time"],
                 "last_health_check": data["last_health_check"],
                 "health_status": data["health_status"],
-                "health_details": data["health_details"]
+                "health_details": data["health_details"],
             }
         return service_info
 
@@ -159,18 +156,14 @@ class ServiceRegistry:
                 health_results[name] = {
                     "status": health_status,
                     "details": health_result,
-                    "timestamp": data["last_health_check"]
+                    "timestamp": data["last_health_check"],
                 }
 
             except Exception as e:
                 logger.error(f"Health check failed for service {name}: {e}")
                 data["health_status"] = "error"
                 data["health_details"] = {"error": str(e)}
-                health_results[name] = {
-                    "status": "error",
-                    "details": {"error": str(e)},
-                    "timestamp": datetime.now()
-                }
+                health_results[name] = {"status": "error", "details": {"error": str(e)}, "timestamp": datetime.now()}
 
         return health_results
 
@@ -299,9 +292,7 @@ def get_service_registry() -> ServiceRegistry:
 
 
 async def register_service(
-    service_name: str,
-    service_instance: Service,
-    metadata: dict[str, Any] | None = None
+    service_name: str, service_instance: Service, metadata: dict[str, Any] | None = None
 ) -> None:
     """Convenience function to register a service with the global registry."""
     registry = get_service_registry()

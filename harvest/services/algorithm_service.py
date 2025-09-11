@@ -89,7 +89,7 @@ class AlgorithmService(Service):
             "running_algorithms": len(self.running_tasks),
             "event_bus_active": self.event_bus is not None,
             "service_registry_active": self.service_registry is not None,
-            "uptime_seconds": dt.datetime.utcnow().timestamp() - (self._start_time or 0)
+            "uptime_seconds": dt.datetime.utcnow().timestamp() - (self._start_time or 0),
         }
 
     def get_capabilities(self) -> list[str]:
@@ -99,7 +99,7 @@ class AlgorithmService(Service):
             "algorithm_scheduling",
             "lifecycle_management",
             "event_coordination",
-            "service_discovery"
+            "service_discovery",
         ]
 
     def add_algorithm(self, algorithm: "Algorithm") -> None:
@@ -320,11 +320,9 @@ class AlgorithmService(Service):
             "interval": algorithm.interval.value,
             "watchlist": algorithm.watch_list,
             "aggregations": [agg.value for agg in algorithm.aggregations],
-            "services_discovered": all([
-                algorithm.market_data_service,
-                algorithm.broker_services,
-                algorithm.central_storage_services
-            ]),
+            "services_discovered": all(
+                [algorithm.market_data_service, algorithm.broker_services, algorithm.central_storage_services]
+            ),
             "health": dataclasses.asdict(algorithm.health),
         }
 
@@ -335,7 +333,4 @@ class AlgorithmService(Service):
         Returns:
             Dictionary mapping algorithm names to their status
         """
-        return {
-            name: self.get_algorithm_status(name)
-            for name in self.algorithms.keys()
-        }
+        return {name: self.get_algorithm_status(name) for name in self.algorithms.keys()}

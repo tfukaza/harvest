@@ -24,9 +24,7 @@ class MultiBrokerStorageAlgorithm(Algorithm):
 
     def __init__(self):
         super().__init__(
-            watch_list=["AAPL", "MSFT"],
-            interval=Interval.MIN_5,
-            aggregations=[Interval.MIN_5, Interval.MIN_15]
+            watch_list=["AAPL", "MSFT"], interval=Interval.MIN_5, aggregations=[Interval.MIN_5, Interval.MIN_15]
         )
 
     def setup(self) -> None:
@@ -74,11 +72,7 @@ class MultiBrokerStorageAlgorithm(Algorithm):
                 # Example: Place a buy order on specific broker
                 if self.broker_service:
                     order = await self.broker_service.place_order(
-                        symbol=symbol,
-                        side=OrderSide.BUY,
-                        quantity=10,
-                        order_type="market",
-                        brokerage="default"
+                        symbol=symbol, side=OrderSide.BUY, quantity=10, order_type="market", brokerage="default"
                     )
 
                     if order:
@@ -95,10 +89,7 @@ async def main():
     debugger.info("Starting Multi-Broker/Storage Trading System")
 
     # Create multiple broker instances
-    mock_broker = MockBroker(
-        current_time="2024-01-15 09:30",
-        realistic_simulation=False
-    )
+    mock_broker = MockBroker(current_time="2024-01-15 09:30", realistic_simulation=False)
 
     paper_broker = PaperBroker()
 
@@ -107,26 +98,18 @@ async def main():
     analytical_storage = CentralStorage(db_path="sqlite:///analytical_data.db")
 
     # Create algorithms
-    algorithms: list[Algorithm] = [
-        MultiBrokerStorageAlgorithm()
-    ]
+    algorithms: list[Algorithm] = [MultiBrokerStorageAlgorithm()]
 
     # Create orchestrator with multiple brokers and storages
-    brokers = {
-        "default": mock_broker,
-        "paper": paper_broker
-    }
+    brokers = {"default": mock_broker, "paper": paper_broker}
 
-    storages = {
-        "default": pickle_storage,
-        "analytical": analytical_storage
-    }
+    storages = {"default": pickle_storage, "analytical": analytical_storage}
 
     orchestrator = Orchestrator(
         broker=brokers,  # Pass multiple brokers
         storage=storages,  # Pass multiple storages
         algorithm_list=algorithms,
-        debug=True
+        debug=True,
     )
 
     try:

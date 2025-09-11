@@ -47,7 +47,7 @@ class MarketDataService(Service):
             "broker_connected": self.broker is not None,
             "central_storage_connected": self.central_storage is not None,
             "event_bus_connected": self.event_bus is not None,
-            "uptime_seconds": dt.datetime.utcnow().timestamp() - (self._start_time or 0)
+            "uptime_seconds": dt.datetime.utcnow().timestamp() - (self._start_time or 0),
         }
 
     def get_capabilities(self) -> list[str]:
@@ -57,7 +57,7 @@ class MarketDataService(Service):
             "historical_data",
             "option_chains",
             "market_data_distribution",
-            "data_storage_integration"
+            "data_storage_integration",
         ]
 
     def set_event_bus(self, event_bus: EventBus) -> None:
@@ -83,12 +83,7 @@ class MarketDataService(Service):
 
         # Implementation depends on broker type
         # This is a placeholder - actual implementation would start broker-specific data streams
-        feed_config = {
-            "symbols": symbols,
-            "interval": interval,
-            "active": True,
-            "start_time": dt.datetime.utcnow()
-        }
+        feed_config = {"symbols": symbols, "interval": interval, "active": True, "start_time": dt.datetime.utcnow()}
 
         self._active_feeds[feed_id] = feed_config
 
@@ -120,12 +115,8 @@ class MarketDataService(Service):
         # Publish event
         if self.event_bus:
             # Create event data as dict for now
-            event_data = {
-                "symbol": symbol,
-                "price_data": price_data,
-                "timestamp": dt.datetime.utcnow()
-            }
-            self.event_bus.publish('price_update', event_data)
+            event_data = {"symbol": symbol, "price_data": price_data, "timestamp": dt.datetime.utcnow()}
+            self.event_bus.publish("price_update", event_data)
 
     async def fetch_chain_info(self, symbol: str) -> ChainInfo:
         """
@@ -173,9 +164,9 @@ class MarketDataService(Service):
 
         return self.broker.fetch_option_market_data(option_symbol)
 
-    async def get_historical_data(self, symbol: str, interval: Interval,
-                                start: dt.datetime | None = None,
-                                end: dt.datetime | None = None) -> TickerCandleList:
+    async def get_historical_data(
+        self, symbol: str, interval: Interval, start: dt.datetime | None = None, end: dt.datetime | None = None
+    ) -> TickerCandleList:
         """
         Get historical market data
 
@@ -194,15 +185,10 @@ class MarketDataService(Service):
         # This would typically call broker's historical data method
         # For now, return empty TickerFrame as placeholder
         import polars as pl
-        empty_df = pl.DataFrame({
-            "timestamp": [],
-            "symbol": [],
-            "open": [],
-            "high": [],
-            "low": [],
-            "close": [],
-            "volume": []
-        })
+
+        empty_df = pl.DataFrame(
+            {"timestamp": [], "symbol": [], "open": [], "high": [], "low": [], "close": [], "volume": []}
+        )
         return TickerCandleList(empty_df)
 
     def add_subscriber(self, subscriber_id: str) -> None:

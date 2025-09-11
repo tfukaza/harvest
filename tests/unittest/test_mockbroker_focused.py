@@ -55,10 +55,7 @@ class TestMockBrokerCore:
         mock_time_provider = Mock(return_value=dt.datetime(2023, 1, 1, tzinfo=dt.timezone.utc))
         mock_sleep = Mock()
 
-        broker = MockBroker(
-            time_provider=mock_time_provider,
-            sleep_function=mock_sleep
-        )
+        broker = MockBroker(time_provider=mock_time_provider, sleep_function=mock_sleep)
 
         assert broker.time_provider == mock_time_provider
         assert broker.sleep_function == mock_sleep
@@ -81,7 +78,7 @@ class TestMockBrokerPriceAPI:
         """Test price history API with controlled time range."""
         broker = MockBroker(
             current_time=dt.datetime(2023, 1, 1, 12, 0, 0, tzinfo=dt.timezone.utc),
-            epoch=dt.datetime(2023, 1, 1, 11, 0, 0, tzinfo=dt.timezone.utc)
+            epoch=dt.datetime(2023, 1, 1, 11, 0, 0, tzinfo=dt.timezone.utc),
         )
 
         # Request 30 minutes of data
@@ -104,7 +101,7 @@ class TestMockBrokerPriceAPI:
         """Test price history with different intervals."""
         broker = MockBroker(
             current_time=dt.datetime(2023, 1, 1, 6, 0, 0, tzinfo=dt.timezone.utc),
-            epoch=dt.datetime(2023, 1, 1, 0, 0, 0, tzinfo=dt.timezone.utc)
+            epoch=dt.datetime(2023, 1, 1, 0, 0, 0, tzinfo=dt.timezone.utc),
         )
 
         start_time = dt.datetime(2023, 1, 1, 0, 0, 0, tzinfo=dt.timezone.utc)
@@ -129,7 +126,7 @@ class TestMockBrokerPriceAPI:
             low=95.0,
             close=102.0,
             volume=1000,
-            symbol="AAPL"
+            symbol="AAPL",
         )
 
         broker.set_price_data("AAPL", custom_candle)
@@ -164,9 +161,7 @@ class TestMockBrokerOrders:
         broker = MockBroker()
 
         # Create order
-        order = broker.order_stock_limit(
-            OrderSide.BUY, "AAPL", 100.0, 150.0, OrderTimeInForce.GTC
-        )
+        order = broker.order_stock_limit(OrderSide.BUY, "AAPL", 100.0, 150.0, OrderTimeInForce.GTC)
 
         assert order.order_type == AssetType.STOCK
         assert order.symbol == "AAPL"
@@ -196,9 +191,7 @@ class TestMockBrokerOrders:
         broker = MockBroker()
 
         exp_date = dt.datetime(2023, 12, 15, tzinfo=dt.timezone.utc)
-        order = broker.order_option_limit(
-            "buy", "AAPL", 1.0, 5.0, "call", exp_date, 150.0, "gtc"
-        )
+        order = broker.order_option_limit("buy", "AAPL", 1.0, 5.0, "call", exp_date, 150.0, "gtc")
 
         assert order.order_type == AssetType.OPTION
         assert order.quantity == 1.0
@@ -228,9 +221,7 @@ class TestMockBrokerPositions:
 
         # Add different types of positions
         broker.positions["AAPL"] = Position(symbol="AAPL", quantity=100.0, avg_price=150.0)
-        broker.positions["AAPL:20231215:150:C"] = Position(
-            symbol="AAPL:20231215:150:C", quantity=1.0, avg_price=5.0
-        )
+        broker.positions["AAPL:20231215:150:C"] = Position(symbol="AAPL:20231215:150:C", quantity=1.0, avg_price=5.0)
         broker.positions["@BTC"] = Position(symbol="@BTC", quantity=0.5, avg_price=50000.0)
 
         # Test stock positions
@@ -267,9 +258,7 @@ class TestMockBrokerTimeControl:
 
     def test_time_advancement(self):
         """Test time advancement functionality."""
-        broker = MockBroker(
-            current_time=dt.datetime(2023, 1, 1, 12, 0, 0, tzinfo=dt.timezone.utc)
-        )
+        broker = MockBroker(current_time=dt.datetime(2023, 1, 1, 12, 0, 0, tzinfo=dt.timezone.utc))
 
         initial_time = broker.get_current_time()
         broker.advance_time()
@@ -307,10 +296,7 @@ class TestMockBrokerPerformance:
     def test_fast_simulation_mode(self):
         """Test fast simulation mode (no sleep)."""
         mock_sleep = Mock()
-        broker = MockBroker(
-            realistic_simulation=False,
-            sleep_function=mock_sleep
-        )
+        broker = MockBroker(realistic_simulation=False, sleep_function=mock_sleep)
         broker.set_max_ticks(2)
 
         start_time = time.time()
@@ -325,10 +311,7 @@ class TestMockBrokerPerformance:
     def test_realistic_simulation_with_mock_sleep(self):
         """Test realistic simulation with controlled sleep."""
         mock_sleep = Mock()
-        broker = MockBroker(
-            realistic_simulation=True,
-            sleep_function=mock_sleep
-        )
+        broker = MockBroker(realistic_simulation=True, sleep_function=mock_sleep)
         broker.set_max_ticks(2)
 
         broker.start({Interval.MIN_1: ["AAPL"]})
@@ -344,10 +327,7 @@ class TestMockBrokerPerformance:
 
         # Add some mock data
         broker.mock_price_history["AAPL"] = {
-            Interval.MIN_1: pl.DataFrame({
-                "timestamp": [dt.datetime(2023, 1, 1)] * 100,
-                "price": [100.0] * 100
-            })
+            Interval.MIN_1: pl.DataFrame({"timestamp": [dt.datetime(2023, 1, 1)] * 100, "price": [100.0] * 100})
         }
         broker.rng["AAPL"] = Mock()
 

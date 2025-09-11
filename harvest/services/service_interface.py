@@ -1,7 +1,7 @@
 import asyncio
+import logging
 from abc import ABC, abstractmethod
 from typing import Any
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +68,7 @@ class Service(ABC):
             "start_time": self._start_time,
             "uptime": self.get_uptime(),
             "dependencies": self._dependencies,
-            **self._metadata
+            **self._metadata,
         }
 
     def set_metadata(self, key: str, value: Any) -> None:
@@ -123,19 +123,23 @@ class Service(ABC):
 
 class ServiceError(Exception):
     """Base exception for service-related errors."""
+
     pass
 
 
 class ServiceNotFoundError(ServiceError):
     """Raised when a requested service is not found."""
+
     pass
 
 
 class ServiceStartupError(ServiceError):
     """Raised when a service fails to start."""
+
     pass
 
 
 class ServiceShutdownError(ServiceError):
     """Raised when a service fails to stop."""
+
     pass

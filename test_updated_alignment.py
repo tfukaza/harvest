@@ -6,9 +6,11 @@ import sys
 import os
 import time
 import math
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '.'))
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "."))
 
 from harvest.enum import Interval
+
 
 # Create a minimal test class that includes the _calculate_next_aligned_time method
 class TestBroker:
@@ -83,6 +85,7 @@ class TestBroker:
 
         return next_time
 
+
 def test_alignment():
     """Test that intervals align correctly to time boundaries."""
     print("Testing time alignment with Interval enums:")
@@ -107,6 +110,7 @@ def test_alignment():
 
         # Convert to readable format
         from datetime import datetime, timezone
+
         current_dt = datetime.fromtimestamp(test_time, tz=timezone.utc)
         next_dt = datetime.fromtimestamp(next_time, tz=timezone.utc)
 
@@ -119,7 +123,9 @@ def test_alignment():
         if interval.unit == "SEC":
             seconds_in_minute = int(next_dt.second)
             expected_seconds = [0, 15, 30, 45]
-            assert seconds_in_minute in expected_seconds, f"Expected seconds to be in {expected_seconds}, got {seconds_in_minute}"
+            assert seconds_in_minute in expected_seconds, (
+                f"Expected seconds to be in {expected_seconds}, got {seconds_in_minute}"
+            )
             print(f"    ✓ Aligned to {seconds_in_minute} seconds")
 
         elif interval.unit == "MIN":
@@ -128,19 +134,26 @@ def test_alignment():
                 print(f"    ✓ Aligned to minute boundary")
             else:
                 minutes_in_hour = int(next_dt.minute)
-                assert minutes_in_hour % interval.interval_value == 0, f"Expected minute to be divisible by {interval.interval_value}, got {minutes_in_hour}"
+                assert minutes_in_hour % interval.interval_value == 0, (
+                    f"Expected minute to be divisible by {interval.interval_value}, got {minutes_in_hour}"
+                )
                 print(f"    ✓ Aligned to {minutes_in_hour} minutes")
 
         elif interval.unit == "HR":
             if interval.interval_value == 1:
-                assert next_dt.minute == 0 and next_dt.second == 0, f"Expected 0 minutes and seconds, got {next_dt.minute}:{next_dt.second}"
+                assert next_dt.minute == 0 and next_dt.second == 0, (
+                    f"Expected 0 minutes and seconds, got {next_dt.minute}:{next_dt.second}"
+                )
                 print(f"    ✓ Aligned to hour boundary")
 
         elif interval.unit == "DAY":
-            assert next_dt.hour == 0 and next_dt.minute == 0 and next_dt.second == 0, f"Expected midnight, got {next_dt.hour}:{next_dt.minute}:{next_dt.second}"
+            assert next_dt.hour == 0 and next_dt.minute == 0 and next_dt.second == 0, (
+                f"Expected midnight, got {next_dt.hour}:{next_dt.minute}:{next_dt.second}"
+            )
             print(f"    ✓ Aligned to day boundary")
 
     print("\n✓ All time alignment tests passed!")
+
 
 def test_drift_prevention():
     """Test that recalculating next times prevents drift."""
@@ -171,13 +184,14 @@ def test_drift_prevention():
 
     # Check that all times are exactly 5 minutes apart
     for i in range(1, len(previous_aligned_times)):
-        time_diff = previous_aligned_times[i] - previous_aligned_times[i-1]
+        time_diff = previous_aligned_times[i] - previous_aligned_times[i - 1]
         expected_diff = 5 * 60  # 5 minutes
 
         print(f"  Interval {i}: {time_diff:.2f} seconds (expected: {expected_diff})")
         assert abs(time_diff - expected_diff) < 0.01, f"Expected {expected_diff} seconds, got {time_diff}"
 
     print("  ✓ No drift detected - all intervals are exactly 5 minutes apart")
+
 
 if __name__ == "__main__":
     test_alignment()

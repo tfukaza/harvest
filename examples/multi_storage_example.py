@@ -23,9 +23,7 @@ class MultiStorageAlgorithm(Algorithm):
 
     def __init__(self):
         super().__init__(
-            watch_list=["AAPL", "MSFT"],
-            interval=Interval.MIN_5,
-            aggregations=[Interval.MIN_5, Interval.MIN_15]
+            watch_list=["AAPL", "MSFT"], interval=Interval.MIN_5, aggregations=[Interval.MIN_5, Interval.MIN_15]
         )
 
     def setup(self) -> None:
@@ -71,31 +69,23 @@ async def main():
     debugger.info("Starting Multi-Storage Trading System")
 
     # Create broker
-    broker = MockBroker(
-        current_time="2024-01-15 09:30",
-        realistic_simulation=False
-    )
+    broker = MockBroker(current_time="2024-01-15 09:30", realistic_simulation=False)
 
     # Create multiple storage instances
     default_storage = PickleStorage()
     backup_storage = CentralStorage(db_path="sqlite:///backup_data.db")
 
     # Create algorithms
-    algorithms: list[Algorithm] = [
-        MultiStorageAlgorithm()
-    ]
+    algorithms: list[Algorithm] = [MultiStorageAlgorithm()]
 
     # Create orchestrator with multiple storage backends
-    storages = {
-        "default": default_storage,
-        "backup": backup_storage
-    }
+    storages = {"default": default_storage, "backup": backup_storage}
 
     orchestrator = Orchestrator(
         broker=broker,
         storage=storages,  # Pass multiple storages
         algorithm_list=algorithms,
-        debug=True
+        debug=True,
     )
 
     try:

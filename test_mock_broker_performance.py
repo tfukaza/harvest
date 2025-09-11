@@ -2,20 +2,19 @@
 """
 Test script to verify MockBroker performance improvements.
 """
+
 import time
 import datetime as dt
 from harvest.broker.mock import MockBroker
 from harvest.enum import Interval
+
 
 def test_mock_broker_no_sleep():
     """Test that MockBroker doesn't sleep when realistic_simulation=False"""
     print("Testing MockBroker with realistic_simulation=False...")
 
     # Create a MockBroker with fast simulation
-    broker = MockBroker(
-        realistic_simulation=False,
-        current_time=dt.datetime(2023, 1, 1, tzinfo=dt.timezone.utc)
-    )
+    broker = MockBroker(realistic_simulation=False, current_time=dt.datetime(2023, 1, 1, tzinfo=dt.timezone.utc))
 
     # Set max ticks to prevent infinite loop
     broker.set_max_ticks(3)
@@ -38,6 +37,7 @@ def test_mock_broker_no_sleep():
 
     print("✓ Fast simulation test passed")
 
+
 def test_mock_broker_with_mock_sleep():
     """Test that MockBroker uses injectable sleep function"""
     print("Testing MockBroker with mock sleep function...")
@@ -51,7 +51,7 @@ def test_mock_broker_with_mock_sleep():
     broker = MockBroker(
         realistic_simulation=True,
         current_time=dt.datetime(2023, 1, 1, tzinfo=dt.timezone.utc),
-        sleep_function=mock_sleep
+        sleep_function=mock_sleep,
     )
 
     # Set max ticks to prevent infinite loop
@@ -66,14 +66,12 @@ def test_mock_broker_with_mock_sleep():
 
     print("✓ Mock sleep test passed")
 
+
 def test_price_history_performance():
     """Test that price history generation is efficient"""
     print("Testing price history generation performance...")
 
-    broker = MockBroker(
-        realistic_simulation=False,
-        current_time=dt.datetime(2023, 1, 1, tzinfo=dt.timezone.utc)
-    )
+    broker = MockBroker(realistic_simulation=False, current_time=dt.datetime(2023, 1, 1, tzinfo=dt.timezone.utc))
 
     # Test with a reasonable amount of data
     start_time = time.time()
@@ -83,7 +81,7 @@ def test_price_history_performance():
         "AAPL",
         Interval.MIN_1,
         dt.datetime(2023, 1, 1, tzinfo=dt.timezone.utc),
-        dt.datetime(2023, 1, 2, tzinfo=dt.timezone.utc)
+        dt.datetime(2023, 1, 2, tzinfo=dt.timezone.utc),
     )
 
     elapsed = time.time() - start_time
@@ -95,14 +93,12 @@ def test_price_history_performance():
 
     print("✓ Price history performance test passed")
 
+
 def test_large_data_limit():
     """Test that large data requests are limited"""
     print("Testing large data size limits...")
 
-    broker = MockBroker(
-        realistic_simulation=False,
-        current_time=dt.datetime(2023, 1, 1, tzinfo=dt.timezone.utc)
-    )
+    broker = MockBroker(realistic_simulation=False, current_time=dt.datetime(2023, 1, 1, tzinfo=dt.timezone.utc))
 
     try:
         # This should raise an error due to size limit
@@ -112,6 +108,7 @@ def test_large_data_limit():
         print(f"✓ Size limit correctly enforced: {e}")
 
     print("✓ Large data limit test passed")
+
 
 def main():
     """Run all performance tests"""
@@ -123,6 +120,7 @@ def main():
     test_large_data_limit()
 
     print("\n✅ All performance tests passed!")
+
 
 if __name__ == "__main__":
     main()

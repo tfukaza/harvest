@@ -34,10 +34,10 @@ class EventBus:
 
         for handler_info in handlers:
             try:
-                if not self._matches_filters(data, handler_info['filters']):
+                if not self._matches_filters(data, handler_info["filters"]):
                     continue
 
-                handler = handler_info['callback']
+                handler = handler_info["callback"]
                 if asyncio.iscoroutinefunction(handler):
                     asyncio.create_task(handler(data))
                 else:
@@ -64,10 +64,10 @@ class EventBus:
         tasks = []
         for handler_info in handlers:
             try:
-                if not self._matches_filters(data, handler_info['filters']):
+                if not self._matches_filters(data, handler_info["filters"]):
                     continue
 
-                handler = handler_info['callback']
+                handler = handler_info["callback"]
                 if asyncio.iscoroutinefunction(handler):
                     tasks.append(handler(data))
                 else:
@@ -94,11 +94,7 @@ class EventBus:
         """
         subscription_id = str(uuid4())
 
-        handler_info = {
-            'id': subscription_id,
-            'callback': callback,
-            'filters': filters or {}
-        }
+        handler_info = {"id": subscription_id, "callback": callback, "filters": filters or {}}
 
         if event_type not in self._event_handlers:
             self._event_handlers[event_type] = []
@@ -116,9 +112,7 @@ class EventBus:
             subscription_id: ID returned from subscribe()
         """
         for event_type, handlers in self._event_handlers.items():
-            self._event_handlers[event_type] = [
-                h for h in handlers if h['id'] != subscription_id
-            ]
+            self._event_handlers[event_type] = [h for h in handlers if h["id"] != subscription_id]
 
             # Clean up empty event types
             if not self._event_handlers[event_type]:

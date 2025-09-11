@@ -5,12 +5,12 @@ This package contains all the microservices that provide functionality
 to algorithms in a decoupled, service-oriented architecture.
 """
 
-from .discovery import ServiceRegistry
-from .service_interface import Service
-from .market_data_service import MarketDataService
-from .broker_service import BrokerService
 from .algorithm_service import AlgorithmService
+from .broker_service import BrokerService
 from .central_storage_service import CentralStorageService
+from .discovery import ServiceRegistry
+from .market_data_service import MarketDataService
+from .service_interface import Service
 
 __all__ = [
     "Service",

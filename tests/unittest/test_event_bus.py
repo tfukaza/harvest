@@ -15,7 +15,7 @@ from harvest.events.events import (
     HealthStatus,
     LogLevel,
     ComponentType,
-    DataType
+    DataType,
 )
 from harvest.definitions import OrderSide
 
@@ -175,11 +175,7 @@ class TestEvents:
 
     def test_price_update_event(self):
         """Test PriceUpdateEvent creation."""
-        event = PriceUpdateEvent(
-            symbol="AAPL",
-            price_data=Mock(),
-            timestamp=dt.datetime.now()
-        )
+        event = PriceUpdateEvent(symbol="AAPL", price_data=Mock(), timestamp=dt.datetime.now())
 
         assert event.symbol == "AAPL"
         assert event.price_data is not None
@@ -194,7 +190,7 @@ class TestEvents:
             side=OrderSide.BUY,
             quantity=100.0,
             order_type="market",
-            timestamp=dt.datetime.now()
+            timestamp=dt.datetime.now(),
         )
 
         assert event.order_id == "123"
@@ -206,10 +202,7 @@ class TestEvents:
     def test_log_event_with_enums(self):
         """Test LogEvent creation with enum values."""
         event = LogEvent(
-            level=LogLevel.INFO,
-            message="Test message",
-            component=ComponentType.ALGORITHM,
-            timestamp=dt.datetime.now()
+            level=LogLevel.INFO, message="Test message", component=ComponentType.ALGORITHM, timestamp=dt.datetime.now()
         )
 
         assert event.level == LogLevel.INFO

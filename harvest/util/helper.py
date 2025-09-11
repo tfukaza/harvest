@@ -178,7 +178,7 @@ def data_to_occ(symbol: str, date: dt.datetime, option_type: str, price: float) 
     occ = symbol  # + ((6 - len(symbol)) * " ")
     occ += date.strftime("%y%m%d")
     occ = occ + "C" if option_type == "call" else occ + "P"
-    occ += f"{int(price*1000):08}"
+    occ += f"{int(price * 1000):08}"
     return occ
 
 
@@ -443,8 +443,8 @@ def generate_ticker_frame(
 
     # Generate OHLC data based on the closing prices
     high_multiplier = 1 + rng.uniform(0, 0.01, count)  # Up to 1% higher
-    low_multiplier = 1 - rng.uniform(0, 0.01, count)   # Up to 1% lower
-    open_shift = rng.uniform(-0.005, 0.005, count)     # Up to 0.5% shift for open
+    low_multiplier = 1 - rng.uniform(0, 0.01, count)  # Up to 1% lower
+    open_shift = rng.uniform(-0.005, 0.005, count)  # Up to 0.5% shift for open
 
     opens = prices * (1 + open_shift)
     highs = prices * high_multiplier

@@ -242,15 +242,15 @@ class PaperBroker(Broker):
                     # Publish order filled event
                     if self.event_bus:
                         event_data = {
-                            'order_id': ret["order_id"],
-                            'symbol': ret["symbol"],
-                            'side': ret["side"],
-                            'quantity': ret["quantity"],
-                            'filled_price': ret["filled_price"],
-                            'filled_time': ret["filled_time"],
-                            'algorithm_name': ''  # Will be set by the service
+                            "order_id": ret["order_id"],
+                            "symbol": ret["symbol"],
+                            "side": ret["side"],
+                            "quantity": ret["quantity"],
+                            "filled_price": ret["filled_price"],
+                            "filled_time": ret["filled_time"],
+                            "algorithm_name": "",  # Will be set by the service
                         }
-                        self.event_bus.publish('order_filled', event_data)
+                        self.event_bus.publish("order_filled", event_data)
             else:
                 if pos is None:
                     raise Exception(f"Cannot sell {sym}, is not owned")
@@ -271,15 +271,15 @@ class PaperBroker(Broker):
                 # Publish order filled event
                 if self.event_bus:
                     event_data = {
-                        'order_id': ret["order_id"],
-                        'symbol': ret["symbol"],
-                        'side': ret["side"],
-                        'quantity': ret["quantity"],
-                        'filled_price': ret["filled_price"],
-                        'filled_time': ret["filled_time"],
-                        'algorithm_name': ''  # Will be set by the service
+                        "order_id": ret["order_id"],
+                        "symbol": ret["symbol"],
+                        "side": ret["side"],
+                        "quantity": ret["quantity"],
+                        "filled_price": ret["filled_price"],
+                        "filled_time": ret["filled_time"],
+                        "algorithm_name": "",  # Will be set by the service
                     }
-                    self.event_bus.publish('order_filled', event_data)
+                    self.event_bus.publish("order_filled", event_data)
 
             self.equity = self._calc_equity()
 

@@ -294,6 +294,7 @@ class TickerCandle:
     """
     Represents a single candle for a ticker symbol.
     """
+
     timestamp: dt.datetime
     symbol: str
     open: float
@@ -423,6 +424,7 @@ class BrokerCapabilities:
     supported ticker symbols for that interval. This allows brokers to have
     different ticker support for different intervals.
     """
+
     broker_id: str
     exchange: str
     supported_intervals_tickers: dict[Interval, list[str]]
@@ -435,17 +437,11 @@ class BrokerCapabilities:
 
     def supports_symbol(self, symbol: str) -> bool:
         """Check if broker supports the specified symbol for any interval"""
-        return any(
-            symbol in tickers
-            for tickers in self.supported_intervals_tickers.values()
-        )
+        return any(symbol in tickers for tickers in self.supported_intervals_tickers.values())
 
     def supports_symbol_for_interval(self, symbol: str, interval: Interval) -> bool:
         """Check if broker supports the specified symbol for the given interval"""
-        return (
-            interval in self.supported_intervals_tickers and
-            symbol in self.supported_intervals_tickers[interval]
-        )
+        return interval in self.supported_intervals_tickers and symbol in self.supported_intervals_tickers[interval]
 
     def get_supported_symbols_for_interval(self, interval: Interval) -> list[str]:
         """Get list of supported symbols for the specified interval"""

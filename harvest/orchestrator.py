@@ -99,7 +99,7 @@ class Orchestrator:
             (self.central_storage_service.service_name, self.central_storage_service),
             (self.market_data_service.service_name, self.market_data_service),
             (self.broker_service.service_name, self.broker_service),
-            (self.algorithm_service.service_name, self.algorithm_service)
+            (self.algorithm_service.service_name, self.algorithm_service),
         ]
 
         # Configure cross-service dependencies
@@ -224,7 +224,7 @@ class Orchestrator:
         return {
             "total_algorithms": len(self.algorithm_list),
             "running_algorithms": len(self.algorithm_service.running_tasks),
-            "algorithm_names": [algo.__class__.__name__ for algo in self.algorithm_list]
+            "algorithm_names": [algo.__class__.__name__ for algo in self.algorithm_list],
         }
 
     async def get_service_status(self) -> Dict[str, any]:  # type: ignore
@@ -245,10 +245,10 @@ class Orchestrator:
         """Process market data tick - legacy compatibility"""
         # In the new architecture, market data is handled by the MarketDataService
         # This method is kept for backward compatibility
-        if hasattr(self.market_data_service, 'publish_price_update'):
+        if hasattr(self.market_data_service, "publish_price_update"):
             # Convert market_data to the expected format for the service
             for symbol, data in market_data.items():
-                if hasattr(data, '_df'):  # TickerFrame
+                if hasattr(data, "_df"):  # TickerFrame
                     self.market_data_service.publish_price_update(symbol, data)
                 else:
                     debugger.warning(f"Unexpected market data format for {symbol}: {type(data)}")

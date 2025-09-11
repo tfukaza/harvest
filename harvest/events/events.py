@@ -3,18 +3,19 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 from ..definitions import (
+    Account,
+    Order,
+    OrderSide,
+    Position,
     TickerCandleList,
     Transaction,
-    OrderSide,
-    Order,
-    Account,
-    Position
 )
 from ..enum import Interval
 
 
 class HealthStatus(StrEnum):
     """Health status enumeration."""
+
     HEALTHY = "healthy"
     DEGRADED = "degraded"
     UNHEALTHY = "unhealthy"
@@ -24,6 +25,7 @@ class HealthStatus(StrEnum):
 
 class LogLevel(StrEnum):
     """Log level enumeration."""
+
     DEBUG = "DEBUG"
     INFO = "INFO"
     WARNING = "WARNING"
@@ -33,6 +35,7 @@ class LogLevel(StrEnum):
 
 class ComponentType(StrEnum):
     """Component type enumeration."""
+
     ALGORITHM = "algorithm"
     BROKER = "broker"
     SERVICE = "service"
@@ -42,6 +45,7 @@ class ComponentType(StrEnum):
 
 class DataType(StrEnum):
     """Market data type enumeration."""
+
     CANDLE = "candle"
     QUOTE = "quote"
     TRADE = "trade"
@@ -52,6 +56,7 @@ class DataType(StrEnum):
 @dataclass
 class PriceUpdateEvent:
     """Event fired when price data is updated for a symbol."""
+
     symbol: str
     price_data: TickerCandleList
     timestamp: dt.datetime
@@ -63,6 +68,7 @@ class PriceUpdateEvent:
 @dataclass
 class OrderPlacedEvent:
     """Event fired when an order is placed by an algorithm."""
+
     order_id: str
     algorithm_name: str
     symbol: str
@@ -76,6 +82,7 @@ class OrderPlacedEvent:
 @dataclass
 class OrderFilledEvent:
     """Event fired when an order is filled."""
+
     order_id: str
     algorithm_name: str
     symbol: str
@@ -89,6 +96,7 @@ class OrderFilledEvent:
 @dataclass
 class OrderCancelledEvent:
     """Event fired when an order is cancelled."""
+
     order_id: str
     algorithm_name: str
     symbol: str
@@ -99,6 +107,7 @@ class OrderCancelledEvent:
 @dataclass
 class TransactionEvent:
     """Event fired when a transaction is recorded."""
+
     algorithm_name: str
     transaction: Transaction
     timestamp: dt.datetime
@@ -107,6 +116,7 @@ class TransactionEvent:
 @dataclass
 class AccountUpdateEvent:
     """Event fired when account information is updated."""
+
     algorithm_name: str
     equity: float
     buying_power: float
@@ -119,6 +129,7 @@ class AccountUpdateEvent:
 @dataclass
 class PositionUpdateEvent:
     """Event fired when a position is updated."""
+
     algorithm_name: str
     symbol: str
     position: Position
@@ -128,6 +139,7 @@ class PositionUpdateEvent:
 @dataclass
 class AlgorithmStartedEvent:
     """Event fired when an algorithm starts running."""
+
     algorithm_name: str
     timestamp: dt.datetime
     metadata: dict | None = None
@@ -136,6 +148,7 @@ class AlgorithmStartedEvent:
 @dataclass
 class AlgorithmStoppedEvent:
     """Event fired when an algorithm stops running."""
+
     algorithm_name: str
     timestamp: dt.datetime
     reason: str | None = None
@@ -144,6 +157,7 @@ class AlgorithmStoppedEvent:
 @dataclass
 class MarketDataEvent:
     """Event fired for general market data updates."""
+
     symbol: str
     data_type: DataType
     data: dict
@@ -153,6 +167,7 @@ class MarketDataEvent:
 @dataclass
 class ErrorEvent:
     """Event fired when an error occurs in the system."""
+
     component: ComponentType
     error_type: str
     error_message: str
@@ -164,6 +179,7 @@ class ErrorEvent:
 @dataclass
 class ServiceHealthEvent:
     """Event fired when a service health status changes."""
+
     service_name: str
     health_status: HealthStatus
     timestamp: dt.datetime
@@ -173,6 +189,7 @@ class ServiceHealthEvent:
 @dataclass
 class LogEvent:
     """Event fired for structured logging across the system."""
+
     level: LogLevel
     message: str
     component: ComponentType

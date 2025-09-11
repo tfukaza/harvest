@@ -25,7 +25,7 @@ class SimpleAlgorithm(Algorithm):
         super().__init__(
             watch_list=["AAPL", "MSFT", "GOOGL"],
             interval=Interval.MIN_5,
-            aggregations=[Interval.MIN_1, Interval.MIN_5, Interval.DAY_1]
+            aggregations=[Interval.MIN_1, Interval.MIN_5, Interval.DAY_1],
         )
 
     def setup(self) -> None:
@@ -63,9 +63,7 @@ class TradingAlgorithm(Algorithm):
 
     def __init__(self):
         super().__init__(
-            watch_list=["SPY"],
-            interval=Interval.MIN_15,
-            aggregations=[Interval.MIN_5, Interval.MIN_15, Interval.DAY_1]
+            watch_list=["SPY"], interval=Interval.MIN_15, aggregations=[Interval.MIN_5, Interval.MIN_15, Interval.DAY_1]
         )
         self.position_size = 100
 
@@ -135,10 +133,7 @@ async def main():
     trading_algo = TradingAlgorithm()
 
     # Create and start the trading system
-    coordinator = await create_trading_system(
-        broker_instance=broker,
-        algorithms=[simple_algo, trading_algo]
-    )
+    coordinator = await create_trading_system(broker_instance=broker, algorithms=[simple_algo, trading_algo])
 
     # Start the algorithms
     await coordinator.start_algorithm("SimpleAlgorithm")

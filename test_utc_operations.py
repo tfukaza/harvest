@@ -6,10 +6,12 @@ import sys
 import os
 import time
 from datetime import datetime, timezone
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '.'))
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "."))
 
 from harvest.enum import Interval
 from harvest.util.date import utc_current_time
+
 
 # Create a minimal test class that includes the _calculate_next_aligned_time method
 class TestBroker:
@@ -87,6 +89,7 @@ class TestBroker:
 
         return next_time
 
+
 def test_utc_consistency():
     """Test that UTC time operations are consistent and timezone-aware."""
     print("Testing UTC time consistency:")
@@ -113,6 +116,7 @@ def test_utc_consistency():
 
     print("  ✓ UTC time calculations are correct")
 
+
 def test_timezone_independence():
     """Test that calculations give same results regardless of system timezone."""
     print("\nTesting timezone independence:")
@@ -137,6 +141,7 @@ def test_timezone_independence():
 
     print("  ✓ Timezone-independent calculations work correctly")
 
+
 def test_day_boundary_alignment():
     """Test that day intervals align to UTC midnight."""
     print("\nTesting day boundary alignment:")
@@ -158,10 +163,12 @@ def test_day_boundary_alignment():
     # Should align to next midnight UTC
     expected = datetime(2024, 1, 2, 0, 0, 0, tzinfo=timezone.utc)
     assert next_dt == expected, f"Expected {expected}, got {next_dt}"
-    assert next_dt.hour == 0 and next_dt.minute == 0 and next_dt.second == 0, \
-           f"Expected midnight, got {next_dt.hour}:{next_dt.minute}:{next_dt.second}"
+    assert next_dt.hour == 0 and next_dt.minute == 0 and next_dt.second == 0, (
+        f"Expected midnight, got {next_dt.hour}:{next_dt.minute}:{next_dt.second}"
+    )
 
     print("  ✓ Day boundary alignment to UTC midnight works correctly")
+
 
 if __name__ == "__main__":
     test_utc_consistency()

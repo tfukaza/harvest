@@ -3,6 +3,7 @@
 try:
     print("Starting test...")
     from harvest.broker.mock import MockBroker
+
     print("Import successful")
 
     broker = MockBroker()
@@ -14,4 +15,5 @@ try:
 except Exception as e:
     print("Error occurred:", str(e))
     import traceback
+
     traceback.print_exc()

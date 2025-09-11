@@ -4,9 +4,11 @@
 
 import sys
 import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '.'))
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "."))
 
 from harvest.enum import Interval
+
 
 def test_interval_enum_properties():
     """Test that Interval enum has the expected properties."""
@@ -29,11 +31,14 @@ def test_interval_enum_properties():
         print(f"    enum value: {interval.value}")
 
         assert str(interval.unit) == expected_unit, f"Expected unit {expected_unit}, got {interval.unit}"
-        assert interval.interval_value == expected_value, f"Expected value {expected_value}, got {interval.interval_value}"
+        assert interval.interval_value == expected_value, (
+            f"Expected value {expected_value}, got {interval.interval_value}"
+        )
 
         print(f"    ✓ {interval} properties are correct")
 
     print("\n✓ All interval enum properties are correct!")
+
 
 def test_interval_conversion():
     """Test that we can extract seconds from the enum properties."""
@@ -66,6 +71,7 @@ def test_interval_conversion():
         assert seconds == expected_seconds, f"Expected {expected_seconds}, got {seconds}"
 
     print("\n✓ All interval conversions work correctly using enum properties!")
+
 
 if __name__ == "__main__":
     test_interval_enum_properties()

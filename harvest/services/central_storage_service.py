@@ -103,22 +103,18 @@ class CentralStorageService(Service):
                 storage_status = {
                     "status": "healthy",
                     "database_accessible": True,
-                    "database_url": str(storage.db_engine.url)
+                    "database_url": str(storage.db_engine.url),
                 }
                 storage_statuses[storage_name] = storage_status
             except Exception as e:
-                storage_status = {
-                    "status": "unhealthy",
-                    "database_accessible": False,
-                    "error": str(e)
-                }
+                storage_status = {"status": "unhealthy", "database_accessible": False, "error": str(e)}
                 storage_statuses[storage_name] = storage_status
                 all_storages_healthy = False
 
         return {
             "status": "healthy" if self.is_running and all_storages_healthy else "degraded",
             "storages": storage_statuses,
-            "uptime": self.get_uptime()
+            "uptime": self.get_uptime(),
         }
 
     def get_capabilities(self) -> list[str]:
@@ -132,7 +128,7 @@ class CentralStorageService(Service):
             "price_history_storage",
             "market_data_distribution",
             "account_performance_tracking",
-            "shared_database_access"
+            "shared_database_access",
         ]
 
     def set_event_bus(self, event_bus) -> None:
@@ -150,7 +146,7 @@ class CentralStorageService(Service):
         interval: Interval,
         start: dt.datetime | None = None,
         end: dt.datetime | None = None,
-        storage_name: str = "default"
+        storage_name: str = "default",
     ) -> TickerCandleList:
         """
         Retrieve price history from the specified storage.
@@ -183,24 +179,20 @@ class CentralStorageService(Service):
         # Publish price update event if event bus is available
         if self.event_bus:
             # Get the symbol from the data (assuming all rows have same symbol)
-            symbols = data.df['symbol'].unique()
+            symbols = data.df["symbol"].unique()
             if len(symbols) > 0:
                 symbol = symbols[0]
 
-                price_event = PriceUpdateEvent(
-                    symbol=symbol,
-                    price_data=data,
-                    timestamp=dt.datetime.utcnow()
-                )
+                price_event = PriceUpdateEvent(symbol=symbol, price_data=data, timestamp=dt.datetime.utcnow())
 
-                self.event_bus.publish('price_update', price_event.__dict__)
+                self.event_bus.publish("price_update", price_event.__dict__)
 
     def get_account_performance_history(
         self,
         interval: str,
         start: dt.datetime | None = None,
         end: dt.datetime | None = None,
-        storage_name: str = "default"
+        storage_name: str = "default",
     ) -> Any:
         """
         Retrieve account performance history from the specified storage.
@@ -227,13 +219,13 @@ class CentralStorageService(Service):
         """
         storage = self._get_storage(storage_name)
         # Extract data from performance_data dict and call appropriate storage method
-        if all(key in performance_data for key in ['timestamp', 'interval', 'equity']):
+        if all(key in performance_data for key in ["timestamp", "interval", "equity"]):
             storage.insert_account_performance(
-                timestamp=performance_data['timestamp'],
-                interval=performance_data['interval'],
-                equity=performance_data['equity'],
-                return_percentage=performance_data.get('return_percentage', 0.0),
-                return_absolute=performance_data.get('return_absolute', 0.0)
+                timestamp=performance_data["timestamp"],
+                interval=performance_data["interval"],
+                equity=performance_data["equity"],
+                return_percentage=performance_data.get("return_percentage", 0.0),
+                return_absolute=performance_data.get("return_absolute", 0.0),
             )
         else:
             raise ValueError("Performance data must contain timestamp, interval, and equity")
@@ -272,12 +264,12 @@ class CentralStorageService(Service):
         for storage_name, storage in self.storages.items():
             storage_info[storage_name] = {
                 "database_path": str(storage.db_engine.url),
-                "capabilities": ["price_history", "account_performance"]
+                "capabilities": ["price_history", "account_performance"],
             }
 
         return {
             "service_name": self.service_name,
             "is_running": self.is_running,
             "storages": storage_info,
-            "capabilities": self.get_capabilities()
+            "capabilities": self.get_capabilities(),
         }

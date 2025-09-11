@@ -46,13 +46,13 @@ class BrokerService(Service):
         for brokerage_name, broker in self.brokers.items():
             try:
                 # Check if broker has health check method
-                if hasattr(broker, 'health_check'):
+                if hasattr(broker, "health_check"):
                     broker_status = broker.health_check()
                 else:
                     # Basic connectivity check
                     broker_status = {
                         "connected": broker is not None,
-                        "status": "healthy" if broker is not None else "disconnected"
+                        "status": "healthy" if broker is not None else "disconnected",
                     }
 
                 broker_statuses[brokerage_name] = broker_status
@@ -60,18 +60,14 @@ class BrokerService(Service):
                     all_brokers_connected = False
 
             except Exception as e:
-                broker_statuses[brokerage_name] = {
-                    "connected": False,
-                    "status": "error",
-                    "error": str(e)
-                }
+                broker_statuses[brokerage_name] = {"connected": False, "status": "error", "error": str(e)}
                 all_brokers_connected = False
 
         return {
             "status": "healthy" if self.is_running and all_brokers_connected else "degraded",
             "brokers": broker_statuses,
             "event_bus_connected": self.event_bus is not None,
-            "uptime_seconds": dt.datetime.utcnow().timestamp() - (self._start_time or 0)
+            "uptime_seconds": dt.datetime.utcnow().timestamp() - (self._start_time or 0),
         }
 
     def get_capabilities(self) -> list[str]:
@@ -81,16 +77,23 @@ class BrokerService(Service):
             "account_management",
             "position_tracking",
             "order_status_monitoring",
-            "real_time_updates"
+            "real_time_updates",
         ]
 
     def set_event_bus(self, event_bus: EventBus) -> None:
         """Set the event bus for publishing broker events"""
         self.event_bus = event_bus
 
-    async def place_order(self, symbol: str, side: OrderSide, quantity: float,
-                         order_type: str, time_in_force: str = "gtc",
-                         extended_hours: bool = False, brokerage: str = "default") -> Order | None:
+    async def place_order(
+        self,
+        symbol: str,
+        side: OrderSide,
+        quantity: float,
+        order_type: str,
+        time_in_force: str = "gtc",
+        extended_hours: bool = False,
+        brokerage: str = "default",
+    ) -> Order | None:
         """
         Place order through the specified broker
 
@@ -127,15 +130,15 @@ class BrokerService(Service):
             # Publish order placed event
             if result and self.event_bus:
                 event_data = {
-                    "order_id": result.order_id if hasattr(result, 'order_id') else "unknown",
+                    "order_id": result.order_id if hasattr(result, "order_id") else "unknown",
                     "algorithm_name": "",  # Will be set by algorithm
                     "symbol": symbol,
                     "side": side.value,
                     "quantity": quantity,
                     "brokerage": brokerage,
-                    "timestamp": dt.datetime.utcnow()
+                    "timestamp": dt.datetime.utcnow(),
                 }
-                self.event_bus.publish('order_placed', event_data)
+                self.event_bus.publish("order_placed", event_data)
 
             return result
 
@@ -157,9 +160,9 @@ class BrokerService(Service):
         """
         broker = self._get_broker(brokerage)
         try:
-            if hasattr(broker, 'get_current_price'):
+            if hasattr(broker, "get_current_price"):
                 return broker.get_current_price(symbol)
-            elif hasattr(broker, 'fetch_price'):
+            elif hasattr(broker, "fetch_price"):
                 return broker.fetch_price(symbol)
             else:
                 return 100.0  # Placeholder value
@@ -192,21 +195,21 @@ class BrokerService(Service):
         broker = self._get_broker(brokerage)
         try:
             positions = []
-            if hasattr(broker, 'get_positions'):
+            if hasattr(broker, "get_positions"):
                 broker_positions = broker.get_positions()
-                if hasattr(broker_positions, 'stock'):
+                if hasattr(broker_positions, "stock"):
                     positions.extend(broker_positions.stock)
-                if hasattr(broker_positions, 'crypto'):
+                if hasattr(broker_positions, "crypto"):
                     positions.extend(broker_positions.crypto)
-                if hasattr(broker_positions, 'option'):
+                if hasattr(broker_positions, "option"):
                     positions.extend(broker_positions.option)
-            elif hasattr(broker, 'positions'):
+            elif hasattr(broker, "positions"):
                 broker_positions = broker.positions
-                if hasattr(broker_positions, 'stock'):
+                if hasattr(broker_positions, "stock"):
                     positions.extend(broker_positions.stock)
-                if hasattr(broker_positions, 'crypto'):
+                if hasattr(broker_positions, "crypto"):
                     positions.extend(broker_positions.crypto)
-                if hasattr(broker_positions, 'option'):
+                if hasattr(broker_positions, "option"):
                     positions.extend(broker_positions.option)
             return positions
         except Exception as e:
@@ -226,15 +229,11 @@ class BrokerService(Service):
         """
         broker = self._get_broker(brokerage)
         try:
-            if hasattr(broker, 'cancel_order'):
+            if hasattr(broker, "cancel_order"):
                 result = broker.cancel_order(order_id)
                 if result and self.event_bus:
-                    event_data = {
-                        "order_id": order_id,
-                        "brokerage": brokerage,
-                        "timestamp": dt.datetime.utcnow()
-                    }
-                    self.event_bus.publish('order_cancelled', event_data)
+                    event_data = {"order_id": order_id, "brokerage": brokerage, "timestamp": dt.datetime.utcnow()}
+                    self.event_bus.publish("order_cancelled", event_data)
                 return result
             else:
                 return False
@@ -256,7 +255,7 @@ class BrokerService(Service):
         broker = self._get_broker(brokerage)
 
         try:
-            if hasattr(broker, 'get_order_status'):
+            if hasattr(broker, "get_order_status"):
                 return broker.get_order_status(order_id)
             else:
                 return None
@@ -282,16 +281,16 @@ class BrokerService(Service):
         :returns: BrokerCapabilities object containing broker capabilities
         """
         broker = self._get_broker(brokerage)
-        if hasattr(broker, 'get_broker_capabilities'):
+        if hasattr(broker, "get_broker_capabilities"):
             return broker.get_broker_capabilities()
 
         # Fallback for older broker implementations
         return BrokerCapabilities(
             broker_id=broker.__class__.__name__,
             supported_intervals_tickers={},  # Empty dict for legacy brokers
-            exchange=getattr(broker, 'exchange', 'unknown'),
+            exchange=getattr(broker, "exchange", "unknown"),
             supported_asset_types=[AssetType.STOCK, AssetType.CRYPTO, AssetType.OPTION],
-            features=["basic_trading"]
+            features=["basic_trading"],
         )
 
     def get_all_broker_capabilities(self) -> dict[str, BrokerCapabilities]:
@@ -307,7 +306,7 @@ class BrokerService(Service):
                     supported_intervals_tickers={},
                     exchange="unknown",
                     supported_asset_types=[],
-                    features=[]
+                    features=[],
                 )
         return capabilities
 

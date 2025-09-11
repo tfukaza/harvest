@@ -38,25 +38,30 @@ class TestAlgorithmStorageIndependence(unittest.TestCase):
             quantity=10.0,
             price=150.0,
             event=OrderEvent.FILL,
-            algorithm_name="test_algo"
+            algorithm_name="test_algo",
         )
 
         # Create sample price data for testing
-        self.sample_price_data = TickerCandleList(pl.DataFrame({
-            "timestamp": [dt.datetime.utcnow()],
-            "symbol": ["AAPL"],
-            "interval": ["MIN_1"],
-            "open": [150.0],
-            "high": [152.0],
-            "low": [149.0],
-            "close": [151.0],
-            "volume": [1000.0]
-        }))
+        self.sample_price_data = TickerCandleList(
+            pl.DataFrame(
+                {
+                    "timestamp": [dt.datetime.utcnow()],
+                    "symbol": ["AAPL"],
+                    "interval": ["MIN_1"],
+                    "open": [150.0],
+                    "high": [152.0],
+                    "low": [149.0],
+                    "close": [151.0],
+                    "volume": [1000.0],
+                }
+            )
+        )
 
     def tearDown(self):
         """Clean up test fixtures."""
         # Clean up temporary files
         import shutil
+
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
         # Clean up algorithm directories created during testing
@@ -82,6 +87,7 @@ class TestAlgorithmStorageIndependence(unittest.TestCase):
 
         # Register with service discovery
         import asyncio
+
         asyncio.run(storage.register_with_discovery(self.service_registry))
 
         # Verify service was registered
@@ -103,6 +109,7 @@ class TestAlgorithmStorageIndependence(unittest.TestCase):
 
         # Set up event listener
         events_received = []
+
         def event_listener(event):
             events_received.append(event)
 
@@ -143,6 +150,7 @@ class TestAlgorithmStorageIndependence(unittest.TestCase):
 
         # Set up event listener
         events_received = []
+
         def event_listener(event):
             events_received.append(event)
 
@@ -175,7 +183,7 @@ class TestAlgorithmStorageIndependence(unittest.TestCase):
             "price_history_storage",
             "market_data_distribution",
             "account_performance_tracking",
-            "shared_database_access"
+            "shared_database_access",
         ]
 
         self.assertEqual(capabilities, expected_capabilities)
@@ -186,6 +194,7 @@ class TestAlgorithmStorageIndependence(unittest.TestCase):
 
         # Start the service
         import asyncio
+
         asyncio.run(service.start())
 
         # Test health check
@@ -207,6 +216,7 @@ class TestAlgorithmStorageIndependence(unittest.TestCase):
 
         # Register services
         import asyncio
+
         asyncio.run(algo_storage.register_with_discovery(self.service_registry))
         asyncio.run(self.service_registry.register_service("central_storage", central_service))
 
@@ -246,6 +256,7 @@ class TestAlgorithmStorageIndependence(unittest.TestCase):
 
         # Register both with service discovery
         import asyncio
+
         asyncio.run(algo1_storage.register_with_discovery(self.service_registry))
         asyncio.run(algo2_storage.register_with_discovery(self.service_registry))
 
@@ -279,5 +290,5 @@ class TestAlgorithmStorageIndependence(unittest.TestCase):
         self.assertIn("capabilities", stats)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

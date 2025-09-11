@@ -72,7 +72,7 @@ class RobinhoodBroker(Broker):
         # Robinhood only supports 15SEC, 1MIN interval for crypto
         for sym in self.stats.watchlist_cfg:
             if not is_crypto(sym) and self.stats.watchlist_cfg[sym]["interval"] < Interval.MIN_5:
-                raise Exception(f'Interval {self.stats.watchlist_cfg[sym]["interval"]} is only supported for crypto')
+                raise Exception(f"Interval {self.stats.watchlist_cfg[sym]['interval']} is only supported for crypto")
         self.__option_cache = {}
 
     def exit(self):

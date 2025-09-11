@@ -9,7 +9,21 @@ import numpy as np
 import polars as pl
 from finta import TA
 
-from harvest.definitions import Account, RuntimeData, OptionData, ChainInfo, ChainData, Order, TickerCandleList, Position, OptionPosition, Transaction, TransactionFrame, OrderSide, OrderEvent
+from harvest.definitions import (
+    Account,
+    RuntimeData,
+    OptionData,
+    ChainInfo,
+    ChainData,
+    Order,
+    TickerCandleList,
+    Position,
+    OptionPosition,
+    Transaction,
+    TransactionFrame,
+    OrderSide,
+    OrderEvent,
+)
 from harvest.enum import Interval
 from harvest.plugin._base import Plugin
 from harvest.util.date import convert_input_to_datetime, datetime_utc_to_local, pandas_timestamp_to_local
@@ -90,8 +104,7 @@ class Algorithm:
 
         # Algorithm-owned storage
         self.local_storage = LocalAlgorithmStorage(
-            algorithm_name=self.__class__.__name__,
-            db_path=f"sqlite:///algorithms/{self.__class__.__name__}.db"
+            algorithm_name=self.__class__.__name__, db_path=f"sqlite:///algorithms/{self.__class__.__name__}.db"
         )
 
         # Service discovery and events
@@ -133,13 +146,13 @@ class Algorithm:
 
     def setup_event_subscriptions(self) -> None:
         """Subscribe to relevant events"""
-        self.event_bus.subscribe('price_update', self._handle_price_update_event)
-        self.event_bus.subscribe('order_filled', self._handle_order_filled_event)
-        self.event_bus.subscribe('account_update', self._handle_account_update_event)
+        self.event_bus.subscribe("price_update", self._handle_price_update_event)
+        self.event_bus.subscribe("order_filled", self._handle_order_filled_event)
+        self.event_bus.subscribe("account_update", self._handle_account_update_event)
 
-    def subscribe_to_price_updates(self, symbols: list[str] | None = None,
-                                 intervals: list[Interval] | None = None,
-                                 broker_id: str | None = None) -> str:
+    def subscribe_to_price_updates(
+        self, symbols: list[str] | None = None, intervals: list[Interval] | None = None, broker_id: str | None = None
+    ) -> str:
         """
         Subscribe to price updates with optional filtering.
 
@@ -157,23 +170,23 @@ class Algorithm:
 
         # Add symbol filter if specific symbols requested
         if symbols and len(symbols) == 1:
-            filters['symbol'] = symbols[0]
+            filters["symbol"] = symbols[0]
 
         # Add interval filter if specific interval requested
         if intervals and len(intervals) == 1:
-            filters['interval'] = intervals[0].value
+            filters["interval"] = intervals[0].value
 
         # Add broker filter if specific broker requested
         if broker_id:
-            filters['broker_id'] = broker_id
+            filters["broker_id"] = broker_id
 
         # Subscribe with filters
-        return self.event_bus.subscribe('price_update', self._handle_filtered_price_update, filters)
+        return self.event_bus.subscribe("price_update", self._handle_filtered_price_update, filters)
 
     def _handle_filtered_price_update(self, event_data: dict) -> None:
         """Handle filtered price update events"""
         # Check if symbol is in our watchlist (additional validation)
-        symbol = event_data.get('symbol', '')
+        symbol = event_data.get("symbol", "")
         if symbol in self.watch_list:
             self._handle_price_update_event(event_data)
 
@@ -181,7 +194,7 @@ class Algorithm:
         """Handle incoming price update events from event bus"""
         # Convert dict to PriceUpdateEvent dataclass
         event = PriceUpdateEvent(
-         **event_data  # Unpack the event data directly
+            **event_data  # Unpack the event data directly
         )
         self._handle_price_update(event)
 
@@ -189,14 +202,14 @@ class Algorithm:
         """Handle order fill events from event bus"""
         # Convert dict to OrderFilledEvent
         event = OrderFilledEvent(
-            order_id=event_data['order_id'],
-            algorithm_name=event_data['algorithm_name'],
-            symbol=event_data['symbol'],
-            fill_price=event_data['fill_price'],
-            fill_quantity=event_data['fill_quantity'],
-            side=event_data['side'],
-            timestamp=event_data['timestamp'],
-            order=event_data.get('order')
+            order_id=event_data["order_id"],
+            algorithm_name=event_data["algorithm_name"],
+            symbol=event_data["symbol"],
+            fill_price=event_data["fill_price"],
+            fill_quantity=event_data["fill_quantity"],
+            side=event_data["side"],
+            timestamp=event_data["timestamp"],
+            order=event_data.get("order"),
         )
         self._handle_order_filled(event)
 
@@ -204,13 +217,13 @@ class Algorithm:
         """Handle account update events from event bus"""
         # Convert dict to AccountUpdateEvent
         event = AccountUpdateEvent(
-            algorithm_name=event_data['algorithm_name'],
-            equity=event_data['equity'],
-            buying_power=event_data['buying_power'],
-            cash=event_data['cash'],
-            asset_value=event_data['asset_value'],
-            timestamp=event_data['timestamp'],
-            account=event_data.get('account')
+            algorithm_name=event_data["algorithm_name"],
+            equity=event_data["equity"],
+            buying_power=event_data["buying_power"],
+            cash=event_data["cash"],
+            asset_value=event_data["asset_value"],
+            timestamp=event_data["timestamp"],
+            account=event_data.get("account"),
         )
         self._handle_account_update(event)
 
@@ -300,7 +313,7 @@ class Algorithm:
             quantity=quantity,
             order_type="market",  # or limit with price calculation
             time_in_force=in_force,
-            extended_hours=extended
+            extended_hours=extended,
         )
 
         if order:
@@ -312,7 +325,7 @@ class Algorithm:
                 quantity=quantity,
                 price=0.0,  # Will be updated on fill
                 event=OrderEvent.ORDER,
-                algorithm_name=self.__class__.__name__
+                algorithm_name=self.__class__.__name__,
             )
             self.local_storage.insert_transaction(transaction)
 
@@ -365,7 +378,7 @@ class Algorithm:
             quantity=quantity,
             order_type="market",  # or limit with price calculation
             time_in_force=in_force,
-            extended_hours=extended
+            extended_hours=extended,
         )
 
         if order:
@@ -377,15 +390,20 @@ class Algorithm:
                 quantity=quantity,
                 price=0.0,  # Will be updated on fill
                 event=OrderEvent.ORDER,
-                algorithm_name=self.__class__.__name__
+                algorithm_name=self.__class__.__name__,
             )
             self.local_storage.insert_transaction(transaction)
 
         return order
 
-    def get_price_history(self, symbol: str, interval: Interval | None = None,
-                         start: dt.datetime | None = None, end: dt.datetime | None = None,
-                         storage: str | None = None) -> TickerCandleList:
+    def get_price_history(
+        self,
+        symbol: str,
+        interval: Interval | None = None,
+        start: dt.datetime | None = None,
+        end: dt.datetime | None = None,
+        storage: str | None = None,
+    ) -> TickerCandleList:
         """Get market data from central storage service
 
         :param str symbol: Symbol to get price history for
@@ -411,13 +429,12 @@ class Algorithm:
         previous_equity = previous_performance["equity"] if previous_performance else None
 
         self.local_storage.update_performance_data(
-            timestamp=dt.datetime.utcnow(),
-            equity=equity,
-            previous_equity=previous_equity
+            timestamp=dt.datetime.utcnow(), equity=equity, previous_equity=previous_equity
         )
 
-    async def sell_all_options(self, symbol: str | None = None, in_force: str = "gtc",
-                              broker: str | None = None) -> list[Order | None]:
+    async def sell_all_options(
+        self, symbol: str | None = None, in_force: str = "gtc", broker: str | None = None
+    ) -> list[Order | None]:
         """Sells all options based on the specified stock.
 
         For example, if you call this function with `symbol` set to "TWTR", it will sell
@@ -443,7 +460,9 @@ class Algorithm:
 
         # Get option positions from broker service
         positions = await broker_service.get_positions()
-        option_positions = [pos for pos in positions if pos.symbol.startswith(symbol) and symbol_type(pos.symbol) == "OPTION"]
+        option_positions = [
+            pos for pos in positions if pos.symbol.startswith(symbol) and symbol_type(pos.symbol) == "OPTION"
+        ]
 
         ret = []
         for pos in option_positions:
@@ -608,8 +627,14 @@ class Algorithm:
 
     # ------------------ Technical Indicators -------------------
 
-    def _default_param(self, symbol: str | None, interval: Interval | str | None, ref: str, prices: list | None,
-                      storage: str | None = None) -> tuple[str, Interval, str, list]:
+    def _default_param(
+        self,
+        symbol: str | None,
+        interval: Interval | str | None,
+        ref: str,
+        prices: list | None,
+        storage: str | None = None,
+    ) -> tuple[str, Interval, str, list]:
         if symbol is None:
             symbol = self.watch_list[0]
 
@@ -792,8 +817,9 @@ class Algorithm:
 
     ############### Getters for Trader properties #################
 
-    async def get_asset_quantity(self, symbol: str | None = None, include_pending_buy=True, include_pending_sell=False,
-                                broker: str | None = None) -> float:
+    async def get_asset_quantity(
+        self, symbol: str | None = None, include_pending_buy=True, include_pending_sell=False, broker: str | None = None
+    ) -> float:
         """Returns the quantity owned of a specified asset.
 
         :param str? symbol:  Symbol of asset. defaults to first symbol in watchlist
@@ -821,8 +847,7 @@ class Algorithm:
 
         return 0.0
 
-    async def get_asset_avg_cost(self, symbol: str | None = None,
-                                broker: str | None = None) -> float:
+    async def get_asset_avg_cost(self, symbol: str | None = None, broker: str | None = None) -> float:
         """Returns the average cost of a specified asset.
 
         :param str? symbol:  Symbol of asset. defaults to first symbol in watchlist
@@ -849,9 +874,9 @@ class Algorithm:
 
         raise Exception(f"{symbol} is not currently owned")
 
-    async def get_asset_current_price(self, symbol: str | None = None,
-                                     broker: str | None = None,
-                                     storage: str | None = None) -> float:
+    async def get_asset_current_price(
+        self, symbol: str | None = None, broker: str | None = None, storage: str | None = None
+    ) -> float:
         """Returns the current price of a specified asset.
 
         :param str? symbol: Symbol of asset. defaults to first symbol in watchlist
@@ -888,8 +913,9 @@ class Algorithm:
         option_data = await self.get_option_market_data(symbol)
         return option_data.price * 100
 
-    def get_asset_price_list(self, symbol: str | None = None, interval: str | None = None, ref: str = "close",
-                            storage: str | None = None) -> list[float] | None:
+    def get_asset_price_list(
+        self, symbol: str | None = None, interval: str | None = None, ref: str = "close", storage: str | None = None
+    ) -> list[float] | None:
         """Returns a list of recent prices for an asset.
 
         This function is not compatible with options.
@@ -917,8 +943,9 @@ class Algorithm:
         debugger.warning("Price list not available for options")
         return None
 
-    def get_asset_current_candle(self, symbol: str | None = None, interval=None,
-                                storage: str | None = None) -> TickerCandleList | None:
+    def get_asset_current_candle(
+        self, symbol: str | None = None, interval=None, storage: str | None = None
+    ) -> TickerCandleList | None:
         """Returns the most recent candle as a TickerFrame
 
         This function is not compatible with options.
@@ -959,8 +986,9 @@ class Algorithm:
         debugger.warning("Candles not available for options")
         return None
 
-    def get_asset_candle_list(self, symbol: str | None = None, interval=None,
-                             storage: str | None = None) -> TickerCandleList | None:
+    def get_asset_candle_list(
+        self, symbol: str | None = None, interval=None, storage: str | None = None
+    ) -> TickerCandleList | None:
         """Returns the candles of an asset as a TickerFrame
 
         This function is not compatible with options.
@@ -996,8 +1024,7 @@ class Algorithm:
             return TickerCandleList(df_with_timezone)
         return ticker_frame
 
-    async def get_asset_profit_percent(self, symbol: str | None = None,
-                                      broker: str | None = None) -> float | None:
+    async def get_asset_profit_percent(self, symbol: str | None = None, broker: str | None = None) -> float | None:
         """Returns the return of a specified asset.
 
         :param str? symbol:  Symbol of stock, crypto, or option. Options should be in OCC format.
@@ -1021,9 +1048,7 @@ class Algorithm:
             if position.symbol == symbol:
                 return position.profit_percent
 
-        debugger.warning(
-            f"{symbol} is not currently owned. You either don't have it or it's still in the order queue."
-        )
+        debugger.warning(f"{symbol} is not currently owned. You either don't have it or it's still in the order queue.")
         return None
 
     async def get_asset_max_quantity(self, symbol: str | None = None) -> float:
@@ -1159,8 +1184,9 @@ class Algorithm:
             # Fallback to current UTC time if stats not available
             return dt.datetime.utcnow()
 
-    async def check_broker_capabilities(self, symbols: list[str] | None = None,
-                                       intervals: list[Interval] | None = None) -> dict[str, bool]:
+    async def check_broker_capabilities(
+        self, symbols: list[str] | None = None, intervals: list[Interval] | None = None
+    ) -> dict[str, bool]:
         """
         Check if the current broker service supports the required symbols and intervals.
 
@@ -1180,7 +1206,7 @@ class Algorithm:
             # Check broker capabilities
             try:
                 capabilities = self.broker_service.get_all_broker_capabilities()
-                results['brokers_available'] = len(capabilities) > 0
+                results["brokers_available"] = len(capabilities) > 0
 
                 # Check symbol and interval support for default broker
                 for symbol in symbols:
@@ -1191,10 +1217,10 @@ class Algorithm:
                         )
 
             except Exception as e:
-                results['error'] = str(e)
-                results['brokers_available'] = False
+                results["error"] = str(e)
+                results["brokers_available"] = False
         else:
-            results['brokers_available'] = False
+            results["brokers_available"] = False
 
         return results
 
@@ -1208,7 +1234,7 @@ class Algorithm:
         if name is not None:
             # Search by name
             for service in self.broker_services:
-                if hasattr(service, 'service_name') and service.service_name == name:
+                if hasattr(service, "service_name") and service.service_name == name:
                     return service
             return None
 
@@ -1227,7 +1253,7 @@ class Algorithm:
         if name is not None:
             # Search by name
             for service in self.central_storage_services:
-                if hasattr(service, 'service_name') and service.service_name == name:
+                if hasattr(service, "service_name") and service.service_name == name:
                     return service
             return None
 
@@ -1254,6 +1280,7 @@ class Algorithm:
         :param str symbol: Symbol of stock or crypto asset.
         """
         self.watch_list.append(symbol)
+
 
 # mypy: disable-error-code="attr-defined"
 # Service method calls are properly typed at runtime through service discovery

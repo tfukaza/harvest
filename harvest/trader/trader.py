@@ -275,7 +275,7 @@ class BrokerHub:
                     f"${p.current_price}",
                     f"${p.avg_cost}",
                     f"{per_prefix} ${ret_prefix}{red_or_green(p.profit)}",
-                    f"{per_prefix} {ret_prefix}{red_or_green(p.profit_percent*100)}%",
+                    f"{per_prefix} {ret_prefix}{red_or_green(p.profit_percent * 100)}%",
                 )
             self.console.print(stock_table)
 
@@ -607,7 +607,7 @@ class BrokerHub:
         if total_price >= buy_power:
             debugger.error(
                 "Not enough buying power.\n"
-                + f"Total price ({price} * {quantity} * 1.05 = {limit_price*quantity}) exceeds buying power {buy_power}."
+                + f"Total price ({price} * {quantity} * 1.05 = {limit_price * quantity}) exceeds buying power {buy_power}."
                 + "Reduce purchase quantity or increase buying power."
             )
             return None
