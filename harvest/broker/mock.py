@@ -1,6 +1,7 @@
 import datetime as dt
 import itertools
 import time
+import threading
 import uuid
 from typing import Callable, Dict, Any
 from zoneinfo import ZoneInfo
@@ -8,7 +9,7 @@ from zoneinfo import ZoneInfo
 import numpy as np
 import polars as pl
 
-from harvest.broker._base import Broker
+from harvest.broker._base import Broker, StreamBroker
 from harvest.definitions import (
     Account,
     AssetType,
@@ -127,13 +128,9 @@ class MockBroker(Broker):
         """Setup the mock broker with runtime data"""
         self.stats = runtime_data
 
-    def continue_polling(self) -> bool:
-        """Check if polling should continue"""
-        return self._continue_polling
-
     def stop_polling(self) -> None:
         """Stop the polling loop"""
-        self._continue_polling = False
+        self.continue_polling = False
 
     def start(
         self,
@@ -169,7 +166,7 @@ class MockBroker(Broker):
         # Reset tick counter
         self._tick_count = 0
 
-        while self.continue_polling():
+        while self.continue_polling:
             # Check if we've exceeded max ticks (for testing)
             if self._max_ticks is not None and self._tick_count >= self._max_ticks:
                 break
@@ -863,3 +860,324 @@ class MockBroker(Broker):
             # Publish "all tickers ready" event for this interval
             if df_dict[interval]:
                 self._publish_all_ticker_candle(interval, df_dict[interval])
+
+
+class MockStreamBroker(StreamBroker):
+    """
+    A mock streaming broker for testing StreamBroker functionality.
+
+    This broker simulates streaming behavior while providing controllable
+    test conditions for unit tests.
+    """
+
+    interval_list = [Interval.SEC_15, Interval.MIN_1, Interval.MIN_5, Interval.HR_1]
+    exchange = "MOCK_STREAM"
+    req_keys: list[str] = []
+
+    def __init__(self, secret_path: str | None = None) -> None:
+        """Initialize the mock stream broker."""
+        super().__init__(secret_path)
+        self._subscriptions_setup = False
+        self._connection_initialized = False
+        self._stream_active = False
+
+    def create_secret(self) -> dict[str, str]:
+        """Create empty secret for testing."""
+        return {}
+
+    def refresh_cred(self) -> None:
+        """Mock credential refresh."""
+        pass
+
+    def get_current_time(self) -> dt.datetime:
+        """Get current time."""
+        return dt.datetime.now(dt.timezone.utc)
+
+    def _setup_subscriptions(self) -> None:
+        """Mock setup subscriptions."""
+        print("MockStreamBroker._setup_subscriptions() called")
+        self._subscriptions_setup = True
+
+    def _cleanup_subscriptions(self) -> None:
+        """Mock cleanup subscriptions."""
+        print("MockStreamBroker._cleanup_subscriptions() called")
+        self._subscriptions_setup = False
+
+    def _initialize_stream_connection(self) -> None:
+        """Mock initialize stream connection."""
+        print("MockStreamBroker._initialize_stream_connection() called")
+        self._connection_initialized = True
+
+    def stream(self) -> None:
+        """Mock streaming method."""
+        print("MockStreamBroker.stream() started")
+        self._stream_active = True
+        # For testing, we don't want an infinite loop, just mark as active
+        # Real streaming brokers would maintain their connection here
+        loop_count = 0
+        while self._is_streaming:
+            loop_count += 1
+            if loop_count % 100 == 0:  # Print every 100 loops
+                print(f"MockStreamBroker.stream() loop iteration {loop_count}, _is_streaming={self._is_streaming}")
+            time.sleep(0.01)  # Small sleep to prevent busy waiting
+            if loop_count > 1000:  # Safety break for tests
+                print("MockStreamBroker.stream() safety break after 1000 iterations")
+                break
+        print("MockStreamBroker.stream() ended")
+
+    def stop_streaming(self) -> None:
+        """Stop the streaming broker and cleanup resources - MockStreamBroker override."""
+        print("MockStreamBroker.stop_streaming() called")
+        print(
+            f"MockStreamBroker: Before stop - _is_streaming={self._is_streaming}, continue_polling={self.continue_polling}"
+        )
+
+        # Set flags to stop both streaming and polling
+        self._is_streaming = False
+        self._continue_polling = False  # Set directly on base class attribute
+
+        print(
+            f"MockStreamBroker: After setting flags - _is_streaming={self._is_streaming}, continue_polling={self.continue_polling}"
+        )
+
+        # Handle timer cleanup manually (from base class stop_streaming)
+        with self._stream_lock:
+            for timer in self._timeout_timers.values():
+                if timer:
+                    timer.cancel()
+            self._timeout_timers.clear()
+
+        # Cleanup subscriptions
+        self._cleanup_subscriptions()
+
+        print("MockStreamBroker.stop_streaming() completed")
+
+    # Implement all abstract methods with minimal functionality
+    def fetch_price_history(
+        self,
+        symbol: str,
+        interval: Interval,
+        start: dt.datetime | None = None,
+        end: dt.datetime | None = None,
+    ) -> TickerCandleList:
+        """Mock price history."""
+        df = pl.DataFrame(
+            {
+                "timestamp": [self.get_current_time()],
+                "symbol": [symbol],
+                "open": [100.0],
+                "high": [105.0],
+                "low": [95.0],
+                "close": [102.0],
+                "volume": [1000],
+            }
+        )
+        return TickerCandleList(df)
+
+    def fetch_latest_price(self, symbol: str, interval: Interval) -> TickerCandle:
+        """Mock latest price."""
+        return TickerCandle(
+            timestamp=self.get_current_time(),
+            symbol=symbol,
+            open=100.0,
+            high=105.0,
+            low=95.0,
+            close=102.0,
+            volume=1000,
+        )
+
+    def fetch_chain(self, symbol: str) -> ChainInfo:
+        """Mock chain."""
+        return ChainInfo(
+            chain_id=f"{symbol}_chain",
+            expiration_list=[dt.date.today() + dt.timedelta(days=30)],
+        )
+
+    def fetch_chain_data(self, symbol: str, date: dt.datetime) -> ChainData:
+        """Mock chain data."""
+        df = pl.DataFrame(
+            {
+                "symbol": [f"{symbol}230721C00160000"],
+                "exp_date": [date],
+                "strike": [160.0],
+                "type": ["call"],
+            }
+        )
+        return ChainData(df)
+
+    def fetch_option_market_data(self, symbol: str) -> OptionData:
+        """Mock option market data."""
+        return OptionData(
+            symbol=symbol,
+            price=5.0,
+            ask=5.05,
+            bid=4.95,
+            expiration=dt.datetime.now(dt.timezone.utc) + dt.timedelta(days=30),
+            strike=160.0,
+        )
+
+    def fetch_market_hours(self, date: dt.date) -> dict[str, Any]:
+        """Mock market hours."""
+        return {
+            "is_open": True,
+            "open_at": dt.datetime.combine(date, dt.time(9, 30), tzinfo=dt.timezone.utc),
+            "close_at": dt.datetime.combine(date, dt.time(16, 0), tzinfo=dt.timezone.utc),
+        }
+
+    def fetch_stock_positions(self) -> Positions:
+        """Mock stock positions."""
+        return Positions({})
+
+    def fetch_option_positions(self) -> Positions:
+        """Mock option positions."""
+        return Positions({})
+
+    def fetch_crypto_positions(self) -> Positions:
+        """Mock crypto positions."""
+        return Positions({})
+
+    def fetch_account(self) -> Account:
+        """Mock account."""
+        return Account(
+            account_name="Mock Account",
+            positions=Positions({}),
+            orders=OrderList({}),
+            asset_value=100000.0,
+            cash=50000.0,
+            equity=100000.0,
+            buying_power=100000.0,
+            multiplier=1.0,
+        )
+
+    def fetch_stock_order_status(self, id: str) -> Order:
+        """Mock stock order status."""
+        return Order(
+            order_id=id,
+            symbol="AAPL",
+            quantity=100,
+            side=OrderSide.BUY,
+            order_type=AssetType.STOCK,
+            status=OrderStatus.OPEN,
+            time_in_force=OrderTimeInForce.GTC,
+            filled_quantity=0,
+            filled_price=0.0,
+            filled_time=None,
+        )
+
+    def fetch_option_order_status(self, id: str) -> Order:
+        """Mock option order status."""
+        return Order(
+            order_id=id,
+            symbol="AAPL230721C00160000",
+            quantity=1,
+            side=OrderSide.BUY,
+            order_type=AssetType.OPTION,
+            status=OrderStatus.OPEN,
+            time_in_force=OrderTimeInForce.GTC,
+            filled_quantity=0,
+            filled_price=0.0,
+            filled_time=None,
+        )
+
+    def fetch_crypto_order_status(self, id: str) -> Order:
+        """Mock crypto order status."""
+        return Order(
+            order_id=id,
+            symbol="@BTC",
+            quantity=0.1,
+            side=OrderSide.BUY,
+            order_type=AssetType.CRYPTO,
+            status=OrderStatus.OPEN,
+            time_in_force=OrderTimeInForce.GTC,
+            filled_quantity=0,
+            filled_price=0.0,
+            filled_time=None,
+        )
+
+    def fetch_order_queue(self) -> OrderList:
+        """Mock order queue."""
+        return OrderList({})
+
+    def order_stock_limit(
+        self,
+        side: OrderSide,
+        symbol: str,
+        quantity: float,
+        limit_price: float,
+        in_force: OrderTimeInForce = OrderTimeInForce.GTC,
+        extended: bool = False,
+    ) -> Order:
+        """Mock stock limit order."""
+        return Order(
+            order_id=str(uuid.uuid4()),
+            symbol=symbol,
+            quantity=quantity,
+            side=side,
+            order_type=AssetType.STOCK,
+            status=OrderStatus.OPEN,
+            time_in_force=in_force,
+            filled_quantity=0,
+            filled_price=0.0,
+            filled_time=None,
+        )
+
+    def order_crypto_limit(
+        self,
+        side: str,
+        symbol: str,
+        quantity: float,
+        limit_price: float,
+        in_force: str = "gtc",
+        extended: bool = False,
+    ) -> Order:
+        """Mock crypto limit order."""
+        return Order(
+            order_id=str(uuid.uuid4()),
+            symbol=f"@{symbol}",
+            quantity=quantity,
+            side=OrderSide.BUY if side == "buy" else OrderSide.SELL,
+            order_type=AssetType.CRYPTO,
+            status=OrderStatus.OPEN,
+            time_in_force=OrderTimeInForce.GTC if in_force == "gtc" else OrderTimeInForce.GTD,
+            filled_quantity=0,
+            filled_price=0.0,
+            filled_time=None,
+        )
+
+    def order_option_limit(
+        self,
+        side: str,
+        symbol: str,
+        quantity: float,
+        limit_price: float,
+        option_type: str,
+        exp_date: dt.datetime,
+        strike: float,
+        in_force: str = "gtc",
+    ) -> Order:
+        """Mock option limit order."""
+        occ_symbol = data_to_occ(symbol, exp_date, option_type, strike)
+        return Order(
+            order_id=str(uuid.uuid4()),
+            symbol=occ_symbol,
+            quantity=quantity,
+            side=OrderSide.BUY if side == "buy" else OrderSide.SELL,
+            order_type=AssetType.OPTION,
+            status=OrderStatus.OPEN,
+            time_in_force=OrderTimeInForce.GTC if in_force == "gtc" else OrderTimeInForce.GTD,
+            filled_quantity=0,
+            filled_price=0.0,
+            filled_time=None,
+        )
+
+    def cancel_stock_order(self, order_id: str) -> None:
+        """Mock cancel stock order."""
+        pass
+
+    def cancel_crypto_order(self, order_id: str) -> None:
+        """Mock cancel crypto order."""
+        pass
+
+    def cancel_option_order(self, order_id: str) -> None:
+        """Mock cancel option order."""
+        pass

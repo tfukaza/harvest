@@ -77,6 +77,7 @@ class Broker:
         self.secret_path = secret_path
         self.watch_dict: dict[Interval, list[str]] = {}  # Maps intervals to lists of symbols to watch for that interval
         self.event_bus: EventBus | None = None  # Event bus for publishing price updates
+        self._continue_polling: bool = True  # Controls the polling loop
 
     def setup(self, runtime_data: RuntimeData) -> None:
         """
@@ -226,7 +227,7 @@ class Broker:
         """
         Check if the broker is set to continue polling.
         """
-        return self.continue_polling
+        return self._continue_polling
 
     @continue_polling.setter
     def continue_polling(self, value: bool) -> None:
@@ -256,13 +257,17 @@ class Broker:
         This method runs a single thread that tracks time for both price polling
         and periodic events, calling the appropriate functions at their specified intervals.
         """
+        print("_start_polling_system() called")
         # Find the lowest interval in the watch_dict for polling frequency
         lowest_interval = min(self.watch_dict.keys())
         self.polling_interval = lowest_interval
+        print(f"_start_polling_system: lowest_interval={lowest_interval}")
 
         # Start single polling thread
         self._polling_thread = threading.Thread(target=self._polling_loop, args=(lowest_interval,), daemon=True)
+        print("_start_polling_system: Starting polling thread...")
         self._polling_thread.start()
+        print("_start_polling_system: Polling thread started")
 
     def _polling_loop(self, poll_interval: Interval) -> None:
         """
@@ -304,11 +309,17 @@ class Broker:
                 - 'next_fire_time': When this task should next execute (UTC timestamp)
         """
         # Initialize next fire times for all tasks based on time alignment (UTC)
+        print(f"_common_polling_loop() started with {len(polling_tasks)} tasks")
         current_time = utc_current_time().timestamp()
         for task in polling_tasks:
             task["next_fire_time"] = self._calculate_next_aligned_time(current_time, task["interval"])
 
+        loop_count = 0
         while self.continue_polling:
+            loop_count += 1
+            if loop_count % 100 == 0:  # Print every 100 loops
+                print(f"_common_polling_loop: iteration {loop_count}, continue_polling={self.continue_polling}")
+
             current_time = utc_current_time().timestamp()
 
             # Find the earliest next fire time among all tasks
@@ -1092,38 +1103,51 @@ class StreamBroker(Broker):
         Args:
             watch_dict: Dictionary mapping intervals to lists of symbols to watch
         """
+        print(f"StreamBroker.start() called with watch_dict: {watch_dict}")
         self.watch_dict = watch_dict
 
         # Initialize expected tickers for each interval
         for interval, tickers in watch_dict.items():
+            print(f"StreamBroker: Setting up interval {interval} with tickers: {tickers}")
             self._expected_tickers[interval] = set(tickers)
             self._interval_cache[interval] = {}
 
         debugger.debug(f"{type(self).__name__} starting streaming API connection...")
 
+        print("StreamBroker: Calling _initialize_stream_connection()...")
         # Initialize streaming connection (placeholder - subclasses will implement)
         self._initialize_stream_connection()
+
+        print("StreamBroker: Calling _setup_subscriptions()...")
         # Set up subscriptions for all tickers and intervals (placeholder)
         self._setup_subscriptions()
 
         # Mark as streaming
         self._is_streaming = True
+        print(f"StreamBroker: Set _is_streaming to {self._is_streaming}")
 
         debugger.debug(f"{type(self).__name__} streaming started successfully")
 
+        print("StreamBroker: Calling _start_polling_system()...")
         # Start the polling system (will use overridden _polling_loop for periodic events only)
         self._start_polling_system()
 
+        print("StreamBroker: Starting streaming thread...")
         # Start the streaming connection in its own thread
         self._streaming_task = threading.Thread(target=self.stream, daemon=True)
         self._streaming_task.start()
+        print("StreamBroker.start() completed")
 
+    @abstractmethod
     def stream(self) -> None:
         """
         Abstract method to run the streaming connection.
 
         This method should be implemented by subclasses to maintain the actual
         connection to the streaming API and handle incoming data.
+
+        When new data arrives, it should call `on_streaming_data`
+        to process the data and publish events.
         """
         pass
 

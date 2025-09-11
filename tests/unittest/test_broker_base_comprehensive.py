@@ -14,8 +14,8 @@ from zoneinfo import ZoneInfo
 import polars as pl
 import pytest
 
-from harvest.broker._base import Broker
-from harvest.broker.mock import MockBroker
+from harvest.broker._base import Broker, StreamBroker
+from harvest.broker.mock import MockBroker, MockStreamBroker
 from harvest.definitions import (
     Account,
     AssetType,
@@ -113,7 +113,7 @@ class TestBrokerBaseWithMockBroker:
         }
 
         # Test that polling can be started and stopped
-        assert mock_broker.continue_polling() is True
+        assert mock_broker._continue_polling is True
 
         # Start polling with max ticks for testing
         mock_broker._max_ticks = 3
@@ -667,3 +667,360 @@ class TestBrokerBaseWithMockBroker:
         assert hasattr(order_queue, "__iter__")  # Should be iterable
 
         # All abstract methods should be implemented without raising NotImplementedError
+
+
+class TestStreamBroker:
+    """Test StreamBroker functionality."""
+
+    @pytest.fixture
+    def stream_broker(self) -> MockStreamBroker:
+        """Create a MockStreamBroker instance for testing."""
+        broker = MockStreamBroker()
+        runtime_data = RuntimeData(
+            utc_timestamp=dt.datetime(2023, 6, 15, 10, 0, 0, tzinfo=dt.timezone.utc),
+            broker_timezone=ZoneInfo("UTC"),
+        )
+        broker.setup(runtime_data)
+        broker._continue_polling = True  # Enable polling for tests
+        return broker
+
+    @pytest.fixture
+    def event_bus(self) -> EventBus:
+        """Create an EventBus instance for testing."""
+        return EventBus()
+
+    def test_stream_broker_initialization(self, stream_broker: MockStreamBroker) -> None:
+        """Test StreamBroker initialization and basic properties."""
+        assert stream_broker.exchange == "MOCK_STREAM"
+        assert len(stream_broker.interval_list) > 0
+        assert stream_broker._timeout_duration == 1.0
+        assert not stream_broker._is_streaming
+        assert hasattr(stream_broker, "_stream_lock")  # Check that the lock exists
+        assert stream_broker._interval_cache == {}
+        assert stream_broker._expected_tickers == {}
+        assert stream_broker._timeout_timers == {}
+
+    def test_timeout_duration_setting(self, stream_broker: MockStreamBroker) -> None:
+        """Test setting timeout duration."""
+        # Test default timeout
+        assert stream_broker._timeout_duration == 1.0
+
+        # Test setting new timeout
+        stream_broker.set_timeout_duration(2.5)
+        assert stream_broker._timeout_duration == 2.5
+
+    def test_stream_broker_start(self, stream_broker: MockStreamBroker) -> None:
+        """Test starting the streaming broker."""
+        watch_dict = {
+            Interval.MIN_1: ["AAPL", "SPY"],
+            Interval.MIN_5: ["MSFT"],
+        }
+
+        # Start the streaming broker
+        stream_broker.start(watch_dict)
+
+        # Verify initialization
+        assert stream_broker.watch_dict == watch_dict
+        assert stream_broker._is_streaming is True
+        assert stream_broker._connection_initialized is True
+        assert stream_broker._subscriptions_setup is True
+
+        # Verify expected tickers are set up
+        assert stream_broker._expected_tickers[Interval.MIN_1] == {"AAPL", "SPY"}
+        assert stream_broker._expected_tickers[Interval.MIN_5] == {"MSFT"}
+
+        # Verify interval cache is initialized
+        assert Interval.MIN_1 in stream_broker._interval_cache
+        assert Interval.MIN_5 in stream_broker._interval_cache
+
+        # Wait a bit for streaming thread to start
+        time.sleep(0.2)
+
+        # Clean up
+        stream_broker.stop_streaming()  # This should stop both streaming and polling
+
+    def test_streaming_data_handling(self, stream_broker: MockStreamBroker, event_bus: EventBus) -> None:
+        """Test handling of incoming streaming data."""
+        stream_broker.set_event_bus(event_bus)
+
+        watch_dict = {
+            Interval.MIN_1: ["AAPL", "SPY"],
+        }
+
+        stream_broker.start(watch_dict)
+
+        # Mock event bus to capture events
+        event_bus.publish = MagicMock()
+
+        # Create test candle
+        test_candle = TickerCandle(
+            timestamp=stream_broker.stats.utc_timestamp,
+            symbol="AAPL",
+            open=150.0,
+            high=152.0,
+            low=149.0,
+            close=151.0,
+            volume=1000,
+        )
+
+        # Simulate streaming data arrival
+        stream_broker.on_streaming_data("AAPL", test_candle, Interval.MIN_1)
+
+        # Verify individual ticker event was published
+        assert event_bus.publish.called
+        publish_calls = event_bus.publish.call_args_list
+        assert len(publish_calls) >= 1
+
+        # Verify data is cached
+        assert "AAPL" in stream_broker._interval_cache[Interval.MIN_1]
+        assert stream_broker._interval_cache[Interval.MIN_1]["AAPL"] == test_candle
+
+        # Clean up
+        stream_broker.stop_streaming()  # This should stop both streaming and polling
+
+    def test_complete_interval_flush(self, stream_broker: MockStreamBroker, event_bus: EventBus) -> None:
+        """Test flushing when all tickers for an interval are ready."""
+        stream_broker.set_event_bus(event_bus)
+
+        watch_dict = {
+            Interval.MIN_1: ["AAPL", "SPY"],
+        }
+
+        stream_broker.start(watch_dict)
+
+        # Mock event bus to capture events
+        published_events = []
+
+        def capture_event(event_type: str, data: dict) -> None:
+            published_events.append((event_type, data))
+
+        event_bus.publish = capture_event
+
+        # Create test candles
+        aapl_candle = TickerCandle(
+            timestamp=stream_broker.stats.utc_timestamp,
+            symbol="AAPL",
+            open=150.0,
+            high=152.0,
+            low=149.0,
+            close=151.0,
+            volume=1000,
+        )
+
+        spy_candle = TickerCandle(
+            timestamp=stream_broker.stats.utc_timestamp,
+            symbol="SPY",
+            open=400.0,
+            high=405.0,
+            low=398.0,
+            close=402.0,
+            volume=2000,
+        )
+
+        # Send first ticker
+        stream_broker.on_streaming_data("AAPL", aapl_candle, Interval.MIN_1)
+        initial_events = len(published_events)
+
+        # Send second ticker (should trigger flush)
+        stream_broker.on_streaming_data("SPY", spy_candle, Interval.MIN_1)
+
+        # Verify we have additional events (individual + "all" event + periodic event)
+        assert len(published_events) > initial_events
+
+        # Verify cache was cleared after flush
+        assert len(stream_broker._interval_cache[Interval.MIN_1]) == 0
+
+        # Clean up
+        stream_broker.stop_streaming()  # This should stop both streaming and polling
+
+    def test_timeout_handling(self, stream_broker: MockStreamBroker, event_bus: EventBus) -> None:
+        """Test timeout handling when not all tickers arrive."""
+        stream_broker.set_event_bus(event_bus)
+        stream_broker.set_timeout_duration(0.1)  # Very short timeout for testing
+
+        watch_dict = {
+            Interval.MIN_1: ["AAPL", "SPY"],  # Expecting two tickers
+        }
+
+        stream_broker.start(watch_dict)
+
+        # Mock event bus to capture events
+        published_events = []
+
+        def capture_event(event_type: str, data: dict) -> None:
+            published_events.append((event_type, data))
+
+        event_bus.publish = capture_event
+
+        # Create test candle
+        aapl_candle = TickerCandle(
+            timestamp=stream_broker.stats.utc_timestamp,
+            symbol="AAPL",
+            open=150.0,
+            high=152.0,
+            low=149.0,
+            close=151.0,
+            volume=1000,
+        )
+
+        # Send only one ticker (incomplete)
+        stream_broker.on_streaming_data("AAPL", aapl_candle, Interval.MIN_1)
+
+        # Wait for timeout
+        time.sleep(0.2)
+
+        # Verify timeout occurred and cache was flushed
+        assert len(stream_broker._interval_cache[Interval.MIN_1]) == 0
+
+        # Clean up
+        stream_broker.stop_streaming()  # This should stop both streaming and polling
+
+    def test_stop_streaming(self, stream_broker: MockStreamBroker) -> None:
+        """Test stopping the streaming broker."""
+        watch_dict = {
+            Interval.MIN_1: ["AAPL"],
+        }
+
+        # Start streaming
+        stream_broker.start(watch_dict)
+        assert stream_broker._is_streaming is True
+
+        # Set up a timeout timer to test cleanup
+        stream_broker._start_timeout_timer(Interval.MIN_1)
+        assert Interval.MIN_1 in stream_broker._timeout_timers
+
+        # Stop streaming
+        stream_broker.stop_streaming()
+
+        # Verify cleanup
+        assert stream_broker._is_streaming is False
+        assert stream_broker._subscriptions_setup is False
+        assert len(stream_broker._timeout_timers) == 0
+
+        # Additional cleanup
+        stream_broker.stop_streaming()  # This should stop both streaming and polling
+
+    def test_streaming_data_thread_safety(self, stream_broker: MockStreamBroker, event_bus: EventBus) -> None:
+        """Test thread safety of streaming data handling."""
+        stream_broker.set_event_bus(event_bus)
+
+        watch_dict = {
+            Interval.MIN_1: ["AAPL", "SPY", "MSFT"],
+        }
+
+        stream_broker.start(watch_dict)
+
+        # Mock event bus
+        event_bus.publish = MagicMock()
+
+        # Create test function to simulate concurrent data arrival
+        def send_ticker_data(symbol: str, price: float):
+            candle = TickerCandle(
+                timestamp=stream_broker.stats.utc_timestamp,
+                symbol=symbol,
+                open=price,
+                high=price + 5,
+                low=price - 5,
+                close=price + 2,
+                volume=1000,
+            )
+            stream_broker.on_streaming_data(symbol, candle, Interval.MIN_1)
+
+        # Send data from multiple threads simultaneously
+        threads = []
+        for i, symbol in enumerate(["AAPL", "SPY", "MSFT"]):
+            thread = threading.Thread(target=send_ticker_data, args=(symbol, 100 + i * 10))
+            threads.append(thread)
+            thread.start()
+
+        # Wait for all threads to complete
+        for thread in threads:
+            thread.join()
+
+        # Verify all data was handled without race conditions
+        assert event_bus.publish.call_count >= 3  # At least one call per ticker
+
+        # Clean up
+        stream_broker.stop_streaming()  # This should stop both streaming and polling
+
+    def test_periodic_events_only_polling(self, stream_broker: MockStreamBroker, event_bus: EventBus) -> None:
+        """Test that StreamBroker polling only handles periodic events."""
+        stream_broker.set_event_bus(event_bus)
+
+        watch_dict = {
+            Interval.MIN_1: ["AAPL"],
+        }
+
+        stream_broker.start(watch_dict)
+
+        # Mock the periodic event publishing
+        stream_broker._publish_periodic_events = MagicMock()
+
+        # Wait briefly for polling loop to run
+        time.sleep(0.1)
+
+        # The polling loop should be running but only for periodic events
+        # (not for price polling since that's handled by streaming)
+
+        # Clean up
+        stream_broker.stop_streaming()  # This should stop both streaming and polling
+
+    def test_cache_management(self, stream_broker: MockStreamBroker) -> None:
+        """Test interval cache management."""
+        watch_dict = {
+            Interval.MIN_1: ["AAPL", "SPY"],
+            Interval.MIN_5: ["MSFT"],
+        }
+
+        stream_broker.start(watch_dict)
+
+        # Test cache initialization
+        assert Interval.MIN_1 in stream_broker._interval_cache
+        assert Interval.MIN_5 in stream_broker._interval_cache
+        assert len(stream_broker._interval_cache[Interval.MIN_1]) == 0
+        assert len(stream_broker._interval_cache[Interval.MIN_5]) == 0
+
+        # Test adding data to cache
+        test_candle = TickerCandle(
+            timestamp=stream_broker.stats.utc_timestamp,
+            symbol="AAPL",
+            open=150.0,
+            high=152.0,
+            low=149.0,
+            close=151.0,
+            volume=1000,
+        )
+
+        with stream_broker._stream_lock:
+            stream_broker._interval_cache[Interval.MIN_1]["AAPL"] = test_candle
+
+        assert "AAPL" in stream_broker._interval_cache[Interval.MIN_1]
+
+        # Test manual flush
+        stream_broker._flush_interval_cache(Interval.MIN_1)
+        assert len(stream_broker._interval_cache[Interval.MIN_1]) == 0
+
+        # Clean up
+        stream_broker.stop_streaming()  # This should stop both streaming and polling
+
+    def test_timer_management(self, stream_broker: MockStreamBroker) -> None:
+        """Test timeout timer management."""
+        watch_dict = {
+            Interval.MIN_1: ["AAPL"],
+        }
+
+        stream_broker.start(watch_dict)
+
+        # Test starting a timer
+        stream_broker._start_timeout_timer(Interval.MIN_1)
+        assert Interval.MIN_1 in stream_broker._timeout_timers
+        assert stream_broker._timeout_timers[Interval.MIN_1] is not None
+
+        # Test restarting a timer (should cancel the old one)
+        old_timer = stream_broker._timeout_timers[Interval.MIN_1]
+        stream_broker._start_timeout_timer(Interval.MIN_1)
+        new_timer = stream_broker._timeout_timers[Interval.MIN_1]
+        assert old_timer != new_timer
+
+        # Clean up
+        stream_broker.stop_streaming()  # This should stop both streaming and polling
