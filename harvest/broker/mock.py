@@ -1,7 +1,6 @@
 import datetime as dt
 import itertools
 import time
-import threading
 import uuid
 from typing import Callable, Dict, Any
 from zoneinfo import ZoneInfo
@@ -28,8 +27,6 @@ from harvest.definitions import (
     TickerCandleList,
 )
 from harvest.enum import Interval, IntervalUnit
-from harvest.events.events import PriceUpdateEvent
-from harvest.events.event_bus import EventBus
 from harvest.util.helper import (
     aggregate_pl_df,
     data_to_occ,
@@ -43,7 +40,8 @@ from harvest.util.helper import (
 
 class MockBroker(Broker):
     """
-    A mock broker designed to generate fake data for testing purposes.
+    A mock broker designed for testing purposes.
+    It generates synthetic market data and simulates order execution without connecting to a real brokerage.
     """
 
     def __init__(
@@ -56,6 +54,18 @@ class MockBroker(Broker):
         time_provider: Callable[[], dt.datetime] | None = None,
         sleep_function: Callable[[float], None] | None = None,
     ) -> None:
+        """
+        Initialize the mock broker.
+
+        Args:
+            current_time: The starting current time for the mock broker. Can be a datetime object or a string in "YYYY-MM-DD HH:MM" format. If None, uses the current UTC time.
+            epoch: The epoch time for generating historical data. If None, defaults to 30 years ago from current time.
+            stock_market_times: If True, only generates data during typical US stock market hours (9:30 AM to 4:00 PM ET on weekdays).
+            realistic_simulation: If True, simulates real-time passage (e.g., 1 minute interval takes 1 minute). If False, runs as fast as possible.
+            secret_path: Path to the secret credentials file. Not used in MockBroker but included for compatibility.
+            time_provider: Optional callable to provide the current time, useful for testing.
+            sleep_function: Optional callable to replace time.sleep, useful for testing.
+        """
         super().__init__(secret_path)
 
         # Set up exchange and supported intervals

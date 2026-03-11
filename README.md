@@ -45,25 +45,40 @@ harvest start -s robinhood -b robinhood
 With Harvest, the process of testing and deploying your strategies is a piece of cake 🍰
 
 # Installation
-The only requirement is to have **Python 3.9 or newer**.
+The only requirement is to have **Python 3.12 or newer**.
 
-Once you're ready, install via pip:
+Once you're ready, install [uv](https://docs.astral.sh/uv/). If you want the Harvest CLI available on your machine, install it with:
 ```bash
-pip install harvest-python
+uv tool install harvest-python
+```
+
+If you are adding Harvest to another Python project, use:
+```bash
+uv add harvest-python
 ```
 
 Next, install the dependencies necessary for the brokerage of your choice:
 ```bash
-pip install harvest-python[BROKER]
+uv add 'harvest-python[BROKER]'
 ```
-Replace `BROKER` with a brokerage/data source of your choice:
+Replace `BROKER` with a brokerage/data source of your choice in lowercase:
 - Robinhood
 - Alpaca
 - Webull
 - Kraken
 - Polygon
 
-Now you're all set!
+If you installed Harvest as a tool, you can run commands directly:
+```bash
+harvest start -s yahoo -b paper
+```
+
+If you added Harvest to a project, run commands with `uv run`, for example:
+```bash
+uv run harvest start -s yahoo -b paper
+```
+
+Now you're all set.
 
 # Contributing
 Contributions are greatly appreciated. Check out the [CONTRIBUTING](CONTRIBUTING.md) document for details, and [ABOUT](ABOUT.md) for the long-term goals of this project.

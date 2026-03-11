@@ -1,17 +1,16 @@
 """
-Comprehensive unit tests for the Base Broker class using MockBroker.
+Unit tests for the Base Broker class functionality.
 
-These tests leverage MockBroker's ability to simulate price histories and trading
-to thoroughly test the base broker functionality that was previously difficult to test.
+These tests focus on the core buying and selling functionality of the broker class
+using MockBroker to test real trading operations without external dependencies.
 """
 
 import datetime as dt
 import threading
 import time
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 from zoneinfo import ZoneInfo
 
-import polars as pl
 import pytest
 
 from harvest.broker._base import Broker, StreamBroker
@@ -32,7 +31,6 @@ from harvest.definitions import (
 from harvest.enum import Interval
 from harvest.events.event_bus import EventBus
 from harvest.events.events import PriceUpdateEvent
-from harvest.util.helper import interval_to_timedelta, utc_current_time
 
 
 class TestBrokerBaseWithMockBroker:

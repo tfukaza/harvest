@@ -1,11 +1,11 @@
 # Standard library imports
-import asyncio
 import datetime as dt
+import math
 import threading
 import time
 from abc import abstractmethod
 from os.path import exists
-from typing import Any, Callable, Dict
+from typing import Any, Dict
 
 # Third-party imports
 import polars as pl
@@ -28,12 +28,10 @@ from harvest.definitions import (
     TickerCandle,
     TickerCandleList,
 )
-from harvest.enum import Interval, IntervalUnit
+from harvest.enum import Interval
 from harvest.util.helper import (
     check_interval,
-    data_to_occ,
     debugger,
-    expand_interval,
     interval_to_timedelta,
     occ_to_data,
     symbol_type,
@@ -45,7 +43,7 @@ from harvest.events.events import PriceUpdateEvent
 
 class Broker:
     """
-    The Broker class is used to communicate with various API endpoints of the respective broker.
+    The Broker class represents a connection to a trading API.
 
     It performs operations like fetching historical data and placing orders,
     as well as generating events for price updates and order statuses.
@@ -55,10 +53,8 @@ class Broker:
     """
 
     interval_list: list[Interval]
-    # Name of the exchange this API trades on
-    exchange: str
-    # List of attributes that are required to be in the secret file, e.g. 'api_key'
-    req_keys: list[str]
+    exchange: str  # Name of the exchange this API trades on
+    req_keys: list[str]  # List of attributes that are required to be in the secret file, e.g. 'api_key'
 
     def __init__(self, secret_path: str | None = None) -> None:
         """
@@ -126,6 +122,9 @@ class Broker:
         :price_data: The new price data as a TickerCandle
         :interval: The interval this data represents
         """
+        if not self.event_bus:
+            return
+
         # Convert TickerCandle to TickerCandleList, so other parts of the system can operate on dataframes
         df = pl.DataFrame(
             {
@@ -150,11 +149,10 @@ class Broker:
             exchange=self.exchange,
         )
 
-        # Publish single ticker event if available
-        if self.event_bus:
-            broker_name = self.__class__.__name__
-            event_name = f"price_update:{broker_name}:{interval.value}:{symbol}"
-            self.event_bus.publish(event_name, event.__dict__)
+        # Publish single ticker event if
+        broker_name = self.__class__.__name__
+        event_name = f"price_update:{broker_name}:{interval.value}:{symbol}"
+        self.event_bus.publish(event_name, event.__dict__)
 
     def _publish_all_ticker_candle(self, interval: Interval, all_data: dict[str, TickerCandle]) -> None:
         """
@@ -193,7 +191,7 @@ class Broker:
                     "volume": [candle.volume],
                 }
             )
-            combined_event["ticker_data"][symbol] = TickerCandleList(df).__dict__
+            combined_event["ticker_data"][symbol] = TickerCandleList(df)
 
         event_name = f"price_update:{broker_name}:{interval.value}:all"
         self.event_bus.publish(event_name, combined_event)
@@ -257,17 +255,17 @@ class Broker:
         This method runs a single thread that tracks time for both price polling
         and periodic events, calling the appropriate functions at their specified intervals.
         """
-        print("_start_polling_system() called")
+        debugger.debug("_start_polling_system() called")
         # Find the lowest interval in the watch_dict for polling frequency
         lowest_interval = min(self.watch_dict.keys())
         self.polling_interval = lowest_interval
-        print(f"_start_polling_system: lowest_interval={lowest_interval}")
+        debugger.debug(f"_start_polling_system: lowest_interval={lowest_interval}")
 
         # Start single polling thread
         self._polling_thread = threading.Thread(target=self._polling_loop, args=(lowest_interval,), daemon=True)
-        print("_start_polling_system: Starting polling thread...")
+        debugger.debug("_start_polling_system: Starting polling thread...")
         self._polling_thread.start()
-        print("_start_polling_system: Polling thread started")
+        debugger.debug("_start_polling_system: Polling thread started")
 
     def _polling_loop(self, poll_interval: Interval) -> None:
         """
@@ -306,20 +304,14 @@ class Broker:
             polling_tasks: List of dictionaries, each containing:
                 - 'function': The function to call
                 - 'interval': Interval enum representing how often to call it
-                - 'next_fire_time': When this task should next execute (UTC timestamp)
         """
         # Initialize next fire times for all tasks based on time alignment (UTC)
-        print(f"_common_polling_loop() started with {len(polling_tasks)} tasks")
+        debugger.debug(f"_common_polling_loop() started with {len(polling_tasks)} tasks")
         current_time = utc_current_time().timestamp()
         for task in polling_tasks:
             task["next_fire_time"] = self._calculate_next_aligned_time(current_time, task["interval"])
 
-        loop_count = 0
         while self.continue_polling:
-            loop_count += 1
-            if loop_count % 100 == 0:  # Print every 100 loops
-                print(f"_common_polling_loop: iteration {loop_count}, continue_polling={self.continue_polling}")
-
             current_time = utc_current_time().timestamp()
 
             # Find the earliest next fire time among all tasks
@@ -353,9 +345,7 @@ class Broker:
         - 1-hour intervals: fire at :00 of each hour
         - 1-day intervals: fire at midnight UTC
 
-        All calculations are performed in UTC timezone to ensure consistency
-        across different system timezones.
-
+        All calculations are performed in UTC timezone to ensure consistency across different system timezones.
         For example, if the current time is 10:23:45 UTC and the interval is 5 minutes,
         the next aligned firing time would be 10:25:00 UTC.
 
@@ -368,7 +358,6 @@ class Broker:
         Returns:
             UTC timestamp for the next aligned firing time
         """
-        import math
 
         # Handle different interval units directly using UTC-based calculations
         if interval.unit == "SEC":
@@ -1103,40 +1092,39 @@ class StreamBroker(Broker):
         Args:
             watch_dict: Dictionary mapping intervals to lists of symbols to watch
         """
-        print(f"StreamBroker.start() called with watch_dict: {watch_dict}")
+        debugger.debug(f"StreamBroker.start() called with watch_dict: {watch_dict}")
         self.watch_dict = watch_dict
 
         # Initialize expected tickers for each interval
         for interval, tickers in watch_dict.items():
-            print(f"StreamBroker: Setting up interval {interval} with tickers: {tickers}")
+            debugger.debug(f"StreamBroker: Setting up interval {interval} with tickers: {tickers}")
             self._expected_tickers[interval] = set(tickers)
             self._interval_cache[interval] = {}
 
         debugger.debug(f"{type(self).__name__} starting streaming API connection...")
+        debugger.debug("StreamBroker: Calling _initialize_stream_connection()...")
 
-        print("StreamBroker: Calling _initialize_stream_connection()...")
         # Initialize streaming connection (placeholder - subclasses will implement)
         self._initialize_stream_connection()
 
-        print("StreamBroker: Calling _setup_subscriptions()...")
+        debugger.debug("StreamBroker: Calling _setup_subscriptions()...")
         # Set up subscriptions for all tickers and intervals (placeholder)
         self._setup_subscriptions()
 
         # Mark as streaming
         self._is_streaming = True
-        print(f"StreamBroker: Set _is_streaming to {self._is_streaming}")
-
+        debugger.debug(f"StreamBroker: Set _is_streaming to {self._is_streaming}")
         debugger.debug(f"{type(self).__name__} streaming started successfully")
+        debugger.debug("StreamBroker: Calling _start_polling_system()...")
 
-        print("StreamBroker: Calling _start_polling_system()...")
         # Start the polling system (will use overridden _polling_loop for periodic events only)
         self._start_polling_system()
 
-        print("StreamBroker: Starting streaming thread...")
+        debugger.debug("StreamBroker: Starting streaming thread...")
         # Start the streaming connection in its own thread
         self._streaming_task = threading.Thread(target=self.stream, daemon=True)
         self._streaming_task.start()
-        print("StreamBroker.start() completed")
+        debugger.debug("StreamBroker.start() completed")
 
     @abstractmethod
     def stream(self) -> None:

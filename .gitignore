@@ -28,4 +28,11 @@ package-lock.json
 
 *.log
 .venv
+.python-version
 save
+
+.pytest_cache/
+.vscode
+.ruff.toml
+TODO.md
+

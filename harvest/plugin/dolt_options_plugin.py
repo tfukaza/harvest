@@ -33,7 +33,7 @@ class DoltOptionsPlugin(Plugin):
         dolt clone post-no-preference/options
 
         Install doltpy:
-        pip install doltpy
+        uv pip install doltpy
         """
 
     # -------------- Plugin specific methods -------------- #

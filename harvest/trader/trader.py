@@ -71,8 +71,8 @@ class BrokerHub:
         self.console = Console()
 
     def _init_checks(self) -> None:
-        if sys.version_info[0] < 3 or sys.version_info[1] < 9:
-            raise Exception("Harvest requires Python 3.9 or above.")
+        if sys.version_info[0] < 3 or sys.version_info[1] < 12:
+            raise Exception("Harvest requires Python 3.12 or above.")
 
     def _set_streamer_broker(self, data_broker: BrokerType, trade_broker: BrokerType) -> None:
         """

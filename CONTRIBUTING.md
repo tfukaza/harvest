@@ -14,18 +14,18 @@ The coding process is relatively straight-forward:
 Read through the following guides to understand how to properly set up your development environment.
 
 ## Harvest
-Harvest requires a Python version of 3.9 or greater, and has a lot of dependencies, so it is highly recommended you use tools like Anaconda or VirtualEnv.
+Harvest requires Python 3.12 or greater. This repository uses [uv](https://docs.astral.sh/uv/) for environment and dependency management.
 
 ### Installing a Local Build
-Run the following in the root of the project directory to install local changes you made.
+Run the following in the root of the project directory to sync the project and development dependencies.
 ```bash
-pip install .
+uv sync --extra dev
 ```
 ### Unit Testing
 After any modifications to the code, conduct unit tests by running:
 ```bash
-pip install . --upgrade --no-deps --force-reinstall
-python -m unittest discover -s tests/unittest
+uv sync --extra dev
+uv run python -m unittest discover -s tests/unittest
 ```
 from the project's root directory. This will run the tests defined in the `tests` directory.
 
@@ -50,7 +50,7 @@ We want to make sure our code is stable and reliable - a good way to do that is 
 ### Linting
 This project uses the [Black](https://github.com/psf/black) linter to format the code. Before pushing any code, run the linter on every file you edited. This can usually be done by running:
 ```bash
-python -m black .
+uv run python -m black .
 ```
 in the root directory of the project.
 
