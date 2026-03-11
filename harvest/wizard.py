@@ -102,9 +102,7 @@ class Wizard:
             else:
                 return False
 
-    def get_string(
-        self, prompt: str = "input", pattern: str = ".+", persistent: bool = False
-    ) -> str:
+    def get_string(self, prompt: str = "input", pattern: str = ".+", persistent: bool = False) -> str:
         """
         Prompts the user for any string, with an optional pattern, ignoring case. If persistent is True then will continuly prompt the user for input.
 
@@ -125,9 +123,7 @@ class Wizard:
         else:
             return self.get_string(prompt, pattern, persistent)
 
-    def get_int(
-        self, prompt="input number", default: int = None, persistent: bool = False
-    ) -> int:
+    def get_int(self, prompt="input number", default: int = None, persistent: bool = False) -> int:
         """
         Prompts the user for an integer.
 

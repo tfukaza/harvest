@@ -15,10 +15,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [3.9]
+        python-version: [3.12]
 
     steps:
     - uses: actions/checkout@v2
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
 
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
@@ -27,16 +30,13 @@ jobs:
 
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
-        python setup.py install
-        python -m pip install '.[Dev]'
-        python -m pip install '.[Yahoo]'
+        uv sync --extra dev --extra yahoo
 
     - name: Trunk Check # runs linters under trunk check
       uses: trunk-io/trunk-action@v1
 
     - name: Run test
-      run: python setup.py test
+      run: uv run python -m unittest discover -s tests/unittest
 
     - name: Upload to CodeCov
       uses: codecov/codecov-action@v1

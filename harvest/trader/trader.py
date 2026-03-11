@@ -13,7 +13,6 @@ from rich.table import Table
 
 from harvest.definitions import (
     Account,
-
     OptionPosition,
     Position,
     RuntimeData,
@@ -72,8 +71,8 @@ class BrokerHub:
         self.console = Console()
 
     def _init_checks(self) -> None:
-        if sys.version_info[0] < 3 or sys.version_info[1] < 9:
-            raise Exception("Harvest requires Python 3.9 or above.")
+        if sys.version_info[0] < 3 or sys.version_info[1] < 12:
+            raise Exception("Harvest requires Python 3.12 or above.")
 
     def _set_streamer_broker(self, data_broker: BrokerType, trade_broker: BrokerType) -> None:
         """
@@ -126,7 +125,6 @@ class BrokerHub:
 
         self.stats = RuntimeData(None, tzlocal.get_localzone(), None)
 
-        
         self.account = Account()
         self.positions = self.account.positions
         self.orders = self.account.orders
@@ -277,7 +275,7 @@ class BrokerHub:
                     f"${p.current_price}",
                     f"${p.avg_cost}",
                     f"{per_prefix} ${ret_prefix}{red_or_green(p.profit)}",
-                    f"{per_prefix} {ret_prefix}{red_or_green(p.profit_percent*100)}%",
+                    f"{per_prefix} {ret_prefix}{red_or_green(p.profit_percent * 100)}%",
                 )
             self.console.print(stock_table)
 
@@ -574,7 +572,7 @@ class BrokerHub:
     # --------------------- Interface Functions -----------------------
 
     def fetch_chain_info(self, *args, **kwargs):
-        return self.data_broker_ref.fetch_chain_info(*args, **kwargs)
+        return self.data_broker_ref.fetch_chain(*args, **kwargs)
 
     def fetch_chain_data(self, *args, **kwargs):
         return self.data_broker_ref.fetch_chain_data(*args, **kwargs)
@@ -609,7 +607,7 @@ class BrokerHub:
         if total_price >= buy_power:
             debugger.error(
                 "Not enough buying power.\n"
-                + f"Total price ({price} * {quantity} * 1.05 = {limit_price*quantity}) exceeds buying power {buy_power}."
+                + f"Total price ({price} * {quantity} * 1.05 = {limit_price * quantity}) exceeds buying power {buy_power}."
                 + "Reduce purchase quantity or increase buying power."
             )
             return None

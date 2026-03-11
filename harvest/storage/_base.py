@@ -1,5 +1,7 @@
 import datetime as dt
 import sqlite3
+import os
+from typing import TYPE_CHECKING
 
 import polars as pl
 import sqlalchemy
@@ -7,7 +9,18 @@ from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 from sqlalchemy.schema import UniqueConstraint
 
-from harvest.definitions import OrderSide, RuntimeData, TickerFrame, TimeDelta, TimeSpan, Transaction, TransactionFrame
+if TYPE_CHECKING:
+    from harvest.events.event_bus import EventBus
+
+from harvest.definitions import (
+    OrderSide,
+    RuntimeData,
+    TickerCandleList,
+    TimeDelta,
+    TimeSpan,
+    Transaction,
+    TransactionFrame,
+)
 from harvest.enum import Interval
 from harvest.util.helper import debugger
 
@@ -43,6 +56,7 @@ class LocalBase(DeclarativeBase):
     This base class is used for SQLAlchemy ORM models that will be stored
     in LocalAlgorithmStorage instances (transaction and algorithm performance data).
     """
+
     pass
 
 
@@ -53,6 +67,7 @@ class CentralBase(DeclarativeBase):
     This base class is used for SQLAlchemy ORM models that will be stored
     in CentralStorage instances (price history and account performance data).
     """
+
     pass
 
 
@@ -75,6 +90,7 @@ class PriceHistory(CentralBase):
         close: Closing price for the interval
         volume: Trading volume during the interval
     """
+
     __tablename__ = "price_history"
     id: Mapped[int] = mapped_column(primary_key=True)
     timestamp: Mapped[dt.datetime]
@@ -105,6 +121,7 @@ class AccountPerformanceHistory(CentralBase):
         return_percentage: Percentage return for this time period
         return_absolute: Absolute dollar return for this time period
     """
+
     __tablename__ = "account_performance_history"
     id: Mapped[int] = mapped_column(primary_key=True)
     timestamp: Mapped[dt.datetime]
@@ -135,6 +152,7 @@ class TransactionHistory(LocalBase):
         event: Transaction event type ('ORDER' or 'FILL')
         algorithm_name: Name of the algorithm that made this transaction
     """
+
     __tablename__ = "transaction_history"
     id: Mapped[int] = mapped_column(primary_key=True)
     timestamp: Mapped[dt.datetime]
@@ -163,6 +181,7 @@ class AlgorithmPerformanceHistory(LocalBase):
         return_percentage: Percentage return for this algorithm in this time period
         return_absolute: Absolute dollar return for this algorithm in this time period
     """
+
     __tablename__ = "algorithm_performance_history"
     id: Mapped[int] = mapped_column(primary_key=True)
     timestamp: Mapped[dt.datetime]
@@ -225,12 +244,15 @@ class LocalAlgorithmStorage:
             sqlalchemy.exc.DatabaseError: If database connection fails
         """
         self.algorithm_name = algorithm_name
+        self.event_bus: "EventBus | None" = None  # Will be set by the algorithm or service
+        self.is_running = True  # Storage is always running once initialized
 
-        if db_path:
-            self.db_engine = sqlalchemy.create_engine(db_path)
-        else:
-            # Use in-memory SQLite for fast local caching
-            self.db_engine = sqlalchemy.create_engine("sqlite:///:memory:")
+        # Set default db_path to algorithm-specific database
+        if db_path is None:
+            db_path = f"sqlite:///algorithms/{algorithm_name}.db"
+            self.ensure_directory_exists()
+
+        self.db_engine = sqlalchemy.create_engine(db_path)
 
         # Transaction storage limits
         if not transaction_storage_limit:
@@ -261,6 +283,52 @@ class LocalAlgorithmStorage:
         LocalBase.metadata.drop_all(self.db_engine)
         LocalBase.metadata.create_all(self.db_engine)
 
+    def ensure_directory_exists(self) -> None:
+        """
+        Ensure the algorithms directory exists for the database file.
+
+        Creates the algorithms/ directory if it doesn't exist to store
+        algorithm-specific database files.
+        """
+        algorithms_dir = "algorithms"
+        if not os.path.exists(algorithms_dir):
+            os.makedirs(algorithms_dir)
+
+    def get_capabilities(self) -> list[str]:
+        """
+        Get the capabilities provided by this algorithm storage.
+
+        Returns:
+            List of capability strings
+        """
+        return ["algorithm_storage", "transaction_history", "performance_tracking", "local_database"]
+
+    async def register_with_discovery(self, service_registry) -> None:
+        """
+        Register this storage instance with service discovery.
+
+        Args:
+            service_registry: ServiceRegistry instance to register with
+        """
+        await service_registry.register_service(
+            f"storage_{self.algorithm_name}", self, {"type": "algorithm_storage", "algorithm": self.algorithm_name}
+        )
+
+    def publish_transaction_event(self, transaction: Transaction) -> None:
+        """
+        Publish transaction events to event bus.
+
+        Args:
+            transaction: Transaction object to publish as an event
+        """
+        if hasattr(self, "event_bus") and self.event_bus is not None:
+            from harvest.events.events import TransactionEvent
+
+            event = TransactionEvent(
+                algorithm_name=self.algorithm_name, transaction=transaction, timestamp=transaction.timestamp
+            )
+            self.event_bus.publish("transaction", event.__dict__)
+
     def insert_transaction(self, transaction: Transaction) -> None:
         """
         Insert a transaction record for this algorithm.
@@ -280,15 +348,17 @@ class LocalAlgorithmStorage:
         Raises:
             sqlalchemy.exc.DatabaseError: If database insert fails
         """
-        df = pl.DataFrame({
-            "timestamp": [transaction.timestamp],
-            "symbol": [transaction.symbol],
-            "event": [transaction.event],
-            "algorithm_name": [transaction.algorithm_name],
-            "side": [transaction.side.value],
-            "quantity": [transaction.quantity],
-            "price": [transaction.price],
-        })
+        df = pl.DataFrame(
+            {
+                "timestamp": [transaction.timestamp],
+                "symbol": [transaction.symbol],
+                "event": [transaction.event],
+                "algorithm_name": [transaction.algorithm_name],
+                "side": [transaction.side.value],
+                "quantity": [transaction.quantity],
+                "price": [transaction.price],
+            }
+        )
 
         symbol = transaction.symbol
         latest_timestamp = transaction.timestamp
@@ -296,8 +366,11 @@ class LocalAlgorithmStorage:
         # Clean up old data if storage limit is set
         if self.transaction_storage_limit:
             new_oldest_timestamp = latest_timestamp - self.transaction_storage_limit.delta_datetime
-            if (symbol in self.transaction_history_oldest_timestamp
-                and latest_timestamp - self.transaction_history_oldest_timestamp[symbol] > self.transaction_storage_limit.delta_datetime):
+            if (
+                symbol in self.transaction_history_oldest_timestamp
+                and latest_timestamp - self.transaction_history_oldest_timestamp[symbol]
+                > self.transaction_storage_limit.delta_datetime
+            ):
                 with Session(self.db_engine) as session:
                     session.query(TransactionHistory).filter(
                         TransactionHistory.timestamp <= new_oldest_timestamp,
@@ -308,15 +381,19 @@ class LocalAlgorithmStorage:
             self.transaction_history_oldest_timestamp[symbol] = new_oldest_timestamp
 
         # Insert new transaction using SQLAlchemy directly
-        stmt = insert(TransactionHistory).values([{
-            "timestamp": transaction.timestamp,
-            "symbol": transaction.symbol,
-            "event": transaction.event,
-            "algorithm_name": transaction.algorithm_name,
-            "side": transaction.side.value,
-            "quantity": transaction.quantity,
-            "price": transaction.price,
-        }])
+        stmt = insert(TransactionHistory).values(
+            [
+                {
+                    "timestamp": transaction.timestamp,
+                    "symbol": transaction.symbol,
+                    "event": transaction.event,
+                    "algorithm_name": transaction.algorithm_name,
+                    "side": transaction.side.value,
+                    "quantity": transaction.quantity,
+                    "price": transaction.price,
+                }
+            ]
+        )
 
         with Session(self.db_engine) as session:
             session.execute(stmt)
@@ -407,29 +484,37 @@ class LocalAlgorithmStorage:
         """
 
         # Clean up old data if storage limit is set
-        if interval in self.performance_storage_limit and self.performance_storage_limit[interval].delta_datetime.days != -1:
+        if (
+            interval in self.performance_storage_limit
+            and self.performance_storage_limit[interval].delta_datetime.days != -1
+        ):
             cutoff_time = timestamp - self.performance_storage_limit[interval].delta_datetime
-            if (interval in self.algorithm_performance_oldest_timestamp
-                and timestamp - self.algorithm_performance_oldest_timestamp[interval] > self.performance_storage_limit[interval].delta_datetime):
+            if (
+                interval in self.algorithm_performance_oldest_timestamp
+                and timestamp - self.algorithm_performance_oldest_timestamp[interval]
+                > self.performance_storage_limit[interval].delta_datetime
+            ):
                 with Session(self.db_engine) as session:
                     session.query(AlgorithmPerformanceHistory).filter(
                         AlgorithmPerformanceHistory.timestamp <= cutoff_time,
                         AlgorithmPerformanceHistory.algorithm_name == self.algorithm_name,
-                        AlgorithmPerformanceHistory.interval == interval
+                        AlgorithmPerformanceHistory.interval == interval,
                     ).delete()
                     session.commit()
 
             self.algorithm_performance_oldest_timestamp[interval] = cutoff_time
 
         # Insert new performance data
-        df = pl.DataFrame({
-            "timestamp": [timestamp],
-            "algorithm_name": [self.algorithm_name],
-            "interval": [interval],
-            "equity": [equity],
-            "return_percentage": [return_percentage],
-            "return_absolute": [return_absolute],
-        })
+        df = pl.DataFrame(
+            {
+                "timestamp": [timestamp],
+                "algorithm_name": [self.algorithm_name],
+                "interval": [interval],
+                "equity": [equity],
+                "return_percentage": [return_percentage],
+                "return_absolute": [return_absolute],
+            }
+        )
 
         stmt = insert(AlgorithmPerformanceHistory).values(df.to_dicts())
         stmt = stmt.on_conflict_do_update(
@@ -472,7 +557,7 @@ class LocalAlgorithmStorage:
         """
         filters = [
             AlgorithmPerformanceHistory.algorithm_name == self.algorithm_name,
-            AlgorithmPerformanceHistory.interval == interval
+            AlgorithmPerformanceHistory.interval == interval,
         ]
 
         if start:
@@ -482,7 +567,11 @@ class LocalAlgorithmStorage:
 
         with Session(self.db_engine) as session:
             assert session.bind is not None
-            db_query = session.query(AlgorithmPerformanceHistory).filter(*filters).order_by(AlgorithmPerformanceHistory.timestamp)
+            db_query = (
+                session.query(AlgorithmPerformanceHistory)
+                .filter(*filters)
+                .order_by(AlgorithmPerformanceHistory.timestamp)
+            )
             db_query_str = str(
                 db_query.statement.compile(
                     dialect=session.bind.dialect,
@@ -588,10 +677,15 @@ class LocalAlgorithmStorage:
             sqlalchemy.exc.DatabaseError: If database query fails
         """
         with Session(self.db_engine) as session:
-            latest = session.query(AlgorithmPerformanceHistory).filter(
-                AlgorithmPerformanceHistory.algorithm_name == self.algorithm_name,
-                AlgorithmPerformanceHistory.interval == interval
-            ).order_by(AlgorithmPerformanceHistory.timestamp.desc()).first()
+            latest = (
+                session.query(AlgorithmPerformanceHistory)
+                .filter(
+                    AlgorithmPerformanceHistory.algorithm_name == self.algorithm_name,
+                    AlgorithmPerformanceHistory.interval == interval,
+                )
+                .order_by(AlgorithmPerformanceHistory.timestamp.desc())
+                .first()
+            )
 
             if latest:
                 return {
@@ -723,7 +817,7 @@ class CentralStorage:
         """
         self.stats = stats
 
-    def insert_price_history(self, data: TickerFrame) -> None:
+    def insert_price_history(self, data: TickerCandleList) -> None:
         """
         Store stock price data in the central database.
 
@@ -791,7 +885,7 @@ class CentralStorage:
         interval: Interval | None = None,
         start: dt.datetime | None = None,
         end: dt.datetime | None = None,
-    ) -> TickerFrame:
+    ) -> TickerCandleList:
         """
         Retrieve stock price history from the central database.
 
@@ -839,7 +933,7 @@ class CentralStorage:
         frame = frame.with_columns(pl.col("timestamp").str.to_datetime("%Y-%m-%d %H:%M:%S%.f"))
         frame = frame.drop("id")
 
-        return TickerFrame(frame)
+        return TickerCandleList(frame)
 
     def insert_account_performance(
         self,
@@ -874,26 +968,35 @@ class CentralStorage:
         """
 
         # Clean up old data if storage limit is set
-        if interval in self.performance_storage_limit and self.performance_storage_limit[interval].delta_datetime.days != -1:
+        if (
+            interval in self.performance_storage_limit
+            and self.performance_storage_limit[interval].delta_datetime.days != -1
+        ):
             cutoff_time = timestamp - self.performance_storage_limit[interval].delta_datetime
-            if interval in self.account_performance_oldest_timestamp and timestamp - self.account_performance_oldest_timestamp[interval] > self.performance_storage_limit[interval].delta_datetime:
+            if (
+                interval in self.account_performance_oldest_timestamp
+                and timestamp - self.account_performance_oldest_timestamp[interval]
+                > self.performance_storage_limit[interval].delta_datetime
+            ):
                 with Session(self.db_engine) as session:
                     session.query(AccountPerformanceHistory).filter(
                         AccountPerformanceHistory.timestamp <= cutoff_time,
-                        AccountPerformanceHistory.interval == interval
+                        AccountPerformanceHistory.interval == interval,
                     ).delete()
                     session.commit()
 
             self.account_performance_oldest_timestamp[interval] = cutoff_time
 
         # Insert new performance data
-        df = pl.DataFrame({
-            "timestamp": [timestamp],
-            "interval": [interval],
-            "equity": [equity],
-            "return_percentage": [return_percentage],
-            "return_absolute": [return_absolute],
-        })
+        df = pl.DataFrame(
+            {
+                "timestamp": [timestamp],
+                "interval": [interval],
+                "equity": [equity],
+                "return_percentage": [return_percentage],
+                "return_absolute": [return_absolute],
+            }
+        )
 
         stmt = insert(AccountPerformanceHistory).values(df.to_dicts())
         stmt = stmt.on_conflict_do_update(
@@ -943,7 +1046,9 @@ class CentralStorage:
 
         with Session(self.db_engine) as session:
             assert session.bind is not None
-            db_query = session.query(AccountPerformanceHistory).filter(*filters).order_by(AccountPerformanceHistory.timestamp)
+            db_query = (
+                session.query(AccountPerformanceHistory).filter(*filters).order_by(AccountPerformanceHistory.timestamp)
+            )
             db_query_str = str(
                 db_query.statement.compile(
                     dialect=session.bind.dialect,
@@ -1049,9 +1154,12 @@ class CentralStorage:
             sqlalchemy.exc.DatabaseError: If database query fails
         """
         with Session(self.db_engine) as session:
-            latest = session.query(AccountPerformanceHistory).filter(
-                AccountPerformanceHistory.interval == interval
-            ).order_by(AccountPerformanceHistory.timestamp.desc()).first()
+            latest = (
+                session.query(AccountPerformanceHistory)
+                .filter(AccountPerformanceHistory.interval == interval)
+                .order_by(AccountPerformanceHistory.timestamp.desc())
+                .first()
+            )
 
             if latest:
                 return {

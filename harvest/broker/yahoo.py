@@ -183,7 +183,7 @@ class YahooBroker(Broker):
         return df
 
     @Broker._exception_handler
-    def fetch_chain_info(self, symbol: str) -> Dict[str, Any]:
+    def fetch_chain(self, symbol: str) -> Dict[str, Any]:
         """
         Return the list of option expirations dates available for the given symbol.
         YFinance returns option chain data as tuple of expiration dates, formatted as "YYYY-MM-DD".

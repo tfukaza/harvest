@@ -89,7 +89,7 @@ class PolygonBroker(Broker):
         return self._get_data_from_polygon(symbol, val, unit, start, end)
 
     @Broker._exception_handler
-    def fetch_chain_info(self, symbol: str) -> Dict[str, Any]:
+    def fetch_chain(self, symbol: str) -> Dict[str, Any]:
         key = self.config["polygon_api_key"]
         request = f"https://api.polygon.io/v3/reference/options/contracts?underlying_ticker={symbol}&apiKey={key}"
         response = self._handle_request_response(request)
@@ -268,7 +268,7 @@ class PolygonBroker(Broker):
         if is_crypto(symbol):
             temp_symbol = "X:" + temp_symbol[1:] + "USD"
 
-        request = f"https://api.polygon.io/v2/aggs/ticker/{ temp_symbol }/range/{ multiplier }/{ timespan }/{ start_str }/{ end_str }?adjusted=true&sort=asc&apiKey={ key }"
+        request = f"https://api.polygon.io/v2/aggs/ticker/{temp_symbol}/range/{multiplier}/{timespan}/{start_str}/{end_str}?adjusted=true&sort=asc&apiKey={key}"
         response = self._handle_request_response(request)
 
         if response is None:

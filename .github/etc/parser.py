@@ -52,7 +52,6 @@ b_func = [
 def generate_json(class_name, functions):
     data = []
     for func in functions:
-
         doc = parse(func.__doc__)
 
         arg_names = ["self"]

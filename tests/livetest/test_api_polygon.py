@@ -78,7 +78,7 @@ class TestPolygonStreamer(unittest.TestCase):
     def test_fetch_option(self):
         streamer = PolygonBroker(path=secret_path, is_basic_account=True)
 
-        results = streamer.fetch_chain_info("AAPL")
+        results = streamer.fetch_chain("AAPL")
         self.assertTrue("exp_dates" in results)
         self.assertTrue(len(results["exp_dates"]) > 0)
 

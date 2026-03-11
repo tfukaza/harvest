@@ -1,6 +1,58 @@
 [build-system]
 requires = [
-    "setuptools>=42",
+    "setuptools>=68",
     "wheel"
 ]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "harvest_python"
+version = "0.4.0"
+description = "Simple and intuitive python framework for algorithmic trading."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [
+    { name = "Harvest Team" }
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "pandas>=2.0.0",
+    "finta>=1.0",
+    "pyyaml>=5.0",
+    "tqdm>=4.0.0",
+    "tzlocal>=5.0",
+    "tzdata>=2020.1",
+    "rich>=13.0.0",
+    "SQLAlchemy>=2.0.0",
+    "requests",
+]
+
+[project.urls]
+Homepage = "https://github.com/tfukaza/harvest/"
+
+[project.optional-dependencies]
+alpaca = ["alpaca-trade-api"]
+robinhood = ["pyotp", "robin_stocks"]
+webull = ["webull"]
+kraken = ["krakenex"]
+yahoo = ["yfinance>=0.2.38"]
+server = ["flask", "flask-login", "flask-cors"]
+dev = ["coverage"]
+
+[project.scripts]
+harvest = "harvest.cli:main"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["harvest", "harvest.*"]
+
+[tool.coverage.run]
+source = ["harvest/"]

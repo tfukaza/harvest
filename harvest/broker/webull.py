@@ -162,7 +162,7 @@ class WebullBroker(Broker):
         return df
 
     @Broker._exception_handler
-    def fetch_chain_info(self, symbol: str):
+    def fetch_chain(self, symbol: str):
         ret = self.api.get_options_expiration_dates(symbol)
         return {
             "id": "n/a",

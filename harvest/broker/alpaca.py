@@ -123,7 +123,7 @@ class AlpacaBroker(StreamBroker):
         return self._get_data_from_alpaca(symbol, interval, start, end)
 
     @Broker._exception_handler
-    def fetch_chain_info(self, symbol: str) -> None:
+    def fetch_chain(self, symbol: str) -> None:
         raise NotImplementedError("Alpaca does not support options.")
 
     @Broker._exception_handler

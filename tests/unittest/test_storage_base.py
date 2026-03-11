@@ -35,7 +35,7 @@ import sys
 import os
 
 # Add the harvest directory to the Python path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 import datetime as dt
 import pytest
@@ -57,7 +57,7 @@ from harvest.definitions import (
     OrderSide,
     OrderEvent,
     RuntimeData,
-    TickerFrame,
+    TickerCandleList,
     TimeDelta,
     TimeSpan,
     Transaction,
@@ -108,7 +108,7 @@ class TestLocalAlgorithmStorage:
 
     def test_init_with_file_database(self):
         """Test initialization with file-based database."""
-        with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp:
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
             db_path = f"sqlite:///{tmp.name}"
 
         try:
@@ -214,8 +214,24 @@ class TestLocalAlgorithmStorage:
         base_time = self.test_timestamp
         transactions = [
             Transaction(base_time, "AAPL", OrderSide.BUY, 100.0, 150.0, OrderEvent.FILL, self.algorithm_name),
-            Transaction(base_time + dt.timedelta(minutes=5), "AAPL", OrderSide.SELL, 50.0, 155.0, OrderEvent.FILL, self.algorithm_name),
-            Transaction(base_time + dt.timedelta(minutes=10), "AAPL", OrderSide.BUY, 25.0, 152.0, OrderEvent.FILL, self.algorithm_name),
+            Transaction(
+                base_time + dt.timedelta(minutes=5),
+                "AAPL",
+                OrderSide.SELL,
+                50.0,
+                155.0,
+                OrderEvent.FILL,
+                self.algorithm_name,
+            ),
+            Transaction(
+                base_time + dt.timedelta(minutes=10),
+                "AAPL",
+                OrderSide.BUY,
+                25.0,
+                152.0,
+                OrderEvent.FILL,
+                self.algorithm_name,
+            ),
         ]
 
         for transaction in transactions:
@@ -230,9 +246,7 @@ class TestLocalAlgorithmStorage:
 
         # Test filtering by time range
         time_filtered = self.storage.get_transaction_history(
-            "AAPL",
-            start=base_time + dt.timedelta(minutes=3),
-            end=base_time + dt.timedelta(minutes=7)
+            "AAPL", start=base_time + dt.timedelta(minutes=3), end=base_time + dt.timedelta(minutes=7)
         )
         assert len(time_filtered.df) == 1
 
@@ -293,11 +307,11 @@ class TestLocalAlgorithmStorage:
         # Insert performance data at different times
         for i in range(5):
             self.storage.insert_algorithm_performance(
-                timestamp=base_time + dt.timedelta(minutes=i*5),
+                timestamp=base_time + dt.timedelta(minutes=i * 5),
                 interval="5min_1day",
-                equity=10000.0 + i*100,
+                equity=10000.0 + i * 100,
                 return_percentage=i,
-                return_absolute=i*10,
+                return_absolute=i * 10,
             )
 
         # Test getting all data
@@ -306,9 +320,7 @@ class TestLocalAlgorithmStorage:
 
         # Test time-based filtering
         filtered_performance = self.storage.get_algorithm_performance_history(
-            "5min_1day",
-            start=base_time + dt.timedelta(minutes=10),
-            end=base_time + dt.timedelta(minutes=15)
+            "5min_1day", start=base_time + dt.timedelta(minutes=10), end=base_time + dt.timedelta(minutes=15)
         )
         assert len(filtered_performance) == 2
 
@@ -356,11 +368,11 @@ class TestLocalAlgorithmStorage:
         base_time = self.test_timestamp
         for i in range(3):
             self.storage.insert_algorithm_performance(
-                timestamp=base_time + dt.timedelta(minutes=i*5),
+                timestamp=base_time + dt.timedelta(minutes=i * 5),
                 interval="5min_1day",
-                equity=10000.0 + i*100,
+                equity=10000.0 + i * 100,
                 return_percentage=i,
-                return_absolute=i*10,
+                return_absolute=i * 10,
             )
 
         # Get latest performance
@@ -472,18 +484,20 @@ class TestCentralStorage:
     def test_insert_price_history(self):
         """Test inserting price history data."""
         # Create test price data
-        df = pl.DataFrame({
-            "timestamp": [self.test_timestamp, self.test_timestamp + dt.timedelta(minutes=1)],
-            "symbol": ["AAPL", "AAPL"],
-            "interval": ["MIN_1", "MIN_1"],  # Use proper interval format
-            "open": [150.0, 151.0],
-            "high": [152.0, 153.0],
-            "low": [149.0, 150.0],
-            "close": [151.0, 152.0],
-            "volume": [1000.0, 1100.0],
-        })
+        df = pl.DataFrame(
+            {
+                "timestamp": [self.test_timestamp, self.test_timestamp + dt.timedelta(minutes=1)],
+                "symbol": ["AAPL", "AAPL"],
+                "interval": ["MIN_1", "MIN_1"],  # Use proper interval format
+                "open": [150.0, 151.0],
+                "high": [152.0, 153.0],
+                "low": [149.0, 150.0],
+                "close": [151.0, 152.0],
+                "volume": [1000.0, 1100.0],
+            }
+        )
 
-        ticker_frame = TickerFrame(df)
+        ticker_frame = TickerCandleList(df)
         self.storage.insert_price_history(ticker_frame)
 
         # Verify price data was stored
@@ -499,32 +513,36 @@ class TestCentralStorage:
     def test_insert_price_history_upsert(self):
         """Test that duplicate price data gets updated (UPSERT behavior)."""
         # Insert initial price data
-        df1 = pl.DataFrame({
-            "timestamp": [self.test_timestamp],
-            "symbol": ["AAPL"],
-            "interval": ["MIN_1"],
-            "open": [150.0],
-            "high": [152.0],
-            "low": [149.0],
-            "close": [151.0],
-            "volume": [1000.0],
-        })
+        df1 = pl.DataFrame(
+            {
+                "timestamp": [self.test_timestamp],
+                "symbol": ["AAPL"],
+                "interval": ["MIN_1"],
+                "open": [150.0],
+                "high": [152.0],
+                "low": [149.0],
+                "close": [151.0],
+                "volume": [1000.0],
+            }
+        )
 
-        self.storage.insert_price_history(TickerFrame(df1))
+        self.storage.insert_price_history(TickerCandleList(df1))
 
         # Insert updated data for same timestamp
-        df2 = pl.DataFrame({
-            "timestamp": [self.test_timestamp],
-            "symbol": ["AAPL"],
-            "interval": ["MIN_1"],
-            "open": [150.0],
-            "high": [155.0],  # Updated high
-            "low": [149.0],
-            "close": [154.0],  # Updated close
-            "volume": [1200.0],  # Updated volume
-        })
+        df2 = pl.DataFrame(
+            {
+                "timestamp": [self.test_timestamp],
+                "symbol": ["AAPL"],
+                "interval": ["MIN_1"],
+                "open": [150.0],
+                "high": [155.0],  # Updated high
+                "low": [149.0],
+                "close": [154.0],  # Updated close
+                "volume": [1200.0],  # Updated volume
+            }
+        )
 
-        self.storage.insert_price_history(TickerFrame(df2))
+        self.storage.insert_price_history(TickerCandleList(df2))
 
         # Verify only one record exists with updated values
         history = self.storage.get_price_history("AAPL", Interval.MIN_1)
@@ -539,18 +557,20 @@ class TestCentralStorage:
         """Test getting price history with various filters."""
         # Insert test price data
         base_time = self.test_timestamp
-        df = pl.DataFrame({
-            "timestamp": [base_time + dt.timedelta(minutes=i) for i in range(5)],
-            "symbol": ["AAPL"] * 5,
-            "interval": ["MIN_1"] * 5,
-            "open": [150.0 + i for i in range(5)],
-            "high": [152.0 + i for i in range(5)],
-            "low": [149.0 + i for i in range(5)],
-            "close": [151.0 + i for i in range(5)],
-            "volume": [1000.0 + i*100 for i in range(5)],
-        })
+        df = pl.DataFrame(
+            {
+                "timestamp": [base_time + dt.timedelta(minutes=i) for i in range(5)],
+                "symbol": ["AAPL"] * 5,
+                "interval": ["MIN_1"] * 5,
+                "open": [150.0 + i for i in range(5)],
+                "high": [152.0 + i for i in range(5)],
+                "low": [149.0 + i for i in range(5)],
+                "close": [151.0 + i for i in range(5)],
+                "volume": [1000.0 + i * 100 for i in range(5)],
+            }
+        )
 
-        self.storage.insert_price_history(TickerFrame(df))
+        self.storage.insert_price_history(TickerCandleList(df))
 
         # Test getting all data
         all_history = self.storage.get_price_history("AAPL", Interval.MIN_1)
@@ -558,10 +578,7 @@ class TestCentralStorage:
 
         # Test time-based filtering
         filtered_history = self.storage.get_price_history(
-            "AAPL",
-            Interval.MIN_1,
-            start=base_time + dt.timedelta(minutes=2),
-            end=base_time + dt.timedelta(minutes=3)
+            "AAPL", Interval.MIN_1, start=base_time + dt.timedelta(minutes=2), end=base_time + dt.timedelta(minutes=3)
         )
         assert len(filtered_history.df) == 2
 
@@ -621,11 +638,11 @@ class TestCentralStorage:
         # Insert performance data at different times
         for i in range(5):
             self.storage.insert_account_performance(
-                timestamp=base_time + dt.timedelta(minutes=i*5),
+                timestamp=base_time + dt.timedelta(minutes=i * 5),
                 interval="5min_1day",
-                equity=50000.0 + i*1000,
+                equity=50000.0 + i * 1000,
                 return_percentage=i,
-                return_absolute=i*100,
+                return_absolute=i * 100,
             )
 
         # Test getting all data
@@ -634,9 +651,7 @@ class TestCentralStorage:
 
         # Test time-based filtering
         filtered_performance = self.storage.get_account_performance_history(
-            "5min_1day",
-            start=base_time + dt.timedelta(minutes=10),
-            end=base_time + dt.timedelta(minutes=15)
+            "5min_1day", start=base_time + dt.timedelta(minutes=10), end=base_time + dt.timedelta(minutes=15)
         )
         assert len(filtered_performance) == 2
 
@@ -684,11 +699,11 @@ class TestCentralStorage:
         base_time = self.test_timestamp
         for i in range(3):
             self.storage.insert_account_performance(
-                timestamp=base_time + dt.timedelta(minutes=i*5),
+                timestamp=base_time + dt.timedelta(minutes=i * 5),
                 interval="5min_1day",
-                equity=50000.0 + i*1000,
+                equity=50000.0 + i * 1000,
                 return_percentage=i,
-                return_absolute=i*100,
+                return_absolute=i * 100,
             )
 
         # Get latest performance
@@ -708,10 +723,7 @@ class TestCentralStorage:
         """Test getting available performance intervals."""
         intervals = self.storage.get_available_performance_intervals()
 
-        expected_intervals = [
-            "5min_1day", "1hour_1week", "1day_1month",
-            "1day_3months", "1day_1year", "variable_all"
-        ]
+        expected_intervals = ["5min_1day", "1hour_1week", "1day_1month", "1day_3months", "1day_1year", "variable_all"]
 
         for interval in expected_intervals:
             assert interval in intervals
@@ -728,30 +740,34 @@ class TestCentralStorage:
         base_time = self.test_timestamp
 
         # Insert old price data
-        old_df = pl.DataFrame({
-            "timestamp": [base_time],
-            "symbol": ["AAPL"],
-            "interval": ["MIN_1"],
-            "open": [150.0],
-            "high": [152.0],
-            "low": [149.0],
-            "close": [151.0],
-            "volume": [1000.0],
-        })
-        short_storage.insert_price_history(TickerFrame(old_df))
+        old_df = pl.DataFrame(
+            {
+                "timestamp": [base_time],
+                "symbol": ["AAPL"],
+                "interval": ["MIN_1"],
+                "open": [150.0],
+                "high": [152.0],
+                "low": [149.0],
+                "close": [151.0],
+                "volume": [1000.0],
+            }
+        )
+        short_storage.insert_price_history(TickerCandleList(old_df))
 
         # Insert new price data (should trigger cleanup)
-        new_df = pl.DataFrame({
-            "timestamp": [base_time + dt.timedelta(minutes=5)],  # 5 minutes later
-            "symbol": ["AAPL"],
-            "interval": ["MIN_1"],
-            "open": [155.0],
-            "high": [157.0],
-            "low": [154.0],
-            "close": [156.0],
-            "volume": [1200.0],
-        })
-        short_storage.insert_price_history(TickerFrame(new_df))
+        new_df = pl.DataFrame(
+            {
+                "timestamp": [base_time + dt.timedelta(minutes=5)],  # 5 minutes later
+                "symbol": ["AAPL"],
+                "interval": ["MIN_1"],
+                "open": [155.0],
+                "high": [157.0],
+                "low": [154.0],
+                "close": [156.0],
+                "volume": [1200.0],
+            }
+        )
+        short_storage.insert_price_history(TickerCandleList(new_df))
 
         # Old price data should be cleaned up
         history = short_storage.get_price_history("AAPL", Interval.MIN_1)
@@ -775,10 +791,10 @@ class TestBackwardCompatibility:
         storage = Storage()
 
         # Test that it has the same methods
-        assert hasattr(storage, 'insert_price_history')
-        assert hasattr(storage, 'get_price_history')
-        assert hasattr(storage, 'insert_account_performance')
-        assert hasattr(storage, 'get_account_performance_history')
+        assert hasattr(storage, "insert_price_history")
+        assert hasattr(storage, "get_price_history")
+        assert hasattr(storage, "insert_account_performance")
+        assert hasattr(storage, "get_account_performance_history")
 
         # Test that it actually works
         test_timestamp = dt.datetime(2024, 1, 1, 12, 0, 0)
@@ -839,17 +855,19 @@ class TestIntegration:
         central_storage = CentralStorage()
 
         # Insert price data (this would typically be done by a data provider)
-        df = pl.DataFrame({
-            "timestamp": [dt.datetime(2024, 1, 1, 12, 0, 0)],
-            "symbol": ["AAPL"],
-            "interval": ["MIN_1"],
-            "open": [150.0],
-            "high": [152.0],
-            "low": [149.0],
-            "close": [151.0],
-            "volume": [1000.0],
-        })
-        central_storage.insert_price_history(TickerFrame(df))
+        df = pl.DataFrame(
+            {
+                "timestamp": [dt.datetime(2024, 1, 1, 12, 0, 0)],
+                "symbol": ["AAPL"],
+                "interval": ["MIN_1"],
+                "open": [150.0],
+                "high": [152.0],
+                "low": [149.0],
+                "close": [151.0],
+                "volume": [1000.0],
+            }
+        )
+        central_storage.insert_price_history(TickerCandleList(df))
 
         # Both algorithms should be able to access the same price data
         price_history = central_storage.get_price_history("AAPL", Interval.MIN_1)

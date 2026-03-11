@@ -101,9 +101,7 @@ def pandas_timestamp_to_local(df: pl.DataFrame, timezone: ZoneInfo) -> pl.DataFr
     """
     Converts the timestamp column of a polars DataFrame to a timezone naive DateTime object in local time.
     """
-    return df.with_columns(
-        pl.col("timestamp").dt.convert_time_zone(str(timezone)).dt.replace_time_zone(None)
-    )
+    return df.with_columns(pl.col("timestamp").dt.convert_time_zone(str(timezone)).dt.replace_time_zone(None))
 
 
 def pandas_datetime_to_utc(df: pl.DataFrame, timezone: ZoneInfo) -> pl.DataFrame:
@@ -111,9 +109,7 @@ def pandas_datetime_to_utc(df: pl.DataFrame, timezone: ZoneInfo) -> pl.DataFrame
     Converts timezone naive datetime column of polars dataframes to a timezone aware datetime column
     adjusted to UTC timezone.
     """
-    return df.with_columns(
-        pl.col("timestamp").dt.replace_time_zone(str(timezone)).dt.convert_time_zone("UTC")
-    )
+    return df.with_columns(pl.col("timestamp").dt.replace_time_zone(str(timezone)).dt.convert_time_zone("UTC"))
 
 
 def datetime_utc_to_local(date_time: dt.datetime, timezone: ZoneInfo) -> dt.datetime:
