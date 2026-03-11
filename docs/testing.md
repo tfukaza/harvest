@@ -42,6 +42,18 @@ Live tests are higher risk and may require credentials or external service avail
 - Prefer root-cause fixes over compatibility shims.
 - Be explicit about whether the change affects legacy runtime, orchestrator, or both.
 
+## TDD Expectations For Phase 1 Architecture Work
+
+- Write or update focused unit tests before implementing new Phase 1 architecture code.
+- Keep Phase 1 tests centered on interfaces, typed contracts, and component boundaries.
+- Treat `Agent` as the self-contained AI loop abstraction. It should own its own reasoning state and tool-use decisions.
+- Treat `Runtime` as the sandbox and integration boundary. It should own event-bus integration, resource binding, tool exposure, lifecycle management, and framework mediation for one or more hosted agents.
+- Do not couple `Agent` tests directly to event bus wiring, service discovery, or resource capability advertisement.
+- Do not over-specify implementation details for autonomous multi-agent collaboration in Phase 1.
+- Reserve detailed inter-agent messaging, group chat behavior, multi-agent routing semantics, and deeper runtime coordination behavior for Phase 2.
+
+For Phase 1, the goal is to lock down the architectural seams so the later autonomous multi-agent system can be implemented on top of stable contracts.
+
 ## Known Gaps
 
 - Test coverage is uneven across legacy and newer architecture.

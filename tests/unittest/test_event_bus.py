@@ -10,6 +10,7 @@ from unittest.mock import Mock
 from harvest.events import EventBus, EventTypes
 from harvest.events.events import (
     PriceUpdateEvent,
+    ResourceUpdateEvent,
     OrderPlacedEvent,
     LogEvent,
     HealthStatus,
@@ -18,6 +19,7 @@ from harvest.events.events import (
     DataType,
 )
 from harvest.definitions import OrderSide
+from harvest.enum import Interval
 
 
 class TestEventBus:
@@ -121,7 +123,7 @@ class TestEventBus:
         assert len(received_events) == 1
         assert received_events[0]["symbol"] == "AAPL"
 
-    async def test_async_publish(self):
+    def test_async_publish(self):
         """Test asynchronous event publishing."""
         event_bus = EventBus()
         received_events = []
@@ -134,7 +136,7 @@ class TestEventBus:
         event_bus.subscribe("async_event", async_handler)
 
         # Publish async
-        await event_bus.publish_async("async_event", {"message": "async"})
+        asyncio.run(event_bus.publish_async("async_event", {"message": "async"}))
 
         # Verify
         assert len(received_events) == 1
@@ -161,6 +163,7 @@ class TestEventBus:
         """Test EventTypes enum functionality."""
         # Test that EventTypes values are strings
         assert EventTypes.PRICE_UPDATE == "price_update"
+        assert EventTypes.RESOURCE_UPDATE == "resource_update"
         assert EventTypes.ORDER_PLACED == "order_placed"
         assert EventTypes.LOG == "log"
 
@@ -175,11 +178,31 @@ class TestEvents:
 
     def test_price_update_event(self):
         """Test PriceUpdateEvent creation."""
-        event = PriceUpdateEvent(symbol="AAPL", price_data=Mock(), timestamp=dt.datetime.now())
+        event = PriceUpdateEvent(
+            symbol="AAPL",
+            price_data=Mock(),
+            timestamp=dt.datetime.now(dt.UTC),
+            interval=Interval.MIN_1,
+            broker_id="mock-broker",
+            exchange="TEST",
+        )
 
         assert event.symbol == "AAPL"
         assert event.price_data is not None
         assert isinstance(event.timestamp, dt.datetime)
+
+    def test_resource_update_event(self):
+        """Test ResourceUpdateEvent creation."""
+        event = ResourceUpdateEvent(
+            resource_id="market_data",
+            payload={"symbol": "AAPL"},
+            timestamp=dt.datetime.now(dt.UTC),
+            capability="market_data_distribution",
+        )
+
+        assert event.resource_id == "market_data"
+        assert event.payload["symbol"] == "AAPL"
+        assert event.capability == "market_data_distribution"
 
     def test_order_placed_event(self):
         """Test OrderPlacedEvent creation."""

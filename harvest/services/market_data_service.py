@@ -2,8 +2,9 @@ import datetime as dt
 from typing import TYPE_CHECKING
 
 from .service_interface import Service
+from ..resource import Resource
 from ..events.event_bus import EventBus
-from ..events.events import PriceUpdateEvent
+from ..events.events import EventTypes, ResourceUpdateEvent
 from ..definitions import TickerCandleList, ChainInfo, ChainData, OptionData
 from ..enum import Interval
 
@@ -11,7 +12,7 @@ if TYPE_CHECKING:
     from .central_storage_service import CentralStorageService
 
 
-class MarketDataService(Service):
+class MarketDataService(Service, Resource):
     """
     Service for managing market data feeds and distribution.
     Integrates with broker instances to fetch real-time and historical data.
@@ -25,6 +26,11 @@ class MarketDataService(Service):
         self.subscribers = set()
         self._active_feeds = {}
         self._is_running = False
+
+    @property
+    def resource_id(self) -> str:
+        """Return the stable resource identifier for market data."""
+        return self.service_name
 
     async def start(self) -> None:
         """Start the market data service"""
@@ -114,9 +120,16 @@ class MarketDataService(Service):
 
         # Publish event
         if self.event_bus:
-            # Create event data as dict for now
-            event_data = {"symbol": symbol, "price_data": price_data, "timestamp": dt.datetime.utcnow()}
-            self.event_bus.publish("price_update", event_data)
+            timestamp = dt.datetime.now(dt.UTC)
+            event_data = {"symbol": symbol, "price_data": price_data, "timestamp": timestamp}
+            resource_event = ResourceUpdateEvent(
+                resource_id=self.resource_id,
+                payload=event_data,
+                timestamp=timestamp,
+                capability="market_data_distribution",
+            )
+            self.event_bus.publish(EventTypes.PRICE_UPDATE, event_data)
+            self.event_bus.publish(EventTypes.RESOURCE_UPDATE, resource_event.__dict__)
 
     async def fetch_chain_info(self, symbol: str) -> ChainInfo:
         """

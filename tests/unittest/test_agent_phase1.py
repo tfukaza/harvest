@@ -1,0 +1,40 @@
+"""Phase 1 contract tests for the Agent abstraction."""
+
+from __future__ import annotations
+
+import inspect
+from abc import ABC
+
+
+def test_agent_contract_exists() -> None:
+    """Phase 1 should introduce an Agent contract."""
+    from harvest.agent import Agent
+
+    assert issubclass(Agent, ABC)
+
+
+def test_agent_contract_is_framework_agnostic() -> None:
+    """Agent should not expose framework plumbing on its public contract."""
+    from harvest.agent import Agent
+
+    assert not hasattr(Agent, "event_bus")
+    assert not hasattr(Agent, "service_registry")
+    assert not hasattr(Agent, "resource_registry")
+
+
+def test_agent_contract_exposes_loop_facing_methods() -> None:
+    """Agent should define AI-loop-facing methods rather than framework wiring methods."""
+    from harvest.agent import Agent
+
+    assert hasattr(Agent, "step")
+    assert hasattr(Agent, "reset")
+    step_signature = inspect.signature(Agent.step)
+    assert "runtime" not in step_signature.parameters
+    assert "event_bus" not in step_signature.parameters
+
+
+def test_agent_contract_tracks_internal_history() -> None:
+    """Agent should expose reasoning history without leaking framework concerns."""
+    from harvest.agent import Agent
+
+    assert hasattr(Agent, "get_reasoning_history")

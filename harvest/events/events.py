@@ -1,6 +1,7 @@
 import datetime as dt
 from dataclasses import dataclass
 from enum import StrEnum
+from typing import Any
 
 from ..definitions import (
     Account,
@@ -51,6 +52,16 @@ class DataType(StrEnum):
     TRADE = "trade"
     ORDERBOOK = "orderbook"
     NEWS = "news"
+
+
+class LifecycleState(StrEnum):
+    """Lifecycle state for runtime and agent events."""
+
+    STARTING = "starting"
+    RUNNING = "running"
+    STOPPING = "stopping"
+    STOPPED = "stopped"
+    FAILED = "failed"
 
 
 @dataclass
@@ -165,6 +176,59 @@ class MarketDataEvent:
 
 
 @dataclass
+class ResourceUpdateEvent:
+    """Event fired when a runtime resource produces an update."""
+
+    resource_id: str
+    payload: dict[str, Any]
+    timestamp: dt.datetime
+    capability: str | None = None
+
+
+@dataclass
+class AgentLifecycleEvent:
+    """Event fired when an agent lifecycle state changes."""
+
+    agent_id: str
+    state: str
+    timestamp: dt.datetime
+    metadata: dict[str, Any] | None = None
+
+
+@dataclass
+class RuntimeLifecycleEvent:
+    """Event fired when a runtime lifecycle state changes."""
+
+    runtime_id: str
+    state: str
+    timestamp: dt.datetime
+    metadata: dict[str, Any] | None = None
+
+
+@dataclass
+class ToolCallEvent:
+    """Event fired when a runtime invokes a tool on behalf of an agent."""
+
+    agent_id: str
+    tool_name: str
+    arguments: dict[str, Any]
+    timestamp: dt.datetime
+    runtime_id: str | None = None
+
+
+@dataclass
+class ToolResultEvent:
+    """Event fired when a tool invocation completes."""
+
+    agent_id: str
+    tool_name: str
+    result: Any
+    timestamp: dt.datetime
+    runtime_id: str | None = None
+    error: str | None = None
+
+
+@dataclass
 class ErrorEvent:
     """Event fired when an error occurs in the system."""
 
@@ -213,3 +277,8 @@ class EventTypes(StrEnum):
     ERROR = "error"
     SERVICE_HEALTH = "service_health"
     LOG = "log"
+    RESOURCE_UPDATE = "resource_update"
+    AGENT_LIFECYCLE = "agent_lifecycle"
+    RUNTIME_LIFECYCLE = "runtime_lifecycle"
+    TOOL_CALL = "tool_call"
+    TOOL_RESULT = "tool_result"

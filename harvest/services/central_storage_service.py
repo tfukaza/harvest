@@ -13,7 +13,7 @@ from harvest.services.service_interface import Service
 from harvest.storage._base import CentralStorage
 from harvest.definitions import TickerCandleList
 from harvest.enum import Interval
-from harvest.events.events import PriceUpdateEvent
+from harvest.events.events import EventTypes
 
 
 class CentralStorageService(Service):
@@ -182,10 +182,10 @@ class CentralStorageService(Service):
             symbols = data.df["symbol"].unique()
             if len(symbols) > 0:
                 symbol = symbols[0]
-
-                price_event = PriceUpdateEvent(symbol=symbol, price_data=data, timestamp=dt.datetime.utcnow())
-
-                self.event_bus.publish("price_update", price_event.__dict__)
+                self.event_bus.publish(
+                    EventTypes.PRICE_UPDATE,
+                    {"symbol": symbol, "price_data": data, "timestamp": dt.datetime.now(dt.UTC)},
+                )
 
     def get_account_performance_history(
         self,

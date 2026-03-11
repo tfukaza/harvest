@@ -9,7 +9,7 @@ import datetime as dt
 import os
 import tempfile
 import shutil
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import pytest
 import polars as pl
@@ -178,24 +178,15 @@ def test_central_storage_service_event_publishing(event_bus, sample_price_data):
 
     event_bus.subscribe("price_update", event_listener)
 
-    # Mock the PriceUpdateEvent to avoid the missing parameter issue
-    with patch("harvest.services.central_storage_service.PriceUpdateEvent") as mock_event:
-        mock_event_instance = {
-            "symbol": "AAPL",
-            "price_data": sample_price_data,
-            "timestamp": dt.datetime.utcnow(),
-        }
-        mock_event.return_value.__dict__ = mock_event_instance
+    # Store price data (should trigger event)
+    service.store_price_data(sample_price_data)
 
-        # Store price data (should trigger event)
-        service.store_price_data(sample_price_data)
-
-        # Verify event was published
-        assert len(events_received) == 1
-        event_data = events_received[0]
-        assert isinstance(event_data, dict)
-        assert event_data["symbol"] == "AAPL"
-        assert event_data["price_data"] == sample_price_data
+    # Verify event was published
+    assert len(events_received) == 1
+    event_data = events_received[0]
+    assert isinstance(event_data, dict)
+    assert event_data["symbol"] == "AAPL"
+    assert event_data["price_data"] == sample_price_data
 
 
 def test_central_storage_service_no_event_bus(sample_price_data):
@@ -270,16 +261,7 @@ def test_integrated_storage_workflow(service_registry, event_bus, sample_transac
     # Simulate algorithm activity
     algo_storage.publish_transaction_event(sample_transaction)
 
-    # Mock the PriceUpdateEvent for the central service
-    with patch("harvest.services.central_storage_service.PriceUpdateEvent") as mock_event:
-        mock_event_dict = {
-            "symbol": "AAPL",
-            "price_data": sample_price_data,
-            "timestamp": dt.datetime.utcnow(),
-        }
-        mock_event.return_value.__dict__ = mock_event_dict
-
-        central_service.store_price_data(sample_price_data)
+    central_service.store_price_data(sample_price_data)
 
     # Verify events were published
     assert len(transaction_events) == 1

@@ -23,6 +23,7 @@ from harvest.services import (
 from harvest.util.helper import debugger
 from harvest.events.event_bus import EventBus
 from harvest.definitions import RuntimeData
+from harvest.resource import Resource
 
 
 class Orchestrator:
@@ -61,6 +62,7 @@ class Orchestrator:
         # Service-oriented architecture components
         self.service_registry = ServiceRegistry()
         self.event_bus = EventBus()
+        self.resources: dict[str, Resource] = {}
 
         # Handle broker configuration
         if isinstance(broker, dict):
@@ -106,6 +108,7 @@ class Orchestrator:
         self.market_data_service.set_central_storage(self.central_storage_service)
         self.market_data_service.set_event_bus(self.event_bus)
         self.broker_service.set_event_bus(self.event_bus)
+        self.register_resource(self.market_data_service)
 
         # Set shared event bus for algorithm service
         self.algorithm_service.event_bus = self.event_bus
@@ -120,6 +123,18 @@ class Orchestrator:
 
             # Add algorithm to the algorithm service
             self.algorithm_service.add_algorithm(algorithm)
+
+    def register_resource(self, resource: Resource) -> None:
+        """Register a resource exposed by the orchestrator-managed infrastructure."""
+        self.resources[resource.resource_id] = resource
+
+    def get_resource(self, resource_id: str) -> Resource | None:
+        """Retrieve a registered resource by identifier."""
+        return self.resources.get(resource_id)
+
+    def list_resources(self) -> list[str]:
+        """List resource identifiers exposed by the orchestrator."""
+        return list(self.resources.keys())
 
     async def start(self) -> None:
         """Start the orchestrator and all services"""
