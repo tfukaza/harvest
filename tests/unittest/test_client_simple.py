@@ -4,7 +4,6 @@ from harvest.enum import DataBrokerType, TradeBrokerType
 
 
 class TestClient(unittest.TestCase):
-
     def test_basic_import(self):
         """Test that basic imports work"""
         self.assertTrue(True)
@@ -19,5 +18,5 @@ class TestClient(unittest.TestCase):
             self.fail(f"Failed to create trader and api: {e}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

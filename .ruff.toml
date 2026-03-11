@@ -35,11 +35,10 @@ lint.select = [
   "Q000",
   "S102",
   "S307",
-  "TRY302",
+  "TRY203",
   "UP025",
   "W605",
   # pylint errors equivalent in ruff (not marked as PLE)
-  "E999",
   "F501",
   "F502",
   "F506",
@@ -156,4 +155,4 @@ exclude = [
 
 line-length = 120
 
-target-version = "py310"
+target-version = "py312"
