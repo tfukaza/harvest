@@ -16,6 +16,7 @@ Start small. Read only the document that matches the task.
 - Architecture and system boundaries: `architecture.md`
 - Local development workflow and conventions: `development.md`
 - Testing strategy and validation commands: `testing.md`
+- Phase 1 deconstruction and runtime foundations plan: `phase-1.md`
 
 ## How To Use This Directory
 

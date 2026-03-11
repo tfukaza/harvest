@@ -16,6 +16,7 @@ The codebase is in transition:
 ## If You Are Working On...
 
 - Runtime orchestration or service wiring: `docs/architecture.md`
+- Phase 1 deconstruction and agent-runtime groundwork: `docs/phase-1.md`
 - Setup, linting, formatting, or local workflows: `docs/development.md`
 - Tests, validation, and safe change boundaries: `docs/testing.md`
 

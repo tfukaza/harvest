@@ -35,4 +35,5 @@ save
 .vscode
 .ruff.toml
 TODO.md
+docs/phase-*.md
 
