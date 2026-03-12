@@ -6,6 +6,18 @@
 - `tests/livetest/`: live broker and integration tests that require real external systems
 - `pytest.ini`: repository-level pytest configuration
 
+The current unit-test layout is still mostly flat. Phase 3 should reorganize `tests/unittest/` into subdirectories that reflect the surviving architecture rather than the legacy runtime model.
+
+The target layout for the refactor is:
+
+- `tests/unittest/contracts/` for high-level architecture contracts such as `Agent`, `Runtime`, and `Resource`
+- `tests/unittest/scaffolding/` for placeholder `agent_runner` schemas and sanity checks
+- `tests/unittest/events/` for event bus and event payload coverage
+- `tests/unittest/services/` for service-oriented runtime tests
+- `tests/unittest/storage/` for storage tests
+- `tests/unittest/broker/` for broker tests
+- `tests/unittest/cli/` only for any CLI surface that still survives after legacy deletion
+
 ## Default Validation Flow
 
 For most backend changes, run:
@@ -42,6 +54,14 @@ Live tests are higher risk and may require credentials or external service avail
 - Prefer root-cause fixes over compatibility shims.
 - Be explicit about whether the change affects legacy runtime, orchestrator, or both.
 
+### Test-suite reorganization
+
+- Remove tests that only preserve deleted legacy behavior.
+- Prefer moving tests into architecture-aligned subdirectories instead of keeping a flat namespace.
+- Rewrite surviving tests so they validate the current architecture rather than historical entrypoints.
+- Keep scaffolding tests intentionally light: import checks, contract checks, schema checks, and basic shape validation are usually enough.
+- Do not write deep behavior tests for components that are still placeholders by design.
+
 ## TDD Expectations For Phase 1 Architecture Work
 
 - Write or update focused unit tests before implementing new Phase 1 architecture code.
@@ -57,4 +77,6 @@ For Phase 1, the goal is to lock down the architectural seams so the later auton
 ## Known Gaps
 
 - Test coverage is uneven across legacy and newer architecture.
+- The unit-test suite is still flat and needs architectural grouping.
+- Some tests still target the legacy trader path and should be removed or rewritten during Phase 3.
 - Treat missing tests as a signal to add focused coverage, not as a reason to broaden the change scope unnecessarily.

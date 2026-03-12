@@ -14,9 +14,13 @@ Start small. Read only the document that matches the task.
 ## Engineering Docs
 
 - Architecture and system boundaries: `architecture.md`
+- Agent behavior and model-layer boundary: `agent.md`
+- Agent runner sandbox design: `agent-runner.md`
 - Local development workflow and conventions: `development.md`
 - Testing strategy and validation commands: `testing.md`
 - Phase 1 deconstruction and runtime foundations plan: `phase-1.md`
+- Phase 2 agent and runner scaffolding plan: `phase-2.md`
+- Phase 3 legacy runtime removal plan: `phase-3.md`
 
 ## How To Use This Directory
 
