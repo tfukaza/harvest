@@ -1,4 +1,4 @@
-"""Phase 1 contract tests for the Runtime abstraction."""
+"""Contract tests for the Runtime abstraction."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from abc import ABC
 
 
 def test_runtime_contract_exists() -> None:
-    """Phase 1 should introduce a Runtime contract."""
+    """Harvest should expose a Runtime contract."""
     from harvest.runtime import Runtime
 
     assert issubclass(Runtime, ABC)

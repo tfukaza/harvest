@@ -6,7 +6,7 @@
 - `tests/livetest/`: live broker and integration tests that require real external systems
 - `pytest.ini`: repository-level pytest configuration
 
-The current unit-test layout is still mostly flat. Phase 3 should reorganize `tests/unittest/` into subdirectories that reflect the surviving architecture rather than the legacy runtime model.
+The unit-test suite is organized into subdirectories that reflect the surviving architecture rather than the removed legacy runtime model.
 
 The target layout for the refactor is:
 
@@ -23,7 +23,7 @@ The target layout for the refactor is:
 For most backend changes, run:
 
 ```bash
-uv run python -m unittest discover -s tests/unittest
+uv run pytest tests/unittest
 ```
 
 For formatting-only or documentation-only changes, test scope can be narrower, but call that out explicitly in review or changelog notes.
@@ -77,6 +77,5 @@ For Phase 1, the goal is to lock down the architectural seams so the later auton
 ## Known Gaps
 
 - Test coverage is uneven across legacy and newer architecture.
-- The unit-test suite is still flat and needs architectural grouping.
-- Some tests still target the legacy trader path and should be removed or rewritten during Phase 3.
+- Coverage for scaffold-only code is intentionally light and focused on contracts, imports, and basic schema shape.
 - Treat missing tests as a signal to add focused coverage, not as a reason to broaden the change scope unnecessarily.

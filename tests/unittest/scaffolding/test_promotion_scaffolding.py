@@ -1,4 +1,4 @@
-"""Phase 2 scaffolding tests for sandbox promotion policy surfaces."""
+"""Scaffolding tests for sandbox promotion policy surfaces."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from abc import ABC
 
 
 def test_promotion_policy_contract_exists() -> None:
-    """Phase 2 should add a promotion-policy scaffold contract."""
+    """Harvest should expose a promotion-policy scaffold contract."""
     from harvest.agent_runner import PromotionPolicy
 
     assert issubclass(PromotionPolicy, ABC)

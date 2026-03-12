@@ -1,4 +1,4 @@
-"""Phase 2 scaffolding tests for agent-runner persistence surfaces."""
+"""Scaffolding tests for agent-runner persistence surfaces."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from datetime import UTC
 
 
 def test_local_agent_store_contract_exists() -> None:
-    """Phase 2 should add a local persistence contract for runner state."""
+    """Harvest should expose a local persistence contract for runner state."""
     from harvest.agent_runner import LocalAgentStore
 
     assert issubclass(LocalAgentStore, ABC)

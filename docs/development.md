@@ -17,7 +17,7 @@ uv sync --extra dev
 ### Run unit tests
 
 ```bash
-uv run python -m unittest discover -s tests/unittest
+uv run pytest tests/unittest
 ```
 
 ### Format Python
@@ -45,7 +45,7 @@ npm run dev
 - Add docstrings for public and non-trivial code.
 - Prefer enums and dataclasses over magic strings and ad-hoc shapes.
 - Keep changes narrow and avoid unrelated cleanup unless it directly improves the task.
-- Preserve existing user-facing behavior unless the change is intentionally a migration.
+- Preserve existing user-facing behavior unless the change is intentionally a migration or removal as part of the refactor.
 
 ## Logging and Diagnostics
 

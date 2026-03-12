@@ -313,7 +313,7 @@ class YahooBroker(Broker):
 
     def _format_df(self, df: pd.DataFrame, symbol: str) -> pd.DataFrame:
         """
-        Format the DataFrame returned by yfinance to the format expected by the BrokerHub.
+        Format the DataFrame returned by yfinance for Harvest broker processing.
 
         If the Dataframe contains 1 ticker, Yfinance returns with the following columns:
             Open        High         Low       Close   Adj Close     Volume

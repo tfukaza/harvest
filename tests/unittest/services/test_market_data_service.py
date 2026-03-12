@@ -1,4 +1,4 @@
-"""Phase 1 infrastructure tests for MarketDataService as a Resource."""
+"""Sanity tests for MarketDataService at the Resource boundary."""
 
 from __future__ import annotations
 
@@ -31,7 +31,6 @@ def create_sample_price_data() -> TickerCandleList:
 
 
 def test_market_data_service_is_a_resource() -> None:
-    """MarketDataService should participate in the new Resource boundary."""
     service = MarketDataService(Mock())
 
     assert isinstance(service, Resource)
@@ -39,7 +38,6 @@ def test_market_data_service_is_a_resource() -> None:
 
 
 def test_market_data_service_publishes_resource_update() -> None:
-    """MarketDataService should emit both legacy and generalized update events."""
     service = MarketDataService(Mock())
     event_bus = Mock()
     central_storage = Mock()

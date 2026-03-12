@@ -2,12 +2,11 @@
 
 ## Overview
 
-Harvest is a trading framework with two architectural paths that currently coexist:
+Harvest is a trading framework centered on a service-oriented, event-driven runtime.
 
-1. The legacy runtime built around `BrokerHub` in `harvest/trader/trader.py`.
-2. The newer service-oriented runtime built around `Orchestrator` in `harvest/orchestrator.py`.
+The supported executable path is the `Orchestrator` in `harvest/orchestrator.py`.
 
-New work should generally prefer the orchestrator and service path unless the task is specifically about compatibility with the legacy runtime.
+The `Agent Runner` path is present as scaffolding under `harvest/agent_runner/`, but it is not yet a concrete runtime implementation.
 
 ## Core Domains
 
@@ -56,7 +55,6 @@ See also `agent.md` for the agent-local behavior boundary and `agent-runner.md` 
 ### Algorithms
 
 - `harvest/algorithm.py` contains the newer `Algorithm` abstraction.
-- `harvest/algo.py` contains the legacy `BaseAlgo` abstraction that is still used by the CLI flow.
 - Algorithms define deterministic decision logic.
 - Behaviorally, an algorithm is basically a Python function that takes an input event, evaluates it, and either decides to perform a transaction or decides to do nothing.
 - In the intended design, algorithms do not directly orchestrate brokers, storage, or system wiring. They consume inputs from the `Event Bus`, make a decision, and publish order or follow-up events back onto the bus.
@@ -175,8 +173,8 @@ In that flow:
 ### CLI
 
 - The `harvest` console script points to `harvest.cli:main`.
-- `harvest start` scans a directory for `BaseAlgo` subclasses and runs them through the legacy `BrokerHub` flow.
-- This means the default CLI behavior is still tied more closely to legacy APIs than to the newer orchestrator path.
+- The legacy `harvest start` trader flow has been removed as part of the runtime refactor.
+- Until a new orchestrator-first CLI entrypoint lands, prefer direct example execution such as `uv run python examples/orchestrator_example.py`.
 
 ### Examples
 
@@ -185,17 +183,11 @@ In that flow:
 
 ## Current Architectural Reality
 
-The repo is not fully migrated to one runtime model.
+The repository now has one supported runtime direction and one scaffold-only future direction.
 
-- The legacy path is still user-visible via the CLI.
-- The orchestrator path expresses the newer direction and should guide platform evolution.
-- Some service-oriented pieces are present but not yet fully integrated across the whole project.
-
-When making changes, state explicitly which of these you are affecting:
-
-- Legacy `BrokerHub` runtime
-- Service-oriented `Orchestrator` runtime
-- Shared broker/storage/event abstractions used by both
+- The orchestrator path is the current executable architecture.
+- The agent-runner path defines future structure but is not yet implemented as a real runtime.
+- Shared broker, storage, event, and service abstractions remain foundational to both.
 
 ## Stable Invariants
 
@@ -206,7 +198,7 @@ When making changes, state explicitly which of these you are affecting:
 
 ## Known Tensions
 
-- The CLI still reflects older abstractions.
-- The orchestrator path reflects newer architecture but is not the only active path.
+- The orchestrator path is supported, but some documentation and examples may still be catching up with recent runtime removal work.
+- The agent-runner path is intentionally scaffolded, which means some architecture surfaces are present without full behavior behind them.
 
 Treat these tensions as normal project context, not as reasons to rewrite large portions of the codebase during unrelated tasks.

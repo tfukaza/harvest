@@ -1,4 +1,4 @@
-"""Phase 1 contract tests for generalized runtime events."""
+"""Contract tests for generalized runtime events."""
 
 from __future__ import annotations
 
@@ -7,21 +7,18 @@ from dataclasses import is_dataclass
 
 
 def test_resource_update_event_exists() -> None:
-    """Phase 1 should introduce a resource update event."""
     from harvest.events.events import ResourceUpdateEvent
 
     assert is_dataclass(ResourceUpdateEvent)
 
 
 def test_agent_lifecycle_event_exists() -> None:
-    """Phase 1 should introduce an agent lifecycle event."""
     from harvest.events.events import AgentLifecycleEvent
 
     assert is_dataclass(AgentLifecycleEvent)
 
 
 def test_tool_call_events_exist() -> None:
-    """Phase 1 should introduce tool invocation and result events."""
     from harvest.events.events import ToolCallEvent, ToolResultEvent
 
     assert is_dataclass(ToolCallEvent)
@@ -29,14 +26,12 @@ def test_tool_call_events_exist() -> None:
 
 
 def test_runtime_lifecycle_event_exists() -> None:
-    """Phase 1 should introduce a runtime lifecycle event."""
     from harvest.events.events import RuntimeLifecycleEvent
 
     assert is_dataclass(RuntimeLifecycleEvent)
 
 
-def test_event_types_include_phase1_categories() -> None:
-    """Phase 1 event types should cover runtime, agent, resource, and tool boundaries."""
+def test_event_types_include_runtime_categories() -> None:
     from harvest.events.events import EventTypes
 
     assert EventTypes.RESOURCE_UPDATE == "resource_update"
@@ -47,7 +42,6 @@ def test_event_types_include_phase1_categories() -> None:
 
 
 def test_runtime_lifecycle_event_shape() -> None:
-    """Runtime lifecycle event should carry minimal typed lifecycle data."""
     from harvest.events.events import RuntimeLifecycleEvent
 
     event = RuntimeLifecycleEvent(runtime_id="sandbox-1", state="starting", timestamp=dt.datetime.now(dt.UTC))

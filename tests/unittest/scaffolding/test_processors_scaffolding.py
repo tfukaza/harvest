@@ -1,4 +1,4 @@
-"""Phase 2 scaffolding tests for message-processor surfaces."""
+"""Scaffolding tests for message-processor surfaces."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from abc import ABC
 
 
 def test_message_processor_contract_exists() -> None:
-    """Phase 2 should add a dedicated message-processor scaffold contract."""
+    """Harvest should expose a dedicated message-processor scaffold contract."""
     from harvest.agent_runner import MessageProcessor
 
     assert issubclass(MessageProcessor, ABC)

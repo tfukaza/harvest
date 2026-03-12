@@ -1,4 +1,4 @@
-"""Phase 2 scaffolding tests for agent-runner endpoint and message schemas."""
+"""Scaffolding tests for agent-runner endpoint and message schemas."""
 
 from __future__ import annotations
 

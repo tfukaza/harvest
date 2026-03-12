@@ -1,4 +1,4 @@
-"""Phase 1 contract tests for the Resource abstraction."""
+"""Contract tests for the Resource abstraction."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from abc import ABC
 
 
 def test_resource_contract_exists() -> None:
-    """Phase 1 should introduce a Resource contract."""
+    """Harvest should expose a Resource contract."""
     from harvest.resource import Resource
 
     assert issubclass(Resource, ABC)

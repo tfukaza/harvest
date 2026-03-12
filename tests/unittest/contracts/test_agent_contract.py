@@ -1,4 +1,4 @@
-"""Phase 1 contract tests for the Agent abstraction."""
+"""Contract tests for the Agent abstraction."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from abc import ABC
 
 
 def test_agent_contract_exists() -> None:
-    """Phase 1 should introduce an Agent contract."""
+    """Harvest should expose an Agent contract."""
     from harvest.agent import Agent
 
     assert issubclass(Agent, ABC)
@@ -23,7 +23,7 @@ def test_agent_contract_is_framework_agnostic() -> None:
 
 
 def test_agent_contract_exposes_loop_facing_methods() -> None:
-    """Agent should define AI-loop-facing methods rather than framework wiring methods."""
+    """Agent should define loop-facing methods rather than framework wiring methods."""
     from harvest.agent import Agent
 
     assert hasattr(Agent, "step")

@@ -1,4 +1,4 @@
-"""Phase 2 scaffolding tests for the Agent Runner surface."""
+"""Scaffolding tests for the Agent Runner surface."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from abc import ABC
 
 
 def test_agent_runner_contract_exists() -> None:
-    """Phase 2 should add a dedicated scaffold contract for agent runners."""
+    """Harvest should expose a dedicated scaffold contract for agent runners."""
     from harvest.agent_runner import AgentRunner
 
     assert issubclass(AgentRunner, ABC)
@@ -49,7 +49,7 @@ def test_agent_runner_scaffold_has_configuration_and_factory() -> None:
 
 def test_agent_runner_is_exported_from_package_root() -> None:
     """The top-level package should expose the scaffold AgentRunner contract."""
-    from harvest import AgentRunner as ExportedAgentRunner
+    from harvest import AgentRunner as exported_agent_runner
     from harvest.agent_runner import AgentRunner
 
-    assert ExportedAgentRunner is AgentRunner
+    assert exported_agent_runner is AgentRunner

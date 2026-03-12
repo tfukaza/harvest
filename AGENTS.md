@@ -2,9 +2,9 @@
 
 Harvest is a Python framework for algorithmic trading. It provides broker integrations, storage backends, eventing, and algorithm abstractions so users can focus on trading logic rather than infrastructure.
 
-The codebase is in transition:
-- The legacy runtime centers on `BrokerHub` in `harvest/trader/trader.py`.
-- The newer direction is the service-oriented, event-driven `Orchestrator` in `harvest/orchestrator.py`.
+The codebase is in transition toward a single runtime direction:
+- The supported executable path is the service-oriented, event-driven `Orchestrator` in `harvest/orchestrator.py`.
+- The `Agent Runner` path under `harvest/agent_runner/` is scaffolding for later implementation work.
 
 ## Read This First
 
@@ -23,10 +23,9 @@ The codebase is in transition:
 ## Repo Map
 
 - `harvest/algorithm.py`: Modern algorithm abstraction.
-- `harvest/algo.py`: Legacy algorithm API still used by the CLI flow.
 - `harvest/cli.py`: CLI entrypoint exposed as `harvest`.
 - `harvest/orchestrator.py`: Event-driven service orchestrator.
-- `harvest/trader/trader.py`: Legacy `BrokerHub` runtime.
+- `harvest/agent_runner/`: Scaffolding for future agent-runner runtime components.
 - `harvest/broker/`: Broker and market-data integrations.
 - `harvest/storage/`: Local and central storage implementations.
 - `harvest/services/`: Service-oriented building blocks.
@@ -48,14 +47,15 @@ The codebase is in transition:
 
 ## Architectural Guidance
 
-- Prefer extending the newer orchestrator and service architecture for new platform work unless the task is explicitly about the legacy runtime.
-- Preserve CLI and legacy behavior unless the change is intentionally a migration.
+- Prefer extending the orchestrator and service architecture for current runtime work.
+- Treat legacy runtime references as removal targets unless a task explicitly says otherwise.
+- Keep the `Agent Runner` path scaffolded until a later implementation phase.
 - When documenting architecture changes, update the docs in `docs/` as part of the same change.
 
 ## Development Workflow
 
 - Sync dependencies: `uv sync --extra dev`
-- Run unit tests: `uv run python -m unittest discover -s tests/unittest`
+- Run unit tests: `uv run pytest tests/unittest`
 - Format Python: `uv format --preview-features format`
 - Run Black directly if needed: `uv run python -m black .`
 - GUI development: run `npm run dev` from `gui/`
@@ -72,4 +72,4 @@ The codebase is in transition:
 - Update or add tests when behavior changes.
 - Update docs when entrypoints, workflows, or architecture changes.
 - Keep examples and CLI-facing guidance consistent with the current implementation.
-- Call out whether a change targets the legacy runtime, the orchestrator path, or both.
+- Call out whether a change targets the orchestrator path, scaffold-only agent-runner work, or shared infrastructure.
