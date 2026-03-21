@@ -12,7 +12,7 @@ from rich.console import Console
 
 from harvest.algorithm import Algorithm
 from harvest.broker._base import Broker
-from harvest.storage._base import Storage
+from harvest.storage.schema.market import CentralStorage
 from harvest.services import (
     ServiceRegistry,
     MarketDataService,
@@ -37,7 +37,7 @@ class Orchestrator:
     def __init__(
         self,
         broker: Broker | Dict[str, Broker],
-        storage: Storage | Dict[str, Storage],
+        storage: CentralStorage | Dict[str, CentralStorage],
         algorithm_list: List[Algorithm],
         secret_path: str = "./secret.yaml",
         debug: bool = False,

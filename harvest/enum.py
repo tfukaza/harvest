@@ -114,8 +114,6 @@ class BrokerType(EnumList):
 class StorageType(EnumList):
     BASE = "base"
     CSV = "csv"
-    PICKLE = "pickle"
-    DB = "db"
 
 
 class Timestamp:

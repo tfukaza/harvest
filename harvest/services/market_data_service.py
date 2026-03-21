@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 from .service_interface import Service
 from ..resource import Resource
 from ..events.event_bus import EventBus
-from ..events.events import EventTypes, ResourceUpdateEvent
+from ..events.base import PriceUpdated, ResourceUpdated
 from ..definitions import TickerCandleList, ChainInfo, ChainData, OptionData
 from ..enum import Interval
 
@@ -121,15 +121,24 @@ class MarketDataService(Service, Resource):
         # Publish event
         if self.event_bus:
             timestamp = dt.datetime.now(dt.UTC)
-            event_data = {"symbol": symbol, "price_data": price_data, "timestamp": timestamp}
-            resource_event = ResourceUpdateEvent(
-                resource_id=self.resource_id,
-                payload=event_data,
-                timestamp=timestamp,
-                capability="market_data_distribution",
+            price_event = PriceUpdated(
+                symbol=symbol,
+                price_data=price_data,
+                interval="",
+                broker_id="market_data_service",
+                source=self.service_name,
+                timestamp_utc=timestamp,
             )
-            self.event_bus.publish(EventTypes.PRICE_UPDATE, event_data)
-            self.event_bus.publish(EventTypes.RESOURCE_UPDATE, resource_event.__dict__)
+            self.event_bus.dispatch(price_event)
+
+            resource_event = ResourceUpdated(
+                resource_id=self.resource_id,
+                payload={"symbol": symbol, "price_data": price_data, "timestamp": timestamp},
+                capability="market_data_distribution",
+                source=self.service_name,
+                timestamp_utc=timestamp,
+            )
+            self.event_bus.dispatch(resource_event)
 
     async def fetch_chain_info(self, symbol: str) -> ChainInfo:
         """

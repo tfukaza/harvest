@@ -24,6 +24,8 @@ data/
 !dummy_account_copy.yaml
 package-lock.json
 
+.env
+
 .DS_Store
 
 *.log

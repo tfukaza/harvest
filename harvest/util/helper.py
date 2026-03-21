@@ -267,10 +267,6 @@ def str_to_storage_type(name: str) -> StorageType:
         return StorageType.BASE
     elif name == "csv":
         return StorageType.CSV
-    elif name == "pickle":
-        return StorageType.PICKLE
-    elif name == "db":
-        return StorageType.DB
     else:
         raise ValueError(f"Invalid StorageType {name}")
 

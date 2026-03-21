@@ -27,6 +27,20 @@ uv run python examples/orchestrator_example.py
 
 The CLI entrypoint is still present for utility workflows, but the old `harvest start` runtime path has been removed as part of the refactor.
 
+The first Phase 4 proof-of-concept agent is available from the CLI. Add `ANTHROPIC_API_KEY` to a local `.env` file at the repo root, then run:
+
+```bash
+uv run harvest agent
+```
+
+The default model for this CLI slice is `anthropic/claude-sonnet-4-20250514`. If you override it with `--model` or `HARVEST_AGENT_MODEL`, keep it on a Claude 4 model.
+
+For a single prompt instead of an interactive session, use:
+
+```bash
+uv run harvest agent --message "Summarize the current runtime direction."
+```
+
 # Installation
 The only requirement is to have **Python 3.12 or newer**.
 

@@ -38,7 +38,7 @@ from harvest.util.helper import (
     utc_current_time,
 )
 from harvest.events.event_bus import EventBus
-from harvest.events.events import PriceUpdateEvent
+from harvest.events.base import PriceUpdated, AllPricesUpdated, PeriodicTick
 
 
 class Broker:
@@ -113,10 +113,7 @@ class Broker:
 
     def _publish_ticker_candle(self, symbol: str, price_data: TickerCandle, interval: Interval) -> None:
         """
-        Publish a price update event to the event bus.
-
-        Publishes a single ticker update event with format:
-        `price_update:[broker_name]:[interval]:[ticker]`
+        Publish a typed PriceUpdated event to the event bus.
 
         :symbol: The symbol that was updated
         :price_data: The new price data as a TickerCandle
@@ -139,26 +136,20 @@ class Broker:
         )
         ticker_frame = TickerCandleList(df)
 
-        # Create the event with broker and interval information
-        event = PriceUpdateEvent(
+        event = PriceUpdated(
             symbol=symbol,
             price_data=ticker_frame,
-            timestamp=price_data.timestamp,
-            interval=interval,
+            interval=interval.value,
             broker_id=self.__class__.__name__,
             exchange=self.exchange,
+            source=self.__class__.__name__,
+            timestamp_utc=price_data.timestamp,
         )
-
-        # Publish single ticker event if
-        broker_name = self.__class__.__name__
-        event_name = f"price_update:{broker_name}:{interval.value}:{symbol}"
-        self.event_bus.publish(event_name, event.__dict__)
+        self.event_bus.dispatch_sync(event)
 
     def _publish_all_ticker_candle(self, interval: Interval, all_data: dict[str, TickerCandle]) -> None:
         """
-        Publish an event when all tickers for an interval are ready.
-
-        Event format: `price_update:[broker_name]:[interval]:all`
+        Publish an AllPricesUpdated event when all tickers for an interval are ready.
 
         :interval: The interval for which all data is ready
         :all_data: Dictionary mapping symbols to their ticker data
@@ -167,18 +158,8 @@ class Broker:
             return
 
         broker_name = self.__class__.__name__
+        ticker_data: dict[str, TickerCandleList] = {}
 
-        # Create combined event data
-        combined_event = {
-            "interval": interval,
-            "broker_id": broker_name,
-            "exchange": self.exchange,
-            "timestamp": self.stats.utc_timestamp if self.stats else None,
-            "symbols": list(all_data.keys()),
-            "ticker_data": {},
-        }
-
-        # Convert all ticker candles to ticker frames
         for symbol, candle in all_data.items():
             df = pl.DataFrame(
                 {
@@ -191,16 +172,21 @@ class Broker:
                     "volume": [candle.volume],
                 }
             )
-            combined_event["ticker_data"][symbol] = TickerCandleList(df)
+            ticker_data[symbol] = TickerCandleList(df)
 
-        event_name = f"price_update:{broker_name}:{interval.value}:all"
-        self.event_bus.publish(event_name, combined_event)
+        event = AllPricesUpdated(
+            interval=interval.value,
+            broker_id=broker_name,
+            exchange=self.exchange,
+            symbols=list(all_data.keys()),
+            ticker_data=ticker_data,
+            source=broker_name,
+        )
+        self.event_bus.dispatch_sync(event)
 
     def _publish_periodic_event(self, interval: Interval) -> None:
         """
-        Publish a periodic event, useful for chron-like tasks.
-
-        Event format: `price_update:[broker_name]:[interval]`
+        Publish a PeriodicTick event for cron-like tasks.
 
         :interval: The interval for this periodic event
         """
@@ -208,17 +194,13 @@ class Broker:
             return
 
         broker_name = self.__class__.__name__
-
-        periodic_event = {
-            "interval": interval,
-            "broker_id": broker_name,
-            "exchange": self.exchange,
-            "timestamp": self.stats.utc_timestamp if self.stats else None,
-            "event_type": "periodic",
-        }
-
-        event_name = f"price_update:{broker_name}:{interval.value}"
-        self.event_bus.publish(event_name, periodic_event)
+        event = PeriodicTick(
+            interval=interval.value,
+            broker_id=broker_name,
+            exchange=self.exchange,
+            source=broker_name,
+        )
+        self.event_bus.dispatch_sync(event)
 
     @property
     def continue_polling(self) -> bool:

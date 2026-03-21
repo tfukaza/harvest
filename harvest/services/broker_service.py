@@ -3,12 +3,13 @@ from typing import TYPE_CHECKING, Dict, Any
 
 from .service_interface import Service
 from ..events.event_bus import EventBus
+from ..events.base import OrderPlaced, OrderCancelled
 from ..definitions import Order, Account, Position, OrderSide, BrokerCapabilities, AssetType
 from ..enum import Interval
 from ..util.helper import mark_up, mark_down
 
 if TYPE_CHECKING:
-    from ..events.events import OrderPlacedEvent
+    pass
 
 
 class BrokerService(Service):
@@ -129,16 +130,15 @@ class BrokerService(Service):
 
             # Publish order placed event
             if result and self.event_bus:
-                event_data = {
-                    "order_id": result.order_id if hasattr(result, "order_id") else "unknown",
-                    "algorithm_name": "",  # Will be set by algorithm
-                    "symbol": symbol,
-                    "side": side.value,
-                    "quantity": quantity,
-                    "brokerage": brokerage,
-                    "timestamp": dt.datetime.utcnow(),
-                }
-                self.event_bus.publish("order_placed", event_data)
+                event = OrderPlaced(
+                    order_id=result.order_id if hasattr(result, "order_id") else "unknown",
+                    symbol=symbol,
+                    side=side.value,
+                    quantity=quantity,
+                    brokerage=brokerage,
+                    source="BrokerService",
+                )
+                self.event_bus.dispatch(event)
 
             return result
 
@@ -232,8 +232,12 @@ class BrokerService(Service):
             if hasattr(broker, "cancel_order"):
                 result = broker.cancel_order(order_id)
                 if result and self.event_bus:
-                    event_data = {"order_id": order_id, "brokerage": brokerage, "timestamp": dt.datetime.utcnow()}
-                    self.event_bus.publish("order_cancelled", event_data)
+                    event = OrderCancelled(
+                        order_id=order_id,
+                        brokerage=brokerage,
+                        source="BrokerService",
+                    )
+                    self.event_bus.dispatch(event)
                 return result
             else:
                 return False

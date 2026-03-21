@@ -2,49 +2,42 @@
 
 from __future__ import annotations
 
-import datetime as dt
-from dataclasses import is_dataclass
+from harvest.events import (
+    AgentLifecycleChanged,
+    HarvestEvent,
+    LifecycleState,
+    ResourceUpdated,
+    RuntimeLifecycleChanged,
+    ToolCallCompleted,
+    ToolCallRequested,
+)
 
 
 def test_resource_update_event_exists() -> None:
-    from harvest.events.events import ResourceUpdateEvent
-
-    assert is_dataclass(ResourceUpdateEvent)
+    event = ResourceUpdated(source="runtime", resource_id="res-1")
+    assert isinstance(event, HarvestEvent)
 
 
 def test_agent_lifecycle_event_exists() -> None:
-    from harvest.events.events import AgentLifecycleEvent
-
-    assert is_dataclass(AgentLifecycleEvent)
+    event = AgentLifecycleChanged(agent_id="agent-1", state=LifecycleState.STARTING, source="runtime")
+    assert isinstance(event, HarvestEvent)
 
 
 def test_tool_call_events_exist() -> None:
-    from harvest.events.events import ToolCallEvent, ToolResultEvent
+    request_event = ToolCallRequested(agent_id="agent-1", tool_name="search", source="runtime")
+    result_event = ToolCallCompleted(agent_id="agent-1", tool_name="search", source="runtime")
 
-    assert is_dataclass(ToolCallEvent)
-    assert is_dataclass(ToolResultEvent)
+    assert isinstance(request_event, HarvestEvent)
+    assert isinstance(result_event, HarvestEvent)
 
 
 def test_runtime_lifecycle_event_exists() -> None:
-    from harvest.events.events import RuntimeLifecycleEvent
-
-    assert is_dataclass(RuntimeLifecycleEvent)
-
-
-def test_event_types_include_runtime_categories() -> None:
-    from harvest.events.events import EventTypes
-
-    assert EventTypes.RESOURCE_UPDATE == "resource_update"
-    assert EventTypes.AGENT_LIFECYCLE == "agent_lifecycle"
-    assert EventTypes.RUNTIME_LIFECYCLE == "runtime_lifecycle"
-    assert EventTypes.TOOL_CALL == "tool_call"
-    assert EventTypes.TOOL_RESULT == "tool_result"
+    event = RuntimeLifecycleChanged(runtime_id="sandbox-1", state=LifecycleState.STARTING, source="runtime")
+    assert isinstance(event, HarvestEvent)
 
 
 def test_runtime_lifecycle_event_shape() -> None:
-    from harvest.events.events import RuntimeLifecycleEvent
-
-    event = RuntimeLifecycleEvent(runtime_id="sandbox-1", state="starting", timestamp=dt.datetime.now(dt.UTC))
+    event = RuntimeLifecycleChanged(runtime_id="sandbox-1", state=LifecycleState.STARTING, source="runtime")
 
     assert event.runtime_id == "sandbox-1"
-    assert event.state == "starting"
+    assert event.state == LifecycleState.STARTING

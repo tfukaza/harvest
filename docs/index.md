@@ -21,6 +21,12 @@ Start small. Read only the document that matches the task.
 - Phase 1 deconstruction and runtime foundations plan: `phase-1.md`
 - Phase 2 agent and runner scaffolding plan: `phase-2.md`
 - Phase 3 legacy runtime removal plan: `phase-3.md`
+- Phase 4 first agent proof-of-concept plan: `phase-4.md`
+- Phase 4.5 storage infrastructure decoupling plan: `phase-4.5.md`
+- Phase 5 first agent-runner proof-of-concept plan: `phase-5.md`
+- Phase 6 event bus server and test clients plan: `phase-6.md`
+- Phase 8 bubus event bus migration plan: `phase-8.md`
+- Phase 7 conversation compaction plan: `phase-7.md`
 
 ## How To Use This Directory
 

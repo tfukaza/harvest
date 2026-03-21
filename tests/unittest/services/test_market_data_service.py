@@ -8,6 +8,7 @@ from unittest.mock import Mock
 import polars as pl
 
 from harvest.definitions import TickerCandleList
+from harvest.events.base import PriceUpdated, ResourceUpdated
 from harvest.resource import Resource
 from harvest.services.market_data_service import MarketDataService
 
@@ -49,12 +50,12 @@ def test_market_data_service_publishes_resource_update() -> None:
     service.publish_price_update("AAPL", sample_price_data)
 
     central_storage.store_price_data.assert_called_once_with(sample_price_data)
-    assert event_bus.publish.call_count == 2
-    first_call = event_bus.publish.call_args_list[0]
-    second_call = event_bus.publish.call_args_list[1]
+    assert event_bus.dispatch.call_count == 2
+    first_event = event_bus.dispatch.call_args_list[0].args[0]
+    second_event = event_bus.dispatch.call_args_list[1].args[0]
 
-    assert first_call.args[0] == "price_update"
-    assert first_call.args[1]["symbol"] == "AAPL"
-    assert second_call.args[0] == "resource_update"
-    assert second_call.args[1]["resource_id"] == "market_data"
-    assert second_call.args[1]["capability"] == "market_data_distribution"
+    assert isinstance(first_event, PriceUpdated)
+    assert first_event.symbol == "AAPL"
+    assert isinstance(second_event, ResourceUpdated)
+    assert second_event.resource_id == "market_data"
+    assert second_event.capability == "market_data_distribution"

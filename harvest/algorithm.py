@@ -33,10 +33,10 @@ from harvest.util.helper import (
     mark_up,
     symbol_type,
 )
-from harvest.storage._base import LocalAlgorithmStorage
+from harvest.storage.schema.algorithm import LocalAlgorithmStorage
 from harvest.services.discovery import ServiceRegistry
 from harvest.events.event_bus import EventBus
-from harvest.events.events import PriceUpdateEvent, OrderFilledEvent, AccountUpdateEvent
+from harvest.events.base import PriceUpdated, OrderFilled, AccountUpdated
 
 if TYPE_CHECKING:
     from harvest.services.market_data_service import MarketDataService
@@ -145,101 +145,49 @@ class Algorithm:
             raise Exception("Required services not found")
 
     def setup_event_subscriptions(self) -> None:
-        """Subscribe to relevant events"""
-        self.event_bus.subscribe("price_update", self._handle_price_update_event)
-        self.event_bus.subscribe("order_filled", self._handle_order_filled_event)
-        self.event_bus.subscribe("account_update", self._handle_account_update_event)
+        """Subscribe to relevant typed events."""
+        self.event_bus.on(PriceUpdated, self._handle_price_update)
+        self.event_bus.on(OrderFilled, self._handle_order_filled)
+        self.event_bus.on(AccountUpdated, self._handle_account_update)
 
     def subscribe_to_price_updates(
         self, symbols: list[str] | None = None, intervals: list[Interval] | None = None, broker_id: str | None = None
-    ) -> str:
+    ) -> None:
         """
         Subscribe to price updates with optional filtering.
+
+        Filtering is done inside the handler by checking event fields
+        rather than through the old dict-filter mechanism.
 
         :symbols: List of symbols to filter by (None for all symbols in watchlist)
         :intervals: List of intervals to filter by (None for all intervals)
         :broker_id: Specific broker ID to filter by (None for all brokers)
-        :returns: Subscription ID for later unsubscription
         """
-        # Use watchlist if no specific symbols provided
-        if symbols is None:
-            symbols = self.watch_list
+        target_symbols = symbols or self.watch_list
+        target_intervals = [i.value for i in intervals] if intervals else None
 
-        # Create filters for the subscription
-        filters = {}
+        def _filtered_handler(event: PriceUpdated) -> None:
+            if event.symbol not in target_symbols:
+                return
+            if target_intervals and event.interval not in target_intervals:
+                return
+            if broker_id and event.broker_id != broker_id:
+                return
+            self._handle_price_update(event)
 
-        # Add symbol filter if specific symbols requested
-        if symbols and len(symbols) == 1:
-            filters["symbol"] = symbols[0]
+        self.event_bus.on(PriceUpdated, _filtered_handler)
 
-        # Add interval filter if specific interval requested
-        if intervals and len(intervals) == 1:
-            filters["interval"] = intervals[0].value
-
-        # Add broker filter if specific broker requested
-        if broker_id:
-            filters["broker_id"] = broker_id
-
-        # Subscribe with filters
-        return self.event_bus.subscribe("price_update", self._handle_filtered_price_update, filters)
-
-    def _handle_filtered_price_update(self, event_data: dict) -> None:
-        """Handle filtered price update events"""
-        # Check if symbol is in our watchlist (additional validation)
-        symbol = event_data.get("symbol", "")
-        if symbol in self.watch_list:
-            self._handle_price_update_event(event_data)
-
-    def _handle_price_update_event(self, event_data: dict) -> None:
-        """Handle incoming price update events from event bus"""
-        # Convert dict to PriceUpdateEvent dataclass
-        event = PriceUpdateEvent(
-            **event_data  # Unpack the event data directly
-        )
-        self._handle_price_update(event)
-
-    def _handle_order_filled_event(self, event_data: dict) -> None:
-        """Handle order fill events from event bus"""
-        # Convert dict to OrderFilledEvent
-        event = OrderFilledEvent(
-            order_id=event_data["order_id"],
-            algorithm_name=event_data["algorithm_name"],
-            symbol=event_data["symbol"],
-            fill_price=event_data["fill_price"],
-            fill_quantity=event_data["fill_quantity"],
-            side=event_data["side"],
-            timestamp=event_data["timestamp"],
-            order=event_data.get("order"),
-        )
-        self._handle_order_filled(event)
-
-    def _handle_account_update_event(self, event_data: dict) -> None:
-        """Handle account update events from event bus"""
-        # Convert dict to AccountUpdateEvent
-        event = AccountUpdateEvent(
-            algorithm_name=event_data["algorithm_name"],
-            equity=event_data["equity"],
-            buying_power=event_data["buying_power"],
-            cash=event_data["cash"],
-            asset_value=event_data["asset_value"],
-            timestamp=event_data["timestamp"],
-            account=event_data.get("account"),
-        )
-        self._handle_account_update(event)
-
-    def _handle_price_update(self, event: PriceUpdateEvent) -> None:
-        """Handle incoming price updates"""
+    def _handle_price_update(self, event: PriceUpdated) -> None:
+        """Handle incoming price updates."""
         if event.symbol in self.watch_list:
-            # Update internal state, trigger algorithm logic if needed
             pass
 
-    def _handle_order_filled(self, event: OrderFilledEvent) -> None:
-        """Handle order fill notifications"""
-        # Update local performance tracking
+    def _handle_order_filled(self, event: OrderFilled) -> None:
+        """Handle order fill notifications."""
         pass
 
-    def _handle_account_update(self, event: AccountUpdateEvent) -> None:
-        """Handle account updates"""
+    def _handle_account_update(self, event: AccountUpdated) -> None:
+        """Handle account updates."""
         self.account = event.account
 
     def setup(self) -> None:
