@@ -17,7 +17,7 @@ from litellm import completion
 
 from harvest.agent import Agent
 
-DEFAULT_MODEL = "anthropic/claude-sonnet-4-20250514"
+DEFAULT_MODEL = "anthropic/claude-haiku-4-5-20251001"
 DEFAULT_SYSTEM_PROMPT = (
     "You are the first Harvest CLI proof-of-concept agent. "
     "Answer clearly, stay grounded in the user request, and avoid inventing facts."
@@ -223,15 +223,487 @@ class HarvestAgent(Agent):
         completion_func: Callable[..., Any] | None = None,
         conversation_store: Any | None = None,
         token_counter_func: Callable[..., int] | None = None,
+        agent_id: str = "",
+        chat_router: Any | None = None,
+        policy: Any | None = None,
     ) -> None:
         self.config = config
+        self.agent_id = agent_id or config.session_id
         self._completion_func = completion_func or completion
         self._history: list[Message] = []
         self._tools: list[dict] = [_GET_USERNAME_TOOL]
-        self._tool_map: dict[str, Callable[[], str]] = {"get_username": _get_username}
+        self._tool_map: dict[str, Callable[..., str]] = {"get_username": _get_username}
         self._conversation_store = conversation_store
         self._turn_index = 0
         self._token_counter_func = token_counter_func
+        self._chat_router = chat_router
+        self._policy = policy
+        self._sandbox: Any | None = None  # set by BasicSandbox when hosting
+
+        if chat_router is not None:
+            self._wire_chat_router(chat_router, policy)
+
+    def _wire_chat_router(self, chat_router: Any, policy: Any | None) -> None:
+        """Wire this agent to the chat router with channel tools.
+
+        Args:
+            chat_router: The ChatRouter instance.
+            policy: Optional AgentPolicy for permission checks.
+        """
+        chat_router.register_agent(self.agent_id)
+
+        # Register channel tools based on policy
+        can_send = True
+        can_create = False
+        if policy is not None:
+            can_send = getattr(policy, "can_send_messages", True)
+            can_create = getattr(policy, "can_create_channel", False)
+
+        if can_send:
+            self._register_send_message_tool(chat_router)
+
+        self._register_read_messages_tool(chat_router)
+        self._register_list_channels_tool(chat_router)
+        self._register_leave_channel_tool(chat_router)
+
+        if can_create:
+            self._register_create_channel_tool(chat_router)
+
+        can_create_agents = False
+        if policy is not None:
+            can_create_agents = getattr(policy, "can_create_agents", False)
+        if can_create_agents:
+            self._register_create_agent_tool()
+
+    def _register_send_message_tool(self, chat_router: Any) -> None:
+        """Register the send_message tool."""
+        tool_def = {
+            "type": "function",
+            "function": {
+                "name": "send_message",
+                "description": (
+                    "Send a message to a channel. For group channels, if another "
+                    "agent is currently writing, your call will wait until they "
+                    "finish. If new messages appeared while waiting, you get "
+                    "status='channel_updated' — your message was NOT sent. "
+                    "DISCARD your previous message, read the new messages, and "
+                    "call send_message again with a completely fresh response. "
+                    "Each incoming message has a short ID like [msg:abcd1234]. "
+                    "Use reply_to to indicate which message(s) you are responding to."
+                ),
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "channel_id": {"type": "string", "description": "Target channel ID"},
+                        "content": {"type": "string", "description": "Message text"},
+                        "reply_to": {
+                            "type": "string",
+                            "description": (
+                                "Comma-separated short message IDs (from [msg:...] tags) "
+                                "that this message is responding to. Example: 'abcd1234' "
+                                "or 'abcd1234,ef567890'"
+                            ),
+                        },
+                    },
+                    "required": ["channel_id", "content"],
+                },
+            },
+        }
+        self._tools.append(tool_def)
+
+        def _send_message(channel_id: str = "", content: str = "", reply_to: str = "", **kwargs: Any) -> str:
+            msg_id = uuid.uuid4().hex
+            logger.info("[tool] %s send_message(%s, %.40s...)", self.agent_id, channel_id, content)
+            if reply_to:
+                logger.debug("[reply] %s msg %s replies to: %s", self.agent_id, msg_id[:8], reply_to)
+
+            # Pre-flight: check if new messages arrived in our inbox since
+            # the agent woke up.  If any are for the TARGET channel, the
+            # agent's context is stale — return them instead of sending.
+            #
+            # TODO: This is a reactive safety net — it catches staleness at
+            # send time, which costs an extra LLM round-trip (compose →
+            # rejected → recompose).  A better approach would be proactive:
+            # track per-agent, per-channel "last seen" cursors so the sandbox
+            # knows which channels have unseen activity.  On wake (or before
+            # the first LLM call in step()), automatically summarize key
+            # messages the agent missed in each channel and inject them into
+            # the context.  This mirrors how a human checks Slack — glance at
+            # unread channels before composing — without relying on the LLM
+            # to remember to call read_messages first.
+            pending = chat_router.peek_inbox(self.agent_id)
+            target_msgs = [
+                m for m in pending
+                if (m.recipient.endpoint_id if m.recipient else "") == channel_id
+            ]
+            if target_msgs:
+                new_msgs = []
+                for m in target_msgs:
+                    ch = m.recipient.endpoint_id if m.recipient else ""
+                    new_msgs.append(
+                        f"[msg:{m.message_id[:8]}] @{m.sender.endpoint_id} in "
+                        f"#{ch}: {m.content}"
+                    )
+                logger.info(
+                    "[pre-send] %s has %d new message(s) in target channel %s — "
+                    "returning inbox_updated instead of sending",
+                    self.agent_id, len(target_msgs), channel_id,
+                )
+                return json.dumps({
+                    "status": "inbox_updated",
+                    "new_messages": new_msgs,
+                    "hint": (
+                        "IMPORTANT: Your message was NOT sent. New messages "
+                        "arrived in this channel while you were composing. "
+                        "DISCARD your previous message. Read the new messages "
+                        "below, then compose a fresh response that accounts "
+                        "for them."
+                    ),
+                })
+
+            result = chat_router.send_message(
+                self.agent_id, channel_id, content, msg_id, reply_to=reply_to,
+            )
+            logger.info("[tool] %s send_message result: %s", self.agent_id, result.get("status"))
+            if result.get("error"):
+                return json.dumps({"error": result["error"]})
+            if result.get("status") == "channel_updated":
+                logger.info(
+                    "[channel_updated] %s message to %s discarded, new context available",
+                    self.agent_id, channel_id,
+                )
+                return json.dumps({
+                    "status": "channel_updated",
+                    "new_messages": result.get("new_messages", []),
+                    "hint": result.get("hint", ""),
+                })
+            # After a successful send, check if new messages arrived while
+            # the send was in progress (e.g. waiting for a stake).
+            resp: dict[str, Any] = {"status": "sent", "channel_id": channel_id}
+            post_pending = chat_router.peek_inbox(self.agent_id)
+            if post_pending:
+                new_msgs = []
+                for m in post_pending:
+                    ch = m.recipient.endpoint_id if m.recipient else ""
+                    new_msgs.append(
+                        f"[msg:{m.message_id[:8]}] @{m.sender.endpoint_id} in "
+                        f"#{ch}: {m.content}"
+                    )
+                resp["new_messages_while_you_were_thinking"] = new_msgs
+                resp["hint"] = (
+                    "Your message was sent successfully, but new messages "
+                    "arrived while you were composing. Review them above — "
+                    "you may want to follow up."
+                )
+                logger.info(
+                    "[inbox-peek] %s has %d new message(s) after send",
+                    self.agent_id, len(post_pending),
+                )
+            return json.dumps(resp)
+
+        self._tool_map["send_message"] = _send_message
+
+    def _register_read_messages_tool(self, chat_router: Any) -> None:
+        """Register the read_messages tool."""
+        tool_def = {
+            "type": "function",
+            "function": {
+                "name": "read_messages",
+                "description": "Read messages. No args = inbox overview. With channel_id = read from channel.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "channel_id": {"type": "string", "description": "Optional channel ID to read from"},
+                        "history": {"type": "boolean", "description": "If true, load full channel history"},
+                    },
+                },
+            },
+        }
+        self._tools.append(tool_def)
+
+        def _read_messages(channel_id: str = "", history: bool = False, **kwargs: Any) -> str:
+            if channel_id and history:
+                msgs = chat_router.load_channel_history(channel_id)
+                return json.dumps({"channel_id": channel_id, "history": msgs})
+            if channel_id:
+                inbox = chat_router.read_inbox(self.agent_id)
+                filtered = [m for m in inbox if m.recipient.endpoint_id == channel_id or True]
+                return json.dumps({
+                    "channel_id": channel_id,
+                    "messages": [{"sender": m.sender.endpoint_id, "content": m.content} for m in filtered],
+                })
+            # Overview
+            inbox = chat_router.peek_inbox(self.agent_id)
+            if not inbox:
+                return json.dumps({"unread": 0})
+            return json.dumps({
+                "unread": len(inbox),
+                "preview": [{"sender": m.sender.endpoint_id, "content": m.content[:80]} for m in inbox[:5]],
+            })
+
+        self._tool_map["read_messages"] = _read_messages
+
+    def _register_list_channels_tool(self, chat_router: Any) -> None:
+        """Register the list_channels tool."""
+        tool_def = {
+            "type": "function",
+            "function": {
+                "name": "list_channels",
+                "description": "List channels you belong to.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "channel_type": {"type": "string", "description": "Optional filter by type"},
+                    },
+                },
+            },
+        }
+        self._tools.append(tool_def)
+
+        def _list_channels(channel_type: str = "", **kwargs: Any) -> str:
+            channels = chat_router.list_channels_for_agent(self.agent_id)
+            if channel_type:
+                channels = [c for c in channels if c.channel_type.value == channel_type]
+            result = []
+            for ch in channels:
+                info: dict[str, Any] = {
+                    "channel_id": ch.channel_id,
+                    "type": ch.channel_type.value,
+                    "title": ch.title,
+                    "description": ch.description,
+                }
+                if hasattr(ch, "member_ids"):
+                    info["member_ids"] = ch.member_ids
+                if hasattr(ch, "publisher_ids"):
+                    info["publisher_ids"] = ch.publisher_ids
+                    info["subscriber_ids"] = ch.subscriber_ids
+                result.append(info)
+            return json.dumps(result)
+
+        self._tool_map["list_channels"] = _list_channels
+
+    def _register_leave_channel_tool(self, chat_router: Any) -> None:
+        """Register the leave_channel tool."""
+        tool_def = {
+            "type": "function",
+            "function": {
+                "name": "leave_channel",
+                "description": "Leave a channel.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "channel_id": {"type": "string", "description": "Channel to leave"},
+                    },
+                    "required": ["channel_id"],
+                },
+            },
+        }
+        self._tools.append(tool_def)
+
+        def _leave_channel(channel_id: str = "", **kwargs: Any) -> str:
+            chat_router.leave_channel(self.agent_id, channel_id)
+            return json.dumps({"status": "left", "channel_id": channel_id})
+
+        self._tool_map["leave_channel"] = _leave_channel
+
+    def _register_create_channel_tool(self, chat_router: Any) -> None:
+        """Register the create_channel tool."""
+        tool_def = {
+            "type": "function",
+            "function": {
+                "name": "create_channel",
+                "description": "Create a new channel.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "channel_id": {"type": "string"},
+                        "channel_type": {"type": "string", "enum": ["dm", "group", "gated", "aggregation"]},
+                        "member_ids": {"type": "array", "items": {"type": "string"}},
+                        "publisher_ids": {"type": "array", "items": {"type": "string"}},
+                        "subscriber_ids": {"type": "array", "items": {"type": "string"}},
+                        "title": {"type": "string"},
+                        "description": {"type": "string"},
+                        "batch_threshold": {"type": "integer"},
+                    },
+                    "required": ["channel_id", "channel_type"],
+                },
+            },
+        }
+        self._tools.append(tool_def)
+
+        def _create_channel(**kwargs: Any) -> str:
+            from harvest.agent_sandbox.channels import (
+                AggregationProcessorChannel,
+                DMChannel,
+                GatedProcessorChannel,
+                GroupChannel,
+            )
+
+            ch_type = kwargs.get("channel_type", "group")
+            ch_id = kwargs.get("channel_id", "")
+            title = kwargs.get("title", "")
+            desc = kwargs.get("description", "")
+
+            if ch_type == "dm":
+                channel = DMChannel(
+                    channel_id=ch_id,
+                    member_ids=kwargs.get("member_ids", []),
+                    title=title,
+                    description=desc,
+                    created_by=self.agent_id,
+                )
+            elif ch_type == "group":
+                channel = GroupChannel(
+                    channel_id=ch_id,
+                    member_ids=kwargs.get("member_ids", []),
+                    title=title,
+                    description=desc,
+                    created_by=self.agent_id,
+                )
+            elif ch_type == "gated":
+                channel = GatedProcessorChannel(
+                    channel_id=ch_id,
+                    publisher_ids=kwargs.get("publisher_ids", []),
+                    subscriber_ids=kwargs.get("subscriber_ids", []),
+                    title=title,
+                    description=desc,
+                    created_by=self.agent_id,
+                )
+            elif ch_type == "aggregation":
+                channel = AggregationProcessorChannel(
+                    channel_id=ch_id,
+                    publisher_ids=kwargs.get("publisher_ids", []),
+                    subscriber_ids=kwargs.get("subscriber_ids", []),
+                    batch_threshold=kwargs.get("batch_threshold", 1),
+                    title=title,
+                    description=desc,
+                    created_by=self.agent_id,
+                )
+            else:
+                return json.dumps({"error": f"Unknown channel type: {ch_type}"})
+
+            try:
+                chat_router.create_channel(channel)
+            except ValueError as e:
+                return json.dumps({"error": str(e)})
+            return json.dumps({"status": "created", "channel_id": ch_id})
+
+        self._tool_map["create_channel"] = _create_channel
+
+    def _register_create_agent_tool(self) -> None:
+        """Register the create_agent tool for spawning child agents."""
+        tool_def = {
+            "type": "function",
+            "function": {
+                "name": "create_agent",
+                "description": "Spawn a child agent with a policy.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "agent_id": {"type": "string", "description": "Unique ID for the new agent"},
+                        "policy_name": {"type": "string", "description": "Named policy (for PREDEFINED mode)"},
+                        "policy": {
+                            "type": "object",
+                            "description": "Custom policy definition (for DEFINE mode)",
+                        },
+                    },
+                    "required": ["agent_id"],
+                },
+            },
+        }
+        self._tools.append(tool_def)
+
+        def _create_agent(
+            agent_id: str = "",
+            policy_name: str = "",
+            policy: dict[str, Any] | None = None,
+            **kwargs: Any,
+        ) -> str:
+            if self._sandbox is None:
+                return json.dumps({"error": "Agent not hosted in a sandbox"})
+
+            parent_policy = self._policy
+            if parent_policy is None:
+                return json.dumps({"error": "No parent policy"})
+
+            from harvest.policy import AgentPolicy, ChildPolicyMode
+
+            mode = parent_policy.child_policy_mode
+            if mode == ChildPolicyMode.NONE:
+                return json.dumps({"error": "Policy does not allow creating agents"})
+
+            child_policy: AgentPolicy | None = None
+            if mode == ChildPolicyMode.CLONE:
+                # Child gets a copy of parent's policy with a new name
+                child_policy = AgentPolicy(
+                    name=f"{parent_policy.name}-clone-{agent_id}",
+                    allowed_tools=parent_policy.allowed_tools,
+                    can_send_messages=parent_policy.can_send_messages,
+                    can_create_channel=parent_policy.can_create_channel,
+                    can_create_agents=parent_policy.can_create_agents,
+                    child_policy_mode=parent_policy.child_policy_mode,
+                    allowed_child_policies=parent_policy.allowed_child_policies,
+                )
+            elif mode == ChildPolicyMode.PREDEFINED:
+                if not policy_name:
+                    return json.dumps({"error": "PREDEFINED mode requires policy_name"})
+                if policy_name not in parent_policy.allowed_child_policies:
+                    return json.dumps({"error": f"Policy '{policy_name}' not in allowed_child_policies"})
+                pr = self._sandbox._policy_registry
+                if pr is None:
+                    return json.dumps({"error": "No policy registry available"})
+                try:
+                    child_policy = pr.get(policy_name)
+                except KeyError:
+                    return json.dumps({"error": f"Policy '{policy_name}' not found in registry"})
+            elif mode == ChildPolicyMode.DEFINE:
+                if policy is None:
+                    return json.dumps({"error": "DEFINE mode requires policy dict"})
+                child_policy = AgentPolicy(
+                    name=policy.get("name", f"custom-{agent_id}"),
+                    allowed_tools=frozenset(policy.get("allowed_tools", [])),
+                    can_send_messages=policy.get("can_send_messages", True),
+                    can_create_channel=policy.get("can_create_channel", False),
+                    can_create_agents=policy.get("can_create_agents", False),
+                    child_policy_mode=ChildPolicyMode(policy.get("child_policy_mode", "none")),
+                    allowed_child_policies=tuple(policy.get("allowed_child_policies", [])),
+                )
+
+            if child_policy is None:
+                return json.dumps({"error": "Could not resolve child policy"})
+
+            # Create a minimal child agent
+            child_config = HarvestAgentConfig(
+                model=self.config.model,
+                system_prompt=f"You are child agent {agent_id}.",
+            )
+            child_agent = HarvestAgent(
+                config=child_config,
+                agent_id=agent_id,
+                chat_router=self._chat_router,
+                policy=child_policy,
+                completion_func=self._completion_func,
+            )
+
+            try:
+                self._sandbox.register_agent(agent_id, child_agent, policy=child_policy)
+            except ValueError as e:
+                return json.dumps({"error": str(e)})
+
+            return json.dumps({"status": "created", "agent_id": agent_id})
+
+        self._tool_map["create_agent"] = _create_agent
+
+    def shutdown(self) -> None:
+        """Clean up agent resources.
+
+        Called by the sandbox before removal. Unregisters from the ChatRouter
+        and clears conversation history.
+        """
+        if self._chat_router is not None:
+            self._chat_router.unregister_agent(self.agent_id)
+        self._history.clear()
+        logger.info("Agent %s session ended", self.agent_id)
 
     # ------------------------------------------------------------------
     # Token counting
@@ -371,15 +843,29 @@ class HarvestAgent(Agent):
         if not isinstance(input_data, str):
             raise TypeError("HarvestAgent.step expects a string user message.")
 
+        logger.debug("[context] %s step() input prompt:\n%s", self.agent_id, input_data)
+
         user_msg = TextMessage(role="user", content=input_data)
         self._append(user_msg)
 
         self._maybe_compact()  # pre-turn compaction
 
-        for _ in range(_TOOL_CALL_LOOP_CAP):
+        for loop_idx in range(_TOOL_CALL_LOOP_CAP):
+            messages = self._build_messages()
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug(
+                    "[context] %s LLM call #%d — %d messages, system prompt %d chars",
+                    self.agent_id, loop_idx, len(messages),
+                    len(messages[0]["content"]) if messages else 0,
+                )
+                for i, m in enumerate(messages):
+                    role = m.get("role", "?")
+                    content = m.get("content", "")
+                    preview = (content[:300] + "…") if isinstance(content, str) and len(content) > 300 else content
+                    logger.debug("[context] %s   msg[%d] role=%s: %s", self.agent_id, i, role, preview)
             response = self._completion_func(
                 model=self.config.model,
-                messages=self._build_messages(),
+                messages=messages,
                 max_tokens=self.config.max_tokens,
                 tools=self._tools,
             )
@@ -388,6 +874,17 @@ class HarvestAgent(Agent):
             tool_calls = getattr(choice, "tool_calls", None)
 
             if tool_calls:
+                if logger.isEnabledFor(logging.DEBUG):
+                    for tc in tool_calls:
+                        logger.debug(
+                            "[response] %s tool_call: %s(%s)",
+                            self.agent_id, tc.function.name,
+                            tc.function.arguments[:200] if tc.function.arguments else "",
+                        )
+                    thinking = getattr(choice, "content", None)
+                    if thinking:
+                        logger.debug("[response] %s thinking: %s", self.agent_id, thinking[:300])
+
                 records = tuple(
                     ToolCallRecord(
                         id=tc.id,
@@ -408,7 +905,23 @@ class HarvestAgent(Agent):
                     if fn is None:
                         result = json.dumps({"error": f"Unknown tool: {tc.function.name}"})
                     else:
-                        result = fn()
+                        try:
+                            args = json.loads(tc.function.arguments) if tc.function.arguments else {}
+                        except (json.JSONDecodeError, TypeError):
+                            args = {}
+                        try:
+                            result = fn(**args) if args else fn()
+                        except Exception as tool_exc:
+                            logger.exception(
+                                "[tool-error] %s %s raised: %s",
+                                self.agent_id, tc.function.name, tool_exc,
+                            )
+                            result = json.dumps({"error": f"Tool execution failed: {tool_exc}"})
+                    logger.debug(
+                        "[tool-result] %s %s → %s",
+                        self.agent_id, tc.function.name,
+                        (result[:300] + "…") if isinstance(result, str) and len(result) > 300 else result,
+                    )
                     self._append(
                         ToolResultMessage(role="tool", tool_call_id=tc.id, content=result)
                     )
@@ -417,7 +930,13 @@ class HarvestAgent(Agent):
                 continue
 
             # Text response — done
-            content = self._extract_response_text(response)
+            try:
+                content = self._extract_response_text(response)
+            except RuntimeError:
+                # Model returned no text after tool calls — valid when the
+                # agent communicated through tools (e.g. send_message).
+                content = ""
+            logger.debug("[response] %s text reply (%d chars): %s", self.agent_id, len(content), content[:300])
             assistant_msg = TextMessage(role="assistant", content=content)
             self._append(assistant_msg)
             return content

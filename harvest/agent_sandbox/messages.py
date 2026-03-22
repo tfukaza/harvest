@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
-from harvest.agent_runner.endpoints import EndpointAddress
+from harvest.agent_sandbox.endpoints import EndpointAddress
 
 
 def get_current_utc_timestamp() -> datetime:

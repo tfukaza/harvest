@@ -73,7 +73,7 @@ class _FakeResponse:
 
 def test_config_defaults() -> None:
     config = HarvestAgentConfig()
-    assert config.model == "anthropic/claude-sonnet-4-20250514"
+    assert config.model == "anthropic/claude-haiku-4-5-20251001"
     assert config.max_tokens == 1024
     assert config.session_id  # non-empty
 
@@ -94,7 +94,7 @@ def test_config_from_env_uses_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
 
     config = HarvestAgentConfig.from_env()
 
-    assert config.model == "anthropic/claude-sonnet-4-20250514"
+    assert config.model == "anthropic/claude-haiku-4-5-20251001"
 
 
 def test_step_returns_model_reply() -> None:

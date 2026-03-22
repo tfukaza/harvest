@@ -7,14 +7,14 @@ from abc import ABC
 
 def test_message_processor_contract_exists() -> None:
     """Harvest should expose a dedicated message-processor scaffold contract."""
-    from harvest.agent_runner import MessageProcessor
+    from harvest.agent_sandbox import MessageProcessor
 
     assert issubclass(MessageProcessor, ABC)
 
 
 def test_message_processor_contract_exposes_staging_hooks() -> None:
     """Processor scaffolding should expose the future staging lifecycle."""
-    from harvest.agent_runner import MessageProcessor
+    from harvest.agent_sandbox import MessageProcessor
 
     assert hasattr(MessageProcessor, "endpoint")
     assert hasattr(MessageProcessor, "process_message")
@@ -24,7 +24,7 @@ def test_message_processor_contract_exposes_staging_hooks() -> None:
 
 def test_processor_config_scaffolds_cover_common_patterns() -> None:
     """Phase 2 should define placeholder configuration for common processor types."""
-    from harvest.agent_runner import AggregationProcessorConfig, GatedReleaseProcessorConfig
+    from harvest.agent_sandbox import AggregationProcessorConfig, GatedReleaseProcessorConfig
 
     aggregation = AggregationProcessorConfig(
         processor_id="agg-1",

@@ -69,7 +69,16 @@ class FlexibleStorage:
 
         if database_url is not None:
             ensure_sqlite_directory(database_url)
-            self.db_engine = sqlalchemy.create_engine(database_url)
+            engine_kwargs: dict[str, Any] = {}
+            # In-memory SQLite needs a shared connection pool so that
+            # all threads see the same database (the default per-connection
+            # pool creates a separate empty DB per thread).
+            if ":memory:" in database_url:
+                from sqlalchemy.pool import StaticPool
+
+                engine_kwargs["poolclass"] = StaticPool
+                engine_kwargs["connect_args"] = {"check_same_thread": False}
+            self.db_engine = sqlalchemy.create_engine(database_url, **engine_kwargs)
         else:
             assert self._csv_directory is not None
             self._csv_directory.mkdir(parents=True, exist_ok=True)

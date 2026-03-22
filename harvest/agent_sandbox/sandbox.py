@@ -1,26 +1,26 @@
-"""Agent-runner scaffolding built on the existing runtime contract."""
+"""Agent-sandbox scaffolding built on the existing runtime contract."""
 
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-from harvest.agent_runner.config import AgentRunnerConfig
-from harvest.agent_runner.endpoints import DeliveryMode, GroupChatDefinition, SandboxEndpoint
-from harvest.agent_runner.processors import MessageProcessor
+from harvest.agent_sandbox.config import AgentSandboxConfig
+from harvest.agent_sandbox.endpoints import DeliveryMode, GroupChatDefinition, SandboxEndpoint
+from harvest.agent_sandbox.processors import MessageProcessor
 from harvest.runtime import Runtime
 
 
-class AgentRunner(Runtime, ABC):
-    """Defines the scaffold contract for future agent-runner sandboxes.
+class AgentSandbox(Runtime, ABC):
+    """Defines the scaffold contract for agent sandboxes.
 
-    This class narrows the generic runtime contract toward the agent-runner
+    This class narrows the generic runtime contract toward the agent-sandbox
     architecture without pretending that the concrete sandbox already exists.
     """
 
     @property
     @abstractmethod
-    def config(self) -> AgentRunnerConfig:
-        """Return the scaffold configuration for this runner."""
+    def config(self) -> AgentSandboxConfig:
+        """Return the scaffold configuration for this sandbox."""
 
     @abstractmethod
     def register_processor(self, processor_id: str, processor: MessageProcessor) -> None:

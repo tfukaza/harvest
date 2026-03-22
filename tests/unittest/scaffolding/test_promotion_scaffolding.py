@@ -7,21 +7,21 @@ from abc import ABC
 
 def test_promotion_policy_contract_exists() -> None:
     """Harvest should expose a promotion-policy scaffold contract."""
-    from harvest.agent_runner import PromotionPolicy
+    from harvest.agent_sandbox import PromotionPolicy
 
     assert issubclass(PromotionPolicy, ABC)
 
 
 def test_promotion_policy_exposes_evaluation_hook() -> None:
     """Promotion scaffolding should expose one evaluation entrypoint."""
-    from harvest.agent_runner import PromotionPolicy
+    from harvest.agent_sandbox import PromotionPolicy
 
     assert hasattr(PromotionPolicy, "evaluate")
 
 
 def test_promotion_candidate_and_decision_capture_scaffold_data() -> None:
     """Promotion scaffolding should preserve event metadata and policy output."""
-    from harvest.agent_runner import PromotionCandidate, PromotionDecision, PromotionTarget
+    from harvest.agent_sandbox import PromotionCandidate, PromotionDecision, PromotionTarget
 
     candidate = PromotionCandidate(
         event_type="tool_result",

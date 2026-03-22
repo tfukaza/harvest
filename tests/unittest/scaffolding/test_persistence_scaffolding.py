@@ -8,14 +8,14 @@ from datetime import UTC
 
 def test_local_agent_store_contract_exists() -> None:
     """Harvest should expose a local persistence contract for runner state."""
-    from harvest.agent_runner import LocalAgentStore
+    from harvest.agent_sandbox import LocalAgentStore
 
     assert issubclass(LocalAgentStore, ABC)
 
 
 def test_local_agent_store_exposes_expected_records() -> None:
     """The persistence contract should name the key record types explicitly."""
-    from harvest.agent_runner import LocalAgentStore
+    from harvest.agent_sandbox import LocalAgentStore
 
     assert hasattr(LocalAgentStore, "save_reasoning_record")
     assert hasattr(LocalAgentStore, "save_tool_result_record")
@@ -26,7 +26,7 @@ def test_local_agent_store_exposes_expected_records() -> None:
 
 def test_persistence_records_default_to_utc_timestamps() -> None:
     """Scaffold persistence records should default to UTC timestamps."""
-    from harvest.agent_runner import ReasoningRecord, SessionStateRecord, ToolResultRecord
+    from harvest.agent_sandbox import ReasoningRecord, SessionStateRecord, ToolResultRecord
 
     reasoning = ReasoningRecord(agent_id="agent-a", entry={"thought": "x"})
     tool_result = ToolResultRecord(agent_id="agent-a", tool_name="search", result={"ok": True})
@@ -39,7 +39,7 @@ def test_persistence_records_default_to_utc_timestamps() -> None:
 
 def test_recovery_snapshot_tracks_runtime_topology() -> None:
     """Recovery scaffolding should name the future topology recovery inputs."""
-    from harvest.agent_runner import RecoverySnapshot
+    from harvest.agent_sandbox import RecoverySnapshot
 
     snapshot = RecoverySnapshot(
         runner_id="runner-a",

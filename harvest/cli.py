@@ -7,12 +7,19 @@ import os
 import re
 import sys
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any, TextIO
 
 from harvest.harvest_agent import HarvestAgent, HarvestAgentConfig, DEFAULT_SYSTEM_PROMPT
 from harvest.util.helper import debugger
 
 parser = argparse.ArgumentParser(description="Harvest CLI")
+parser.add_argument(
+    "--debug",
+    action="store_true",
+    default=False,
+    help="enable DEBUG-level logging (shows full agent context sent to LLM)",
+)
 subparsers = parser.add_subparsers(dest="command")
 
 # Parser for starting Harvest.
@@ -75,6 +82,65 @@ agent_parser.add_argument(
     help="disable conversation compaction entirely",
 )
 
+
+# Parser for sandbox command.
+sandbox_parser = subparsers.add_parser("sandbox", help="Run a multi-agent sandbox from a YAML manifest")
+sandbox_parser.add_argument(
+    "manifest",
+    help="path to a sandbox YAML manifest file",
+)
+sandbox_parser.add_argument(
+    "--topic",
+    default=None,
+    help="seed message to inject into the conversation channel",
+)
+sandbox_parser.add_argument(
+    "--seed-channel",
+    default=None,
+    help="channel to inject the seed into (default: first group channel)",
+)
+sandbox_parser.add_argument(
+    "--kickstart",
+    default=None,
+    help="agent ID to receive the seed message (default: all channel members)",
+)
+sandbox_parser.add_argument(
+    "--no-monitor",
+    action="store_true",
+    default=False,
+    help="disable the debug monitor server",
+)
+sandbox_parser.add_argument(
+    "--host",
+    default="127.0.0.1",
+    help="debug monitor host (default: 127.0.0.1)",
+)
+sandbox_parser.add_argument(
+    "--port",
+    type=int,
+    default=8100,
+    help="debug monitor port (default: 8100)",
+)
+
+
+# Parser for debug-server command.
+debug_server_parser = subparsers.add_parser("debug-server")
+debug_server_parser.add_argument(
+    "--host",
+    default="127.0.0.1",
+    help="host address to bind the debug monitor server (default: 127.0.0.1)",
+)
+debug_server_parser.add_argument(
+    "--port",
+    type=int,
+    default=8100,
+    help="port to bind the debug monitor server (default: 8100)",
+)
+debug_server_parser.add_argument(
+    "--static-dir",
+    default=None,
+    help="path to SvelteKit build output for static file serving",
+)
 
 # Parser for event-server command.
 event_server_parser = subparsers.add_parser("event-server")
@@ -148,12 +214,20 @@ def main() -> None:
     """Parse command-line arguments and dispatch to subcommands."""
     args = parser.parse_args()
 
+    if args.debug:
+        import logging
+        logging.getLogger("harvest").setLevel(logging.DEBUG)
+
     if args.command == "start":
         start(args)
     elif args.command == "agent":
         run_agent(args)
+    elif args.command == "sandbox":
+        run_sandbox(args)
     elif args.command == "visualize":
         visualize(args)
+    elif args.command == "debug-server":
+        run_debug_server(args)
     elif args.command == "event-server":
         run_event_server(args)
     elif args.command == "event-client":
@@ -274,6 +348,177 @@ def _emit_agent_reply(agent: HarvestAgent, message: str, output_stream: TextIO) 
 
     reply = agent.step(message)
     print(f"Assistant: {reply}", file=output_stream)
+
+
+def run_sandbox(
+    args: argparse.Namespace,
+    output_stream: TextIO = sys.stdout,
+) -> None:
+    """Load a sandbox from a YAML manifest and run autonomously.
+
+    Agents run via the hibernation loop — the CLI just starts the sandbox,
+    injects an optional seed message, and blocks until Ctrl+C.
+
+    Args:
+        args: Parsed command-line arguments.
+        output_stream: Stream for normal output.
+    """
+    import asyncio
+    import logging
+
+    from harvest.agent_sandbox.basic_sandbox import BasicSandbox
+    from harvest.agent_sandbox.channels import GroupChannel
+    from harvest.storage.schema.chat import ChatStore
+
+    # Suppress noisy library logs during sandbox runs
+    logging.getLogger("LiteLLM").setLevel(logging.WARNING)
+    logging.getLogger("litellm").setLevel(logging.WARNING)
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    if not args.debug:
+        logging.getLogger("harvest").setLevel(logging.WARNING)
+
+    # Always write debug logs to a file for post-mortem analysis.
+    # The logger level must be DEBUG so messages reach the file handler,
+    # but we set the console handler level to WARNING (or DEBUG with --debug)
+    # so the terminal stays clean.
+    log_dir = Path("logs")
+    log_dir.mkdir(exist_ok=True)
+    import datetime as dt
+    timestamp = dt.datetime.now().strftime("%Y%m%d_%H%M%S")
+    manifest_stem = Path(args.manifest).stem
+    log_file = log_dir / f"{manifest_stem}_{timestamp}.log"
+
+    file_handler = logging.FileHandler(log_file, encoding="utf-8")
+    file_handler.setLevel(logging.DEBUG)
+    file_handler.setFormatter(logging.Formatter(
+        "%(asctime)s %(levelname)-5s %(name)s  %(message)s",
+        datefmt="%H:%M:%S",
+    ))
+
+    harvest_logger = logging.getLogger("harvest")
+    harvest_logger.addHandler(file_handler)
+    # Logger must accept DEBUG so the file handler receives everything.
+    harvest_logger.setLevel(logging.DEBUG)
+
+    # Keep console quiet unless --debug. Set level on existing handlers
+    # (typically the root logger's StreamHandler) rather than the logger itself.
+    console_level = logging.DEBUG if args.debug else logging.WARNING
+    root = logging.getLogger()
+    for h in root.handlers:
+        if isinstance(h, logging.StreamHandler) and not isinstance(h, logging.FileHandler):
+            h.setLevel(console_level)
+
+    print(f"Debug log: {log_file}", file=output_stream)
+
+    manifest_path = args.manifest
+    chat_store = ChatStore()
+
+    try:
+        sandbox = BasicSandbox.from_manifest(manifest_path, chat_store=chat_store)
+    except Exception as exc:
+        print(f"Failed to load manifest: {exc}", file=sys.stderr)
+        sys.exit(2)
+
+    agents = sandbox.list_agents()
+    router = sandbox.chat_router
+
+    # Determine seed channel
+    seed_channel = args.seed_channel
+    if seed_channel is None:
+        group_channels = [
+            ch for ch in router.list_channels()
+            if isinstance(ch, GroupChannel)
+        ]
+        if group_channels:
+            seed_channel = group_channels[0].channel_id
+
+    # Start debug monitor (on by default, --no-monitor to disable)
+    monitor = None
+    if not args.no_monitor:
+        from harvest.debug.registry import SandboxRegistry
+        from harvest.debug.server import DebugMonitorServer
+
+        registry = SandboxRegistry()
+        registry.register(sandbox.config.display_name, sandbox)
+        # Auto-detect GUI build directory
+        gui_build = Path(__file__).resolve().parent.parent / "gui" / "build"
+        static_dir = str(gui_build) if gui_build.is_dir() else None
+
+        monitor = DebugMonitorServer(
+            registry=registry,
+            host=args.host,
+            port=args.port,
+            static_dir=static_dir,
+        )
+        monitor.start()
+        print(
+            f"Debug monitor running at http://{args.host}:{args.port}",
+            file=output_stream,
+        )
+
+    async def _run() -> None:
+        print(f"=== Sandbox: {sandbox.config.display_name} ===", file=output_stream)
+        print(f"Agents: {', '.join(agents)}", file=output_stream)
+
+        # Inject manifest-level seeds first
+        from harvest.agent_sandbox.manifest import load_manifest as _load_manifest
+        manifest = _load_manifest(manifest_path)
+        for seed in manifest.seeds:
+            target_label = ", ".join(seed.recipients) if seed.recipients else "all"
+            print(f"[seed] → {seed.channel_id} ({target_label}): {seed.content}", file=output_stream)
+            router.inject_seed(seed.channel_id, seed.content, recipients=seed.recipients)
+
+        # Inject CLI --topic seed (overrides / adds to manifest seeds)
+        if args.topic and seed_channel:
+            kickstart = [args.kickstart] if args.kickstart else None
+            target_label = args.kickstart or "all"
+            print(f"[seed] → {seed_channel} ({target_label}): {args.topic}", file=output_stream)
+            router.inject_seed(seed_channel, args.topic, recipients=kickstart)
+
+        print("Press Ctrl+C to stop.\n", file=output_stream)
+
+        # Start the sandbox — agents run autonomously via hibernation loop
+        await sandbox.start()
+
+        # Block until interrupted
+        stop = asyncio.Event()
+        try:
+            await stop.wait()
+        except asyncio.CancelledError:
+            pass
+
+        await sandbox.stop()
+
+        if monitor is not None:
+            monitor.stop()
+
+    try:
+        asyncio.run(_run())
+    except KeyboardInterrupt:
+        print("\nShutting down.", file=output_stream)
+
+
+def run_debug_server(args: argparse.Namespace) -> None:
+    """Start the debug monitor server."""
+    from harvest.debug.registry import SandboxRegistry
+    from harvest.debug.server import DebugMonitorServer
+
+    registry = SandboxRegistry()
+    server = DebugMonitorServer(
+        registry=registry,
+        host=args.host,
+        port=args.port,
+        static_dir=getattr(args, "static_dir", None),
+    )
+    print(f"Debug monitor server starting on http://{args.host}:{args.port}")
+    server.start()
+    try:
+        import time
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("\nShutting down.")
+        server.stop()
 
 
 def run_event_server(args: argparse.Namespace) -> None:

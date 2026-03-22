@@ -4,7 +4,7 @@ Harvest is a Python framework for algorithmic trading. It provides broker integr
 
 The codebase is in transition toward a single runtime direction:
 - The supported executable path is the service-oriented, event-driven `Orchestrator` in `harvest/orchestrator.py`.
-- The `Agent Runner` path under `harvest/agent_runner/` is scaffolding for later implementation work.
+- The `Agent Sandbox` path under `harvest/agent_sandbox/` is scaffolding for later implementation work.
 
 ## Read This First
 
@@ -25,7 +25,7 @@ The codebase is in transition toward a single runtime direction:
 - `harvest/algorithm.py`: Modern algorithm abstraction.
 - `harvest/cli.py`: CLI entrypoint exposed as `harvest`.
 - `harvest/orchestrator.py`: Event-driven service orchestrator.
-- `harvest/agent_runner/`: Scaffolding for future agent-runner runtime components.
+- `harvest/agent_sandbox/`: Agent sandbox runtime components (chat system, policies, concrete sandbox).
 - `harvest/broker/`: Broker and market-data integrations.
 - `harvest/storage/`: Local and central storage implementations.
 - `harvest/services/`: Service-oriented building blocks.
@@ -40,6 +40,7 @@ The codebase is in transition toward a single runtime direction:
 - Python baseline is 3.12.
 - All internal timestamps should be handled in UTC.
 - Use modern built-in type hints like `list[str]`, not legacy `typing.List` style.
+- Use Python 3.12+ typing syntax: `X | Y` instead of `typing.Union[X, Y]`, `X | None` instead of `typing.Optional[X]`. Do not import `Optional` or `Union` from `typing`.
 - Add docstrings for modules, classes, and functions.
 - Prefer dataclasses and enums for structured domain data.
 - Favor small, focused fixes over broad rewrites.
@@ -49,11 +50,12 @@ The codebase is in transition toward a single runtime direction:
 
 - Prefer extending the orchestrator and service architecture for current runtime work.
 - Treat legacy runtime references as removal targets unless a task explicitly says otherwise.
-- Keep the `Agent Runner` path scaffolded until a later implementation phase.
+- Keep the `Agent Sandbox` path scaffolded until a later implementation phase.
 - When documenting architecture changes, update the docs in `docs/` as part of the same change.
 
 ## Development Workflow
 
+- **Always use `uv`** for dependency management, virtual environments, and running Python. Never use `pip`, `pip install`, `pyenv`, `virtualenv`, or `python -m venv` directly.
 - Sync dependencies: `uv sync --extra dev`
 - Run unit tests: `uv run pytest tests/unittest`
 - Format Python: `uv format --preview-features format`

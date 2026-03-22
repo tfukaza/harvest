@@ -1,4 +1,4 @@
-"""Configuration scaffolding for future agent-runner implementations."""
+"""Configuration scaffolding for agent-sandbox implementations."""
 
 from __future__ import annotations
 
@@ -6,14 +6,14 @@ from dataclasses import dataclass
 
 
 @dataclass(slots=True, frozen=True)
-class AgentRunnerConfig:
-    """Defines the minimal scaffold configuration for an agent runner.
+class AgentSandboxConfig:
+    """Defines the minimal scaffold configuration for an agent sandbox.
 
     This configuration intentionally describes where future runtime pieces
     should connect without claiming that the runtime behavior already exists.
 
     Attributes:
-        runner_id: Stable identifier for the runner instance.
+        runner_id: Stable identifier for the sandbox instance.
         display_name: Human-readable name for diagnostics and tooling.
         sandbox_namespace: Namespace used for sandbox-local addressing.
         local_store_id: Identifier for the local persistence backend.

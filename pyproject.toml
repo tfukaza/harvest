@@ -46,6 +46,7 @@ webull = ["webull"]
 kraken = ["krakenex"]
 yahoo = ["yfinance>=0.2.38"]
 server = ["flask", "flask-login", "flask-cors", "aiohttp>=3.9"]
+debug = ["flask", "flask-sock"]
 dev = ["coverage"]
 
 [project.scripts]

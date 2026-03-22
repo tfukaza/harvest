@@ -33,3 +33,9 @@ class Agent(ABC):
     @abstractmethod
     def get_reasoning_history(self) -> list[Any]:
         """Return the agent's reasoning history."""
+
+    def shutdown(self) -> None:
+        """Clean up agent resources. Called by the sandbox before removal.
+
+        Default is a no-op. Subclasses override if they hold resources.
+        """

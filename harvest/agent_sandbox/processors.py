@@ -1,4 +1,4 @@
-"""Message-processor scaffolding for agent-runner sandboxes."""
+"""Message-processor scaffolding for agent sandboxes."""
 
 from __future__ import annotations
 
@@ -6,8 +6,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any
 
-from harvest.agent_runner.endpoints import EndpointAddress
-from harvest.agent_runner.messages import SandboxMessage
+from harvest.agent_sandbox.endpoints import EndpointAddress
+from harvest.agent_sandbox.messages import SandboxMessage
 
 
 class MessageProcessor(ABC):
