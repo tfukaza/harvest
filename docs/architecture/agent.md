@@ -19,9 +19,37 @@ class HarvestAgentConfig:
     system_prompt: str                  # Agent's system prompt
     context_limit: int = 128000         # Max context window tokens
     compaction_threshold: float = 0.75  # Trigger compaction at this fraction
+    api_base: str | None = None         # Custom API base URL (for local/self-hosted LLMs)
+    api_key_env: str | None = None      # Env var name to read the API key from
 ```
 
 Default model: `anthropic/claude-haiku-4-5-20251001`
+
+### Multi-LLM Support
+
+`api_base` and `api_key_env` enable routing agents to different LLM providers:
+
+```python
+# OpenAI-compatible local model
+HarvestAgentConfig(
+    model="openai/my-model",
+    api_base="http://localhost:11434/v1",
+    api_key_env="MY_LOCAL_API_KEY",
+)
+```
+
+Both fields are also supported in YAML manifests:
+
+```yaml
+agents:
+  local-agent:
+    type: llm_agent
+    config:
+      model: "openai/llama3"
+      api_base: "http://localhost:11434/v1"
+      api_key_env: "OLLAMA_API_KEY"
+      system_prompt: "You are a helpful assistant."
+```
 
 ## Tool System
 

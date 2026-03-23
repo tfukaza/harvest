@@ -23,6 +23,7 @@ from harvest.services import (
 from harvest.util.helper import debugger
 from harvest.events.event_bus import EventBus
 from harvest.definitions import RuntimeData
+from harvest.interfaces.service import Service, ServiceRole
 from harvest.resource import Resource
 
 
@@ -63,6 +64,11 @@ class Orchestrator:
         self.service_registry = ServiceRegistry()
         self.event_bus = EventBus()
         self.resources: dict[str, Resource] = {}
+
+        # Phase 13: generalised external-world service registries (legacy)
+        self.data_sources: dict = {}
+        self.actions: dict = {}
+        self.event_sources: dict = {}
 
         # Handle broker configuration
         if isinstance(broker, dict):
@@ -135,6 +141,53 @@ class Orchestrator:
     def list_resources(self) -> list[str]:
         """List resource identifiers exposed by the orchestrator."""
         return list(self.resources.keys())
+
+    # -- Phase 13: generalised service registry ------------------------------
+
+    def register_data_source(self, source) -> None:
+        """Register a DataSource with the orchestrator."""
+        if source.source_id in self.data_sources:
+            raise ValueError(f"DataSource already registered: {source.source_id}")
+        self.data_sources[source.source_id] = source
+        debugger.info("Registered DataSource: %s", source.source_id)
+
+    def register_action(self, action) -> None:
+        """Register an Action handler with the orchestrator."""
+        if action.action_id in self.actions:
+            raise ValueError(f"Action already registered: {action.action_id}")
+        self.actions[action.action_id] = action
+        debugger.info("Registered Action: %s", action.action_id)
+
+    def register_event_source(self, source) -> None:
+        """Register an EventSource with the orchestrator."""
+        if source.source_id in self.event_sources:
+            raise ValueError(f"EventSource already registered: {source.source_id}")
+        self.event_sources[source.source_id] = source
+        debugger.info("Registered EventSource: %s", source.source_id)
+
+    def get_data_source(self, source_id: str):
+        """Retrieve a registered DataSource by ID."""
+        return self.data_sources.get(source_id)
+
+    def get_action(self, action_id: str):
+        """Retrieve a registered Action handler by ID."""
+        return self.actions.get(action_id)
+
+    def get_event_source(self, source_id: str):
+        """Retrieve a registered EventSource by ID."""
+        return self.event_sources.get(source_id)
+
+    def list_data_sources(self) -> list[str]:
+        """Return IDs of all registered DataSources."""
+        return list(self.data_sources.keys())
+
+    def list_actions(self) -> list[str]:
+        """Return IDs of all registered Actions."""
+        return list(self.actions.keys())
+
+    def list_event_sources(self) -> list[str]:
+        """Return IDs of all registered EventSources."""
+        return list(self.event_sources.keys())
 
     async def start(self) -> None:
         """Start the orchestrator and all services"""

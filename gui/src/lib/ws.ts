@@ -1,6 +1,7 @@
 import { writable, type Readable } from "svelte/store";
-import type { SnapshotMessage, DeltaMessage, TypingMessage, AgentStatusMessage, ServerMessage, SandboxSnapshot } from "./types";
+import type { SnapshotMessage, DeltaMessage, TypingMessage, AgentStatusMessage, AdminQueuedMessage, AdminBlockedMessage, ServerMessage, SandboxSnapshot } from "./types";
 import { log } from "./logger";
+import { startMockStream } from "./mock";
 
 function getWsUrl(): string {
   if (typeof window !== "undefined") {
@@ -11,14 +12,22 @@ function getWsUrl(): string {
   return "ws://localhost:8100/ws";
 }
 
+function getMockParam(): string | null {
+  if (typeof window !== "undefined") {
+    return new URLSearchParams(window.location.search).get("mock");
+  }
+  return null;
+}
+
 interface WsState {
   connected: boolean;
   sandboxes: SandboxSnapshot[];
   lastUpdate: string | null;
   typing: Map<string, Set<string>>; // channel_id → set of agent_ids
+  adminStatus: { message_id: string; status: "queued" | "blocked"; reason?: string } | null;
 }
 
-const initial: WsState = { connected: false, sandboxes: [], lastUpdate: null, typing: new Map() };
+const initial: WsState = { connected: false, sandboxes: [], lastUpdate: null, typing: new Map(), adminStatus: null };
 const store = writable<WsState>(initial);
 
 let ws: WebSocket | null = null;
@@ -70,6 +79,10 @@ function connect() {
       applyTyping(msg);
     } else if (msg.type === "agent_status") {
       applyAgentStatus(msg);
+    } else if (msg.type === "admin_queued") {
+      applyAdminQueued(msg as AdminQueuedMessage);
+    } else if (msg.type === "admin_blocked") {
+      applyAdminBlocked(msg as AdminBlockedMessage);
     }
   };
 }
@@ -187,6 +200,20 @@ function applyAgentStatus(msg: AgentStatusMessage) {
   });
 }
 
+function applyAdminQueued(msg: AdminQueuedMessage) {
+  store.update((s) => ({ ...s, adminStatus: { message_id: msg.message_id, status: "queued" } }));
+}
+
+function applyAdminBlocked(msg: AdminBlockedMessage) {
+  store.update((s) => ({ ...s, adminStatus: { message_id: "", status: "blocked", reason: msg.reason } }));
+}
+
+export function sendAdminMessage(sandbox_id: string, channel_id: string, content: string): boolean {
+  if (!ws || ws.readyState !== WebSocket.OPEN) return false;
+  ws.send(JSON.stringify({ type: "admin_send", sandbox_id, channel_id, content }));
+  return true;
+}
+
 function scheduleReconnect() {
   if (reconnectTimer) return;
   reconnectAttempt++;
@@ -199,6 +226,18 @@ function scheduleReconnect() {
 }
 
 export function initWs() {
+  const mockParam = getMockParam();
+  if (mockParam !== null) {
+    log.wsConnecting("mock://" + (mockParam || "trading"));
+    store.update((s) => ({ ...s, connected: true }));
+    startMockStream(mockParam, (msg) => {
+      if (msg.type === "snapshot") applySnapshot(msg as SnapshotMessage);
+      else if (msg.type === "delta") applyDelta(msg as DeltaMessage);
+      else if (msg.type === "typing") applyTyping(msg as TypingMessage);
+      else if (msg.type === "agent_status") applyAgentStatus(msg as AgentStatusMessage);
+    });
+    return;
+  }
   connect();
 }
 

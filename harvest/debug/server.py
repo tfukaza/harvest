@@ -30,6 +30,7 @@ class DebugMonitorServer:
         batch_interval: float = 1.0,
         resync_interval: float = 5.0,
         static_dir: str | None = None,
+        admin_queue: Any | None = None,
     ) -> None:
         self._registry = registry
         self._host = host
@@ -37,6 +38,7 @@ class DebugMonitorServer:
         self._batch_interval = batch_interval
         self._resync_interval = resync_interval
         self._static_dir = static_dir
+        self._admin_queue = admin_queue
         self._thread: threading.Thread | None = None
         self._app = self._create_app()
 
@@ -54,6 +56,7 @@ class DebugMonitorServer:
         registry = self._registry
         batch_interval = self._batch_interval
         resync_interval = self._resync_interval
+        admin_queue = self._admin_queue
 
         @app.route("/api/snapshot")
         def api_snapshot() -> Any:
@@ -85,8 +88,9 @@ class DebugMonitorServer:
             for sid in registry.list_sandbox_ids():
                 cursors[sid] = len(registry.get_message_buffer(sid))
 
-            # Per-connection queue for typing and status events
+            # Per-connection outbound queue for typing, status, and admin ack events
             typing_queue: queue.Queue[dict[str, Any]] = queue.Queue()
+            closed = threading.Event()
 
             def _on_typing(sandbox_id: str, channel_id: str, agent_id: str, is_typing: bool) -> None:
                 typing_queue.put({
@@ -108,7 +112,49 @@ class DebugMonitorServer:
             registry.on_typing(_on_typing)
             registry.on_status_changed(_on_status)
 
-            while True:
+            def _recv_loop() -> None:
+                """Background thread that reads client messages."""
+                while not closed.is_set():
+                    try:
+                        raw = ws.receive(timeout=1.0)
+                    except Exception:
+                        closed.set()
+                        return
+                    if raw is None:
+                        continue
+                    try:
+                        msg = json.loads(raw)
+                    except (json.JSONDecodeError, TypeError):
+                        continue
+                    msg_type = msg.get("type")
+                    if msg_type == "admin_send" and admin_queue is not None:
+                        from harvest.agent_sandbox.admin_queue import AdminMessage
+                        sandbox_id = msg.get("sandbox_id", "")
+                        channel_id = msg.get("channel_id", "")
+                        content = msg.get("content", "")
+                        if sandbox_id and channel_id and content:
+                            admin_msg = AdminMessage(
+                                sandbox_id=sandbox_id,
+                                channel_id=channel_id,
+                                content=content,
+                            )
+                            admin_queue.enqueue(admin_msg)
+                            typing_queue.put({
+                                "type": "admin_queued",
+                                "sandbox_id": sandbox_id,
+                                "channel_id": channel_id,
+                                "message_id": admin_msg.message_id,
+                            })
+                        else:
+                            typing_queue.put({
+                                "type": "admin_blocked",
+                                "reason": "missing sandbox_id, channel_id, or content",
+                            })
+
+            recv_thread = threading.Thread(target=_recv_loop, daemon=True)
+            recv_thread.start()
+
+            while not closed.is_set():
                 time.sleep(batch_interval)
 
                 # Drain typing events first (immediate push)
@@ -119,6 +165,7 @@ class DebugMonitorServer:
                     except queue.Empty:
                         break
                     except Exception:
+                        closed.set()
                         return
 
                 now = time.monotonic()
@@ -166,6 +213,8 @@ class DebugMonitorServer:
                         ws.send(json.dumps(delta))
                     except Exception:
                         break
+
+            closed.set()
 
         return app
 

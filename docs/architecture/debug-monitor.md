@@ -13,7 +13,7 @@ BasicSandbox ──register──→ SandboxRegistry ←──snapshot──→ 
                                                               └── Static file serving (gui/build/)
 ```
 
-The debug server is strictly read-only — it observes sandbox state but never mutates it.
+The debug server supports a bidirectional WebSocket — the frontend can inject admin messages into sandbox channels.
 
 ## SandboxRegistry
 
@@ -39,11 +39,15 @@ The registry builds snapshots by reading each sandbox's public APIs:
 Flask-based server with `flask-sock` for WebSocket support:
 
 ```python
+from harvest.agent_sandbox.admin_queue import AdminMessageQueue
+
+admin_queue = AdminMessageQueue()
 server = DebugMonitorServer(
     registry=registry,
     host="127.0.0.1",
     port=8100,
     static_dir="gui/build/",  # optional
+    admin_queue=admin_queue,  # optional; enables admin mode
 )
 server.start()  # runs in background thread
 ```
@@ -52,16 +56,32 @@ server.start()  # runs in background thread
 
 **On connect:** sends a full snapshot immediately.
 
-**Every ~1 second:** if new messages exist, sends a delta containing only new messages.
+**Every ~1 second (server → client):** if new messages exist, sends a delta containing only new messages.
 
-**Every ~5 seconds:** sends a full re-sync snapshot regardless of changes. This corrects any client-side drift and picks up structural changes (agent added/removed, channel created/destroyed).
+**Every ~5 seconds (server → client):** sends a full re-sync snapshot regardless of changes. Corrects client-side drift and picks up structural changes.
 
-Message types:
+**Client → server:** `admin_send` messages inject content into sandbox channels as the "admin" sender.
+
+#### Server-to-client message types
 
 ```json
 {"type": "snapshot", "timestamp": "...", "sandboxes": [...]}
 {"type": "delta", "timestamp": "...", "messages": [...]}
+{"type": "typing", "sandbox_id": "...", "channel_id": "...", "agent_id": "...", "active": true}
+{"type": "agent_status", "sandbox_id": "...", "agent_id": "...", "status": "active"}
+{"type": "admin_queued", "sandbox_id": "...", "channel_id": "...", "message_id": "..."}
+{"type": "admin_blocked", "reason": "..."}
 ```
+
+#### Client-to-server message types
+
+```json
+{"type": "admin_send", "sandbox_id": "...", "channel_id": "...", "content": "..."}
+```
+
+The server places the message into an `AdminMessageQueue`. The sandbox should poll `admin_queue.drain()` on each tick to inject pending messages via `chat_router.send_message("admin", channel_id, content, ...)`.
+
+The "admin" sender bypasses channel membership checks (`_sender_allowed` returns `True` for `sender_id == "admin"`).
 
 ### REST Endpoint
 

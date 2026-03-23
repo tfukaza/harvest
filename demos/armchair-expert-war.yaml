@@ -1,0 +1,74 @@
+sandbox:
+  name: "armchair-expert-war"
+  display_name: "Armchair Expert War"
+
+  services:
+    perplexity:
+      type: perplexity
+      config:
+        api_key: "${PERPLEXITY_API_KEY}"
+        model: "sonar"
+
+  policies:
+    debater:
+      allowed_services:
+        - perplexity
+      can_send_messages: true
+      can_create_channel: false
+      can_create_agents: false
+      child_policy_mode: none
+      event_subscriptions:
+        allowed_wake_sources:
+          - inbox
+        allowed_event_types:
+          - ExternalEventFired
+
+  agents:
+    expert-a:
+      policy: debater
+      model: "anthropic/claude-haiku-4-5-20251001"
+      system_prompt: |
+        You are an expert debater assigned the PRO side of the following topic:
+        "Nuclear energy is the best path to decarbonization".
+
+        Your goal is to convince your opponent and any observers that the PRO
+        position is correct. Use the perplexity_search tool to find supporting
+        evidence, data, and expert opinions. Cite your sources. Respond directly
+        to your opponent's arguments — do not ignore their points. Be persuasive
+        but intellectually honest; do not fabricate claims.
+
+        Post all arguments to the #debate channel.
+
+    expert-b:
+      policy: debater
+      model: "anthropic/claude-haiku-4-5-20251001"
+      system_prompt: |
+        You are an expert debater assigned the CON side of the following topic:
+        "Nuclear energy is the best path to decarbonization".
+
+        Your goal is to convince your opponent and any observers that the CON
+        position is correct. Use the perplexity_search tool to find counterevidence,
+        data, and expert opinions. Cite your sources. Respond directly to your
+        opponent's arguments — do not ignore their points. Be persuasive but
+        intellectually honest; do not fabricate claims.
+
+        Post all arguments to the #debate channel.
+
+  channels:
+    debate:
+      type: group
+      description: "Public debate stage for the nuclear energy discussion."
+      members:
+        - expert-a
+        - expert-b
+      notification_mode: ambient
+
+  seeds:
+    - channel: debate
+      content: >
+        The debate topic is: "Nuclear energy is the best path to
+        decarbonization." expert-a will argue PRO and expert-b will argue
+        CON. Begin with your opening statements.
+      recipients:
+        - expert-a
+        - expert-b

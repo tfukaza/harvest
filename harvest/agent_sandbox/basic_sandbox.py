@@ -17,7 +17,12 @@ from harvest.agent_sandbox.endpoints import DeliveryMode, GroupChatDefinition, S
 from harvest.agent_sandbox.hibernation import EventSource, InboxEventSource, WakeEvent
 from harvest.agent_sandbox.processors import MessageProcessor
 from harvest.agent_sandbox.sandbox import AgentSandbox
+from harvest.agent_sandbox.event_helpers import SyncEventBus
+from harvest.agent_sandbox.sandbox_gateway import SandboxGateway
+from harvest.agent_sandbox.service_router import SandboxServiceRouter
+from harvest.agent_sandbox.system_prompt_builder import SystemPromptBuilder
 from harvest.events.event_bus import EventBus
+from harvest.interfaces.tool_definition import InterfaceTool
 from harvest.policy import AgentPolicy, ChildPolicyMode
 from harvest.policy_registry import PolicyRegistry
 from harvest.storage.schema.chat import ChatStore
@@ -37,6 +42,8 @@ class AgentStatus(enum.Enum):
     ACTIVE = "active"
     RATE_LIMITED = "rate_limited"
     CRASHED = "crashed"
+    STOPPED = "stopped"
+    UNRECOVERABLE = "unrecoverable"
 
 
 class _AgentHandle:
@@ -99,12 +106,48 @@ class BasicSandbox(AgentSandbox):
         self._lock = threading.Lock()
         self._resources: dict[str, Any] = {}
         self._tools: dict[str, Any] = {}
-        self._chat_router = ChatRouter(store=chat_store)
         self._policy_registry = policy_registry
         self._last_dispatch_results: dict[str, Any] = {}
         self._event_bus = event_bus
         self._running = False
         self._status_callbacks: list[Any] = []  # (agent_id, AgentStatus) -> None
+
+        # Per-sandbox synchronous event bus and gateway for isolation
+        self._sandbox_bus = SyncEventBus(name=f"sandbox-{config.runner_id}")
+        self._gateway: SandboxGateway | None = None
+        if event_bus is not None:
+            self._gateway = SandboxGateway(
+                sandbox_id=config.runner_id,
+                orchestrator_bus=event_bus,
+                sandbox_bus=self._sandbox_bus,
+            )
+            self._gateway.start()
+
+        self._chat_router = ChatRouter(store=chat_store, sandbox_bus=self._sandbox_bus)
+        self._service_router = SandboxServiceRouter(
+            sandbox_id=config.runner_id,
+            event_bus=event_bus,
+            sandbox_bus=self._sandbox_bus,
+        )
+
+        # Per-agent system prompt builders and injection tracking
+        self._prompt_builders: dict[str, SystemPromptBuilder] = {}
+        # Per-agent set of tool names already injected (for idempotency)
+        self._injected_tool_names: dict[str, set[str]] = {}
+
+        # Phase 18: lifecycle tracking
+        self._parent_map: dict[str, str] = {}  # agent_id → parent_id
+        self._agent_policies: dict[str, AgentPolicy] = {}
+        self._shutdown_reasons: dict[str, str] = {}  # agent_id → reason
+
+        # Subscribe to lifecycle request events on sandbox bus
+        self._wire_lifecycle_handlers()
+
+        # Register the event notification callback so the router can push
+        # structured event-arrival notifications into the system prompt.
+        self._service_router.register_event_notification_callback(
+            self._add_event_notification
+        )
 
     @property
     def config(self) -> AgentSandboxConfig:
@@ -115,6 +158,11 @@ class BasicSandbox(AgentSandbox):
     def chat_router(self) -> ChatRouter:
         """Access the sandbox's ChatRouter."""
         return self._chat_router
+
+    @property
+    def service_router(self) -> SandboxServiceRouter:
+        """Access the sandbox's SandboxServiceRouter."""
+        return self._service_router
 
     # -- Agent management --
 
@@ -141,19 +189,104 @@ class BasicSandbox(AgentSandbox):
             handle = _AgentHandle(agent, policy)
             self._agents[agent_id] = handle
 
-            # Wire agent to ChatRouter if it's a HarvestAgent
+            # Wire agent identity
             if hasattr(agent, 'agent_id'):
                 agent.agent_id = agent_id
             if hasattr(agent, '_sandbox'):
                 agent._sandbox = self
-            if hasattr(agent, '_chat_router') and agent._chat_router is None:
+
+            # Wire agent to chat: prefer event-driven client, fall back to direct.
+            # If the agent was already wired (e.g. chat_router passed to constructor),
+            # skip re-wiring to avoid overwriting existing tools.
+            already_wired = (
+                hasattr(agent, '_chat_router') and agent._chat_router is not None
+            )
+            if not already_wired and hasattr(agent, '_wire_chat_client'):
+                agent._wire_chat_client(self._sandbox_bus, policy)
+                # Still register with ChatRouter for inbox/channel tracking
+                self._chat_router.register_agent(agent_id)
+            elif not already_wired and hasattr(agent, '_chat_router'):
                 agent._chat_router = self._chat_router
                 agent._wire_chat_router(self._chat_router, policy)
+
+            # Initialise per-agent system prompt builder and inject tracker
+            self._prompt_builders[agent_id] = SystemPromptBuilder()
+            self._injected_tool_names[agent_id] = set()
+
+            # Wire the dynamic system prompt provider so the builder's output
+            # is used on every LLM invocation.
+            if hasattr(agent, '_system_prompt_fn') and hasattr(agent, 'base_system_prompt'):
+                def _make_prompt_fn(_aid: str, _agent: Any) -> Any:
+                    def _prompt_fn() -> str:
+                        return self._prompt_builders[_aid].build(_agent.base_system_prompt)
+                    return _prompt_fn
+                agent._system_prompt_fn = _make_prompt_fn(agent_id, agent)
+
+            # Auto-register interface tools from permitted services (no spec injection)
+            interface_tool_pairs = self._service_router.wire_agent_tools(agent_id, policy)
+            if hasattr(agent, '_tools') and hasattr(agent, '_tool_map'):
+                for tool_spec, tool_callable in interface_tool_pairs:
+                    agent._tools.append(tool_spec)
+                    agent._tool_map[tool_spec["function"]["name"]] = tool_callable
+
+            # Register the discover_tools callable
+            discovery_spec, discovery_callable = self._service_router.make_discovery_tool(
+                agent_id, policy, inject_callback=self._inject_tool_spec
+            )
+            if hasattr(agent, '_tools') and hasattr(agent, '_tool_map'):
+                agent._tools.append(discovery_spec)
+                agent._tool_map[discovery_spec["function"]["name"]] = discovery_callable
+
+            # Wire service router generic tools (fetch_data, execute_action, read_event_notifications)
+            if hasattr(agent, '_wire_service_router'):
+                # Use the updated make_service_tools with clear_notifications_callback
+                tool_specs, tool_map = self._service_router.make_service_tools(
+                    agent_id, policy,
+                    clear_notifications_callback=self._clear_event_notifications,
+                )
+                agent._tools.extend(tool_specs)
+                agent._tool_map.update(tool_map)
 
             # Auto-register inbox event source for hibernation
             handle.event_sources.append(InboxEventSource(self._chat_router))
 
-            # Wire wake signal so new messages interrupt hibernation sleep
+            # Register wake callback with service router so external events
+            # can interrupt the agent's hibernation sleep.
+            self._service_router.register_agent_wake_callback(
+                agent_id,
+                wake_fn=handle.wake_signal.set,
+            )
+
+            # Subscribe agent to any EVENT_SOURCE services granted by its policy.
+            if policy is not None:
+                from harvest.interfaces.service import ServiceRole
+                all_services = set(self._service_router.list_services())
+                for perm in policy.allowed_services:
+                    svc = self._service_router._services.get(perm.service_id)
+                    if svc is None:
+                        continue
+                    if ServiceRole.EVENT_SOURCE not in svc.roles:
+                        continue
+                    if perm.roles is not None and ServiceRole.EVENT_SOURCE not in perm.roles:
+                        continue
+                    if perm.service_id in all_services:
+                        self._service_router.subscribe_agent(agent_id, perm.service_id)
+
+            # Wire wake signal so new messages interrupt hibernation sleep.
+            # Subscribe to NewChatMessage on the sandbox bus (event-driven).
+            from harvest.agent_sandbox.chat_events import NewChatMessage
+
+            def _wake_on_new_chat(
+                event: Any,
+                _handle: _AgentHandle = handle,
+                _agent_id: str = agent_id,
+            ) -> None:
+                if _agent_id in getattr(event, 'recipient_ids', []):
+                    _handle.wake_signal.set()
+
+            self._sandbox_bus.on(NewChatMessage, _wake_on_new_chat)
+
+            # Also keep legacy callback for backward compatibility
             def _wake_on_message(
                 channel_id: str,
                 sender_id: str,
@@ -179,6 +312,21 @@ class BasicSandbox(AgentSandbox):
                         pass
 
             handle.on_status_changed(_on_status)
+
+            # Dispatch lifecycle events on sandbox bus
+            self._dispatch_status_callback(agent_id, handle)
+
+            # Dispatch AgentStarted event
+            from harvest.agent_sandbox.lifecycle_events import AgentStarted
+            self._sandbox_bus.dispatch(AgentStarted(
+                agent_id=agent_id,
+                parent_id=self._parent_map.get(agent_id, ""),
+                policy_name=policy.name if policy else "",
+            ))
+
+            # Track policy for service routing
+            if policy is not None:
+                self._agent_policies[agent_id] = policy
 
             # Start agent thread if sandbox is running
             if self._running:
@@ -208,12 +356,26 @@ class BasicSandbox(AgentSandbox):
         """
         with self._lock:
             handle = self._agents.pop(agent_id)
+            handle.status = AgentStatus.STOPPED
             handle.stop_event.set()
 
+        self._service_router.unregister_agent(agent_id)
+        self._prompt_builders.pop(agent_id, None)
+        self._injected_tool_names.pop(agent_id, None)
+        self._agent_policies.pop(agent_id, None)
         handle.agent.shutdown()
 
         if handle.thread is not None and handle.thread.is_alive():
             handle.thread.join(timeout=5.0)
+
+        # Dispatch AgentStopped event
+        from harvest.agent_sandbox.lifecycle_events import AgentStopped
+        reason = self._shutdown_reasons.pop(agent_id, "")
+        self._sandbox_bus.dispatch(AgentStopped(
+            agent_id=agent_id,
+            final_status=handle.status.value,
+            reason=reason,
+        ))
 
     def get_agent(self, agent_id: str) -> Agent:
         """Get an agent by ID.
@@ -285,6 +447,11 @@ class BasicSandbox(AgentSandbox):
             handles = list(self._agents.items())
 
         for agent_id, handle in handles:
+            # Filter by policy event subscriptions
+            if handle.policy and handle.policy.event_subscriptions:
+                subs = handle.policy.event_subscriptions
+                if subs.allowed_event_types is not None and event_type not in subs.allowed_event_types:
+                    continue
             try:
                 output = handle.agent.step(translated)
                 results[agent_id] = output
@@ -316,6 +483,9 @@ class BasicSandbox(AgentSandbox):
 
         with self._lock:
             self._agents.clear()
+
+        if self._gateway is not None:
+            self._gateway.stop()
 
     def health_check(self) -> dict[str, Any]:
         """Return sandbox health information."""
@@ -399,6 +569,231 @@ class BasicSandbox(AgentSandbox):
             handle = self._agents[agent_id]
             handle.event_sources.append(source)
 
+    # -- System prompt injection callbacks -----------------------------------
+
+    def _inject_tool_spec(self, agent_id: str, tool: InterfaceTool) -> None:
+        """Append a tool spec block to the 'tool_specs' system prompt section.
+
+        Idempotent — already-injected tools are skipped.
+
+        # TODO (future phase): Replace this with a proper memory system.
+        # Tool signatures are high-value persistent knowledge that should be
+        # saved to agent memory and reloaded into the system prompt on each
+        # invocation, making them durable across sessions and restarts — not
+        # just within a single run. The SystemPromptBuilder.append() call here
+        # is the correct architectural slot; the future implementation reads
+        # from memory instead of from in-process builder state.
+        """
+        builder = self._prompt_builders.get(agent_id)
+        if builder is None:
+            return
+        injected = self._injected_tool_names.get(agent_id)
+        if injected is None:
+            return
+        if tool.name not in injected:
+            # First injection: prepend the "Available Tools" header
+            if not injected:
+                builder.append("tool_specs", "## Available Tools\n")
+            builder.append("tool_specs", tool.to_system_prompt_block())
+            injected.add(tool.name)
+
+    def _add_event_notification(
+        self, agent_id: str, source_id: str, event_type: str
+    ) -> None:
+        """Append an event arrival notification to the 'event_notifications' section."""
+        builder = self._prompt_builders.get(agent_id)
+        if builder is None:
+            return
+        block = (
+            f"## Pending Event Notification\n\n"
+            f"A new event has arrived from source '{source_id}' "
+            f"(type: '{event_type}'). Call read_event_notifications() to read it."
+        )
+        builder.append("event_notifications", block)
+
+    def _clear_event_notifications(self, agent_id: str) -> None:
+        """Clear the 'event_notifications' section after the agent reads events."""
+        builder = self._prompt_builders.get(agent_id)
+        if builder is None:
+            return
+        builder.clear("event_notifications")
+
+    # -- Lifecycle event handlers (Phase 18) -----------------------------------
+
+    def _wire_lifecycle_handlers(self) -> None:
+        """Subscribe to lifecycle request events on the sandbox bus."""
+        from harvest.agent_sandbox.lifecycle_events import (
+            CreateAgentRequest,
+            GetAgentStatusRequest,
+            ShutdownAgentRequest,
+        )
+        self._sandbox_bus.on(CreateAgentRequest, self._handle_create_agent)
+        self._sandbox_bus.on(ShutdownAgentRequest, self._handle_shutdown_agent)
+        self._sandbox_bus.on(GetAgentStatusRequest, self._handle_get_status)
+
+    def _handle_create_agent(self, event: Any) -> None:
+        """Validate policy and create a child agent."""
+        from harvest.agent_sandbox.lifecycle_events import CreateAgentResponse
+
+        try:
+            # Resolve policy
+            parent_policy = self._agent_policies.get(event.parent_id)
+            if parent_policy is None:
+                self._sandbox_bus.dispatch(CreateAgentResponse(
+                    parent_id=event.parent_id, agent_id=event.agent_id,
+                    request_id=event.request_id, status="error",
+                    error="parent_policy_not_found",
+                ))
+                return
+
+            if not parent_policy.can_create_agents:
+                self._sandbox_bus.dispatch(CreateAgentResponse(
+                    parent_id=event.parent_id, agent_id=event.agent_id,
+                    request_id=event.request_id, status="error",
+                    error="not_permitted",
+                ))
+                return
+
+            # Resolve child policy
+            child_policy: AgentPolicy | None = None
+            if event.policy_name and self._policy_registry:
+                try:
+                    child_policy = self._policy_registry.get(event.policy_name)
+                except KeyError:
+                    self._sandbox_bus.dispatch(CreateAgentResponse(
+                        parent_id=event.parent_id, agent_id=event.agent_id,
+                        request_id=event.request_id, status="error",
+                        error=f"policy_not_found:{event.policy_name}",
+                    ))
+                    return
+
+            # Create the agent
+            from harvest.harvest_agent import HarvestAgent, HarvestAgentConfig
+
+            # Resolve model: use parent's if not specified
+            parent_handle = self._agents.get(event.parent_id)
+            model = event.model
+            if not model and parent_handle and hasattr(parent_handle.agent, 'config'):
+                model = parent_handle.agent.config.model
+
+            identity_footer = (
+                f"\n\n---\n"
+                f"Your agent ID is `{event.agent_id}`. Other agents refer to you "
+                f"as @{event.agent_id}."
+            )
+            system_prompt = (event.system_prompt or "You are an agent.").rstrip() + identity_footer
+
+            config = HarvestAgentConfig(
+                model=model or "anthropic/claude-haiku-4-5-20251001",
+                system_prompt=system_prompt,
+            )
+            agent = HarvestAgent(config=config, agent_id=event.agent_id)
+
+            # Track parent
+            self._parent_map[event.agent_id] = event.parent_id
+
+            # Register the child agent
+            self.register_agent(event.agent_id, agent, policy=child_policy)
+
+            self._sandbox_bus.dispatch(CreateAgentResponse(
+                parent_id=event.parent_id, agent_id=event.agent_id,
+                request_id=event.request_id, status="created",
+            ))
+        except Exception as exc:
+            logger.exception("Failed to create agent %s", event.agent_id)
+            self._sandbox_bus.dispatch(CreateAgentResponse(
+                parent_id=event.parent_id, agent_id=event.agent_id,
+                request_id=event.request_id, status="error",
+                error=str(exc),
+            ))
+
+    def _handle_shutdown_agent(self, event: Any) -> None:
+        """Validate ownership and remove the agent."""
+        from harvest.agent_sandbox.lifecycle_events import ShutdownAgentResponse
+
+        is_self_shutdown = (event.parent_id == event.agent_id)
+
+        if not is_self_shutdown:
+            # Check parent owns this agent
+            actual_parent = self._parent_map.get(event.agent_id)
+            if actual_parent != event.parent_id:
+                self._sandbox_bus.dispatch(ShutdownAgentResponse(
+                    parent_id=event.parent_id, agent_id=event.agent_id,
+                    request_id=event.request_id, status="error",
+                    error="not_your_agent",
+                ))
+                return
+
+        if event.agent_id not in self._agents:
+            self._sandbox_bus.dispatch(ShutdownAgentResponse(
+                parent_id=event.parent_id, agent_id=event.agent_id,
+                request_id=event.request_id, status="error",
+                error="agent_not_found",
+            ))
+            return
+
+        # Set reason for the AgentStopped event
+        reason = "task_complete" if is_self_shutdown else "parent_shutdown"
+        self._shutdown_reasons[event.agent_id] = reason
+
+        try:
+            self.remove_agent(event.agent_id)
+            self._sandbox_bus.dispatch(ShutdownAgentResponse(
+                parent_id=event.parent_id, agent_id=event.agent_id,
+                request_id=event.request_id, status="stopped",
+            ))
+        except Exception as exc:
+            logger.exception("Failed to shutdown agent %s", event.agent_id)
+            self._sandbox_bus.dispatch(ShutdownAgentResponse(
+                parent_id=event.parent_id, agent_id=event.agent_id,
+                request_id=event.request_id, status="error",
+                error=str(exc),
+            ))
+
+    def _handle_get_status(self, event: Any) -> None:
+        """Return the agent's current status."""
+        from harvest.agent_sandbox.lifecycle_events import GetAgentStatusResponse
+
+        handle = self._agents.get(event.agent_id)
+        if handle is None:
+            self._sandbox_bus.dispatch(GetAgentStatusResponse(
+                parent_id=event.parent_id, agent_id=event.agent_id,
+                request_id=event.request_id, error="agent_not_found",
+            ))
+            return
+
+        self._sandbox_bus.dispatch(GetAgentStatusResponse(
+            parent_id=event.parent_id, agent_id=event.agent_id,
+            request_id=event.request_id, agent_status=handle.status.value,
+        ))
+
+    def _dispatch_status_callback(self, agent_id: str, handle: _AgentHandle) -> None:
+        """Wire status changes to dispatch AgentStatusChanged on the sandbox bus."""
+        from harvest.agent_sandbox.lifecycle_events import AgentStatusChanged
+
+        def _on_bus_status(new_status: AgentStatus, _aid: str = agent_id) -> None:
+            # We need old_status — capture it via closure
+            pass  # actual dispatch happens below
+
+        # Hook into the existing status setter callback
+        _prev_status = [handle.status]
+
+        def _status_bus_cb(new_status: AgentStatus, _aid: str = agent_id) -> None:
+            old = _prev_status[0]
+            _prev_status[0] = new_status
+            if old != new_status:
+                self._sandbox_bus.dispatch(AgentStatusChanged(
+                    agent_id=_aid,
+                    old_status=old.value,
+                    new_status=new_status.value,
+                ))
+
+        handle.on_status_changed(_status_bus_cb)
+
+    def get_agent_policy(self, agent_id: str) -> AgentPolicy | None:
+        """Return the policy for an agent, or None."""
+        return self._agent_policies.get(agent_id)
+
     # -- Internal --
 
     def _start_agent_thread(self, agent_id: str, handle: _AgentHandle) -> None:
@@ -459,6 +854,14 @@ class BasicSandbox(AgentSandbox):
             if not all_events:
                 continue
 
+            # Filter wake events by policy subscription
+            if handle.policy and handle.policy.event_subscriptions:
+                subs = handle.policy.event_subscriptions
+                if subs.allowed_wake_sources is not None:
+                    all_events = [e for e in all_events if e.source_type in subs.allowed_wake_sources]
+            if not all_events:
+                continue
+
             # --- Wake phase: format events and restart LLM loop ---
             logger.info(
                 "Agent %s woke with %d event(s): %s",
@@ -479,14 +882,32 @@ class BasicSandbox(AgentSandbox):
                     logger.info("Agent %s step() returned", agent_id)
                     break
                 except Exception as exc:
-                    exc_name = type(exc).__name__
-                    is_rate_limit = "RateLimit" in exc_name or "429" in str(exc)
-                    if is_rate_limit and attempt < max_retries - 1:
+                    from harvest.agent_sandbox.llm_errors import (
+                        LLMErrorKind,
+                        classify_llm_error,
+                    )
+                    kind = classify_llm_error(exc)
+
+                    if kind == LLMErrorKind.UNRECOVERABLE:
+                        # These errors will not resolve with retries — shut
+                        # the agent down immediately with a clear message.
+                        logger.error(
+                            "Agent %s encountered an unrecoverable LLM error and is "
+                            "shutting down: %s",
+                            agent_id, exc,
+                        )
+                        handle.status = AgentStatus.UNRECOVERABLE
+                        handle.stop_event.set()
+                        break
+
+                    if kind == LLMErrorKind.RETRYABLE and attempt < max_retries - 1:
                         # Exponential backoff: 10s, 20s, 40s, 80s, 160s, ...
                         backoff = 10.0 * (2 ** attempt) + random.uniform(0, 5)
                         logger.warning(
-                            "Agent %s hit rate limit (attempt %d/%d), retrying in %.0fs",
+                            "Agent %s hit retryable LLM error (attempt %d/%d), "
+                            "retrying in %.0fs: %s",
                             agent_id, attempt + 1, max_retries, backoff,
+                            str(exc)[:200],
                         )
                         handle.status = AgentStatus.RATE_LIMITED
                         # Use interruptible wait so stop_event can break out
@@ -495,7 +916,8 @@ class BasicSandbox(AgentSandbox):
                             break
                         handle.status = AgentStatus.ACTIVE
                         continue
-                    # Non-retryable error or retries exhausted — crash the agent
+
+                    # Unknown error or retries exhausted — crash the agent.
                     logger.exception("Agent %s step() failed on wake", agent_id)
                     handle.status = AgentStatus.CRASHED
                     handle.stop_event.set()  # exit the hibernation loop
@@ -538,9 +960,17 @@ class BasicSandbox(AgentSandbox):
                 channel_id = event.payload.get("channel_id", "")
                 msg_id = event.payload.get("message_id", "")
                 short_id = msg_id[:8] if msg_id else ""
-                mention_parts.append(
-                    f"[msg:{short_id}] @{sender} in #{channel_id}: {content}"
-                )
+                # Seed messages use a distinct format so agents know
+                # this is a scenario prompt, not a real participant.
+                from harvest.agent_sandbox.chat import ChatRouter
+                if sender == ChatRouter.SEED_SENDER_ID:
+                    mention_parts.append(
+                        f"[scenario-prompt] #{channel_id}: {content}"
+                    )
+                else:
+                    mention_parts.append(
+                        f"[msg:{short_id}] @{sender} in #{channel_id}: {content}"
+                    )
             else:
                 channel_id = event.payload.get("channel_id", "")
                 ambient_counts[channel_id] = ambient_counts.get(channel_id, 0) + 1
@@ -624,6 +1054,8 @@ class BasicSandbox(AgentSandbox):
             agent_config = HarvestAgentConfig(
                 model=entry.model,
                 system_prompt=entry.system_prompt.rstrip() + identity_footer,
+                api_base=entry.api_base,
+                api_key_env=entry.api_key_env,
             )
             agent = HarvestAgent(
                 config=agent_config,

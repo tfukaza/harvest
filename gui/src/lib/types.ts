@@ -24,6 +24,20 @@ export interface MessageInfo {
   reply_to?: string;
 }
 
+// Phase 13 external interface nodes registered to a sandbox
+export interface ExternalNodeInfo {
+  node_id: string;       // stable service ID, e.g. "alpaca-market-data"
+  node_type: string;     // implementation class, e.g. "alpaca_market_data"
+  kind: "data_source" | "action" | "event_source";
+  capabilities: string[];
+}
+
+// Agent parent/child relationship for hierarchy rendering
+export interface AgentRelationship {
+  parent_id: string;
+  child_id: string;
+}
+
 export interface SandboxSnapshot {
   sandbox_id: string;
   display_name: string;
@@ -32,6 +46,10 @@ export interface SandboxSnapshot {
   recent_messages: MessageInfo[];
   typing: Record<string, string[]>;
   snapshot_timestamp: string;
+  // Phase 13 external interface nodes (optional; absent when backend not yet updated)
+  external_nodes?: ExternalNodeInfo[];
+  // Agent hierarchy edges (optional)
+  agent_relationships?: AgentRelationship[];
 }
 
 export interface DeltaMessageEntry {
@@ -71,4 +89,24 @@ export interface AgentStatusMessage {
   status: "idle" | "active" | "rate_limited" | "crashed";
 }
 
-export type ServerMessage = SnapshotMessage | DeltaMessage | TypingMessage | AgentStatusMessage;
+export interface AdminQueuedMessage {
+  type: "admin_queued";
+  sandbox_id: string;
+  channel_id: string;
+  message_id: string;
+}
+
+export interface AdminBlockedMessage {
+  type: "admin_blocked";
+  reason: string;
+}
+
+/** Message sent from the frontend to inject a human message into a channel. */
+export interface AdminSendMessage {
+  type: "admin_send";
+  sandbox_id: string;
+  channel_id: string;
+  content: string;
+}
+
+export type ServerMessage = SnapshotMessage | DeltaMessage | TypingMessage | AgentStatusMessage | AdminQueuedMessage | AdminBlockedMessage;

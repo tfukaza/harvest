@@ -465,14 +465,14 @@ def run_sandbox(
         manifest = _load_manifest(manifest_path)
         for seed in manifest.seeds:
             target_label = ", ".join(seed.recipients) if seed.recipients else "all"
-            print(f"[seed] → {seed.channel_id} ({target_label}): {seed.content}", file=output_stream)
+            print(f"[scenario-seed] → {seed.channel_id} ({target_label}): {seed.content}", file=output_stream)
             router.inject_seed(seed.channel_id, seed.content, recipients=seed.recipients)
 
         # Inject CLI --topic seed (overrides / adds to manifest seeds)
         if args.topic and seed_channel:
             kickstart = [args.kickstart] if args.kickstart else None
             target_label = args.kickstart or "all"
-            print(f"[seed] → {seed_channel} ({target_label}): {args.topic}", file=output_stream)
+            print(f"[scenario-seed] → {seed_channel} ({target_label}): {args.topic}", file=output_stream)
             router.inject_seed(seed_channel, args.topic, recipients=kickstart)
 
         print("Press Ctrl+C to stop.\n", file=output_stream)

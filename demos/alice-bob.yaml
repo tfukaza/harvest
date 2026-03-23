@@ -1,5 +1,6 @@
 sandbox:
   name: "alice-bob-demo"
+  display_name: "Alice & Bob"
 
   policies:
     chatter:
@@ -12,6 +13,9 @@ sandbox:
       can_create_channel: false
       can_create_agents: false
       child_policy_mode: none
+      event_subscriptions:
+        allowed_wake_sources:
+          - inbox
 
   agents:
     alice:
@@ -45,3 +49,4 @@ sandbox:
       members:
         - alice
         - bob
+      notification_mode: ambient

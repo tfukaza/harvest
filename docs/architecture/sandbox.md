@@ -55,9 +55,14 @@ register_agent(agent_id, agent, policy=policy)
 When an agent is registered, the sandbox:
 
 1. Sets `agent.agent_id` and `agent._chat_router`
-2. Calls `agent._wire_chat_router(router, policy)` which registers chat tools (send_message, read_messages, list_channels, get_username) filtered by the agent's policy
-3. Adds an `InboxEventSource` to the agent's event sources
-4. Registers a callback on the ChatRouter's `on_new_message` hook so incoming messages for this agent trigger `wake_signal.set()`
+2. Calls `agent._wire_chat_router(router, policy)` — registers chat tools (send_message, read_messages, list_channels, get_username) filtered by the agent's policy
+3. Calls `agent._wire_service_router(service_router)` — registers service tools (fetch_data, execute_action, read_event_notifications, discover_tools) and auto-registers interface tools from permitted services
+4. Creates a `SystemPromptBuilder` for the agent
+5. Sets `agent._system_prompt_fn` to a closure that calls `builder.build(agent.config.system_prompt)` on every LLM invocation
+6. Adds an `InboxEventSource` to the agent's event sources
+7. Registers a callback on the ChatRouter's `on_new_message` hook so incoming messages for this agent trigger `wake_signal.set()`
+
+See [service-router.md](service-router.md) for service tool details and [system-prompt.md](system-prompt.md) for dynamic section management.
 
 ## Event Fan-Out
 

@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import logging
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
 import yaml
+
+logger = logging.getLogger(__name__)
 
 from harvest.agent_sandbox.channels import ChannelType, NotificationMode
 from harvest.policy import AgentPolicy
@@ -20,6 +24,8 @@ class AgentManifestEntry:
     policy_name: str
     model: str
     system_prompt: str
+    api_base: str | None = None
+    api_key_env: str | None = None
 
 
 @dataclass
@@ -46,6 +52,18 @@ class SeedEntry:
 
 
 @dataclass
+class ServiceManifestEntry:
+    """Parsed entry for a Service in the sandbox manifest.
+
+    The ``service_type`` field maps to a registered implementation class name.
+    """
+
+    service_id: str
+    service_type: str
+    config: dict = field(default_factory=dict)
+
+
+@dataclass
 class SandboxManifest:
     """Parsed representation of a sandbox YAML manifest."""
 
@@ -54,6 +72,7 @@ class SandboxManifest:
     agents: dict[str, AgentManifestEntry]
     channels: dict[str, ChannelManifestEntry]
     seeds: list[SeedEntry] = field(default_factory=list)
+    services: dict[str, ServiceManifestEntry] = field(default_factory=dict)
 
 
 _CHANNEL_TYPE_MAP = {
@@ -91,6 +110,17 @@ def load_manifest(
     sandbox_data = data.get("sandbox", data)
     name = sandbox_data.get("name", "unnamed")
 
+    # Parse unified services registry
+    services: dict[str, ServiceManifestEntry] = {}
+    for svc_id, svc_data in sandbox_data.get("services", {}).items():
+        svc_type = svc_data.get("type", "")
+        if not svc_type:
+            raise ValueError(f"services entry '{svc_id}' is missing required 'type' field")
+        config = {k: v for k, v in svc_data.items() if k != "type"}
+        services[svc_id] = ServiceManifestEntry(
+            service_id=svc_id, service_type=svc_type, config=config
+        )
+
     # Parse sandbox-local policies
     local_policies: dict[str, AgentPolicy] = {}
     for policy_name, policy_data in sandbox_data.get("policies", {}).items():
@@ -111,12 +141,30 @@ def load_manifest(
             raise ValueError(
                 f"Agent '{agent_id}' references undefined policy '{policy_name}'"
             )
+        model = agent_data.get("model", "")
+        if model.startswith("openrouter/") and not os.environ.get("OPENROUTER_API_KEY"):
+            logger.warning(
+                "Agent '%s' uses an OpenRouter model but OPENROUTER_API_KEY is not set "
+                "in the environment",
+                agent_id,
+            )
         agents[agent_id] = AgentManifestEntry(
             agent_id=agent_id,
             policy_name=policy_name,
-            model=agent_data.get("model", ""),
+            model=model,
             system_prompt=agent_data.get("system_prompt", ""),
+            api_base=agent_data.get("api_base"),
+            api_key_env=agent_data.get("api_key_env"),
         )
+
+    # Validate policy service cross-references against sandbox service registry
+    for policy in local_policies.values():
+        for perm in policy.allowed_services:
+            if perm.service_id not in services:
+                raise ValueError(
+                    f"Policy '{policy.name}' references service '{perm.service_id}' "
+                    f"which is not declared in the sandbox services registry"
+                )
 
     # Parse channels
     channels: dict[str, ChannelManifestEntry] = {}
@@ -130,7 +178,6 @@ def load_manifest(
         publisher_ids = channel_data.get("publishers", [])
         subscriber_ids = channel_data.get("subscribers", [])
 
-        # Validate member/publisher/subscriber references
         for mid in member_ids + publisher_ids + subscriber_ids:
             if mid not in agents:
                 raise ValueError(
@@ -190,4 +237,5 @@ def load_manifest(
         agents=agents,
         channels=channels,
         seeds=seeds,
+        services=services,
     )

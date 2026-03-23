@@ -10,7 +10,7 @@ import numpy as np
 import polars as pl
 
 from harvest.definitions import TickerCandleList
-from harvest.enum import BrokerType, DataBrokerType, Interval, IntervalUnit, StorageType, TimeRange, TradeBrokerType
+from harvest.enum import Interval, IntervalUnit, TimeRange
 from harvest.util.date import utc_current_time
 
 # Configure a logger used by all of Harvest.
@@ -199,76 +199,6 @@ def convert_input_to_timedelta(period: Union[TimeRange, str, dt.timedelta]) -> d
         return period
     else:
         raise ValueError(f"Cannot convert {period} to timedelta.")
-
-
-def str_to_data_broker_type(name: str) -> DataBrokerType:
-    """
-    Converts a string to a DataBrokerType enum.
-    """
-    if name == "dummy":
-        return DataBrokerType.DUMMY
-    elif name == "yahoo":
-        return DataBrokerType.YAHOO
-    elif name == "polygon":
-        return DataBrokerType.POLYGON
-    elif name == "robinhood":
-        return DataBrokerType.ROBINHOOD
-    elif name == "alpaca":
-        return DataBrokerType.ALPACA
-    elif name == "webull":
-        return DataBrokerType.WEBULL
-    else:
-        raise ValueError(f"Invalid DataBrokerType {name}")
-
-
-def str_to_trade_broker_type(name: str) -> TradeBrokerType:
-    """
-    Converts a string to a TradeBrokerType enum.
-    """
-    if name == "paper":
-        return TradeBrokerType.PAPER
-    elif name == "robinhood":
-        return TradeBrokerType.ROBINHOOD
-    elif name == "alpaca":
-        return TradeBrokerType.ALPACA
-    elif name == "webull":
-        return TradeBrokerType.WEBULL
-    else:
-        raise ValueError(f"Invalid TradeBrokerType {name}")
-
-
-def str_to_broker_type(name: str) -> BrokerType:
-    """
-    Converts a string to a BrokerType enum.
-    """
-    if name == "dummy":
-        return BrokerType.DUMMY
-    elif name == "yahoo":
-        return BrokerType.YAHOO
-    elif name == "polygon":
-        return BrokerType.POLYGON
-    elif name == "robinhood":
-        return BrokerType.ROBINHOOD
-    elif name == "alpaca":
-        return BrokerType.ALPACA
-    elif name == "webull":
-        return BrokerType.WEBULL
-    elif name == "paper":
-        return BrokerType.PAPER
-    else:
-        raise ValueError(f"Invalid BrokerType {name}")
-
-
-def str_to_storage_type(name: str) -> StorageType:
-    """
-    Converts a string to a StorageType enum.
-    """
-    if name == "base":
-        return StorageType.BASE
-    elif name == "csv":
-        return StorageType.CSV
-    else:
-        raise ValueError(f"Invalid StorageType {name}")
 
 
 # =========== DataFrame utils ===========

@@ -200,6 +200,123 @@ class ResourceUpdated(HarvestEvent):
 
 
 # ---------------------------------------------------------------------------
+# DataSource / Action / EventSource routing events
+# ---------------------------------------------------------------------------
+
+
+class DataFetchRequested(HarvestEvent):
+    """Emitted by the sandbox service router when an agent requests data.
+
+    The orchestrator (or service router) receives this, checks the agent's
+    policy, and forwards to the appropriate DataSource.
+    """
+
+    agent_id: str
+    source_id: str
+    request_id: str
+    query_type: str
+    params: dict[str, Any] = Field(default_factory=dict)
+
+
+class DataFetchCompleted(HarvestEvent):
+    """Emitted when a DataSource responds to a fetch request.
+
+    ``error`` is empty on success; non-empty (e.g. ``"policy_denied"``) on
+    failure.
+    """
+
+    agent_id: str
+    source_id: str
+    request_id: str
+    payload: dict[str, Any] = Field(default_factory=dict)
+    error: str = ""
+
+
+class ActionRequested(HarvestEvent):
+    """Emitted by the sandbox service router when an agent issues a command.
+
+    The orchestrator (or service router) receives this, checks the agent's
+    policy, and forwards to the appropriate Action handler.
+    """
+
+    agent_id: str
+    action_id: str
+    request_id: str
+    command_type: str
+    params: dict[str, Any] = Field(default_factory=dict)
+
+
+class ActionCompleted(HarvestEvent):
+    """Emitted when an Action execution completes.
+
+    ``error`` is empty on success; non-empty (e.g. ``"policy_denied"``) on
+    failure.
+    """
+
+    agent_id: str
+    action_id: str
+    request_id: str
+    payload: dict[str, Any] = Field(default_factory=dict)
+    error: str = ""
+
+
+class ExternalEventFired(HarvestEvent):
+    """Emitted by an EventSource when a monitored condition is met.
+
+    The sandbox service router receives this and fans it out to all agents
+    that are subscribed to ``source_id``.
+    """
+
+    source_id: str
+    event_type: str
+    payload: dict[str, Any] = Field(default_factory=dict)
+
+
+class ExternalEventDelivered(HarvestEvent):
+    """Emitted after an ExternalEventFired is delivered to a subscribed agent.
+
+    One instance is emitted per (agent, event) pair, providing a full audit
+    trail of which agents received which external events.
+    """
+
+    source_id: str
+    agent_id: str
+    sandbox_id: str
+    event_type: str
+
+
+# ---------------------------------------------------------------------------
+# Tool discovery / auto-registration events
+# ---------------------------------------------------------------------------
+
+
+class ToolsAutoRegistered(HarvestEvent):
+    """Emitted when interface tools are wired as callables onto an agent at startup.
+
+    This event records the completion of policy-driven auto-registration.
+    The listed tools are callable on the agent from this point forward, but
+    their signatures have not yet been injected into the agent's context.
+    """
+
+    agent_id: str
+    tool_names: list[str]
+    sandbox_id: str
+
+
+class ToolSpecsInjected(HarvestEvent):
+    """Emitted when tool signatures are injected into an agent's system prompt.
+
+    Injected specs are durable — they survive context compaction and remain
+    visible in the system prompt for the rest of the session.  This event is
+    emitted once per tool per agent (the first ``discover_tools(tool_name)``
+    call for that tool).
+    """
+
+    agent_id: str
+    tool_names: list[str]
+
+
+# ---------------------------------------------------------------------------
 # Health / error / log events
 # ---------------------------------------------------------------------------
 

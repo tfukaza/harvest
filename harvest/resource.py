@@ -1,9 +1,25 @@
-"""Resource contract for generalized runtime inputs and capabilities."""
+"""Resource contract for generalized runtime inputs and capabilities.
+
+.. deprecated::
+    :mod:`harvest.resource` is deprecated.  Use
+    :class:`harvest.interfaces.DataSource` instead, which is a strict
+    superset of the ``Resource`` contract.  See ``docs/phase-13.md`` for
+    migration guidance.
+"""
 
 from __future__ import annotations
 
+import warnings
 from abc import ABC, abstractmethod
 from typing import Any
+
+warnings.warn(
+    "harvest.resource.Resource is deprecated and will be removed in a future release. "
+    "Use harvest.interfaces.DataSource instead. "
+    "See docs/phase-13.md for migration guidance.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 
 class Resource(ABC):

@@ -1,5 +1,6 @@
 sandbox:
   name: "panel-discussion"
+  display_name: "Panel Discussion"
 
   policies:
     panelist:
@@ -12,6 +13,9 @@ sandbox:
       can_create_channel: false
       can_create_agents: false
       child_policy_mode: none
+      event_subscriptions:
+        allowed_wake_sources:
+          - inbox
 
   agents:
     morgan:
@@ -114,3 +118,4 @@ sandbox:
         - dev
         - sasha
         - quinn
+      notification_mode: ambient

@@ -1,5 +1,6 @@
 sandbox:
   name: "conspiracy-demo"
+  display_name: "The Conspiracy"
 
   policies:
     chatter:
@@ -12,6 +13,9 @@ sandbox:
       can_create_channel: false
       can_create_agents: false
       child_policy_mode: none
+      event_subscriptions:
+        allowed_wake_sources:
+          - inbox
 
   agents:
     charlie:

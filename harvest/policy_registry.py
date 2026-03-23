@@ -6,7 +6,8 @@ from pathlib import Path
 
 import yaml
 
-from harvest.policy import AgentPolicy, ChildPolicyMode
+from harvest.interfaces.service import ServicePermission, ServiceRole
+from harvest.policy import AgentPolicy, ChildPolicyMode, EventSubscriptions
 
 
 class PolicyRegistry:
@@ -83,6 +84,17 @@ def _parse_policy(name: str, data: dict) -> AgentPolicy:
     child_mode_str = data.get("child_policy_mode", "none")
     child_mode = ChildPolicyMode(child_mode_str)
     allowed_child = tuple(data.get("allowed_child_policies", []))
+    allowed_services = _parse_allowed_services(data.get("allowed_services", []))
+
+    event_subs_data = data.get("event_subscriptions")
+    event_subs = None
+    if event_subs_data is not None:
+        evt_types = event_subs_data.get("allowed_event_types")
+        wake_sources = event_subs_data.get("allowed_wake_sources")
+        event_subs = EventSubscriptions(
+            allowed_event_types=frozenset(evt_types) if evt_types is not None else None,
+            allowed_wake_sources=frozenset(wake_sources) if wake_sources is not None else None,
+        )
 
     return AgentPolicy(
         name=name,
@@ -92,4 +104,44 @@ def _parse_policy(name: str, data: dict) -> AgentPolicy:
         can_create_agents=can_create_agents,
         child_policy_mode=child_mode,
         allowed_child_policies=allowed_child,
+        allowed_services=allowed_services,
+        event_subscriptions=event_subs,
     )
+
+
+def _parse_allowed_services(entries: list) -> tuple[ServicePermission, ...]:
+    """Parse the allowed_services list from YAML.
+
+    Supports two forms::
+
+        # Bare string — all roles:
+        - alpaca
+
+        # Dict with optional role filter:
+        - service_id: alpaca
+          roles: [data_source]
+
+    Args:
+        entries: Raw YAML list.
+
+    Returns:
+        Tuple of :class:`~harvest.interfaces.service.ServicePermission` instances.
+    """
+    result: list[ServicePermission] = []
+    for entry in entries:
+        if isinstance(entry, str):
+            # Bare string = all roles
+            result.append(ServicePermission(service_id=entry))
+        elif isinstance(entry, dict):
+            service_id = entry.get("service_id", "")
+            if not service_id:
+                raise ValueError(f"allowed_services entry missing 'service_id': {entry}")
+            raw_roles = entry.get("roles")
+            if raw_roles is None:
+                roles = None
+            else:
+                roles = frozenset(ServiceRole(r) for r in raw_roles)
+            result.append(ServicePermission(service_id=service_id, roles=roles))
+        else:
+            raise ValueError(f"Invalid allowed_services entry: {entry!r}")
+    return tuple(result)

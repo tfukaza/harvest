@@ -3,9 +3,18 @@ import datetime as dt
 import math
 import threading
 import time
+import warnings
 from abc import abstractmethod
 from os.path import exists
 from typing import Any, Dict
+
+warnings.warn(
+    "harvest.broker._base.Broker is deprecated and will be removed in a future release. "
+    "Use harvest.interfaces.DataSource and harvest.interfaces.Action instead. "
+    "See docs/phase-13.md for migration guidance.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 # Third-party imports
 import polars as pl

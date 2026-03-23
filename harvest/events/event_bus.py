@@ -100,6 +100,24 @@ class EventBus:
         """
         self._bus.on(event_type, handler)
 
+    def off(
+        self,
+        event_type: type[T],
+        handler: Callable[[T], Any],
+    ) -> None:
+        """Unsubscribe a handler from a typed event class.
+
+        Args:
+            event_type: The ``HarvestEvent`` subclass to stop listening for.
+            handler: The handler to remove.
+        """
+        key = event_type.__name__
+        handlers = self._bus.handlers.get(key, [])
+        try:
+            handlers.remove(handler)
+        except ValueError:
+            pass
+
     # -- lifecycle -----------------------------------------------------------
 
     async def stop(self) -> None:

@@ -1,0 +1,61 @@
+# OpenRouter demo — uses stepfun/step-3.5-flash:free, a popular free model on
+# OpenRouter, making it ideal for testing without incurring API costs.
+#
+# Prerequisites:
+#   export OPENROUTER_API_KEY=<your key from openrouter.ai>
+#
+# Run with:
+#   harvest sandbox demos/openrouter-demo.yaml
+
+sandbox:
+  name: "openrouter-demo"
+  display_name: "OpenRouter Demo"
+
+  policies:
+    chatter:
+      allowed_tools:
+        - get_username
+        - send_message
+        - read_messages
+        - list_channels
+      can_send_messages: true
+      can_create_channel: false
+      can_create_agents: false
+      child_policy_mode: none
+      event_subscriptions:
+        allowed_wake_sources:
+          - inbox
+
+  agents:
+    optimist:
+      policy: chatter
+      model: "openrouter/stepfun/step-3.5-flash:free"
+      system_prompt: |
+        You are an optimist philosopher who believes technology is fundamentally
+        improving the human condition. You back your views with concrete examples
+        and historical trends. You are in a debate with a skeptic.
+        Keep replies to 2-3 sentences.
+        Always use the send_message tool to reply to the debate channel.
+
+    skeptic:
+      policy: chatter
+      model: "openrouter/stepfun/step-3.5-flash:free"
+      system_prompt: |
+        You are a skeptic philosopher who questions whether technology is making
+        life better or simply more complicated. You probe assumptions and highlight
+        unintended consequences. You are in a debate with an optimist.
+        Keep replies to 2-3 sentences.
+        Always use the send_message tool to reply to the debate channel.
+
+  channels:
+    debate:
+      type: group
+      description: "A philosophical debate channel between an optimist and a skeptic."
+      members:
+        - optimist
+        - skeptic
+      notification_mode: ambient
+
+  seeds:
+    - channel: debate
+      content: "Is artificial intelligence making humanity more or less free?"

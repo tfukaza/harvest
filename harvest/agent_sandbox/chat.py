@@ -43,11 +43,23 @@ class ChatRouter:
     Sends are processed synchronously on the calling thread.
     """
 
-    def __init__(self, store: ChatStore | None = None) -> None:
+    # Pseudo-agent ID used as the sender for seed messages.  Agents see
+    # this label in wake-event formatting and know the message is a
+    # pre-fabricated scenario prompt — not a real participant.
+    SEED_SENDER_ID: str = "scenario"
+
+    def __init__(
+        self,
+        store: ChatStore | None = None,
+        sandbox_bus: Any | None = None,
+    ) -> None:
         """Initialize the chat router.
 
         Args:
             store: Optional ChatStore for message persistence.
+            sandbox_bus: Optional per-sandbox SyncEventBus for event-driven
+                communication. When provided, the router subscribes to
+                request events and dispatches responses on this bus.
         """
         self._agents: dict[str, EndpointAddress] = {}
         self._channels: dict[str, ChannelDefinition] = {}
@@ -58,6 +70,7 @@ class ChatRouter:
         self._lock = threading.Lock()
         self._on_message_delivered: list[Any] = []
         self._on_new_message: list[Any] = []
+        self._sandbox_bus = sandbox_bus
 
         # Channel staking (write locking) for group channels
         self._stake_lock = threading.Lock()
@@ -65,9 +78,17 @@ class ChatRouter:
         self._stake_conditions: dict[str, threading.Condition] = {}
         self._stake_queues: dict[str, list[threading.Event]] = defaultdict(list)
 
+        # Event-driven FIFO stake queues (used when sandbox_bus is provided)
+        self._event_stake_queues: dict[str, list[Any]] = defaultdict(list)
+        self._stake_timers: dict[str, threading.Timer] = {}
+
         # Typing indicators: tracks agents currently trying to send
         self._typing: dict[str, set[str]] = defaultdict(set)  # channel_id → {agent_ids}
         self._on_typing_changed: list[Any] = []
+
+        # Wire event-driven handlers if sandbox bus provided
+        if sandbox_bus is not None:
+            self._wire_event_handlers()
 
     # -- Notification callbacks --
 
@@ -659,6 +680,36 @@ class ChatRouter:
         with self._lock:
             return list(self._inboxes.get(agent_id, []))
 
+    def drain_channel_messages(self, agent_id: str, channel_id: str) -> list[SandboxMessage]:
+        """Remove and return messages for a specific channel from an agent's inbox.
+
+        This prevents stale ``inbox_updated`` loops where the same messages
+        are returned repeatedly on every send attempt.
+
+        Args:
+            agent_id: The agent whose inbox to drain.
+            channel_id: Only remove messages for this channel.
+
+        Returns:
+            List of removed messages.
+        """
+        with self._lock:
+            all_msgs = self._inboxes.get(agent_id, [])
+            drained = [
+                m for m in all_msgs
+                if (m.recipient.endpoint_id if m.recipient else "") == channel_id
+            ]
+            self._inboxes[agent_id] = [
+                m for m in all_msgs
+                if (m.recipient.endpoint_id if m.recipient else "") != channel_id
+            ]
+            if drained and logger.isEnabledFor(logging.DEBUG):
+                logger.debug(
+                    "[inbox-drain] %s drained %d msg(s) for channel %s",
+                    agent_id, len(drained), channel_id,
+                )
+            return drained
+
     def load_channel_history(self, channel_id: str) -> list[dict[str, Any]]:
         """Load full channel history from the store.
 
@@ -676,7 +727,7 @@ class ChatRouter:
         self,
         channel_id: str,
         content: str,
-        sender_id: str = "system",
+        sender_id: str | None = None,
         recipients: list[str] | None = None,
     ) -> None:
         """Inject a seed message into a channel.
@@ -688,10 +739,12 @@ class ChatRouter:
         Args:
             channel_id: Target channel.
             content: Seed message text.
-            sender_id: Sender label (default "system").
+            sender_id: Sender label (defaults to :attr:`SEED_SENDER_ID`).
             recipients: Optional list of agent IDs to deliver to.
                         If None, delivers to all channel members.
         """
+        if sender_id is None:
+            sender_id = self.SEED_SENDER_ID
         with self._lock:
             channel = self._channels.get(channel_id)
             if channel is None:
@@ -764,3 +817,298 @@ class ChatRouter:
                     channel.subscriber_ids.remove(agent_id)
                 if not channel.publisher_ids and not channel.subscriber_ids:
                     self._remove_channel_internal(channel_id)
+
+    # -- Event-driven handlers (sandbox bus) ---------------------------------
+
+    def _wire_event_handlers(self) -> None:
+        """Subscribe to request events on the sandbox bus."""
+        from harvest.agent_sandbox.chat_events import (
+            AddAgentToChannelRequest,
+            ListChannelsRequest,
+            ReadMessagesRequest,
+            ReleaseStake,
+            RequestStake,
+            SendChatMessage,
+        )
+
+        bus = self._sandbox_bus
+        bus.on(RequestStake, self._handle_request_stake)
+        bus.on(ReleaseStake, self._handle_release_stake)
+        bus.on(SendChatMessage, self._handle_send)
+        bus.on(ReadMessagesRequest, self._handle_read)
+        bus.on(ListChannelsRequest, self._handle_list)
+        bus.on(AddAgentToChannelRequest, self._handle_add_to_channel)
+
+    def _handle_request_stake(self, event: Any) -> None:
+        """Grant immediately, re-entrant grant, or enqueue. Never blocks."""
+        from harvest.agent_sandbox.chat_events import StakeGranted, StakeQueued
+
+        channel = self._channels.get(event.channel_id)
+        if channel is None or not isinstance(channel, GroupChannel):
+            self._sandbox_bus.dispatch(StakeGranted(
+                agent_id=event.agent_id,
+                channel_id=event.channel_id,
+                request_id=event.request_id,
+            ))
+            return
+
+        with self._stake_lock:
+            existing = self._channel_stakes.get(event.channel_id)
+            now = time.monotonic()
+
+            if existing is None:
+                self._channel_stakes[event.channel_id] = (event.agent_id, now)
+                self._start_hold_timer(event.channel_id, event.agent_id)
+                self._sandbox_bus.dispatch(StakeGranted(
+                    agent_id=event.agent_id,
+                    channel_id=event.channel_id,
+                    request_id=event.request_id,
+                ))
+            elif existing[0] == event.agent_id:
+                self._channel_stakes[event.channel_id] = (event.agent_id, now)
+                self._refresh_hold_timer(event.channel_id, event.agent_id)
+                self._sandbox_bus.dispatch(StakeGranted(
+                    agent_id=event.agent_id,
+                    channel_id=event.channel_id,
+                    request_id=event.request_id,
+                ))
+            else:
+                queue = self._event_stake_queues[event.channel_id]
+                queue.append(event)
+                self._sandbox_bus.dispatch(StakeQueued(
+                    agent_id=event.agent_id,
+                    channel_id=event.channel_id,
+                    request_id=event.request_id,
+                    position=len(queue),
+                ))
+
+    def _handle_release_stake(self, event: Any) -> None:
+        """Explicit abort release — agent acquired stake but chose not to send."""
+        with self._stake_lock:
+            existing = self._channel_stakes.get(event.channel_id)
+            if existing is None or existing[0] != event.agent_id:
+                return
+            self._cancel_hold_timer(event.channel_id)
+            del self._channel_stakes[event.channel_id]
+            self._grant_next_in_queue(event.channel_id)
+
+    def _handle_send(self, event: Any) -> None:
+        """Deliver message via internal send, then auto-release the stake."""
+        from harvest.agent_sandbox.chat_events import ChatMessageDelivered, NewChatMessage
+        import uuid as _uuid
+
+        channel = self._channels.get(event.channel_id)
+        if channel is None:
+            self._sandbox_bus.dispatch(ChatMessageDelivered(
+                channel_id=event.channel_id,
+                message_id=event.message_id,
+                sender_id=event.sender_id,
+                error="channel_not_found",
+            ))
+            return
+
+        msg = SandboxMessage(
+            message_id=event.message_id or _uuid.uuid4().hex,
+            channel_id=event.channel_id,
+            sender_id=event.sender_id,
+            content=event.content,
+            reply_to=getattr(event, "reply_to", ""),
+        )
+        recipient_ids = self._deliver_to_inboxes(msg, channel)
+
+        if self._store is not None:
+            self._store.add_message(
+                channel_id=msg.channel_id,
+                message_id=msg.message_id,
+                sender_id=msg.sender_id,
+                content=msg.content,
+            )
+
+        self._sandbox_bus.dispatch(ChatMessageDelivered(
+            channel_id=event.channel_id,
+            message_id=msg.message_id,
+            sender_id=event.sender_id,
+            timestamp_delivered=msg.timestamp.isoformat(),
+        ))
+
+        self._sandbox_bus.dispatch(NewChatMessage(
+            channel_id=event.channel_id,
+            sender_id=event.sender_id,
+            recipient_ids=recipient_ids,
+            message_id=msg.message_id,
+            channel_type=channel.channel_type.value if hasattr(channel.channel_type, 'value') else str(channel.channel_type),
+        ))
+
+        # Also fire legacy callbacks for backward compatibility
+        for cb in self._on_new_message:
+            try:
+                cb(event.channel_id, event.sender_id, recipient_ids,
+                   msg.message_id, channel.channel_type.value if hasattr(channel.channel_type, 'value') else str(channel.channel_type),
+                   event.content, getattr(event, "reply_to", ""))
+            except Exception:
+                pass
+
+        with self._stake_lock:
+            existing = self._channel_stakes.get(event.channel_id)
+            if existing and existing[0] == event.sender_id:
+                self._cancel_hold_timer(event.channel_id)
+                del self._channel_stakes[event.channel_id]
+                self._grant_next_in_queue(event.channel_id)
+
+    def _handle_read(self, event: Any) -> None:
+        """Return inbox contents or channel history."""
+        from harvest.agent_sandbox.chat_events import ReadMessagesResponse
+
+        def _msg_to_dict(m: SandboxMessage) -> dict[str, Any]:
+            """Convert a SandboxMessage to a dict with channel_id."""
+            ch = m.recipient.endpoint_id if m.recipient else ""
+            sender = m.sender.endpoint_id if m.sender else ""
+            return {
+                "channel_id": ch,
+                "sender": sender,
+                "content": m.content,
+                "message_id": m.message_id,
+            }
+
+        if event.channel_id and event.history:
+            messages = self.load_channel_history(event.channel_id)
+        elif event.channel_id:
+            with self._lock:
+                all_msgs = self._inboxes.get(event.agent_id, [])
+                channel_msgs = [
+                    m for m in all_msgs
+                    if (m.recipient.endpoint_id if m.recipient else "") == event.channel_id
+                ]
+                self._inboxes[event.agent_id] = [
+                    m for m in all_msgs
+                    if (m.recipient.endpoint_id if m.recipient else "") != event.channel_id
+                ]
+            messages = [_msg_to_dict(m) for m in channel_msgs]
+        else:
+            msgs = self.read_inbox(event.agent_id)
+            messages = [_msg_to_dict(m) for m in msgs]
+
+        self._sandbox_bus.dispatch(ReadMessagesResponse(
+            agent_id=event.agent_id,
+            request_id=event.request_id,
+            messages=messages,
+        ))
+
+    def _handle_list(self, event: Any) -> None:
+        """Return channels visible to the agent."""
+        from harvest.agent_sandbox.chat_events import ListChannelsResponse
+
+        channels = self.list_channels_for_agent(event.agent_id)
+        channel_dicts = []
+        for ch in channels:
+            info: dict[str, Any] = {
+                "channel_id": ch.channel_id,
+                "type": ch.channel_type.value if hasattr(ch.channel_type, 'value') else str(ch.channel_type),
+                "description": getattr(ch, "description", ""),
+            }
+            if hasattr(ch, "member_ids"):
+                info["members"] = list(ch.member_ids)
+            channel_dicts.append(info)
+
+        self._sandbox_bus.dispatch(ListChannelsResponse(
+            agent_id=event.agent_id,
+            request_id=event.request_id,
+            channels=channel_dicts,
+        ))
+
+    def _handle_add_to_channel(self, event: Any) -> None:
+        """Add an agent to a channel."""
+        from harvest.agent_sandbox.chat_events import AddAgentToChannelResponse
+
+        with self._lock:
+            channel = self._channels.get(event.channel_id)
+            if channel is None:
+                self._sandbox_bus.dispatch(AddAgentToChannelResponse(
+                    requester_id=event.requester_id, agent_id=event.agent_id,
+                    channel_id=event.channel_id, request_id=event.request_id,
+                    status="error", error="channel_not_found",
+                ))
+                return
+
+            if isinstance(channel, (DMChannel, GroupChannel)):
+                if event.agent_id in channel.member_ids:
+                    self._sandbox_bus.dispatch(AddAgentToChannelResponse(
+                        requester_id=event.requester_id, agent_id=event.agent_id,
+                        channel_id=event.channel_id, request_id=event.request_id,
+                        status="error", error="already_member",
+                    ))
+                    return
+                channel.member_ids.append(event.agent_id)
+            else:
+                self._sandbox_bus.dispatch(AddAgentToChannelResponse(
+                    requester_id=event.requester_id, agent_id=event.agent_id,
+                    channel_id=event.channel_id, request_id=event.request_id,
+                    status="error", error="not_supported_for_channel_type",
+                ))
+                return
+
+        self._sandbox_bus.dispatch(AddAgentToChannelResponse(
+            requester_id=event.requester_id, agent_id=event.agent_id,
+            channel_id=event.channel_id, request_id=event.request_id,
+            status="added",
+        ))
+
+    # -- Event-driven stake management ---------------------------------------
+
+    def _grant_next_in_queue(self, channel_id: str) -> None:
+        """Pop the next queued request and grant it. Must hold _stake_lock."""
+        from harvest.agent_sandbox.chat_events import StakeGranted
+
+        queue = self._event_stake_queues.get(channel_id)
+        if not queue:
+            return
+        next_req = queue.pop(0)
+        now = time.monotonic()
+        self._channel_stakes[channel_id] = (next_req.agent_id, now)
+        self._start_hold_timer(channel_id, next_req.agent_id)
+        self._sandbox_bus.dispatch(StakeGranted(
+            agent_id=next_req.agent_id,
+            channel_id=channel_id,
+            request_id=next_req.request_id,
+        ))
+
+    def _start_hold_timer(self, channel_id: str, agent_id: str) -> None:
+        """Start a timer that revokes the stake after STAKE_HOLD_SECONDS."""
+        self._cancel_hold_timer(channel_id)
+        timer = threading.Timer(
+            STAKE_HOLD_SECONDS,
+            self._on_hold_timer_expired,
+            args=(channel_id, agent_id),
+        )
+        timer.daemon = True
+        timer.start()
+        self._stake_timers[channel_id] = timer
+
+    def _refresh_hold_timer(self, channel_id: str, agent_id: str) -> None:
+        """Restart the hold timer."""
+        self._start_hold_timer(channel_id, agent_id)
+
+    def _cancel_hold_timer(self, channel_id: str) -> None:
+        """Cancel an active hold timer."""
+        timer = self._stake_timers.pop(channel_id, None)
+        if timer is not None:
+            timer.cancel()
+
+    def _on_hold_timer_expired(self, channel_id: str, agent_id: str) -> None:
+        """Called when STAKE_HOLD_SECONDS elapses without release or send."""
+        from harvest.agent_sandbox.chat_events import StakeExpired
+
+        with self._stake_lock:
+            existing = self._channel_stakes.get(channel_id)
+            if existing is None or existing[0] != agent_id:
+                return
+            logger.warning(
+                "Stake on %s held by %s expired after %.0fs, revoking",
+                channel_id, agent_id, STAKE_HOLD_SECONDS,
+            )
+            del self._channel_stakes[channel_id]
+            self._sandbox_bus.dispatch(StakeExpired(
+                agent_id=agent_id,
+                channel_id=channel_id,
+            ))
+            self._grant_next_in_queue(channel_id)
