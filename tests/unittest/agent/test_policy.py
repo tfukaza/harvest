@@ -96,20 +96,33 @@ def test_registry_programmatic_register() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_policy_blocks_disallowed_tool() -> None:
-    """Agent with a policy missing a tool gets an error when invoking it."""
-    from harvest.agent_sandbox.chat import ChatRouter
+def _make_sandbox_agent(
+    agent_id: str = "a",
+    policy: AgentPolicy | None = None,
+) -> tuple:
+    """Helper: create a sandbox + registered agent for policy tests."""
+    from harvest.agent_sandbox.basic_sandbox import BasicSandbox
+    from harvest.agent_sandbox.config import AgentSandboxConfig
     from harvest.harvest_agent import HarvestAgent, HarvestAgentConfig
 
-    router = ChatRouter()
+    sandbox = BasicSandbox(
+        config=AgentSandboxConfig(runner_id="test", display_name="test"),
+    )
+    config = HarvestAgentConfig(model="test-model", system_prompt="test")
+    agent = HarvestAgent(config=config, agent_id=agent_id, policy=policy)
+    sandbox.register_agent(agent_id, agent, policy=policy)
+    return sandbox, agent
+
+
+def test_policy_blocks_disallowed_tool() -> None:
+    """Agent with a policy missing a tool gets an error when invoking it."""
     policy = AgentPolicy(
         name="restricted",
         allowed_tools=frozenset(["get_username"]),
         can_send_messages=False,
         can_create_channel=False,
     )
-    config = HarvestAgentConfig(model="test-model", system_prompt="test")
-    agent = HarvestAgent(config=config, agent_id="a", chat_router=router, policy=policy)
+    _sandbox, agent = _make_sandbox_agent(policy=policy)
 
     # send_message should not be registered because can_send_messages=False
     assert "send_message" not in agent._tool_map
@@ -119,17 +132,12 @@ def test_policy_blocks_disallowed_tool() -> None:
 
 def test_policy_allows_permitted_tool() -> None:
     """Agent with a tool in allowed_tools can invoke it normally."""
-    from harvest.agent_sandbox.chat import ChatRouter
-    from harvest.harvest_agent import HarvestAgent, HarvestAgentConfig
-
-    router = ChatRouter()
     policy = AgentPolicy(
         name="sender",
         allowed_tools=frozenset(["get_username", "send_message"]),
         can_send_messages=True,
     )
-    config = HarvestAgentConfig(model="test-model", system_prompt="test")
-    agent = HarvestAgent(config=config, agent_id="a", chat_router=router, policy=policy)
+    _sandbox, agent = _make_sandbox_agent(policy=policy)
 
     assert "send_message" in agent._tool_map
     assert "get_username" in agent._tool_map
@@ -137,13 +145,8 @@ def test_policy_allows_permitted_tool() -> None:
 
 def test_policy_receive_without_send() -> None:
     """Agent with can_send_messages=False can still read messages and list channels."""
-    from harvest.agent_sandbox.chat import ChatRouter
-    from harvest.harvest_agent import HarvestAgent, HarvestAgentConfig
-
-    router = ChatRouter()
     policy = AgentPolicy(name="reader", can_send_messages=False)
-    config = HarvestAgentConfig(model="test-model", system_prompt="test")
-    agent = HarvestAgent(config=config, agent_id="a", chat_router=router, policy=policy)
+    _sandbox, agent = _make_sandbox_agent(policy=policy)
 
     assert "send_message" not in agent._tool_map
     assert "read_messages" in agent._tool_map
@@ -153,13 +156,9 @@ def test_policy_receive_without_send() -> None:
 def test_policy_participate_without_create() -> None:
     """Agent with can_create_channel=False can still participate in existing channels."""
     from harvest.agent_sandbox.channels import GroupChannel
-    from harvest.agent_sandbox.chat import ChatRouter
-    from harvest.harvest_agent import HarvestAgent, HarvestAgentConfig
 
-    router = ChatRouter()
     policy = AgentPolicy(name="participant", can_create_channel=False, can_send_messages=True)
-    config = HarvestAgentConfig(model="test-model", system_prompt="test")
-    agent = HarvestAgent(config=config, agent_id="a", chat_router=router, policy=policy)
+    sandbox, agent = _make_sandbox_agent(policy=policy)
 
     assert "create_channel" not in agent._tool_map
     assert "send_message" in agent._tool_map
@@ -167,6 +166,6 @@ def test_policy_participate_without_create() -> None:
 
     # Can participate in a channel created externally
     group = GroupChannel(channel_id="grp", member_ids=["a", "b"])
-    router.create_channel(group)
-    channels = router.list_channels_for_agent("a")
+    sandbox.chat_router.create_channel(group)
+    channels = sandbox.chat_router.list_channels_for_agent("a")
     assert len(channels) == 1

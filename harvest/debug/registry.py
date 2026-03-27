@@ -8,6 +8,7 @@ from collections import deque
 from typing import Any
 
 from harvest.debug.snapshot import (
+    ActivityEntry,
     AgentInfo,
     ChannelInfo,
     MessageInfo,
@@ -154,6 +155,70 @@ class SandboxRegistry:
         with self._lock:
             return self._message_buffers[sandbox_id]
 
+    @staticmethod
+    def _serialize_activity(agent: Any) -> list[ActivityEntry]:
+        """Serialize an agent's conversation history into ActivityEntry list."""
+        entries: list[ActivityEntry] = []
+        # Import message types lazily to avoid circular imports
+        try:
+            from harvest.harvest_agent import (
+                TextMessage,
+                ToolCallMessage,
+                ToolResultMessage,
+                SummaryMessage,
+            )
+        except ImportError:
+            return entries
+
+        history = getattr(agent, "_history", None)
+        if not history:
+            return entries
+
+        for msg in history:
+            ts = msg.timestamp.isoformat() if hasattr(msg, "timestamp") else ""
+            if isinstance(msg, ToolCallMessage):
+                # Emit thinking entry if there's content
+                if msg.content:
+                    entries.append(ActivityEntry(
+                        type="thinking",
+                        timestamp=ts,
+                        content=msg.content,
+                    ))
+                # Emit one entry per tool call
+                for tc in msg.tool_calls:
+                    entries.append(ActivityEntry(
+                        type="tool_call",
+                        timestamp=ts,
+                        tool_name=tc.function_name,
+                        tool_args=tc.arguments,
+                        tool_call_id=tc.id,
+                    ))
+            elif isinstance(msg, ToolResultMessage):
+                entries.append(ActivityEntry(
+                    type="tool_result",
+                    timestamp=ts,
+                    content=msg.content[:2000],  # cap large results
+                    tool_call_id=msg.tool_call_id,
+                ))
+            elif isinstance(msg, SummaryMessage):
+                entries.append(ActivityEntry(
+                    type="summary",
+                    timestamp=ts,
+                    content=msg.content[:1000],
+                    tokens_before=getattr(msg, "tokens_before", 0),
+                    tokens_after=getattr(msg, "tokens_after", 0),
+                ))
+            elif isinstance(msg, TextMessage):
+                if msg.role == "assistant" and msg.content:
+                    entries.append(ActivityEntry(
+                        type="text",
+                        timestamp=ts,
+                        content=msg.content,
+                    ))
+                # Skip user messages (those are the wake prompts)
+
+        return entries
+
     def snapshot(self, sandbox_id: str) -> SandboxSnapshot:
         """Build a snapshot for a single sandbox."""
         with self._lock:
@@ -165,18 +230,49 @@ class SandboxRegistry:
         for aid in sandbox.list_agents():
             handle = sandbox.get_agent_handle(aid)
             policy_summary = None
+            cognitive_tools_list: list[str] = []
             if handle.policy is not None:
                 policy_summary = {
                     "can_send_messages": handle.policy.can_send_messages,
                     "can_create_channel": handle.policy.can_create_channel,
                     "can_create_agents": handle.policy.can_create_agents,
                 }
+                cognitive_tools_list = list(getattr(handle.policy, "cognitive_tools", []))
+
+            # Serialize activity log from agent history
+            activity = self._serialize_activity(handle.agent)
+
+            # Serialize memories and todos if available
+            memories: list[dict[str, str]] = []
+            raw_memories = getattr(handle.agent, "_memories", {})
+            for entry in raw_memories.values():
+                memories.append({
+                    "name": entry.get("name", ""),
+                    "description": entry.get("description", ""),
+                    "content": entry.get("content", ""),
+                })
+
+            todos: list[dict[str, Any]] = list(getattr(handle.agent, "_todos", []))
+
+            # Context window usage
+            context_tokens = getattr(handle.agent, "_last_token_count", 0)
+            agent_config = getattr(handle.agent, "config", None)
+            context_limit = getattr(agent_config, "context_limit", 0) if agent_config else 0
+            compaction_threshold = getattr(agent_config, "compaction_threshold", 0.0) if agent_config else 0.0
+
             agents.append(AgentInfo(
                 agent_id=aid,
                 agent_type=handle.agent.__class__.__name__,
                 thread_alive=handle.thread.is_alive() if handle.thread else False,
                 policy_summary=policy_summary,
                 status=handle.status.value if hasattr(handle, "status") else "idle",
+                activity=activity,
+                memories=memories,
+                todos=todos,
+                cognitive_tools=cognitive_tools_list,
+                context_tokens=context_tokens,
+                context_limit=context_limit,
+                compaction_threshold=compaction_threshold,
             ))
 
         # Channels

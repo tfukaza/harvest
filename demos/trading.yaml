@@ -52,7 +52,7 @@ sandbox:
   agents:
     researcher:
       policy: researcher
-      model: "anthropic/claude-haiku-4-5-20251001"
+      model: "openrouter/google/gemini-2.5-flash"
       system_prompt: |
         You are a financial research analyst. Use newsapi and perplexity tools
         to research market conditions, news, and economic factors. Share your
@@ -60,7 +60,7 @@ sandbox:
 
     trader:
       policy: trader
-      model: "anthropic/claude-haiku-4-5-20251001"
+      model: "openrouter/google/gemini-2.5-flash"
       system_prompt: |
         You are a paper trader. Read signals from the researcher in #signals,
         use paper broker tools to check prices and account state, then place

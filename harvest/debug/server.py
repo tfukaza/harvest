@@ -132,6 +132,10 @@ class DebugMonitorServer:
                         sandbox_id = msg.get("sandbox_id", "")
                         channel_id = msg.get("channel_id", "")
                         content = msg.get("content", "")
+                        logger.info(
+                            "[admin-ws] Received admin_send: sandbox=%r channel=%r content=%.60r",
+                            sandbox_id, channel_id, content,
+                        )
                         if sandbox_id and channel_id and content:
                             admin_msg = AdminMessage(
                                 sandbox_id=sandbox_id,

@@ -28,6 +28,19 @@ def load_storage(storage_type: StorageType):
 
 
 def load_broker(broker_type: BrokerType):
+    """Load a legacy broker class.
+
+    .. deprecated::
+        Legacy brokers are used by the Orchestrator runtime path.
+        For agent-based workflows, use ``harvest.services.*Service`` classes.
+    """
+    import warnings
+    warnings.warn(
+        "load_broker() loads legacy broker implementations. "
+        "For agent-based workflows, use harvest.services.*Service classes.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     if broker_type.value == BrokerType.DUMMY.value:
         from harvest.broker.mock import DummyDataBroker
 

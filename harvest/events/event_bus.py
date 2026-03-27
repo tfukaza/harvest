@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import uuid
 from typing import Any, Callable, TypeVar
 
 import bubus
@@ -33,8 +34,11 @@ class EventBus:
 
         Args:
             name: Human-readable name for the underlying bubus bus.
+                  A unique suffix is appended automatically to avoid
+                  conflicts when multiple buses share the same logical name.
         """
-        self._bus = bubus.EventBus(name=name)
+        unique_name = f"{name}_{uuid.uuid4().hex[:8]}"
+        self._bus = bubus.EventBus(name=unique_name)
 
     # -- dispatch ------------------------------------------------------------
 

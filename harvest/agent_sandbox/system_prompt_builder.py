@@ -44,6 +44,8 @@ class SystemPromptBuilder:
     def __init__(self) -> None:
         # Ordered dict preserves insertion order (guaranteed in Python 3.7+)
         self._sections: dict[str, str] = {}
+        # Sections that should be cleared after the next build() call
+        self._auto_clear: set[str] = set()
 
     def set(self, section_key: str, content: str) -> None:
         """Set or replace the content of a named section.
@@ -76,6 +78,19 @@ class SystemPromptBuilder:
         else:
             self._sections[section_key] = content
 
+    def append_auto_clear(self, section_key: str, content: str) -> None:
+        """Append content that will be automatically cleared after the next build().
+
+        Use for transient notifications (e.g. inbox alerts) that the agent
+        should see exactly once.
+
+        Args:
+            section_key: Unique section identifier.
+            content: Content to append.
+        """
+        self.append(section_key, content)
+        self._auto_clear.add(section_key)
+
     def clear(self, section_key: str) -> None:
         """Remove a named section entirely.
 
@@ -94,6 +109,7 @@ class SystemPromptBuilder:
 
         Empty or cleared sections are omitted.  Non-empty sections are
         separated from each other and from the base prompt by a blank line.
+        Sections marked as auto-clear are removed after being included.
 
         Args:
             base_prompt: The agent's base system prompt.
@@ -106,6 +122,11 @@ class SystemPromptBuilder:
         for content in self._sections.values():
             if content:
                 parts.append(content)
+
+        # Clear auto-clear sections after they've been included once
+        for key in list(self._auto_clear):
+            self._sections.pop(key, None)
+            self._auto_clear.discard(key)
 
         return "\n\n".join(parts)
 

@@ -123,6 +123,28 @@ sandbox_parser.add_argument(
 )
 
 
+# Parser for admin command (send messages to a running sandbox).
+admin_parser = subparsers.add_parser("admin", help="Send an admin message to a running sandbox via WebSocket")
+admin_parser.add_argument(
+    "channel",
+    help="channel ID to send the message to",
+)
+admin_parser.add_argument(
+    "message",
+    help="message content to send",
+)
+admin_parser.add_argument(
+    "--sandbox",
+    default=None,
+    help="sandbox ID (auto-detected from snapshot if omitted)",
+)
+admin_parser.add_argument(
+    "--url",
+    default="ws://localhost:8100/ws",
+    help="WebSocket URL of the debug monitor (default: ws://localhost:8100/ws)",
+)
+
+
 # Parser for debug-server command.
 debug_server_parser = subparsers.add_parser("debug-server")
 debug_server_parser.add_argument(
@@ -230,6 +252,8 @@ def main() -> None:
         run_debug_server(args)
     elif args.command == "event-server":
         run_event_server(args)
+    elif args.command == "admin":
+        run_admin(args)
     elif args.command == "event-client":
         run_event_client(args)
     else:
@@ -432,6 +456,12 @@ def run_sandbox(
         if group_channels:
             seed_channel = group_channels[0].channel_id
 
+    # Create shared admin queue so the debug monitor and sandbox are linked.
+    from harvest.agent_sandbox.admin_queue import AdminMessageQueue
+    admin_queue = AdminMessageQueue()
+    sandbox._admin_queue = admin_queue
+    admin_queue.on_enqueue(sandbox._handle_admin_message)
+
     # Start debug monitor (on by default, --no-monitor to disable)
     monitor = None
     if not args.no_monitor:
@@ -449,6 +479,7 @@ def run_sandbox(
             host=args.host,
             port=args.port,
             static_dir=static_dir,
+            admin_queue=admin_queue,
         )
         monitor.start()
         print(
@@ -496,6 +527,79 @@ def run_sandbox(
         asyncio.run(_run())
     except KeyboardInterrupt:
         print("\nShutting down.", file=output_stream)
+
+
+def run_admin(args: argparse.Namespace) -> None:
+    """Send an admin message to a running sandbox via WebSocket.
+
+    Connects to the debug monitor, auto-detects the sandbox ID from
+    the initial snapshot (unless --sandbox is given), sends the message,
+    waits for the server acknowledgement, and exits.
+    """
+    import json as _json
+    import time as _time
+
+    from simple_websocket import Client as WsClient
+
+    url = args.url
+    channel = args.channel
+    content = args.message
+    sandbox_id = args.sandbox
+
+    print(f"Connecting to {url} ...")
+    try:
+        ws = WsClient.connect(url)
+    except Exception as exc:
+        print(f"Failed to connect: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    # Read the initial snapshot to auto-detect sandbox_id
+    if sandbox_id is None:
+        try:
+            raw = ws.receive(timeout=5)
+            snap = _json.loads(raw)
+            if snap.get("type") == "snapshot" and snap.get("sandboxes"):
+                sandbox_id = snap["sandboxes"][0]["sandbox_id"]
+                print(f"Auto-detected sandbox: {sandbox_id}")
+            else:
+                print("No sandboxes found in snapshot.", file=sys.stderr)
+                ws.close()
+                sys.exit(1)
+        except Exception as exc:
+            print(f"Failed to read snapshot: {exc}", file=sys.stderr)
+            ws.close()
+            sys.exit(1)
+
+    payload = _json.dumps({
+        "type": "admin_send",
+        "sandbox_id": sandbox_id,
+        "channel_id": channel,
+        "content": content,
+    })
+    print(f"Sending to #{channel}: {content}")
+    ws.send(payload)
+
+    # Wait for ack (admin_queued or admin_blocked)
+    deadline = _time.monotonic() + 5.0
+    while _time.monotonic() < deadline:
+        try:
+            raw = ws.receive(timeout=2)
+            msg = _json.loads(raw)
+            if msg.get("type") == "admin_queued":
+                print(f"Queued (message_id={msg.get('message_id', '?')})")
+                ws.close()
+                return
+            elif msg.get("type") == "admin_blocked":
+                print(f"Blocked: {msg.get('reason', 'unknown')}", file=sys.stderr)
+                ws.close()
+                sys.exit(1)
+            # Ignore other messages (snapshots, deltas, typing)
+        except Exception:
+            break
+
+    print("No acknowledgement received within timeout.", file=sys.stderr)
+    ws.close()
+    sys.exit(1)
 
 
 def run_debug_server(args: argparse.Namespace) -> None:

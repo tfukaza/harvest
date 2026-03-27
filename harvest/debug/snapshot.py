@@ -7,6 +7,20 @@ from typing import Any
 
 
 @dataclass(slots=True)
+class ActivityEntry:
+    """One entry in an agent's reasoning activity log."""
+
+    type: str  # "thinking", "tool_call", "tool_result", "text", "summary"
+    timestamp: str
+    content: str = ""
+    tool_name: str = ""
+    tool_args: str = ""
+    tool_call_id: str = ""
+    tokens_before: int = 0
+    tokens_after: int = 0
+
+
+@dataclass(slots=True)
 class AgentInfo:
     """Read-only snapshot of one agent in a sandbox."""
 
@@ -15,6 +29,13 @@ class AgentInfo:
     thread_alive: bool
     policy_summary: dict[str, Any] | None
     status: str = "idle"
+    activity: list[ActivityEntry] = field(default_factory=list)
+    memories: list[dict[str, str]] = field(default_factory=list)
+    todos: list[dict[str, Any]] = field(default_factory=list)
+    cognitive_tools: list[str] = field(default_factory=list)
+    context_tokens: int = 0
+    context_limit: int = 0
+    compaction_threshold: float = 0.0
 
 
 @dataclass(slots=True)

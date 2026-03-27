@@ -1,9 +1,39 @@
+export interface ActivityEntry {
+  type: "thinking" | "tool_call" | "tool_result" | "text" | "summary";
+  timestamp: string;
+  content?: string;
+  tool_name?: string;
+  tool_args?: string;
+  tool_call_id?: string;
+  tokens_before?: number;
+  tokens_after?: number;
+}
+
+export interface AgentMemory {
+  name: string;
+  description: string;
+  content: string;
+}
+
+export interface AgentTodo {
+  id: string;
+  task: string;
+  done: boolean;
+}
+
 export interface AgentInfo {
   agent_id: string;
   agent_type: string;
   thread_alive: boolean;
   policy_summary: Record<string, unknown> | null;
   status: "idle" | "active" | "rate_limited" | "crashed";
+  activity?: ActivityEntry[];
+  memories?: AgentMemory[];
+  todos?: AgentTodo[];
+  cognitive_tools?: string[];
+  context_tokens?: number;
+  context_limit?: number;
+  compaction_threshold?: number;
 }
 
 export interface ChannelInfo {

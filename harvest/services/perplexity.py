@@ -21,6 +21,7 @@ from harvest.interfaces.service import (
     ServiceRole,
 )
 from harvest.interfaces.tool_definition import InterfaceTool, ToolArgument
+from harvest.result_buffer import ServiceResult
 
 _API_URL = "https://api.perplexity.ai/chat/completions"
 _DEFAULT_MODEL = "sonar"
@@ -126,13 +127,24 @@ class PerplexityService(Service):
             query: str,
             model: str = "",
             system_prompt: str = "",
-        ) -> str:
+        ) -> ServiceResult | str:
             params: dict[str, Any] = {"query": query}
             if model:
                 params["model"] = model
             if system_prompt:
                 params["system_prompt"] = system_prompt
-            return self._fetch_callback(agent_id, self.service_id, "search", params)  # type: ignore[attr-defined]
+            raw = self._fetch_callback(agent_id, self.service_id, "search", params)  # type: ignore[attr-defined]
+            try:
+                data = json.loads(raw)
+                if "error" in data:
+                    return raw
+                n = len(data.get("citations", []))
+                return ServiceResult.from_dict(
+                    data,
+                    summary=f"Perplexity answer for \"{query}\" with {n} citations",
+                )
+            except (json.JSONDecodeError, TypeError):
+                return raw
 
         return InterfaceTool(
             name="perplexity_search",
@@ -158,11 +170,22 @@ class PerplexityService(Service):
             query: str,
             search_focus: str,
             model: str = "",
-        ) -> str:
+        ) -> ServiceResult | str:
             params: dict[str, Any] = {"query": query, "search_focus": search_focus}
             if model:
                 params["model"] = model
-            return self._fetch_callback(agent_id, self.service_id, "search_focused", params)  # type: ignore[attr-defined]
+            raw = self._fetch_callback(agent_id, self.service_id, "search_focused", params)  # type: ignore[attr-defined]
+            try:
+                data = json.loads(raw)
+                if "error" in data:
+                    return raw
+                n = len(data.get("citations", []))
+                return ServiceResult.from_dict(
+                    data,
+                    summary=f"Perplexity {search_focus} search for \"{query}\" with {n} citations",
+                )
+            except (json.JSONDecodeError, TypeError):
+                return raw
 
         return InterfaceTool(
             name="perplexity_search_focused",

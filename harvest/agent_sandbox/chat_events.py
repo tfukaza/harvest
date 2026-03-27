@@ -178,6 +178,47 @@ class AddAgentToChannelResponse(HarvestEvent):
     error: str = ""
 
 
+# -- Channel creation --------------------------------------------------------
+
+
+class CreateChannelRequest(HarvestEvent):
+    """Agent requests creating a new channel."""
+    requester_id: str
+    request_id: str
+    channel_id: str
+    channel_type: str  # "group" or "dm"
+    member_ids: list[str] = Field(default_factory=list)
+    description: str = ""
+
+
+class CreateChannelResponse(HarvestEvent):
+    """ChatRouter confirms or rejects channel creation."""
+    requester_id: str
+    request_id: str
+    channel_id: str
+    status: str = ""
+    error: str = ""
+
+
+# -- Channel departure -------------------------------------------------------
+
+
+class LeaveChannelRequest(HarvestEvent):
+    """Agent requests to leave a channel."""
+    agent_id: str
+    request_id: str
+    channel_id: str
+
+
+class LeaveChannelResponse(HarvestEvent):
+    """ChatRouter confirms or rejects the departure."""
+    agent_id: str
+    request_id: str
+    channel_id: str
+    status: str = ""
+    error: str = ""
+
+
 # -- Typing ------------------------------------------------------------------
 
 

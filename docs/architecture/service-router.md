@@ -153,3 +153,11 @@ for spec, fn in pairs:
 ```
 
 `BasicSandbox` handles all of this automatically in `register_agent()`.
+
+## Async/Sync Bridge
+
+`_run_coro()` is a module-level helper that executes async `Service` methods from synchronous agent threads. It detects whether an event loop is already running: if not (the normal case for agent threads), it calls `asyncio.run(coro)` directly. If a loop is already running (e.g., when called from an async context), it spins up a single-worker `ThreadPoolExecutor` to run `asyncio.run(coro)` in a separate thread, avoiding the "cannot nest event loops" deadlock. Every `fetch()` and `execute()` call passes through this bridge.
+
+## get_service()
+
+`get_service(service_id) -> Service | None` is the public method for looking up a registered service by its ID. It replaces direct access to the internal `_services` dict, providing a stable API for components that need to inspect service state (e.g., health checks, debug snapshots).

@@ -85,6 +85,7 @@ def _parse_policy(name: str, data: dict) -> AgentPolicy:
     child_mode = ChildPolicyMode(child_mode_str)
     allowed_child = tuple(data.get("allowed_child_policies", []))
     allowed_services = _parse_allowed_services(data.get("allowed_services", []))
+    cognitive_tools = frozenset(data.get("cognitive_tools", []))
 
     event_subs_data = data.get("event_subscriptions")
     event_subs = None
@@ -106,6 +107,7 @@ def _parse_policy(name: str, data: dict) -> AgentPolicy:
         allowed_child_policies=allowed_child,
         allowed_services=allowed_services,
         event_subscriptions=event_subs,
+        cognitive_tools=cognitive_tools,
     )
 
 

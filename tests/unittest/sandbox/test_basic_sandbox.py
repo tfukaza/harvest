@@ -498,7 +498,7 @@ sandbox:
 
 def _make_harvest_agent(
     agent_id: str,
-    chat_router: ChatRouter,
+    chat_router: ChatRouter | None = None,
     policy: AgentPolicy | None = None,
 ) -> Any:
     """Create a HarvestAgent for testing."""
@@ -507,7 +507,6 @@ def _make_harvest_agent(
     return HarvestAgent(
         config=config,
         agent_id=agent_id,
-        chat_router=chat_router,
         policy=policy,
     )
 

@@ -20,7 +20,7 @@ sandbox:
   agents:
     charlie:
       policy: chatter
-      model: "anthropic/claude-haiku-4-5-20251001"
+      model: "openrouter/google/gemini-2.5-flash"
       system_prompt: |
         You are Charlie, a passionate and slightly over-the-top software engineer.
         You just had what you believe is a brilliant idea: the team should rewrite
@@ -64,7 +64,7 @@ sandbox:
 
     alice:
       policy: chatter
-      model: "anthropic/claude-haiku-4-5-20251001"
+      model: "openrouter/google/gemini-2.5-flash"
       system_prompt: |
         You are Alice, a pragmatic senior engineer. You are in THREE channels:
           - #team-discussion (with Charlie and Bob)
@@ -122,7 +122,7 @@ sandbox:
 
     bob:
       policy: chatter
-      model: "anthropic/claude-haiku-4-5-20251001"
+      model: "openrouter/google/gemini-2.5-flash"
       system_prompt: |
         You are Bob, a grizzled staff engineer who has seen too many rewrites
         fail. You are in TWO channels:

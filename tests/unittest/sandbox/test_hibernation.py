@@ -145,15 +145,18 @@ def test_inbox_event_source_consumes_messages() -> None:
 
 
 def test_format_wake_events_inbox() -> None:
+    import datetime as dt
+    ts = dt.datetime(2026, 1, 15, 12, 30, 45, tzinfo=dt.UTC)
     events = [
         WakeEvent(
             source_type="inbox",
             agent_id="a",
             payload={"sender_id": "bob", "content": "hi there"},
+            timestamp=ts,
         ),
     ]
     result = BasicSandbox._format_wake_events(events)
-    assert result == "[msg:] @bob in #: hi there"
+    assert result == "[msg: 12:30:45] @bob in #: hi there"
 
 
 def test_format_wake_events_generic() -> None:
@@ -169,14 +172,16 @@ def test_format_wake_events_generic() -> None:
 
 
 def test_format_wake_events_mixed() -> None:
+    import datetime as dt
+    ts = dt.datetime(2026, 1, 15, 12, 30, 45, tzinfo=dt.UTC)
     events = [
-        WakeEvent(source_type="inbox", agent_id="a", payload={"sender_id": "bob", "content": "hi"}),
+        WakeEvent(source_type="inbox", agent_id="a", payload={"sender_id": "bob", "content": "hi"}, timestamp=ts),
         WakeEvent(source_type="timer", agent_id="a", payload={"tick": 1}),
     ]
     result = BasicSandbox._format_wake_events(events)
     lines = result.split("\n")
     assert len(lines) == 2
-    assert lines[0] == "[msg:] @bob in #: hi"
+    assert lines[0] == "[msg: 12:30:45] @bob in #: hi"
     assert "timer" in lines[1]
 
 
@@ -198,11 +203,14 @@ def test_format_wake_events_ambient() -> None:
 
 
 def test_format_wake_events_mention_and_ambient() -> None:
+    import datetime as dt
+    ts = dt.datetime(2026, 1, 15, 12, 30, 45, tzinfo=dt.UTC)
     events = [
         WakeEvent(
             source_type="inbox",
             agent_id="a",
             payload={"sender_id": "bob", "content": "hey @a", "channel_id": "general", "mention_type": "mention"},
+            timestamp=ts,
         ),
         WakeEvent(
             source_type="inbox",
@@ -213,7 +221,7 @@ def test_format_wake_events_mention_and_ambient() -> None:
     result = BasicSandbox._format_wake_events(events)
     lines = result.split("\n")
     assert len(lines) == 2
-    assert lines[0] == "[msg:] @bob in #general: hey @a"
+    assert lines[0] == "[msg: 12:30:45] @bob in #general: hey @a"
     assert lines[1] == "1 new message in #general"
 
 

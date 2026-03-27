@@ -2,7 +2,6 @@ import datetime as dt
 from typing import TYPE_CHECKING
 
 from .service_interface import Service
-from ..resource import Resource
 from ..events.event_bus import EventBus
 from ..events.base import PriceUpdated, ResourceUpdated
 from ..definitions import TickerCandleList, ChainInfo, ChainData, OptionData
@@ -12,7 +11,7 @@ if TYPE_CHECKING:
     from .central_storage_service import CentralStorageService
 
 
-class MarketDataService(Service, Resource):
+class MarketDataService(Service):
     """
     Service for managing market data feeds and distribution.
     Integrates with broker instances to fetch real-time and historical data.

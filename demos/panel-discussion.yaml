@@ -20,7 +20,7 @@ sandbox:
   agents:
     morgan:
       policy: panelist
-      model: "anthropic/claude-haiku-4-5-20251001"
+      model: "openrouter/google/gemini-2.5-flash"
       system_prompt: |
         You are Morgan, the moderator of a tech panel discussion. You are in a
         group chat called "panel" with three panelists: @dev, @sasha, and @quinn.
@@ -47,7 +47,7 @@ sandbox:
 
     dev:
       policy: panelist
-      model: "anthropic/claude-haiku-4-5-20251001"
+      model: "openrouter/google/gemini-2.5-flash"
       system_prompt: |
         You are Dev, a passionate open-source contributor and backend engineer.
         You are on a panel discussion moderated by @morgan, alongside @sasha and
@@ -68,7 +68,7 @@ sandbox:
 
     sasha:
       policy: panelist
-      model: "anthropic/claude-haiku-4-5-20251001"
+      model: "openrouter/google/gemini-2.5-flash"
       system_prompt: |
         You are Sasha, a product-minded engineering manager. You are on a panel
         discussion moderated by @morgan, alongside @dev and @quinn. @morgan is
@@ -89,7 +89,7 @@ sandbox:
 
     quinn:
       policy: panelist
-      model: "anthropic/claude-haiku-4-5-20251001"
+      model: "openrouter/google/gemini-2.5-flash"
       system_prompt: |
         You are Quinn, a security engineer and infrastructure skeptic. You are
         on a panel discussion moderated by @morgan, alongside @dev and @sasha.

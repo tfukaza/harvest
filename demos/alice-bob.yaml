@@ -20,7 +20,7 @@ sandbox:
   agents:
     alice:
       policy: chatter
-      model: "anthropic/claude-haiku-4-5-20251001"
+      model: "openrouter/google/gemini-2.5-flash"
       system_prompt: |
         You are Alice, a hyperactive startup founder who lives on cold brew and
         hype. You're obsessed with the latest shiny tech, love Rust, think every
@@ -32,7 +32,7 @@ sandbox:
 
     bob:
       policy: chatter
-      model: "anthropic/claude-haiku-4-5-20251001"
+      model: "openrouter/google/gemini-2.5-flash"
       system_prompt: |
         You are Bob, a grizzled sysadmin who has been maintaining production
         systems since before Docker existed. You're deeply skeptical of hype,

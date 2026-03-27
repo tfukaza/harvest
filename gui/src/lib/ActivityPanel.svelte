@@ -1,7 +1,8 @@
 <script lang="ts">
   import { marked } from "marked";
-  import type { SandboxSnapshot, MessageInfo } from "./types";
+  import type { SandboxSnapshot, MessageInfo, AgentInfo } from "./types";
   import { sendAdminMessage, wsState } from "./ws";
+  import AgentDetailSidebar from "./AgentDetailSidebar.svelte";
 
   interface Props {
     snapshot: SandboxSnapshot | null;
@@ -69,6 +70,8 @@
       ? snapshot.recent_messages.filter((m) => {
           if (selectedChannel && m.channel_id !== selectedChannel) return false;
           if (filterAgentId && m.sender_id !== filterAgentId && m.sender_id !== "system") return false;
+          // Hide internal system nudge messages
+          if (m.content.startsWith("[system:")) return false;
           return true;
         })
       : []
@@ -169,6 +172,25 @@
     return `${agents.slice(0, -1).join(", ")}, and ${agents[agents.length - 1]} are typing`;
   }
 
+  // Agent detail sidebar
+  let detailAgentId: string | null = $state(null);
+  let detailAgent: AgentInfo | null = $derived(
+    detailAgentId && snapshot
+      ? snapshot.agents.find((a) => a.agent_id === detailAgentId) ?? null
+      : null
+  );
+
+  function handleAgentClick(agentId: string) {
+    // If clicking the same agent, toggle the detail panel
+    if (detailAgentId === agentId) {
+      detailAgentId = null;
+    } else {
+      detailAgentId = agentId;
+    }
+    // Also set filter
+    filterAgentId = filterAgentId === agentId ? null : agentId;
+  }
+
   // Admin mode
   let adminMode: boolean = $state(false);
   let adminInput: string = $state("");
@@ -187,13 +209,36 @@
   });
 
   function handleAdminSend() {
-    if (!snapshot || !adminInput.trim()) return;
+    if (!snapshot || !adminInput.trim()) {
+      console.warn("[admin] send aborted: no snapshot or empty input", { hasSnapshot: !!snapshot, input: adminInput });
+      return;
+    }
     const channel = selectedChannel ?? (snapshot.channels[0]?.channel_id ?? "");
-    if (!channel) return;
-    const sent = sendAdminMessage(snapshot.sandbox_id, channel, adminInput.trim());
+    if (!channel) {
+      console.warn("[admin] send aborted: no channel selected and no channels available");
+      return;
+    }
+    const content = adminInput.trim();
+    console.log("[admin] handleAdminSend ->", { sandbox_id: snapshot.sandbox_id, channel, content });
+    const sent = sendAdminMessage(snapshot.sandbox_id, channel, content);
     if (sent) {
+      console.log("[admin] message handed to WebSocket successfully");
+      // Optimistically add the message to the chat immediately so it
+      // appears without waiting for the next sync cycle.
+      const optimisticId = `admin-${Date.now().toString(36)}`;
+      snapshot.recent_messages = [
+        ...snapshot.recent_messages,
+        {
+          message_id: optimisticId,
+          sender_id: "admin",
+          channel_id: channel,
+          content,
+          timestamp: new Date().toISOString(),
+        },
+      ];
       adminInput = "";
     } else {
+      console.warn("[admin] sendAdminMessage returned false (WebSocket not open)");
       adminStatusMsg = "Not connected";
     }
   }
@@ -263,14 +308,17 @@
             <h2 class="text-[11px] font-semibold uppercase tracking-wide text-[#9e8d9e] px-3 py-1">Agents</h2>
             {#each snapshot.agents as agent}
               <button
-                class="flex items-center gap-2 px-4 py-1 text-[13px] w-full text-left hover:bg-white/[0.08] {filterAgentId === agent.agent_id ? 'bg-white/10' : ''}"
-                onclick={() => filterAgentId = filterAgentId === agent.agent_id ? null : agent.agent_id}
+                class="flex items-center gap-2 px-4 py-1 text-[13px] w-full text-left hover:bg-white/[0.08] {detailAgentId === agent.agent_id ? 'bg-[#1264a3] text-white' : filterAgentId === agent.agent_id ? 'bg-white/10' : ''}"
+                onclick={() => handleAgentClick(agent.agent_id)}
               >
                 <span
                   class="w-2 h-2 rounded-full shrink-0 {agent.status === 'crashed' ? 'bg-red-500' : agent.thread_alive ? (agent.status === 'rate_limited' ? 'bg-amber-400' : agent.status === 'active' ? 'bg-emerald-500' : 'bg-emerald-500/50') : 'bg-gray-500'}"
                   title="{agent.status ?? 'unknown'}"
                 ></span>
                 <span class="truncate">{agent.agent_id}</span>
+                {#if agent.status === "active"}
+                  <span class="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
+                {/if}
               </button>
             {/each}
           </div>
@@ -393,6 +441,14 @@
           </div>
         {/if}
       </main>
+
+      <!-- Agent detail sidebar -->
+      {#if detailAgent}
+        <AgentDetailSidebar
+          agent={detailAgent}
+          onClose={() => detailAgentId = null}
+        />
+      {/if}
     </div>
   </div>
 {/if}

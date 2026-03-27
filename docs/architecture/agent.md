@@ -106,3 +106,25 @@ The agent should NOT own:
 - Policy enforcement
 
 Those responsibilities belong to the sandbox.
+
+## Tool Call Loop Cap
+
+`step()` limits consecutive tool-call iterations via `config.tool_call_loop_cap` (default 25). If the LLM keeps issuing tool calls without producing a final text response, the loop terminates after this many iterations. This prevents runaway loops caused by models that endlessly call tools without converging on an answer.
+
+## Result Buffer Integration
+
+Large tool results are intercepted by `ResultBuffer` before being injected into the conversation context. The buffer applies a three-tier model: small results pass through unchanged, medium results are paginated (page 0 + navigation metadata), and large results are chunked with per-chunk summaries. The agent can call `browse_results(tool_call_id, mode, ...)` to navigate paginated or summarized data by page index, regex grep, or offset/count slice. See [result-buffer.md](result-buffer.md) for the full design.
+
+## Cognitive Tools
+
+Three optional tool families for agent-internal reasoning, enabled per-agent via `AgentPolicy.cognitive_tools`:
+
+- **think** — private scratchpad for structured reasoning that does not appear in chat
+- **memory** — persistent key-value store (`agent._memories`) for facts the agent wants to retain across turns
+- **todo** — task list (`agent._todos`) the agent can add to, check off, and review
+
+`_wire_cognitive_tools(enabled)` registers the corresponding tools from `harvest/cognitive_tools.py`. State lives directly on the agent instance and survives compaction.
+
+## Base Class Stubs
+
+The `Agent` base class provides stub attributes (`_tools`, `_tool_map`, `_chat_router`, `_result_buffer`, etc.) with safe defaults (empty lists, empty dicts, `None`). This ensures `BasicSandbox` wiring methods (`_wire_chat_router`, `_wire_service_router`, `_wire_cognitive_tools`) work uniformly without checking whether each attribute has been initialized.

@@ -86,3 +86,17 @@ callback(channel_id, sender_id, recipient_ids, message_id, channel_type, content
 ```
 
 The sandbox uses this to set `wake_signal` on recipient agent handles, interrupting their hibernation sleep.
+
+## Write Staking
+
+Group channels use exclusive write locks to prevent agents from composing replies to stale conversation state. When an agent calls `send_message` on a group channel, the router acquires a per-channel stake on behalf of that agent. Other agents attempting to write to the same channel queue in FIFO order via a `threading.Condition` and receive a `"channel_updated"` response containing new messages posted while they waited — signaling them to re-read and revise their reply.
+
+Constants:
+- `STAKE_TIMEOUT_SECONDS = 30.0` — maximum time an agent will wait in the queue before `TimeoutError`
+- `STAKE_HOLD_SECONDS = 5.0` — grace period after the stake is acquired; if the holder neither sends nor releases within this window, the stake is automatically revoked
+
+The stake is acquired at the start of `send_message` (via `_set_typing`) and released in a `finally` block (via `_clear_typing`), ensuring cleanup on both success and error paths.
+
+## Typing Indicators
+
+The ChatRouter tracks which agents are currently composing a message via `_set_typing(channel_id, agent_id)` and `_clear_typing(channel_id, agent_id)`. These are called automatically during the write-staking flow. External consumers (e.g., the debug monitor GUI) can register callbacks that fire whenever the typing set for a channel changes, enabling real-time "agent is typing..." indicators.

@@ -201,16 +201,23 @@ function applyAgentStatus(msg: AgentStatusMessage) {
 }
 
 function applyAdminQueued(msg: AdminQueuedMessage) {
+  console.log("[admin] message queued by server:", msg.message_id);
   store.update((s) => ({ ...s, adminStatus: { message_id: msg.message_id, status: "queued" } }));
 }
 
 function applyAdminBlocked(msg: AdminBlockedMessage) {
+  console.warn("[admin] message blocked by server:", msg.reason);
   store.update((s) => ({ ...s, adminStatus: { message_id: "", status: "blocked", reason: msg.reason } }));
 }
 
 export function sendAdminMessage(sandbox_id: string, channel_id: string, content: string): boolean {
-  if (!ws || ws.readyState !== WebSocket.OPEN) return false;
-  ws.send(JSON.stringify({ type: "admin_send", sandbox_id, channel_id, content }));
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    console.warn("[admin] send failed: WebSocket not open", { readyState: ws?.readyState });
+    return false;
+  }
+  const payload = { type: "admin_send", sandbox_id, channel_id, content };
+  console.log("[admin] sending message:", payload);
+  ws.send(JSON.stringify(payload));
   return true;
 }
 

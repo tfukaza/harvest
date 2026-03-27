@@ -101,21 +101,8 @@ class SandboxGateway:
         return _relay
 
     def _make_outbound_handler(self) -> Callable[[HarvestEvent], None]:
-        """Create a handler that relays to the orchestrator bus.
-
-        Uses dispatch_sync if the orchestrator bus is bubus-backed (requires
-        an event loop), or plain dispatch if it's a SyncEventBus.
-        """
+        """Create a handler that relays events to the orchestrator bus."""
         orch = self._orchestrator_bus
-        if hasattr(orch, 'dispatch_sync'):
-            def _relay(event: HarvestEvent) -> None:
-                try:
-                    orch.dispatch_sync(event)
-                except RuntimeError:
-                    # If an event loop IS running, use regular dispatch
-                    orch.dispatch(event)
-            return _relay
-        else:
-            def _relay(event: HarvestEvent) -> None:
-                orch.dispatch(event)
-            return _relay
+        def _relay(event: HarvestEvent) -> None:
+            orch.dispatch(event)
+        return _relay

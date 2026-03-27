@@ -18,7 +18,6 @@ from harvest.harvest_agent import (
 )
 from harvest.policy import AgentPolicy, ChildPolicyMode
 from harvest.policy_registry import PolicyRegistry
-from harvest.resource import Resource
 from harvest.runtime import Runtime
 
 __all__ = [
@@ -33,7 +32,6 @@ __all__ = [
     "HarvestAgentConfig",
     "Message",
     "PolicyRegistry",
-    "Resource",
     "Runtime",
     "SandboxManifest",
     "SummaryMessage",

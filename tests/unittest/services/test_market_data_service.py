@@ -1,4 +1,4 @@
-"""Sanity tests for MarketDataService at the Resource boundary."""
+"""Sanity tests for MarketDataService."""
 
 from __future__ import annotations
 
@@ -9,8 +9,8 @@ import polars as pl
 
 from harvest.definitions import TickerCandleList
 from harvest.events.base import PriceUpdated, ResourceUpdated
-from harvest.resource import Resource
 from harvest.services.market_data_service import MarketDataService
+from harvest.services.service_interface import Service
 
 
 def create_sample_price_data() -> TickerCandleList:
@@ -31,10 +31,10 @@ def create_sample_price_data() -> TickerCandleList:
     )
 
 
-def test_market_data_service_is_a_resource() -> None:
+def test_market_data_service_is_a_service() -> None:
     service = MarketDataService(Mock())
 
-    assert isinstance(service, Resource)
+    assert isinstance(service, Service)
     assert service.resource_id == "market_data"
 
 

@@ -74,7 +74,7 @@ class _FakeResponse:
 def test_config_defaults() -> None:
     config = HarvestAgentConfig()
     assert config.model == "anthropic/claude-haiku-4-5-20251001"
-    assert config.max_tokens == 1024
+    assert config.max_tokens == 4096
     assert config.session_id  # non-empty
 
 

@@ -321,6 +321,11 @@ class SandboxServiceRouter:
         with self._lock:
             return list(self._services.keys())
 
+    def get_service(self, service_id: str) -> Service | None:
+        """Return the Service instance for *service_id*, or ``None``."""
+        with self._lock:
+            return self._services.get(service_id)
+
     # -- Callback binding helpers for tool handlers --------------------------
 
     def _make_tool_fetch_callback(self, service_id: str) -> Callable[..., str]:
@@ -422,8 +427,15 @@ class SandboxServiceRouter:
     ) -> list[tuple[dict, Callable[..., str]]]:
         """Wire interface tools as callables onto an agent at startup.
 
-        Returns ``(tool_spec, callable)`` pairs for all interface tools
-        permitted by the policy.
+        Queries the tool registry for all interface tools permitted by
+        *policy*, wraps each handler with an agent-scoped closure (so
+        ``agent_id`` is injected automatically), and returns the pairs.
+        The caller is responsible for appending these to the agent's
+        ``_tools`` / ``_tool_map``.
+
+        Side effects:
+            Emits a :class:`ToolsAutoRegistered` event on the sandbox
+            event bus listing the names of all tools that were wired.
 
         Args:
             agent_id: The agent receiving the tools.
@@ -468,7 +480,15 @@ class SandboxServiceRouter:
         policy: AgentPolicy | None,
         inject_callback: Callable[[str, InterfaceTool], None],
     ) -> tuple[dict, Callable[..., str]]:
-        """Return the discover_tools callable for an agent.
+        """Return the ``discover_tools`` callable for an agent.
+
+        The returned closure maintains an ``already_injected: set[str]``
+        that tracks which tool names have been fully activated.  On the
+        first call with a specific ``tool_name``, the *inject_callback* is
+        invoked to register the full tool spec on the agent; subsequent
+        calls for the same name skip injection.  Calling without a
+        ``tool_name`` returns a lightweight catalogue of all discoverable
+        tools without triggering any injection.
 
         Args:
             agent_id: The agent this tool belongs to.
@@ -755,6 +775,18 @@ class SandboxServiceRouter:
         payload: dict[str, Any],
     ) -> None:
         """Deliver a fired external event to all subscribed agents.
+
+        For each agent subscribed to *source_id*, this method:
+
+        1. Appends a notification dict to ``self._pending_events[agent_id]``
+           so the agent can retrieve it via ``read_event_notifications``.
+        2. Invokes the sandbox-level ``_event_notification_callback`` (if
+           set) to inject a system-prompt hint about the new event.
+        3. Calls the agent's registered wake callback (if any) to interrupt
+           hibernation sleep, allowing the agent to process the event
+           promptly.
+        4. Emits an :class:`ExternalEventDelivered` event on the sandbox
+           event bus for observability.
 
         Args:
             source_id: The service (EVENT_SOURCE role) that fired.

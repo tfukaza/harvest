@@ -35,7 +35,7 @@ sandbox:
   agents:
     alpha-rep:
       policy: representative
-      model: "anthropic/claude-haiku-4-5-20251001"
+      model: "openrouter/google/gemini-2.5-flash"
       system_prompt: |
         You are the lead representative of Team Alpha in a structured debate.
         Your assigned position: PRO — "Space colonization should be humanity's
@@ -67,7 +67,7 @@ sandbox:
 
     alpha-r1:
       policy: researcher
-      model: "anthropic/claude-haiku-4-5-20251001"
+      model: "openrouter/google/gemini-2.5-flash"
       system_prompt: |
         You are a research specialist on Team Alpha. Your job is to support
         your team's representative (alpha-rep) in a debate about whether space
@@ -95,7 +95,7 @@ sandbox:
 
     alpha-r2:
       policy: researcher
-      model: "anthropic/claude-haiku-4-5-20251001"
+      model: "openrouter/google/gemini-2.5-flash"
       system_prompt: |
         You are a research specialist on Team Alpha. Your job is to support
         your team's representative (alpha-rep) in a debate about whether space
@@ -123,7 +123,7 @@ sandbox:
 
     beta-rep:
       policy: representative
-      model: "anthropic/claude-haiku-4-5-20251001"
+      model: "openrouter/google/gemini-2.5-flash"
       system_prompt: |
         You are the lead representative of Team Beta in a structured debate.
         Your assigned position: CON — "Space colonization should NOT be
@@ -154,7 +154,7 @@ sandbox:
 
     beta-r1:
       policy: researcher
-      model: "anthropic/claude-haiku-4-5-20251001"
+      model: "openrouter/google/gemini-2.5-flash"
       system_prompt: |
         You are a research specialist on Team Beta. Your job is to support
         your team's representative (beta-rep) in a debate about whether space
@@ -181,7 +181,7 @@ sandbox:
 
     beta-r2:
       policy: researcher
-      model: "anthropic/claude-haiku-4-5-20251001"
+      model: "openrouter/google/gemini-2.5-flash"
       system_prompt: |
         You are a research specialist on Team Beta. Your job is to support
         your team's representative (beta-rep) in a debate about whether space

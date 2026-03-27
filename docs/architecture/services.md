@@ -137,6 +137,18 @@ Wraps Perplexity's OpenAI-compatible REST API at `https://api.perplexity.ai/chat
 
 `perplexity_search_focused` accepts a `search_focus` domain hint (e.g. `"news"`, `"academic"`). Returns `{answer, citations, model, usage}`.
 
+### TavilyService (`harvest/services/tavily.py`)
+
+`service_id = "tavily"`, `roles = {DATA_SOURCE}`
+
+Wraps the Tavily REST API (`https://api.tavily.com`) for web search, page extraction, and site crawling. Uses `requests.Session` with Bearer token auth.
+
+| Role | Tools |
+|------|-------|
+| DATA_SOURCE | `tavily_search`, `tavily_extract`, `tavily_crawl` |
+
+`tavily_search` supports `search_depth` (basic/advanced), `topic` filtering (general/news/finance), and `time_range` constraints (day/week/month/year). `tavily_extract` reads full page content from one or more URLs. `tavily_crawl` performs graph-based site crawling with `max_depth`, `max_breadth`, and natural-language `instructions` for guided exploration. All three tools return `ServiceResult` objects for integration with the ResultBuffer.
+
 ## Implementing a New Service
 
 ```python

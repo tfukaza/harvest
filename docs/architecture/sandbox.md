@@ -105,3 +105,21 @@ they are addressing you directly and you should respond.
 ```
 
 This ensures agents know their own identity without requiring it in the manifest's system prompt.
+
+## AdminMessageQueue
+
+The `BasicSandbox` accepts an optional `admin_queue` parameter (`AdminMessageQueue`) at construction. When provided, it enables human-in-the-loop message injection via the debug monitor. The queue's `on_enqueue` callback is wired to `_handle_admin_message`, which injects the human message into the appropriate channel or agent. This allows operators to intervene in live simulations without restarting the sandbox.
+
+## SyncEventBus
+
+Each sandbox creates a per-sandbox synchronous event bus (`sandbox_bus`, an instance of `SyncEventBus`) named `sandbox-{runner_id}`. Internal components (ChatRouter, ServiceRouter, SandboxGateway) subscribe to and dispatch events on this bus. The `SandboxGateway` relays whitelisted event types between the `sandbox_bus` and the orchestrator-level `event_bus`, providing event isolation — sandbox-internal events stay local unless explicitly promoted.
+
+## Parent-Child Agent Tracking
+
+`BasicSandbox` tracks the lifecycle of dynamically created child agents through three maps:
+
+- `_parent_map: dict[str, str]` — maps each child `agent_id` to its `parent_id`
+- `_agent_policies: dict[str, AgentPolicy]` — stores the policy for every registered agent
+- `_shutdown_reasons: dict[str, str]` — records why each agent was stopped (e.g., parent request, error)
+
+The sandbox listens for `CreateAgentRequest`, `ShutdownAgentRequest`, and `GetAgentStatusRequest` events on the `sandbox_bus`. Parent agents can only shut down their own children (verified against `_parent_map`). `AgentStarted` and `AgentStopped` events are dispatched on the bus so other components can react to lifecycle changes.

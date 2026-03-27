@@ -290,22 +290,34 @@ class ChatRouter:
     ) -> dict[str, Any]:
         """Send a message to a channel. Synchronous, thread-safe.
 
-        For group channels, this method enforces write staking:
-        - If the lock is free, the message is sent immediately.
-        - If another agent holds the lock, the call blocks (FIFO queue)
-          until the lock is available, then returns ``channel_updated``
-          with the latest messages instead of sending. The agent now
-          holds the lock and should call send_message again with an
-          updated response.
+        This is the **direct API path** (called from legacy tool wrappers
+        that hold a ChatRouter reference).  For the event-driven equivalent,
+        see :meth:`_handle_send`.
+
+        **Write-stake mechanism (group channels):**  Before sending, a
+        write stake is acquired via :meth:`_acquire_stake`.  If the lock
+        is free the message is sent immediately.  If another agent holds
+        the lock, the call **blocks** in a FIFO queue with a **30-second
+        timeout**.  When the caller finally acquires the stake after
+        waiting, the channel context has changed, so the method returns
+        ``{"status": "channel_updated", ...}`` with the latest messages
+        instead of sending -- the caller now holds the lock and should
+        compose a fresh response.
+
+        **Typing indicator:** A typing indicator is set before the stake
+        attempt (``_set_typing``) and cleared in a ``finally`` block after
+        send or error (``_clear_typing``), ensuring it is always removed.
 
         Args:
             sender_id: The sending agent's ID.
             channel_id: Target channel.
             content: Message text.
             message_id: Unique message identifier.
+            reply_to: Comma-separated short message IDs being replied to.
 
         Returns:
-            Dict with 'status' and additional fields depending on outcome.
+            Dict with ``'status'`` and additional fields depending on
+            outcome (``'sent'``, ``'channel_updated'``, or ``'error'``).
         """
         # --- Pre-flight validation (under main lock) ---
         with self._lock:
@@ -468,14 +480,23 @@ class ChatRouter:
 
             self._notify_delivered(channel_id, message_id, sender_id)
 
-            if delivered_recipient_ids:
+            # Notify observers. For DM/Group channels, always notify even
+            # when the sender is the only member — the message was written to
+            # the channel and should be visible to external observers (debug
+            # monitor, GUI, etc.). For processor channels, only notify when
+            # messages are actually released to subscribers.
+            if isinstance(channel, ProcessorChannel):
+                if delivered_recipient_ids:
+                    self._notify_new_message(
+                        channel_id, sender_id, delivered_recipient_ids,
+                        message_id, channel.channel_type.value, content,
+                        reply_to=reply_to,
+                    )
+            else:
+                all_member_ids = delivered_recipient_ids or [sender_id]
                 self._notify_new_message(
-                    channel_id,
-                    sender_id,
-                    delivered_recipient_ids,
-                    message_id,
-                    channel.channel_type.value,
-                    content,
+                    channel_id, sender_id, all_member_ids,
+                    message_id, channel.channel_type.value, content,
                     reply_to=reply_to,
                 )
 
@@ -501,6 +522,8 @@ class ChatRouter:
 
     def _sender_allowed(self, sender_id: str, channel: ChannelDefinition) -> bool:
         """Check if a sender is allowed to write to a channel."""
+        if sender_id == "admin":
+            return True
         if isinstance(channel, (DMChannel, GroupChannel)):
             return sender_id in channel.member_ids
         if isinstance(channel, ProcessorChannel):
@@ -721,7 +744,16 @@ class ChatRouter:
         """
         if self._store is None:
             return []
-        return self._store.load_channel(channel_id)
+        rows = self._store.load_channel(channel_id)
+        for row in rows:
+            if row.get("sender_id") == self.SEED_SENDER_ID:
+                row["sender_id"] = "system"
+                row["is_seed_prompt"] = True
+                row["note"] = (
+                    "This is the channel topic set by the system, not a "
+                    "message from another agent. Engage with the topic."
+                )
+        return rows
 
     def inject_seed(
         self,
@@ -824,6 +856,8 @@ class ChatRouter:
         """Subscribe to request events on the sandbox bus."""
         from harvest.agent_sandbox.chat_events import (
             AddAgentToChannelRequest,
+            CreateChannelRequest,
+            LeaveChannelRequest,
             ListChannelsRequest,
             ReadMessagesRequest,
             ReleaseStake,
@@ -838,6 +872,8 @@ class ChatRouter:
         bus.on(ReadMessagesRequest, self._handle_read)
         bus.on(ListChannelsRequest, self._handle_list)
         bus.on(AddAgentToChannelRequest, self._handle_add_to_channel)
+        bus.on(CreateChannelRequest, self._handle_create_channel)
+        bus.on(LeaveChannelRequest, self._handle_leave_channel)
 
     def _handle_request_stake(self, event: Any) -> None:
         """Grant immediately, re-entrant grant, or enqueue. Never blocks."""
@@ -893,7 +929,23 @@ class ChatRouter:
             self._grant_next_in_queue(event.channel_id)
 
     def _handle_send(self, event: Any) -> None:
-        """Deliver message via internal send, then auto-release the stake."""
+        """Event-driven send path: deliver a message in response to a :class:`SendChatMessage` event.
+
+        This is the counterpart of :meth:`send_message` for the event-bus
+        architecture.  It performs the following steps:
+
+        1. Resolves the target channel and builds a :class:`SandboxMessage`.
+        2. Determines recipient IDs from channel membership and delivers
+           the message to each recipient's inbox via
+           :meth:`_deliver_to_inboxes`.
+        3. Persists the message to the chat store (if one is configured).
+        4. Dispatches a :class:`ChatMessageDelivered` event on the sandbox
+           bus so the calling :class:`ChatRouterClient` can unblock.
+        5. Dispatches a :class:`NewChatMessage` event so listening agents
+           are woken from hibernation.
+        6. Releases the sender's write stake (if held) and grants the
+           next queued agent.
+        """
         from harvest.agent_sandbox.chat_events import ChatMessageDelivered, NewChatMessage
         import uuid as _uuid
 
@@ -907,28 +959,44 @@ class ChatRouter:
             ))
             return
 
+        sender_addr = self._agents.get(event.sender_id)
+        if sender_addr is None:
+            sender_addr = EndpointAddress(
+                endpoint_id=event.sender_id, kind=EndpointKind.AGENT
+            )
+        recipient_addr = EndpointAddress(
+            endpoint_id=event.channel_id, kind=EndpointKind.GROUP_CHAT
+        )
         msg = SandboxMessage(
             message_id=event.message_id or _uuid.uuid4().hex,
-            channel_id=event.channel_id,
-            sender_id=event.sender_id,
+            sender=sender_addr,
+            recipient=recipient_addr,
             content=event.content,
-            reply_to=getattr(event, "reply_to", ""),
         )
-        recipient_ids = self._deliver_to_inboxes(msg, channel)
+        # Determine recipient list from channel membership
+        if isinstance(channel, (DMChannel, GroupChannel)):
+            recipient_ids = list(channel.member_ids)
+        elif isinstance(channel, ProcessorChannel):
+            recipient_ids = list(channel.subscriber_ids)
+        else:
+            recipient_ids = []
+        self._deliver_to_inboxes(event.channel_id, [msg], recipient_ids)
 
         if self._store is not None:
-            self._store.add_message(
-                channel_id=msg.channel_id,
-                message_id=msg.message_id,
-                sender_id=msg.sender_id,
-                content=msg.content,
+            msg_index = self._channel_counters.get(event.channel_id, 0)
+            self._channel_counters[event.channel_id] = msg_index + 1
+            self._store.append_message(
+                channel_id=event.channel_id,
+                message_index=msg_index,
+                sender_id=event.sender_id,
+                content=event.content,
             )
 
         self._sandbox_bus.dispatch(ChatMessageDelivered(
             channel_id=event.channel_id,
             message_id=msg.message_id,
             sender_id=event.sender_id,
-            timestamp_delivered=msg.timestamp.isoformat(),
+            timestamp_delivered=msg.created_at.isoformat(),
         ))
 
         self._sandbox_bus.dispatch(NewChatMessage(
@@ -939,14 +1007,11 @@ class ChatRouter:
             channel_type=channel.channel_type.value if hasattr(channel.channel_type, 'value') else str(channel.channel_type),
         ))
 
-        # Also fire legacy callbacks for backward compatibility
-        for cb in self._on_new_message:
-            try:
-                cb(event.channel_id, event.sender_id, recipient_ids,
-                   msg.message_id, channel.channel_type.value if hasattr(channel.channel_type, 'value') else str(channel.channel_type),
-                   event.content, getattr(event, "reply_to", ""))
-            except Exception:
-                pass
+        self._notify_new_message(
+            event.channel_id, event.sender_id, recipient_ids,
+            msg.message_id, channel.channel_type.value,
+            content=event.content, reply_to=event.reply_to,
+        )
 
         with self._stake_lock:
             existing = self._channel_stakes.get(event.channel_id)
@@ -963,12 +1028,21 @@ class ChatRouter:
             """Convert a SandboxMessage to a dict with channel_id."""
             ch = m.recipient.endpoint_id if m.recipient else ""
             sender = m.sender.endpoint_id if m.sender else ""
-            return {
+            d: dict[str, Any] = {
                 "channel_id": ch,
                 "sender": sender,
                 "content": m.content,
                 "message_id": m.message_id,
+                "timestamp": m.created_at.isoformat(),
             }
+            if sender == self.SEED_SENDER_ID:
+                d["sender"] = "system"
+                d["is_seed_prompt"] = True
+                d["note"] = (
+                    "This is the channel topic set by the system, not a "
+                    "message from another agent. Engage with the topic."
+                )
+            return d
 
         if event.channel_id and event.history:
             messages = self.load_channel_history(event.channel_id)
@@ -1052,6 +1126,67 @@ class ChatRouter:
             channel_id=event.channel_id, request_id=event.request_id,
             status="added",
         ))
+
+    def _handle_create_channel(self, event: Any) -> None:
+        """Create a new channel in response to a CreateChannelRequest."""
+        from harvest.agent_sandbox.chat_events import CreateChannelResponse
+
+        try:
+            member_ids = list(event.member_ids)
+            if event.requester_id not in member_ids:
+                member_ids.insert(0, event.requester_id)
+
+            ch_type = event.channel_type
+            if ch_type == "dm":
+                channel = DMChannel(
+                    channel_id=event.channel_id,
+                    member_ids=member_ids,
+                    description=event.description,
+                    created_by=event.requester_id,
+                )
+            elif ch_type == "group":
+                channel = GroupChannel(
+                    channel_id=event.channel_id,
+                    member_ids=member_ids,
+                    description=event.description,
+                    created_by=event.requester_id,
+                )
+            else:
+                self._sandbox_bus.dispatch(CreateChannelResponse(
+                    requester_id=event.requester_id, request_id=event.request_id,
+                    channel_id=event.channel_id,
+                    status="error", error=f"unsupported_channel_type: {ch_type}",
+                ))
+                return
+
+            self.create_channel(channel)
+            self._sandbox_bus.dispatch(CreateChannelResponse(
+                requester_id=event.requester_id, request_id=event.request_id,
+                channel_id=event.channel_id, status="created",
+            ))
+        except Exception as exc:
+            self._sandbox_bus.dispatch(CreateChannelResponse(
+                requester_id=event.requester_id, request_id=event.request_id,
+                channel_id=event.channel_id,
+                status="error", error=str(exc),
+            ))
+
+    def _handle_leave_channel(self, event: Any) -> None:
+        """Remove an agent from a channel in response to a LeaveChannelRequest."""
+        from harvest.agent_sandbox.chat_events import LeaveChannelResponse
+
+        try:
+            self.leave_channel(event.agent_id, event.channel_id)
+            self._sandbox_bus.dispatch(LeaveChannelResponse(
+                agent_id=event.agent_id, request_id=event.request_id,
+                channel_id=event.channel_id, status="left",
+            ))
+        except Exception as exc:
+            self._sandbox_bus.dispatch(LeaveChannelResponse(
+                agent_id=event.agent_id, request_id=event.request_id,
+                channel_id=event.channel_id,
+                status="error", error=str(exc),
+            ))
 
     # -- Event-driven stake management ---------------------------------------
 

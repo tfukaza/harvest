@@ -1,8 +1,10 @@
-"""
-Orchestrator class for managing the service-oriented trading system.
+"""Orchestrator — legacy (non-agent) runtime path for algorithmic trading.
 
-This class replaces the old Client class and focuses purely on service orchestration
-rather than direct broker/storage management.
+This module is part of the original trading system that runs deterministic
+algorithms via broker adapters.  It is **not** used by the agent sandbox.
+
+For AI-agent-based workflows, use :class:`~harvest.agent_sandbox.basic_sandbox.BasicSandbox`
+with ``harvest.services.*Service`` classes instead.
 """
 
 import asyncio
@@ -24,7 +26,6 @@ from harvest.util.helper import debugger
 from harvest.events.event_bus import EventBus
 from harvest.definitions import RuntimeData
 from harvest.interfaces.service import Service, ServiceRole
-from harvest.resource import Resource
 
 
 class Orchestrator:
@@ -63,7 +64,7 @@ class Orchestrator:
         # Service-oriented architecture components
         self.service_registry = ServiceRegistry()
         self.event_bus = EventBus()
-        self.resources: dict[str, Resource] = {}
+        self.resources: dict[str, Service] = {}
 
         # Phase 13: generalised external-world service registries (legacy)
         self.data_sources: dict = {}
@@ -130,11 +131,11 @@ class Orchestrator:
             # Add algorithm to the algorithm service
             self.algorithm_service.add_algorithm(algorithm)
 
-    def register_resource(self, resource: Resource) -> None:
+    def register_resource(self, resource: Service) -> None:
         """Register a resource exposed by the orchestrator-managed infrastructure."""
         self.resources[resource.resource_id] = resource
 
-    def get_resource(self, resource_id: str) -> Resource | None:
+    def get_resource(self, resource_id: str) -> Service | None:
         """Retrieve a registered resource by identifier."""
         return self.resources.get(resource_id)
 

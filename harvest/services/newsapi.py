@@ -21,6 +21,7 @@ from harvest.interfaces.service import (
     ServiceRole,
 )
 from harvest.interfaces.tool_definition import InterfaceTool, ToolArgument
+from harvest.result_buffer import ServiceResult
 
 _BASE_URL = "https://newsapi.org/v2"
 
@@ -114,7 +115,7 @@ class NewsAPIService(Service):
             category: str = "",
             country: str = "",
             page_size: int = 10,
-        ) -> str:
+        ) -> ServiceResult | str:
             params: dict[str, Any] = {"page_size": page_size}
             if query:
                 params["query"] = query
@@ -122,7 +123,16 @@ class NewsAPIService(Service):
                 params["category"] = category
             if country:
                 params["country"] = country
-            return self._fetch_callback(agent_id, self.service_id, "top_headlines", params)  # type: ignore[attr-defined]
+            raw = self._fetch_callback(agent_id, self.service_id, "top_headlines", params)  # type: ignore[attr-defined]
+            try:
+                data = json.loads(raw)
+                if isinstance(data, list):
+                    return ServiceResult.from_list(data, summary=f"{len(data)} top headlines")
+                if "error" in data:
+                    return raw
+                return ServiceResult.from_list(data.get("articles", [data]), summary=f"Top headlines")
+            except (json.JSONDecodeError, TypeError):
+                return raw
 
         return InterfaceTool(
             name="newsapi_get_top_headlines",
@@ -151,7 +161,7 @@ class NewsAPIService(Service):
             to_date: str = "",
             sort_by: str = "relevancy",
             page_size: int = 10,
-        ) -> str:
+        ) -> ServiceResult | str:
             params: dict[str, Any] = {
                 "query": query,
                 "sort_by": sort_by,
@@ -161,7 +171,19 @@ class NewsAPIService(Service):
                 params["from_date"] = from_date
             if to_date:
                 params["to_date"] = to_date
-            return self._fetch_callback(agent_id, self.service_id, "search_articles", params)  # type: ignore[attr-defined]
+            raw = self._fetch_callback(agent_id, self.service_id, "search_articles", params)  # type: ignore[attr-defined]
+            try:
+                data = json.loads(raw)
+                if "error" in data:
+                    return raw
+                articles = data.get("articles", [])
+                total = data.get("total_results", len(articles))
+                return ServiceResult.from_list(
+                    articles,
+                    summary=f"{len(articles)} articles for \"{query}\" ({total} total)",
+                )
+            except (json.JSONDecodeError, TypeError):
+                return raw
 
         return InterfaceTool(
             name="newsapi_search_articles",

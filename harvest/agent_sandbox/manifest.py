@@ -26,6 +26,8 @@ class AgentManifestEntry:
     system_prompt: str
     api_base: str | None = None
     api_key_env: str | None = None
+    tool_call_loop_cap: int | None = None
+    context_limit: int | None = None
 
 
 @dataclass
@@ -107,7 +109,12 @@ def load_manifest(
     with open(path) as f:
         data = yaml.safe_load(f) or {}
 
-    sandbox_data = data.get("sandbox", data)
+    if "sandbox" not in data:
+        raise ValueError(
+            "Manifest must have a top-level 'sandbox' key. "
+            "See demos/ for example manifests."
+        )
+    sandbox_data = data["sandbox"]
     name = sandbox_data.get("name", "unnamed")
 
     # Parse unified services registry
@@ -148,6 +155,8 @@ def load_manifest(
                 "in the environment",
                 agent_id,
             )
+        raw_loop_cap = agent_data.get("tool_call_loop_cap")
+        raw_context_limit = agent_data.get("context_limit")
         agents[agent_id] = AgentManifestEntry(
             agent_id=agent_id,
             policy_name=policy_name,
@@ -155,6 +164,8 @@ def load_manifest(
             system_prompt=agent_data.get("system_prompt", ""),
             api_base=agent_data.get("api_base"),
             api_key_env=agent_data.get("api_key_env"),
+            tool_call_loop_cap=int(raw_loop_cap) if raw_loop_cap is not None else None,
+            context_limit=int(raw_context_limit) if raw_context_limit is not None else None,
         )
 
     # Validate policy service cross-references against sandbox service registry

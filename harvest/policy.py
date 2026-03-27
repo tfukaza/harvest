@@ -57,6 +57,8 @@ class AgentPolicy:
 
         The sandbox-level service registry acts as Level 1 (allowlist);
         ``allowed_services`` is the Level 2 per-agent filter.
+        cognitive_tools: Set of cognitive tool groups to enable for the agent.
+            Valid values: ``"think"``, ``"memory"`` (save/get/list), ``"todo"``.
     """
 
     name: str
@@ -68,3 +70,4 @@ class AgentPolicy:
     allowed_child_policies: tuple[str, ...] = ()
     allowed_services: tuple = ()  # tuple[ServicePermission, ...]
     event_subscriptions: EventSubscriptions | None = None
+    cognitive_tools: frozenset[str] = frozenset()  # e.g. {"think", "memory", "todo"}
