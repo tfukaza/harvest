@@ -973,11 +973,16 @@ class ChatRouter:
             recipient=recipient_addr,
             content=event.content,
         )
-        # Determine recipient list from channel membership
+        # Determine recipient list from channel membership, excluding the
+        # sender so agents don't receive their own messages in their inbox.
         if isinstance(channel, (DMChannel, GroupChannel)):
-            recipient_ids = list(channel.member_ids)
+            recipient_ids = [
+                mid for mid in channel.member_ids if mid != event.sender_id
+            ]
         elif isinstance(channel, ProcessorChannel):
-            recipient_ids = list(channel.subscriber_ids)
+            recipient_ids = [
+                sid for sid in channel.subscriber_ids if sid != event.sender_id
+            ]
         else:
             recipient_ids = []
         self._deliver_to_inboxes(event.channel_id, [msg], recipient_ids)

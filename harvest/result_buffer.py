@@ -17,10 +17,42 @@ from __future__ import annotations
 import enum
 import json
 import math
+import random
 import re
 import time
 from dataclasses import dataclass, field
 from typing import Any, Callable
+
+
+# ---------------------------------------------------------------------------
+# Human-friendly ID generation
+# ---------------------------------------------------------------------------
+
+_ADJECTIVES = [
+    "blue", "calm", "cool", "dark", "deep", "fair", "fast", "firm", "free",
+    "full", "gold", "good", "gray", "half", "hard", "high", "keen", "kind",
+    "last", "lean", "long", "main", "mild", "neat", "next", "nice", "open",
+    "pale", "pink", "pure", "rare", "real", "rich", "ripe", "safe", "slim",
+    "soft", "sure", "tall", "thin", "tiny", "warm", "wide", "wild", "wise",
+]
+
+_NOUNS = [
+    "arch", "bank", "barn", "bell", "bird", "bolt", "bone", "book", "bush",
+    "cake", "cape", "cave", "clay", "coat", "coin", "cord", "cork", "crab",
+    "crow", "dawn", "deer", "dock", "dove", "drum", "duck", "dune", "dust",
+    "edge", "fawn", "fern", "fish", "flag", "flax", "foam", "fork", "gate",
+    "glen", "glow", "hare", "hawk", "helm", "hill", "hive", "horn", "jade",
+    "kite", "knot", "lake", "lark", "leaf", "lime", "lion", "loom", "lynx",
+    "mace", "malt", "mare", "mill", "mint", "mist", "moth", "nest", "opal",
+    "orca", "pear", "pine", "plum", "pond", "reef", "rose", "sage", "seal",
+    "snow", "star", "swan", "teak", "tide", "twig", "vale", "veil", "vine",
+    "wave", "wren", "yew", "cove", "peak", "reed", "silk", "frog", "puma",
+]
+
+
+def _generate_friendly_id() -> str:
+    """Generate a short, memorable ID like 'calm-deer' or 'gold-swan'."""
+    return f"{random.choice(_ADJECTIVES)}-{random.choice(_NOUNS)}"
 
 
 # ---------------------------------------------------------------------------
@@ -189,6 +221,8 @@ class ResultBuffer:
         self._llm_summarizer = llm_summarizer_func
 
         self._buffers: dict[str, BufferedResult] = {}
+        self._alias_to_key: dict[str, str] = {}  # friendly alias -> tool_call_id
+        self._key_to_alias: dict[str, str] = {}  # tool_call_id -> friendly alias
         self._current_turn: int = 0
 
     # ------------------------------------------------------------------
@@ -262,8 +296,8 @@ class ResultBuffer:
                 created_at=time.time(),
                 last_accessed=time.time(),
             )
-            self._store(tool_call_id, buf)
-            return self._format_paginated(tool_call_id, buf, page=0)
+            alias = self._store(tool_call_id, buf)
+            return self._format_paginated(alias, buf, page=0)
 
         # Tier 3: Summarized
         chunk_summaries = self._summarize_chunks(chunks, result.kind)
@@ -276,8 +310,8 @@ class ResultBuffer:
             created_at=time.time(),
             last_accessed=time.time(),
         )
-        self._store(tool_call_id, buf)
-        return self._format_summarized(tool_call_id, buf)
+        alias = self._store(tool_call_id, buf)
+        return self._format_summarized(alias, buf)
 
     def browse(
         self,
@@ -300,10 +334,13 @@ class ResultBuffer:
         Returns:
             String result (may itself be buffered if too large).
         """
-        buf = self._buffers.get(tool_call_id)
+        # Resolve friendly alias to internal key
+        resolved_key = self._alias_to_key.get(tool_call_id, tool_call_id)
+        display_id = tool_call_id  # keep the alias the agent used
+        buf = self._buffers.get(resolved_key)
         if buf is None:
             return json.dumps({
-                "error": f"Buffer for tool_call_id '{tool_call_id}' has expired or "
+                "error": f"Buffer for '{display_id}' has expired or "
                          f"does not exist. Re-run the tool if you still need this data."
             })
 
@@ -314,13 +351,18 @@ class ResultBuffer:
 
         buf.last_accessed = time.time()
 
+        # raw_chunk holds the bare content (no page headers) for recursive
+        # buffering; raw holds the full formatted output for direct return.
+        raw_chunk: str | None = None
+
         if mode == BrowseMode.PAGE:
             p = page if page is not None else 0
             if p < 0 or p >= len(buf.chunks):
                 return json.dumps({
                     "error": f"Page {p} out of range. Valid pages: 0–{len(buf.chunks) - 1}"
                 })
-            raw = self._format_page(tool_call_id, buf, p)
+            raw_chunk = buf.chunks[p]
+            raw = self._format_page(display_id, buf, p)
 
         elif mode == BrowseMode.GREP:
             if not query:
@@ -332,14 +374,23 @@ class ResultBuffer:
                 return json.dumps({"error": "offset and count are required for mode=slice"})
             raw = self._slice(buf, offset, count)
 
-        # Recursive buffering: if browse result is too large, buffer it too
+        # Recursive buffering: if browse result is too large, buffer it too.
+        # Use raw_chunk (bare content) when available to avoid nesting
+        # "Page X of Y" headers inside another pagination layer.
+        content_to_check = raw_chunk if raw_chunk is not None else raw
         if _recursion_depth < self._max_recursion:
-            tokens = _estimate_tokens(raw)
+            tokens = _estimate_tokens(content_to_check)
             if tokens > self._small_threshold:
-                browse_id = f"{tool_call_id}__browse_{mode}_{self._current_turn}"
+                total_pages = len(buf.chunks)
+                item_info = self._page_item_info(buf, p) if mode == BrowseMode.PAGE else ""
+                summary = (
+                    f"Page {p + 1} of {total_pages}{item_info} from {display_id} "
+                    f"(content too large, sub-paginated)"
+                ) if raw_chunk is not None else f"Browse result ({mode}) for {display_id}"
+                browse_id = f"{display_id}__browse_{mode}_{self._current_turn}"
                 return self.process(
                     browse_id,
-                    ServiceResult.from_text(raw, summary=f"Browse result ({mode}) for {tool_call_id}"),
+                    ServiceResult.from_text(content_to_check, summary=summary),
                     _recursion_depth=_recursion_depth + 1,
                 )
 
@@ -735,12 +786,26 @@ class ResultBuffer:
     # Buffer storage and lifecycle
     # ------------------------------------------------------------------
 
-    def _store(self, tool_call_id: str, buf: BufferedResult) -> None:
+    def _store(self, tool_call_id: str, buf: BufferedResult) -> str:
+        """Store a buffer and return the friendly alias for user-facing output."""
         # Capacity-based eviction
         while len(self._buffers) >= self._max_buffers:
             oldest_id = min(self._buffers, key=lambda k: self._buffers[k].last_accessed)
+            old_alias = self._key_to_alias.pop(oldest_id, None)
+            if old_alias:
+                self._alias_to_key.pop(old_alias, None)
             del self._buffers[oldest_id]
         self._buffers[tool_call_id] = buf
+
+        # Generate a unique friendly alias
+        alias = _generate_friendly_id()
+        attempts = 0
+        while alias in self._alias_to_key and attempts < 20:
+            alias = _generate_friendly_id()
+            attempts += 1
+        self._alias_to_key[alias] = tool_call_id
+        self._key_to_alias[tool_call_id] = alias
+        return alias
 
     def _evict_expired(self) -> None:
         """Remove buffers that haven't been accessed recently."""
@@ -750,6 +815,9 @@ class ResultBuffer:
             if (now - v.last_accessed) > self._ttl_turns * _SECONDS_PER_TURN
         ]
         for k in expired:
+            alias = self._key_to_alias.pop(k, None)
+            if alias:
+                self._alias_to_key.pop(alias, None)
             del self._buffers[k]
 
     def get_buffer(self, tool_call_id: str) -> BufferedResult | None:

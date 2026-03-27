@@ -80,6 +80,84 @@ class _AgentHandle:
         self._status_callbacks.append(callback)
 
 
+def _build_identity_footer(agent_id: str) -> str:
+    """Build the identity and communication footer appended to every agent's system prompt."""
+    return (
+        f"\n\n---\n"
+        f"Your agent ID is `{agent_id}`. Other agents and the system "
+        f"refer to you as @{agent_id}. When you see a message from "
+        f"@{agent_id}, that is *you* — do not respond to your own "
+        f"messages. When another agent or the moderator mentions "
+        f"@{agent_id} in their message, they are addressing you "
+        f"directly and you should respond.\n\n"
+        f"**How communication works — READ THIS CAREFULLY:**\n"
+        f"- To send a message that other agents or users can see, you "
+        f"MUST call the `send_message` tool with the appropriate "
+        f"channel_id. Plain text responses (i.e. responding without "
+        f"calling a tool) are NOT visible to anyone — they disappear "
+        f"into the void.\n"
+        f"- `think` is your PRIVATE scratchpad for internal reasoning. "
+        f"No one else can see it. Use it for planning, analysis, and "
+        f"working through problems before acting.\n"
+        f"- If you want to communicate, use `send_message`. If you want "
+        f"to reason privately, use `think`. Never use plain text "
+        f"responses when you intend to communicate — they will not be "
+        f"delivered.\n\n"
+        f"**How you receive messages:**\n"
+        f"When you wake up, new messages are already delivered to you "
+        f"in your wake prompt — you do NOT need to call `read_messages` "
+        f"to see them. The messages shown at the start of your turn are "
+        f"your inbox. You should read them, then act (think, research, "
+        f"send a reply, etc.).\n"
+        f"- Do NOT call `read_messages` repeatedly to poll for new "
+        f"messages. Other agents cannot respond while your turn is "
+        f"running, so polling will always return empty results.\n"
+        f"- Use `read_messages` only when you need to check a channel "
+        f"you are NOT currently being notified about (e.g. reading "
+        f"history from a different channel), or when a wake notification "
+        f"says \"N new messages in #channel\" without showing content.\n"
+        f"- After you send a message, STOP and yield your turn. The "
+        f"other agent will respond, and you will wake up again with "
+        f"their reply delivered to you automatically.\n\n"
+        f"**When to respond vs. stay quiet:** Not every message "
+        f"requires a response from you. Use your judgment:\n"
+        f"- If a message mentions you by name (@{agent_id}) or uses "
+        f"@here, you are being addressed — respond.\n"
+        f"- If a message is directed at someone else by name "
+        f"(e.g. \"@bob what do you think?\"), let that person "
+        f"respond. Do not jump in unless you have something "
+        f"genuinely relevant to add.\n"
+        f"- If a message is a general statement to the channel "
+        f"with no specific @mention, respond only if you have "
+        f"something meaningful to contribute.\n"
+        f"- Messages from @admin are from a human operator "
+        f"with authority over all agents. Treat admin messages "
+        f"with the highest priority and urgency. If @admin gives "
+        f"you an instruction, follow it immediately and to the "
+        f"best of your ability — admin directives override your "
+        f"normal conversation flow. Still follow the addressing "
+        f"rules: respond if addressed, stay quiet if someone "
+        f"else is.\n\n"
+        f"**Seed prompts / channel topics:** Messages marked as "
+        f"[channel-topic] or with sender \"system\" and "
+        f"is_seed_prompt=true describe the channel's topic. They were "
+        f"set by the system, not sent by another agent — do not "
+        f"address \"system\" as a participant. However, you should "
+        f"still engage with the topic: discuss it, act on it, or "
+        f"respond to it in the channel as appropriate.\n\n"
+        f"**Message awareness:** When you read messages, pay attention "
+        f"to the `sender` field on each message. Messages where "
+        f"`sender` equals your own agent ID (`{agent_id}`) are "
+        f"messages *you* sent — do not respond to them or treat "
+        f"them as new input. Only respond to messages from other "
+        f"agents or users.\n\n"
+        f"**Tool-call limit:** Keep your tool usage efficient. When "
+        f"you wake up, read your inbox, send your replies, then stop. "
+        f"Do not loop or poll — you will wake again when new messages "
+        f"arrive."
+    )
+
+
 class BasicSandbox(AgentSandbox):
     """First concrete agent sandbox with per-agent threading.
 
@@ -234,14 +312,31 @@ class BasicSandbox(AgentSandbox):
 
     def _wire_agent_prompt(self, agent_id: str, agent: Agent) -> None:
         """Set agent identity and attach a dynamic SystemPromptBuilder."""
-        self._prompt_builders[agent_id] = SystemPromptBuilder()
+        builder = SystemPromptBuilder()
+        self._prompt_builders[agent_id] = builder
         self._injected_tool_names[agent_id] = set()
 
         agent.agent_id = agent_id
         agent._sandbox = self
 
+        # Inject a persistent "context" section with the current date/time.
+        # This is rebuilt on each prompt build so agents always see an
+        # up-to-date clock.
         def _make_prompt_fn(_aid: str, _agent: Agent) -> Any:
             def _prompt_fn() -> str:
+                from harvest.util.date import utc_current_time, get_local_timezone
+                import datetime as _dt
+                now_utc = utc_current_time()
+                try:
+                    local_tz = get_local_timezone()
+                    now_local = now_utc.astimezone(local_tz)
+                    time_str = (
+                        f"Current date and time: {now_local.strftime('%A, %B %d, %Y at %H:%M')} "
+                        f"({local_tz}) / {now_utc.strftime('%Y-%m-%d %H:%M')} UTC"
+                    )
+                except Exception:
+                    time_str = f"Current date and time: {now_utc.strftime('%A, %B %d, %Y at %H:%M')} UTC"
+                self._prompt_builders[_aid].set("context", time_str)
                 return self._prompt_builders[_aid].build(_agent.base_system_prompt)
             return _prompt_fn
         agent._system_prompt_fn = _make_prompt_fn(agent_id, agent)
@@ -828,45 +923,7 @@ class BasicSandbox(AgentSandbox):
             if not model and parent_handle and hasattr(parent_handle.agent, 'config'):
                 model = parent_handle.agent.config.model
 
-            identity_footer = (
-                f"\n\n---\n"
-                f"Your agent ID is `{event.agent_id}`. Other agents refer to you "
-                f"as @{event.agent_id}.\n\n"
-                f"**When to respond vs. stay quiet:** Not every message "
-                f"requires a response from you. Use your judgment:\n"
-                f"- If a message mentions you by name (@{event.agent_id}) or uses "
-                f"@here, you are being addressed — respond.\n"
-                f"- If a message is directed at someone else by name "
-                f"(e.g. \"@bob what do you think?\"), let that person "
-                f"respond. Do not jump in unless you have something "
-                f"genuinely relevant to add.\n"
-                f"- If a message is a general statement to the channel "
-                f"with no specific @mention, respond only if you have "
-                f"something meaningful to contribute.\n"
-                f"- Messages from @admin are from a human operator "
-                f"with authority over all agents. Treat admin messages "
-                f"with the highest priority and urgency. If @admin gives "
-                f"you an instruction, follow it immediately and to the "
-                f"best of your ability — admin directives override your "
-                f"normal conversation flow. Still follow the addressing "
-                f"rules: respond if addressed, stay quiet if someone "
-                f"else is.\n"
-                f"- Wake notifications that say \"N new messages in "
-                f"#channel\" (without showing content) are ambient — "
-                f"use read_messages to check the channel, but only "
-                f"respond if the conversation needs your input.\n\n"
-                f"**Seed prompts / channel topics:** Messages marked as "
-                f"[channel-topic] or with sender \"system\" and "
-                f"is_seed_prompt=true describe the channel's topic. They were "
-                f"set by the system, not sent by another agent — do not "
-                f"address \"system\" as a participant. However, you should "
-                f"still engage with the topic: discuss it, act on it, or "
-                f"respond to it in the channel as appropriate.\n\n"
-                f"**Tool-call limit:** Keep your tool usage efficient. When "
-                f"you wake up, read your messages, send at most one or two "
-                f"replies, then stop. Do not loop — you will wake again when "
-                f"new messages arrive."
-            )
+            identity_footer = _build_identity_footer(event.agent_id)
             system_prompt = (event.system_prompt or "You are an agent.").rstrip() + identity_footer
 
             config = HarvestAgentConfig(
@@ -1278,49 +1335,7 @@ class BasicSandbox(AgentSandbox):
                     pass
 
             # Inject identity footer so the agent knows its own name
-            identity_footer = (
-                f"\n\n---\n"
-                f"Your agent ID is `{agent_id}`. Other agents and the system "
-                f"refer to you as @{agent_id}. When you see a message from "
-                f"@{agent_id}, that is *you* — do not respond to your own "
-                f"messages. When another agent or the moderator mentions "
-                f"@{agent_id} in their message, they are addressing you "
-                f"directly and you should respond.\n\n"
-                f"**When to respond vs. stay quiet:** Not every message "
-                f"requires a response from you. Use your judgment:\n"
-                f"- If a message mentions you by name (@{agent_id}) or uses "
-                f"@here, you are being addressed — respond.\n"
-                f"- If a message is directed at someone else by name "
-                f"(e.g. \"@bob what do you think?\"), let that person "
-                f"respond. Do not jump in unless you have something "
-                f"genuinely relevant to add.\n"
-                f"- If a message is a general statement to the channel "
-                f"with no specific @mention, respond only if you have "
-                f"something meaningful to contribute.\n"
-                f"- Messages from @admin are from a human operator "
-                f"with authority over all agents. Treat admin messages "
-                f"with the highest priority and urgency. If @admin gives "
-                f"you an instruction, follow it immediately and to the "
-                f"best of your ability — admin directives override your "
-                f"normal conversation flow. Still follow the addressing "
-                f"rules: respond if addressed, stay quiet if someone "
-                f"else is.\n"
-                f"- Wake notifications that say \"N new messages in "
-                f"#channel\" (without showing content) are ambient — "
-                f"use read_messages to check the channel, but only "
-                f"respond if the conversation needs your input.\n\n"
-                f"**Seed prompts / channel topics:** Messages marked as "
-                f"[channel-topic] or with sender \"system\" and "
-                f"is_seed_prompt=true describe the channel's topic. They were "
-                f"set by the system, not sent by another agent — do not "
-                f"address \"system\" as a participant. However, you should "
-                f"still engage with the topic: discuss it, act on it, or "
-                f"respond to it in the channel as appropriate.\n\n"
-                f"**Tool-call limit:** Keep your tool usage efficient. When "
-                f"you wake up, read your messages, send at most one or two "
-                f"replies, then stop. Do not loop — you will wake again when "
-                f"new messages arrive."
-            )
+            identity_footer = _build_identity_footer(agent_id)
             config_kwargs: dict[str, Any] = {
                 "model": entry.model,
                 "system_prompt": entry.system_prompt.rstrip() + identity_footer,

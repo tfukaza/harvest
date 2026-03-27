@@ -13,6 +13,15 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import litellm
+
+# Suppress noisy "Provider List: ..." prints from litellm internals.
+# LiteLLM's OpenRouter transformation strips the "openrouter/" prefix before
+# calling get_llm_provider() for feature detection (e.g. supports_reasoning),
+# which fails for models like "google/gemini-2.5-pro". The resulting
+# BadRequestError is caught internally and doesn't affect completion calls,
+# but the print() side-effect leaks red text to stderr on every LLM call.
+litellm.suppress_debug_info = True
+
 from litellm import completion
 
 from harvest.agent import Agent
@@ -1031,7 +1040,6 @@ class HarvestAgent(Agent):
             # If the response is empty and we've made tool calls this turn,
             # nudge the model to continue by injecting a follow-up prompt.
             if not content.strip() and loop_idx > 0 and not _sent_message_this_step and loop_idx < self.config.tool_call_loop_cap - 2:
-                # Check if the agent has pending work (e.g. todo items not completed)
                 logger.info(
                     "[recovery] %s returned empty response at loop %d, nudging to continue",
                     self.agent_id, loop_idx,
@@ -1041,21 +1049,78 @@ class HarvestAgent(Agent):
                 self._append(TextMessage(role="user", content=nudge))
                 continue
 
+            # Guard against models that produce a substantive text response
+            # instead of calling send_message.  Plain text responses are not
+            # visible to other agents or users — only tool calls deliver
+            # messages.  Nudge the model to use send_message instead.
+            # Only applies when the agent has send_message available.
+            if (
+                content.strip()
+                and not _sent_message_this_step
+                and "send_message" in self._tool_map
+                and loop_idx < self.config.tool_call_loop_cap - 2
+            ):
+                logger.info(
+                    "[recovery] %s returned text without calling send_message at loop %d, nudging",
+                    self.agent_id, loop_idx,
+                )
+                nudge = (
+                    "[system: Your text response is NOT visible to other agents "
+                    "or users. You must call `send_message(channel_id, content)` "
+                    "to communicate. Please resend your message using the "
+                    "send_message tool now.]"
+                )
+                self._append(TextMessage(role="assistant", content=content))
+                self._append(TextMessage(role="user", content=nudge))
+                continue
+
             logger.debug("[response] %s text reply (%d chars): %s", self.agent_id, len(content), content[:300])
             assistant_msg = TextMessage(role="assistant", content=content)
             self._append(assistant_msg)
             return content
 
-        # TODO: Instead of raising, inject a user message into the context
-        # warning the agent that it exceeded the tool-call loop cap. The
-        # message should list which tool calls were requested in the last
-        # iteration but not executed, and instruct the agent to slow down
-        # (e.g. "You have exceeded the tool-call limit. The following tool
-        # calls were NOT executed: [...]. Please reduce the number of tool
-        # calls per turn and use `think` to reflect between batches.").
-        # Then allow one more LLM call so the agent can recover gracefully
-        # rather than crashing the entire agent loop.
-        raise RuntimeError("Tool-call loop exceeded the safety cap.")
+        # Instead of crashing, inject a warning and give the agent one final
+        # LLM call to wrap up gracefully.
+        logger.warning(
+            "Agent %s hit tool-call loop cap (%d). Injecting recovery prompt.",
+            self.agent_id, self.config.tool_call_loop_cap,
+        )
+        warning = (
+            "[system: You have exceeded the tool-call limit of "
+            f"{self.config.tool_call_loop_cap} iterations. "
+            "You MUST stop calling tools now and respond with a text message. "
+            "Summarize what you accomplished and what remains, then yield.]"
+        )
+        self._append(TextMessage(role="user", content=warning))
+
+        # One final LLM call — no tools available so the model must produce text.
+        messages = self._build_messages()
+        completion_kwargs: dict[str, Any] = {
+            "model": self.config.model,
+            "messages": messages,
+            "max_tokens": self.config.max_tokens,
+        }
+        if self.config.api_base:
+            completion_kwargs["api_base"] = self.config.api_base
+        if self.config.api_key_env:
+            import os as _os
+            api_key_val = _os.environ.get(self.config.api_key_env)
+            if api_key_val:
+                completion_kwargs["api_key"] = api_key_val
+
+        try:
+            response = self._completion_func(**completion_kwargs)
+            content = self._extract_response_text(response)
+        except Exception:
+            logger.warning(
+                "Agent %s recovery LLM call after loop cap also failed.",
+                self.agent_id,
+            )
+            content = ""
+
+        assistant_msg = TextMessage(role="assistant", content=content)
+        self._append(assistant_msg)
+        return content
 
     def reset(self) -> None:
         self._history.clear()

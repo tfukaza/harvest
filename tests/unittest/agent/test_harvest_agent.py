@@ -209,9 +209,16 @@ def test_get_username_tool() -> None:
 
 
 def test_tool_call_safety_cap() -> None:
-    """If the model keeps requesting tool calls, we raise RuntimeError."""
+    """If the model keeps requesting tool calls, we recover gracefully."""
+
+    call_count = 0
 
     def fake_completion(**kwargs: object) -> _FakeResponse:
+        nonlocal call_count
+        call_count += 1
+        # After the loop cap, one more call is made without tools for recovery.
+        if "tools" not in kwargs or not kwargs["tools"]:
+            return _FakeResponse.text("I ran out of tool calls.")
         return _FakeResponse.tool_call("tc_loop", "get_username")
 
     agent = HarvestAgent(
@@ -219,8 +226,10 @@ def test_tool_call_safety_cap() -> None:
         completion_func=fake_completion,
     )
 
-    with pytest.raises(RuntimeError, match="safety cap"):
-        agent.step("infinite loop")
+    result = agent.step("infinite loop")
+    assert "I ran out of tool calls." in result
+    # tool_call_loop_cap iterations + 1 recovery call
+    assert call_count == agent.config.tool_call_loop_cap + 1
 
 
 # ---------------------------------------------------------------------------

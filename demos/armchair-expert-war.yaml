@@ -26,7 +26,7 @@ sandbox:
   agents:
     expert-a:
       policy: debater
-      model: "openrouter/google/gemini-2.5-flash"
+      model: "openrouter/google/gemini-3.1-pro-preview"
       system_prompt: |
         You are a passionate, well-read debater arguing the PRO side of
         whatever topic the admin announces.
@@ -68,7 +68,7 @@ sandbox:
 
     expert-b:
       policy: debater
-      model: "openrouter/google/gemini-2.5-flash"
+      model: "openrouter/google/gemini-3.1-pro-preview"
       system_prompt: |
         You are a sharp, skeptical debater arguing the CON side of whatever
         topic the admin announces.

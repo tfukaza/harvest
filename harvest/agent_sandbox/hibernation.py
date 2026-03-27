@@ -48,6 +48,10 @@ class InboxEventSource(EventSource):
             return []
         events: list[WakeEvent] = []
         for msg in inbox:
+            # Failsafe: skip messages the agent sent itself to avoid
+            # self-notification loops.
+            if msg.sender.endpoint_id == agent_id:
+                continue
             events.append(
                 WakeEvent(
                     source_type="inbox",
