@@ -1,6 +1,5 @@
 """Tests for EVENT_SOURCE delivery through SandboxServiceRouter."""
 
-from __future__ import annotations
 
 import json
 from typing import Any
@@ -17,7 +16,7 @@ from harvest.interfaces.service import (
     ServicePermission,
     ServiceRole,
 )
-from harvest.policy import AgentPolicy
+from harvest.core.policy import AgentPolicy
 
 
 # ---------------------------------------------------------------------------

@@ -1,11 +1,10 @@
 """Runtime contract for hosting Harvest agents."""
 
-from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from typing import Any
 
-from harvest.agent import Agent
+from harvest.core.agent import Agent
 
 
 class Runtime(ABC):

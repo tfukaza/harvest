@@ -1,6 +1,5 @@
 """Tests for the ChatStore."""
 
-from __future__ import annotations
 
 from harvest.storage.schema.chat import ChatStore
 

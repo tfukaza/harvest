@@ -1,6 +1,5 @@
 """Unit tests for TavilyService — mocks the HTTP layer."""
 
-from __future__ import annotations
 
 import json
 from unittest.mock import MagicMock

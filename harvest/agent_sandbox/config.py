@@ -1,6 +1,5 @@
 """Configuration scaffolding for agent-sandbox implementations."""
 
-from __future__ import annotations
 
 from dataclasses import dataclass
 

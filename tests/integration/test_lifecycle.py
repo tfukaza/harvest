@@ -1,5 +1,4 @@
 """Integration test for the agent lifecycle: create -> work -> shutdown."""
-from __future__ import annotations
 
 import asyncio
 import json
@@ -14,8 +13,8 @@ from harvest.agent_sandbox.basic_sandbox import AgentStatus, BasicSandbox
 from harvest.agent_sandbox.config import AgentSandboxConfig
 from harvest.agent_sandbox.channels import GroupChannel
 from harvest.harvest_agent import HarvestAgent, HarvestAgentConfig
-from harvest.policy import AgentPolicy, ChildPolicyMode
-from harvest.policy_registry import PolicyRegistry
+from harvest.core.policy import AgentPolicy, ChildPolicyMode
+from harvest.core.policy_registry import PolicyRegistry
 
 
 def _make_tool_call_response(tool_name: str, **kwargs):

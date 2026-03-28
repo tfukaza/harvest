@@ -5,7 +5,6 @@ registration time.  It enforces global tool-name uniqueness and provides
 policy-filtered tool lookups for agent wiring and discovery.
 """
 
-from __future__ import annotations
 
 import threading
 from typing import TYPE_CHECKING
@@ -14,7 +13,7 @@ from harvest.interfaces.service import ServiceRole
 from harvest.interfaces.tool_definition import InterfaceTool
 
 if TYPE_CHECKING:
-    from harvest.policy import AgentPolicy
+    from harvest.core.policy import AgentPolicy
 
 
 class ToolRegistry:

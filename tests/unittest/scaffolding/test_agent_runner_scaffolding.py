@@ -1,6 +1,5 @@
 """Scaffolding tests for the Agent Sandbox surface."""
 
-from __future__ import annotations
 
 from abc import ABC
 
@@ -15,7 +14,7 @@ def test_agent_sandbox_contract_exists() -> None:
 def test_agent_sandbox_refines_runtime_contract() -> None:
     """AgentSandbox should narrow the generic Runtime contract for sandbox work."""
     from harvest.agent_sandbox import AgentSandbox
-    from harvest.runtime import Runtime
+    from harvest.core.runtime import Runtime
 
     assert issubclass(AgentSandbox, Runtime)
 

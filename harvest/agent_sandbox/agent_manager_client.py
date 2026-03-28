@@ -6,7 +6,6 @@ blocking methods that dispatch lifecycle requests onto the shared
 responses, hiding the event plumbing from the agent thread.
 """
 
-from __future__ import annotations
 
 import logging
 import uuid
@@ -78,7 +77,7 @@ class AgentManagerClient:
         system_prompt: str = "",
     ) -> dict:
         """Request child agent creation. Blocks up to 10 s."""
-        response = self._request(
+        raw = self._request(
             CreateAgentRequest(
                 parent_id=self._parent_id, agent_id=agent_id,
                 request_id=uuid.uuid4().hex, model=model,
@@ -87,47 +86,50 @@ class AgentManagerClient:
             ),
             response_types=(CreateAgentResponse,),
         )
-        if response is None:
+        if raw is None:
             return {"error": "timeout"}
-        if response.status == "created":
+        assert isinstance(raw, CreateAgentResponse)
+        if raw.status == "created":
             self._child_ids.add(agent_id)
             return {"status": "created", "agent_id": agent_id}
-        return {"error": response.error or "unknown"}
+        return {"error": raw.error or "unknown"}
 
     def shutdown_agent(self, agent_id: str) -> dict:
         """Request shutdown of a child agent or self."""
         if agent_id != self._parent_id and agent_id not in self._child_ids:
             return {"error": "not_your_agent"}
-        response = self._request(
+        raw = self._request(
             ShutdownAgentRequest(
                 parent_id=self._parent_id, agent_id=agent_id,
                 request_id=uuid.uuid4().hex, source=self._parent_id,
             ),
             response_types=(ShutdownAgentResponse,),
         )
-        if response is None:
+        if raw is None:
             return {"error": "timeout"}
-        if response.status == "stopped":
+        assert isinstance(raw, ShutdownAgentResponse)
+        if raw.status == "stopped":
             self._child_ids.discard(agent_id)
             return {"status": "stopped", "agent_id": agent_id}
-        return {"error": response.error or "unknown"}
+        return {"error": raw.error or "unknown"}
 
     def get_child_status(self, agent_id: str) -> dict:
         """Query the current status of a child agent."""
         if agent_id not in self._child_ids:
             return {"error": "not_your_agent"}
-        response = self._request(
+        raw = self._request(
             GetAgentStatusRequest(
                 parent_id=self._parent_id, agent_id=agent_id,
                 request_id=uuid.uuid4().hex, source=self._parent_id,
             ),
             response_types=(GetAgentStatusResponse,),
         )
-        if response is None:
+        if raw is None:
             return {"error": "timeout"}
-        if response.error:
-            return {"error": response.error}
-        return {"agent_id": agent_id, "status": response.agent_status}
+        assert isinstance(raw, GetAgentStatusResponse)
+        if raw.error:
+            return {"error": raw.error}
+        return {"agent_id": agent_id, "status": raw.agent_status}
 
     def list_children(self) -> list[str]:
         """Return a list of living child agent IDs."""

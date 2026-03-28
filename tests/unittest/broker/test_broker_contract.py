@@ -1,6 +1,5 @@
 """Sanity tests for the broker contract."""
 
-from __future__ import annotations
 
 
 def test_broker_surface_exposes_runtime_hooks() -> None:

@@ -1,6 +1,5 @@
 """Scaffolding tests for agent-runner endpoint and message schemas."""
 
-from __future__ import annotations
 
 from datetime import UTC
 

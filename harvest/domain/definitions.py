@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 
 import polars as pl
 
-from harvest.enum import Interval
+from harvest.domain.enum import Interval
 
 
 class AssetType(StrEnum):

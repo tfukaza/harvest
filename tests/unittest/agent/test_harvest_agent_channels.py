@@ -1,6 +1,5 @@
 """Tests for HarvestAgent channel tool wiring (event-driven path)."""
 
-from __future__ import annotations
 
 import json
 
@@ -8,7 +7,7 @@ from harvest.agent_sandbox.basic_sandbox import BasicSandbox
 from harvest.agent_sandbox.channels import DMChannel, GroupChannel
 from harvest.agent_sandbox.config import AgentSandboxConfig
 from harvest.harvest_agent import HarvestAgent, HarvestAgentConfig
-from harvest.policy import AgentPolicy
+from harvest.core.policy import AgentPolicy
 
 
 def _make_config() -> AgentSandboxConfig:

@@ -1,6 +1,5 @@
 """Tests for the ConversationStore persistence layer."""
 
-from __future__ import annotations
 
 from harvest.harvest_agent import (
     TextMessage,

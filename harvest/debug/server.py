@@ -1,6 +1,5 @@
 """Flask-based debug monitor server with WebSocket support."""
 
-from __future__ import annotations
 
 import dataclasses
 import json
@@ -30,7 +29,6 @@ class DebugMonitorServer:
         batch_interval: float = 1.0,
         resync_interval: float = 5.0,
         static_dir: str | None = None,
-        admin_queue: Any | None = None,
     ) -> None:
         self._registry = registry
         self._host = host
@@ -38,7 +36,6 @@ class DebugMonitorServer:
         self._batch_interval = batch_interval
         self._resync_interval = resync_interval
         self._static_dir = static_dir
-        self._admin_queue = admin_queue
         self._thread: threading.Thread | None = None
         self._app = self._create_app()
 
@@ -56,7 +53,6 @@ class DebugMonitorServer:
         registry = self._registry
         batch_interval = self._batch_interval
         resync_interval = self._resync_interval
-        admin_queue = self._admin_queue
 
         @app.route("/api/snapshot")
         def api_snapshot() -> Any:
@@ -127,8 +123,8 @@ class DebugMonitorServer:
                     except (json.JSONDecodeError, TypeError):
                         continue
                     msg_type = msg.get("type")
-                    if msg_type == "admin_send" and admin_queue is not None:
-                        from harvest.agent_sandbox.admin_queue import AdminMessage
+                    if msg_type == "admin_send":
+                        import uuid
                         sandbox_id = msg.get("sandbox_id", "")
                         channel_id = msg.get("channel_id", "")
                         content = msg.get("content", "")
@@ -137,18 +133,29 @@ class DebugMonitorServer:
                             sandbox_id, channel_id, content,
                         )
                         if sandbox_id and channel_id and content:
-                            admin_msg = AdminMessage(
-                                sandbox_id=sandbox_id,
-                                channel_id=channel_id,
-                                content=content,
-                            )
-                            admin_queue.enqueue(admin_msg)
-                            typing_queue.put({
-                                "type": "admin_queued",
-                                "sandbox_id": sandbox_id,
-                                "channel_id": channel_id,
-                                "message_id": admin_msg.message_id,
-                            })
+                            message_id = uuid.uuid4().hex
+                            try:
+                                sandbox = registry.get_sandbox(sandbox_id)
+                                result = sandbox.chat_router.send_message(
+                                    sender_id="admin",
+                                    channel_id=channel_id,
+                                    content=content,
+                                    message_id=message_id,
+                                )
+                            except KeyError:
+                                result = {"status": "error", "error": f"Unknown sandbox: {sandbox_id}"}
+                            if result.get("status") == "error":
+                                typing_queue.put({
+                                    "type": "admin_blocked",
+                                    "reason": result.get("error", "send failed"),
+                                })
+                            else:
+                                typing_queue.put({
+                                    "type": "admin_queued",
+                                    "sandbox_id": sandbox_id,
+                                    "channel_id": channel_id,
+                                    "message_id": message_id,
+                                })
                         else:
                             typing_queue.put({
                                 "type": "admin_blocked",

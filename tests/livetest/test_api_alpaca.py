@@ -5,7 +5,7 @@ import unittest
 import unittest.mock
 
 from harvest.broker.alpaca import AlpacaBroker
-from harvest.enum import Interval
+from harvest.domain.enum import Interval
 from harvest.util.helper import debugger, utc_current_time
 
 secret_path = os.environ["SECRET_PATH"]

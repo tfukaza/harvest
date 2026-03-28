@@ -1,6 +1,5 @@
 """Unit tests for SandboxGateway event relay."""
 
-from __future__ import annotations
 
 import time
 

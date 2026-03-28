@@ -1,12 +1,11 @@
 """Unit tests for the ServiceResult buffering system."""
 
-from __future__ import annotations
 
 import json
 
 import pytest
 
-from harvest.result_buffer import (
+from harvest.tools.result_buffer import (
     BufferedResult,
     ResultBuffer,
     ServiceResult,

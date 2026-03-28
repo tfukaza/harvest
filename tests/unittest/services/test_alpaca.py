@@ -1,6 +1,5 @@
 """Unit tests for AlpacaService — mocks alpaca-py SDK clients."""
 
-from __future__ import annotations
 
 import json
 from datetime import datetime, timezone

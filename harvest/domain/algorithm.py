@@ -9,7 +9,7 @@ import numpy as np
 import polars as pl
 from finta import TA
 
-from harvest.definitions import (
+from harvest.domain.definitions import (
     Account,
     RuntimeData,
     OptionData,
@@ -24,7 +24,7 @@ from harvest.definitions import (
     OrderSide,
     OrderEvent,
 )
-from harvest.enum import Interval
+from harvest.domain.enum import Interval
 from harvest.plugin._base import Plugin
 from harvest.util.date import convert_input_to_datetime, datetime_utc_to_local, pandas_timestamp_to_local
 from harvest.util.helper import (

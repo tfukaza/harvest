@@ -4,7 +4,6 @@ Used exclusively in tests and local development.
 Validates that a single Service instance can register with all three roles.
 """
 
-from __future__ import annotations
 
 import json
 import uuid

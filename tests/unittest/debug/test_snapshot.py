@@ -1,6 +1,5 @@
 """Tests for snapshot dataclasses."""
 
-from __future__ import annotations
 
 import dataclasses
 import json

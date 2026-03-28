@@ -1,6 +1,6 @@
 """Helper factories for supported broker and storage components."""
 
-from harvest.enum import BrokerType, StorageType
+from harvest.domain.enum import BrokerType, StorageType
 
 
 def load_storage(storage_type: StorageType):

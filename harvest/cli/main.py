@@ -1,6 +1,5 @@
 """CLI entrypoint for Harvest."""
 
-from __future__ import annotations
 
 import argparse
 import os
@@ -456,12 +455,6 @@ def run_sandbox(
         if group_channels:
             seed_channel = group_channels[0].channel_id
 
-    # Create shared admin queue so the debug monitor and sandbox are linked.
-    from harvest.agent_sandbox.admin_queue import AdminMessageQueue
-    admin_queue = AdminMessageQueue()
-    sandbox._admin_queue = admin_queue
-    admin_queue.on_enqueue(sandbox._handle_admin_message)
-
     # Start debug monitor (on by default, --no-monitor to disable)
     monitor = None
     if not args.no_monitor:
@@ -479,7 +472,6 @@ def run_sandbox(
             host=args.host,
             port=args.port,
             static_dir=static_dir,
-            admin_queue=admin_queue,
         )
         monitor.start()
         print(
@@ -627,7 +619,7 @@ def run_debug_server(args: argparse.Namespace) -> None:
 
 def run_event_server(args: argparse.Namespace) -> None:
     """Start the event bus HTTP server."""
-    from harvest.event_server import run_server
+    from harvest.http.event_server import run_server
 
     run_server(host=args.host, port=args.port)
 
@@ -636,7 +628,7 @@ def run_event_client(args: argparse.Namespace) -> None:
     """Dispatch event-client sub-commands (send, listen, stream)."""
     import json as _json
 
-    from harvest.event_client import poll_events, publish_event, stream_events
+    from harvest.http.event_client import poll_events, publish_event, stream_events
 
     sub = getattr(args, "event_client_command", None)
 

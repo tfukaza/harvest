@@ -12,7 +12,7 @@ import datetime as dt
 from typing import List, Dict
 from rich.console import Console
 
-from harvest.algorithm import Algorithm
+from harvest.domain.algorithm import Algorithm
 from harvest.broker._base import Broker
 from harvest.storage.schema.market import CentralStorage
 from harvest.services import (
@@ -24,7 +24,7 @@ from harvest.services import (
 )
 from harvest.util.helper import debugger
 from harvest.events.event_bus import EventBus
-from harvest.definitions import RuntimeData
+from harvest.domain.definitions import RuntimeData
 from harvest.interfaces.service import Service, ServiceRole
 
 

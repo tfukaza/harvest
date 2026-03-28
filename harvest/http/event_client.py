@@ -4,7 +4,6 @@ Uses the ``requests`` library (already a project dependency) so that
 callers do not need an async runtime.
 """
 
-from __future__ import annotations
 
 import json
 from typing import Any, Iterator

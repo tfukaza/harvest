@@ -11,7 +11,6 @@ Everything else (chat events, lifecycle events, service request/response events)
 stays on the sandbox bus and is NOT relayed.
 """
 
-from __future__ import annotations
 
 import logging
 from typing import Any, Callable

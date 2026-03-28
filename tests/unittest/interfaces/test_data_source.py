@@ -1,6 +1,5 @@
 """Tests for Service with DATA_SOURCE role (replaces DataSource ABC tests)."""
 
-from __future__ import annotations
 
 from typing import Any
 

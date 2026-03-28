@@ -1,6 +1,5 @@
 """Sanity tests for typed EventBus behavior and event models."""
 
-from __future__ import annotations
 
 import asyncio
 

@@ -6,8 +6,8 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Protocol, Union
 
 from harvest.broker._base import Broker
-from harvest.definitions import OPTION_QTY_MULTIPLIER, Account, Stats
-from harvest.enum import DataBrokerType, Interval
+from harvest.domain.definitions import OPTION_QTY_MULTIPLIER, Account, Stats
+from harvest.domain.enum import DataBrokerType, Interval
 from harvest.events.base import OrderFilled
 from harvest.events.event_bus import EventBus
 from harvest.util.factory import load_broker

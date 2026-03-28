@@ -6,7 +6,6 @@
 - Block survives across multiple invocations (builder state is persistent)
 """
 
-from __future__ import annotations
 
 import json
 from typing import Any

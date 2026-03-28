@@ -5,7 +5,6 @@ and parent-child management requests/responses.  All types extend
 :class:`~harvest.events.base.HarvestEvent`.
 """
 
-from __future__ import annotations
 
 from pydantic import Field
 

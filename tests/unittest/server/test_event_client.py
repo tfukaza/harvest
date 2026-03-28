@@ -1,13 +1,12 @@
 """Tests for the event_client helpers."""
 
-from __future__ import annotations
 
 import json
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from harvest.event_client import poll_events, publish_event, stream_events
+from harvest.http.event_client import poll_events, publish_event, stream_events
 
 
 # ---------------------------------------------------------------------------
@@ -21,7 +20,7 @@ class TestPublishEvent:
         mock_resp.json.return_value = {"status": "ok", "event_type": "price_update"}
         mock_resp.raise_for_status = MagicMock()
 
-        with patch("harvest.event_client.requests.post", return_value=mock_resp) as mock_post:
+        with patch("harvest.http.event_client.requests.post", return_value=mock_resp) as mock_post:
             result = publish_event("http://localhost:8000", "price_update", {"symbol": "AAPL"})
 
         mock_post.assert_called_once_with(
@@ -36,7 +35,7 @@ class TestPublishEvent:
         mock_resp.json.return_value = {"status": "ok"}
         mock_resp.raise_for_status = MagicMock()
 
-        with patch("harvest.event_client.requests.post", return_value=mock_resp) as mock_post:
+        with patch("harvest.http.event_client.requests.post", return_value=mock_resp) as mock_post:
             publish_event("http://localhost:8000/", "test", {})
 
         url_used = mock_post.call_args[0][0]
@@ -54,7 +53,7 @@ class TestPollEvents:
         mock_resp.json.return_value = {"events": [{"event_type": "price_update", "data": {}}], "count": 1}
         mock_resp.raise_for_status = MagicMock()
 
-        with patch("harvest.event_client.requests.get", return_value=mock_resp) as mock_get:
+        with patch("harvest.http.event_client.requests.get", return_value=mock_resp) as mock_get:
             events = poll_events("http://localhost:8000", "price_update", "client-a")
 
         mock_get.assert_called_once_with(
@@ -69,7 +68,7 @@ class TestPollEvents:
         mock_resp.json.return_value = {"events": [], "count": 0}
         mock_resp.raise_for_status = MagicMock()
 
-        with patch("harvest.event_client.requests.get", return_value=mock_resp):
+        with patch("harvest.http.event_client.requests.get", return_value=mock_resp):
             events = poll_events("http://localhost:8000", "price_update", "client-a")
 
         assert events == []
@@ -93,7 +92,7 @@ class TestStreamEvents:
         mock_resp.raise_for_status = MagicMock()
         mock_resp.iter_lines.return_value = iter(lines)
 
-        with patch("harvest.event_client.requests.get", return_value=mock_resp):
+        with patch("harvest.http.event_client.requests.get", return_value=mock_resp):
             results = list(stream_events("http://localhost:8000", "price_update"))
 
         assert len(results) == 2
@@ -109,7 +108,7 @@ class TestStreamEvents:
         mock_resp.raise_for_status = MagicMock()
         mock_resp.iter_lines.return_value = iter(lines)
 
-        with patch("harvest.event_client.requests.get", return_value=mock_resp):
+        with patch("harvest.http.event_client.requests.get", return_value=mock_resp):
             results = list(stream_events("http://localhost:8000", "x"))
 
         assert len(results) == 1
@@ -124,7 +123,7 @@ class TestStreamEvents:
         mock_resp.raise_for_status = MagicMock()
         mock_resp.iter_lines.return_value = iter(lines)
 
-        with patch("harvest.event_client.requests.get", return_value=mock_resp):
+        with patch("harvest.http.event_client.requests.get", return_value=mock_resp):
             results = list(stream_events("http://localhost:8000", "x"))
 
         assert len(results) == 1

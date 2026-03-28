@@ -1,6 +1,5 @@
 """End-to-end test: Alice & Bob demo with mocked LLM."""
 
-from __future__ import annotations
 
 import io
 import json

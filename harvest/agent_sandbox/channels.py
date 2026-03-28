@@ -1,6 +1,5 @@
 """Channel definitions for the unified channel-based chat system."""
 
-from __future__ import annotations
 
 import enum
 from dataclasses import dataclass, field

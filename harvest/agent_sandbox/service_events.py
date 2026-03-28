@@ -5,7 +5,6 @@ events and block for the matching response. SandboxServiceRouter subscribes
 to request events, executes the routing logic, and dispatches responses.
 """
 
-from __future__ import annotations
 
 from pydantic import Field
 

@@ -4,7 +4,6 @@ Phase 16 concrete service implementation.
 Package: ``alpaca-py`` (NOT the deprecated ``alpaca_trade_api``).
 """
 
-from __future__ import annotations
 
 import json
 import threading

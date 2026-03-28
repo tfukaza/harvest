@@ -4,8 +4,8 @@ from typing import TYPE_CHECKING, Dict, Any, Protocol, runtime_checkable
 from .service_interface import Service
 from ..events.event_bus import EventBus
 from ..events.base import OrderPlaced, OrderCancelled
-from ..definitions import Order, Account, Position, OrderSide, BrokerCapabilities, AssetType
-from ..enum import Interval
+from harvest.domain.definitions import Order, Account, Position, OrderSide, BrokerCapabilities, AssetType
+from harvest.domain.enum import Interval
 from ..util.helper import mark_up, mark_down
 
 if TYPE_CHECKING:

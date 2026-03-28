@@ -5,7 +5,6 @@ API: OpenAI-compatible chat completions at https://api.perplexity.ai/chat/comple
 Requires: ``requests``
 """
 
-from __future__ import annotations
 
 import json
 from typing import Any
@@ -21,7 +20,7 @@ from harvest.interfaces.service import (
     ServiceRole,
 )
 from harvest.interfaces.tool_definition import InterfaceTool, ToolArgument
-from harvest.result_buffer import ServiceResult
+from harvest.tools.result_buffer import ServiceResult
 
 _API_URL = "https://api.perplexity.ai/chat/completions"
 _DEFAULT_MODEL = "sonar"

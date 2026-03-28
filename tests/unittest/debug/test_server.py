@@ -1,6 +1,5 @@
 """Tests for DebugMonitorServer (Flask app, no WebSocket in unit tests)."""
 
-from __future__ import annotations
 
 import json
 from typing import Any
@@ -58,7 +57,7 @@ def test_api_snapshot_with_sandbox(registry: SandboxRegistry, client: Any) -> No
 
 
 def test_api_snapshot_with_agents(registry: SandboxRegistry, client: Any) -> None:
-    from harvest.agent import Agent
+    from harvest.core.agent import Agent
 
     class _Stub(Agent):
         def step(self, input_data: Any) -> str:

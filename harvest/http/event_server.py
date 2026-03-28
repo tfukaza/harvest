@@ -10,7 +10,6 @@ payloads that arrive over the wire.  All internal typed events are
 serialised to JSON dicts when fanned out to polling / SSE clients.
 """
 
-from __future__ import annotations
 
 import asyncio
 import json

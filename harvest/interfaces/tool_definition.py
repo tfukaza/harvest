@@ -6,7 +6,6 @@ exposes to agents.  It carries both the metadata needed for agent discovery
 the operation through the service router.
 """
 
-from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any, Callable

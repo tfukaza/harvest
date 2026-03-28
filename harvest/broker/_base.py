@@ -21,7 +21,7 @@ import polars as pl
 import yaml
 
 # Local imports
-from harvest.definitions import (
+from harvest.domain.definitions import (
     Account,
     AssetType,
     BrokerCapabilities,
@@ -37,7 +37,7 @@ from harvest.definitions import (
     TickerCandle,
     TickerCandleList,
 )
-from harvest.enum import Interval
+from harvest.domain.enum import Interval
 from harvest.util.helper import (
     check_interval,
     debugger,

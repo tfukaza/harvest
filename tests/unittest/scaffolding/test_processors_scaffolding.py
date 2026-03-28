@@ -1,6 +1,5 @@
 """Scaffolding tests for message-processor surfaces."""
 
-from __future__ import annotations
 
 from abc import ABC
 

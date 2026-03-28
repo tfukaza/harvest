@@ -1,6 +1,5 @@
 """Scaffolding tests for sandbox promotion policy surfaces."""
 
-from __future__ import annotations
 
 from abc import ABC
 

@@ -1,6 +1,5 @@
 """Provider-agnostic agent for the Harvest CLI, powered by LiteLLM."""
 
-from __future__ import annotations
 
 import datetime as dt
 import getpass
@@ -24,7 +23,7 @@ litellm.suppress_debug_info = True
 
 from litellm import completion
 
-from harvest.agent import Agent
+from harvest.core.agent import Agent
 from harvest.agent_sandbox.chat_client import ChatRouterClient
 from harvest.agent_sandbox.agent_manager_client import AgentManagerClient
 
@@ -277,7 +276,7 @@ class HarvestAgent(Agent):
         self._inbox_updated_counts: dict[str, int] = {}
 
         # Result buffering for large service results
-        from harvest.result_buffer import ResultBuffer
+        from harvest.tools.result_buffer import ResultBuffer
         self._result_buffer = ResultBuffer()
         self._register_browse_results_tool()
         # Optional callable injected by BasicSandbox: returns the current system
@@ -357,7 +356,7 @@ class HarvestAgent(Agent):
         Args:
             enabled: Set of cognitive tool group names to activate.
         """
-        from harvest.cognitive_tools import get_cognitive_tools
+        from harvest.tools.cognitive_tools import get_cognitive_tools
 
         for spec, handler in get_cognitive_tools(self, enabled):
             self._tools.append(spec)
@@ -941,7 +940,7 @@ class HarvestAgent(Agent):
                     )
                     raw_result = json.dumps({"error": f"Tool execution failed: {tool_exc}"})
                 # Run through result buffer (handles ServiceResult and strings)
-                from harvest.result_buffer import ServiceResult  # noqa: F811
+                from harvest.tools.result_buffer import ServiceResult  # noqa: F811
                 result = self._result_buffer.process(tc.id, raw_result)
             logger.debug(
                 "[tool-result] %s %s → %s",

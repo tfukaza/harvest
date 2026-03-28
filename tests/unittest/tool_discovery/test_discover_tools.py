@@ -8,7 +8,6 @@
 - ToolSpecsInjected event emitted only on activation
 """
 
-from __future__ import annotations
 
 import json
 from typing import Any
@@ -26,7 +25,7 @@ from harvest.interfaces.service import (
     ServiceRole,
 )
 from harvest.interfaces.tool_definition import InterfaceTool, ToolArgument
-from harvest.policy import AgentPolicy
+from harvest.core.policy import AgentPolicy
 
 
 # ---------------------------------------------------------------------------

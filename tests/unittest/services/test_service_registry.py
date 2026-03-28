@@ -1,6 +1,5 @@
 """Sanity tests for the service registry."""
 
-from __future__ import annotations
 
 import asyncio
 

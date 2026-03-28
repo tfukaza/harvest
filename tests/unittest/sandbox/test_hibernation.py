@@ -1,6 +1,5 @@
 """Tests for the agent hibernation system."""
 
-from __future__ import annotations
 
 import datetime as dt
 import json
@@ -11,7 +10,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from harvest.agent import Agent
+from harvest.core.agent import Agent
 from harvest.agent_sandbox.basic_sandbox import BasicSandbox, HIBERNATION_POLL_MIN, _AgentHandle
 from harvest.agent_sandbox.channels import DMChannel
 from harvest.agent_sandbox.chat import ChatRouter

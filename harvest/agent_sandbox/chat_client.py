@@ -5,7 +5,6 @@ Every operation dispatches a request event onto the shared ``SyncEventBus`` and
 blocks the calling thread until a matching response arrives (or a timeout fires).
 """
 
-from __future__ import annotations
 
 import logging
 import uuid

@@ -6,7 +6,7 @@ import pandas as pd
 from webull import paper_webull, webull
 
 from harvest.broker._base import Broker
-from harvest.enum import Interval
+from harvest.domain.enum import Interval
 from harvest.util.helper import date_to_str, debugger, expand_interval, is_crypto, str_to_date, utc_current_time
 
 
@@ -532,7 +532,7 @@ class WebullBroker(Broker):
         return df.dropna()
 
     def create_secret(self, path):
-        import harvest.wizard as wizard
+        import harvest.cli.wizard as wizard
 
         w = wizard.Wizard()
 

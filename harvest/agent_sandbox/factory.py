@@ -1,6 +1,5 @@
 """Factory scaffolding for constructing agent-sandbox instances."""
 
-from __future__ import annotations
 
 from abc import ABC, abstractmethod
 

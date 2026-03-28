@@ -9,8 +9,8 @@ from typing import List, Union
 import numpy as np
 import polars as pl
 
-from harvest.definitions import TickerCandleList
-from harvest.enum import Interval, IntervalUnit, TimeRange
+from harvest.domain.definitions import TickerCandleList
+from harvest.domain.enum import Interval, IntervalUnit, TimeRange
 from harvest.util.date import utc_current_time
 
 # Configure a logger used by all of Harvest.

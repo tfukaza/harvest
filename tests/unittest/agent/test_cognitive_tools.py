@@ -1,13 +1,12 @@
 """Unit tests for cognitive tools — think, memory, todo."""
 
-from __future__ import annotations
 
 import json
 
 import pytest
 
-from harvest.cognitive_tools import get_cognitive_tools
-from harvest.result_buffer import ServiceResult
+from harvest.tools.cognitive_tools import get_cognitive_tools
+from harvest.tools.result_buffer import ServiceResult
 
 
 # ---------------------------------------------------------------------------
@@ -250,13 +249,13 @@ class TestGetCognitiveTools:
 
 class TestPolicyParsing:
     def test_cognitive_tools_parsed(self) -> None:
-        from harvest.policy_registry import _parse_policy
+        from harvest.core.policy_registry import _parse_policy
         policy = _parse_policy("test", {
             "cognitive_tools": ["think", "memory", "todo"],
         })
         assert policy.cognitive_tools == frozenset({"think", "memory", "todo"})
 
     def test_cognitive_tools_default_empty(self) -> None:
-        from harvest.policy_registry import _parse_policy
+        from harvest.core.policy_registry import _parse_policy
         policy = _parse_policy("test", {})
         assert policy.cognitive_tools == frozenset()

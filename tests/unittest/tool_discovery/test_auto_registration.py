@@ -5,7 +5,6 @@ Tools from non-permitted services are not wired.
 Empty policy gets no tools.
 """
 
-from __future__ import annotations
 
 import json
 from typing import Any
@@ -23,7 +22,7 @@ from harvest.interfaces.service import (
     ServiceRole,
 )
 from harvest.interfaces.tool_definition import InterfaceTool, ToolArgument
-from harvest.policy import AgentPolicy
+from harvest.core.policy import AgentPolicy
 
 
 # ---------------------------------------------------------------------------

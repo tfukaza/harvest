@@ -1,6 +1,5 @@
 """Tests for role-filtered ServicePermission policies."""
 
-from __future__ import annotations
 
 import json
 from typing import Any
@@ -10,7 +9,7 @@ from harvest.interfaces.examples.mock_full_service import MockFullService
 from harvest.interfaces.service import ServicePermission, ServiceRole
 from harvest.interfaces.tool_registry import ToolRegistry
 from harvest.interfaces.tool_definition import InterfaceTool, ToolArgument
-from harvest.policy import AgentPolicy
+from harvest.core.policy import AgentPolicy
 
 
 def test_data_source_only_permission_gets_fetch_tool_not_execute() -> None:

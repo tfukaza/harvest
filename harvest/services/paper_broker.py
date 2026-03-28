@@ -5,7 +5,6 @@ Generates synthetic market data via ``generate_ticker_frame`` and simulates
 order execution against those prices. No network, no credentials.
 """
 
-from __future__ import annotations
 
 import datetime as dt
 import json
@@ -13,7 +12,7 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any
 
-from harvest.enum import Interval
+from harvest.domain.enum import Interval
 from harvest.interfaces.service import (
     ActionCommand,
     ActionResult,

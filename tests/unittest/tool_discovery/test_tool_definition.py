@@ -1,6 +1,5 @@
 """Tests for InterfaceTool and ToolArgument dataclasses."""
 
-from __future__ import annotations
 
 import json
 

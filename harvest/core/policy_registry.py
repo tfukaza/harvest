@@ -1,13 +1,12 @@
 """YAML-backed policy registry for named agent policies."""
 
-from __future__ import annotations
 
 from pathlib import Path
 
 import yaml
 
 from harvest.interfaces.service import ServicePermission, ServiceRole
-from harvest.policy import AgentPolicy, ChildPolicyMode, EventSubscriptions
+from harvest.core.policy import AgentPolicy, ChildPolicyMode, EventSubscriptions
 
 
 class PolicyRegistry:

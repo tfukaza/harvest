@@ -1,13 +1,12 @@
 """Agent-sandbox scaffolding built on the existing runtime contract."""
 
-from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
 from harvest.agent_sandbox.config import AgentSandboxConfig
 from harvest.agent_sandbox.endpoints import DeliveryMode, GroupChatDefinition, SandboxEndpoint
 from harvest.agent_sandbox.processors import MessageProcessor
-from harvest.runtime import Runtime
+from harvest.core.runtime import Runtime
 
 
 class AgentSandbox(Runtime, ABC):

@@ -6,7 +6,6 @@ Provides:
 - setup_logging: configures dual-output logging (JSON file + human console)
 """
 
-from __future__ import annotations
 
 import datetime as dt
 import json

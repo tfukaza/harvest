@@ -7,7 +7,6 @@ EventSources follow the inbox model — they have no interface tools.
 Events are self-describing payloads read via read_event_notifications().
 """
 
-from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 

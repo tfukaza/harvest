@@ -1,6 +1,5 @@
 """Scaffolding tests for agent-runner persistence surfaces."""
 
-from __future__ import annotations
 
 from abc import ABC
 from datetime import UTC

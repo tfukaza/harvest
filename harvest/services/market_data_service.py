@@ -4,8 +4,8 @@ from typing import TYPE_CHECKING
 from .service_interface import Service
 from ..events.event_bus import EventBus
 from ..events.base import PriceUpdated, ResourceUpdated
-from ..definitions import TickerCandleList, ChainInfo, ChainData, OptionData
-from ..enum import Interval
+from harvest.domain.definitions import TickerCandleList, ChainInfo, ChainData, OptionData
+from harvest.domain.enum import Interval
 
 if TYPE_CHECKING:
     from .central_storage_service import CentralStorageService

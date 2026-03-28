@@ -1,6 +1,5 @@
 """Promotion-policy scaffolding for sandbox-to-orchestrator boundaries."""
 
-from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field

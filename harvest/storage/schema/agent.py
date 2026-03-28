@@ -1,6 +1,5 @@
 """Conversation history schema and store for the Harvest agent."""
 
-from __future__ import annotations
 
 import json
 from typing import Any

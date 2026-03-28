@@ -4,7 +4,6 @@ Used exclusively in tests and local development.
 Provides order placement and cancellation actions.
 """
 
-from __future__ import annotations
 
 import json
 import uuid

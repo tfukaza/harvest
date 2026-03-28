@@ -1,6 +1,5 @@
 """YAML sandbox manifest loader for declarative multi-agent ecosystems."""
 
-from __future__ import annotations
 
 import logging
 import os
@@ -12,8 +11,8 @@ import yaml
 logger = logging.getLogger(__name__)
 
 from harvest.agent_sandbox.channels import ChannelType, NotificationMode
-from harvest.policy import AgentPolicy
-from harvest.policy_registry import PolicyRegistry, _parse_policy
+from harvest.core.policy import AgentPolicy
+from harvest.core.policy_registry import PolicyRegistry, _parse_policy
 
 
 @dataclass

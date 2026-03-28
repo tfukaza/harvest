@@ -1,6 +1,5 @@
 """Tests for SandboxRegistry."""
 
-from __future__ import annotations
 
 from typing import Any
 from unittest.mock import MagicMock
@@ -66,7 +65,7 @@ def test_snapshot_basic() -> None:
     sb = _make_sandbox("sb-1")
 
     # Add a stub agent
-    from harvest.agent import Agent
+    from harvest.core.agent import Agent
 
     class _Stub(Agent):
         def step(self, input_data: Any) -> str:

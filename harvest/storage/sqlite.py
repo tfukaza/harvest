@@ -1,6 +1,5 @@
 """SQLite helpers for infrastructure storage backends."""
 
-from __future__ import annotations
 
 from pathlib import Path
 

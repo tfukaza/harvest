@@ -1,6 +1,5 @@
 """Unit tests for PaperBrokerService — deterministic pricing and simulated orders."""
 
-from __future__ import annotations
 
 import json
 

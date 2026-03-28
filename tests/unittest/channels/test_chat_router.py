@@ -1,6 +1,5 @@
 """Tests for the ChatRouter unified channel system."""
 
-from __future__ import annotations
 
 import threading
 import uuid

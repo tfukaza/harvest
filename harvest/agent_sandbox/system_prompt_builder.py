@@ -6,7 +6,6 @@ Sections can be set, appended, or cleared independently without affecting
 other sections.
 """
 
-from __future__ import annotations
 
 
 class SystemPromptBuilder:

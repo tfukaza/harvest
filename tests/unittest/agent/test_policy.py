@@ -1,14 +1,13 @@
 """Tests for the agent policy system."""
 
-from __future__ import annotations
 
 import tempfile
 from pathlib import Path
 
 import pytest
 
-from harvest.policy import AgentPolicy, ChildPolicyMode
-from harvest.policy_registry import PolicyRegistry
+from harvest.core.policy import AgentPolicy, ChildPolicyMode
+from harvest.core.policy_registry import PolicyRegistry
 
 
 def test_policy_defaults() -> None:

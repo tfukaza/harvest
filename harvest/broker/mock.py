@@ -9,7 +9,7 @@ import numpy as np
 import polars as pl
 
 from harvest.broker._base import Broker, StreamBroker
-from harvest.definitions import (
+from harvest.domain.definitions import (
     Account,
     AssetType,
     ChainData,
@@ -26,7 +26,7 @@ from harvest.definitions import (
     TickerCandle,
     TickerCandleList,
 )
-from harvest.enum import Interval, IntervalUnit
+from harvest.domain.enum import Interval, IntervalUnit
 from harvest.util.helper import (
     aggregate_pl_df,
     data_to_occ,

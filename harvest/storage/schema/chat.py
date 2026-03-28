@@ -1,6 +1,5 @@
 """Chat message schema and store for the unified channel system."""
 
-from __future__ import annotations
 
 from typing import Any
 

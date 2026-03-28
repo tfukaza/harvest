@@ -5,7 +5,6 @@ extends ``bubus.BaseEvent``.  Event routing happens through event class
 and typed fields -- there are no colon-delimited string event names.
 """
 
-from __future__ import annotations
 
 import datetime as dt
 from typing import Any

@@ -1,6 +1,5 @@
 """Fixtures for channel and chat router tests."""
 
-from __future__ import annotations
 
 import pytest
 

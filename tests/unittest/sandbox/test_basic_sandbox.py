@@ -1,6 +1,5 @@
 """Tests for BasicSandbox — agent hosting, threading, policy, event fan-out, manifest loading."""
 
-from __future__ import annotations
 
 import asyncio
 import tempfile
@@ -11,14 +10,14 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from harvest.agent import Agent
+from harvest.core.agent import Agent
 from harvest.agent_sandbox.basic_sandbox import BasicSandbox, _AgentHandle
 from harvest.agent_sandbox.channels import DMChannel, GroupChannel, GatedProcessorChannel
 from harvest.agent_sandbox.chat import ChatRouter
 from harvest.agent_sandbox.config import AgentSandboxConfig
 from harvest.agent_sandbox.manifest import load_manifest, SandboxManifest
-from harvest.policy import AgentPolicy, ChildPolicyMode
-from harvest.policy_registry import PolicyRegistry
+from harvest.core.policy import AgentPolicy, ChildPolicyMode
+from harvest.core.policy_registry import PolicyRegistry
 
 
 # ---------------------------------------------------------------------------

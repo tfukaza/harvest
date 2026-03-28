@@ -1,13 +1,12 @@
 """Sanity tests for MarketDataService."""
 
-from __future__ import annotations
 
 import datetime as dt
 from unittest.mock import Mock
 
 import polars as pl
 
-from harvest.definitions import TickerCandleList
+from harvest.domain.definitions import TickerCandleList
 from harvest.events.base import PriceUpdated, ResourceUpdated
 from harvest.services.market_data_service import MarketDataService
 from harvest.services.service_interface import Service

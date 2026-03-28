@@ -9,7 +9,7 @@ import pytz as tz
 import robin_stocks.robinhood as rh
 
 from harvest.broker._base import Broker
-from harvest.enum import Interval
+from harvest.domain.enum import Interval
 from harvest.util.helper import (
     aggregate_df,
     convert_input_to_datetime,
@@ -635,7 +635,7 @@ class RobinhoodBroker(Broker):
         return dt.datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%S.%f%z")
 
     def create_secret(self):
-        import harvest.wizard as wizard
+        import harvest.cli.wizard as wizard
 
         w = wizard.Wizard()
 

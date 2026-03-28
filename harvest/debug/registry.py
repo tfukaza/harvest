@@ -1,6 +1,5 @@
 """Process-global registry of active BasicSandbox instances."""
 
-from __future__ import annotations
 
 import datetime as dt
 import threading

@@ -11,7 +11,6 @@ sandbox-internal use. Unlike the bubus-backed ``EventBus``, this does not
 require an async event loop and is safe to use from agent threads.
 """
 
-from __future__ import annotations
 
 import logging
 import threading

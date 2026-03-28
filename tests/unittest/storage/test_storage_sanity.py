@@ -1,14 +1,13 @@
 """Sanity tests for the phase 4.5 storage surfaces."""
 
-from __future__ import annotations
 
 import datetime as dt
 from pathlib import Path
 
 import polars as pl
 
-from harvest.definitions import OrderEvent, OrderSide, TickerCandleList, Transaction
-from harvest.enum import Interval
+from harvest.domain.definitions import OrderEvent, OrderSide, TickerCandleList, Transaction
+from harvest.domain.enum import Interval
 from harvest.services.central_storage_service import CentralStorageService
 from harvest.storage import CSVStorage, FlexibleStorage
 from harvest.storage.schema.algorithm import LocalAlgorithmStorage

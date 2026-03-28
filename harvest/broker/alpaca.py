@@ -9,7 +9,7 @@ from alpaca_trade_api.entity import Bar
 from alpaca_trade_api.rest import REST, URL, TimeFrame
 
 from harvest.broker._base import Broker, StreamBroker
-from harvest.definitions import Account, Interval, Stats
+from harvest.domain.definitions import Account, Interval, Stats
 from harvest.util.helper import (
     aggregate_df,
     convert_input_to_datetime,
@@ -303,7 +303,7 @@ class AlpacaBroker(StreamBroker):
     # ------------- Helper methods ------------- #
 
     def create_secret(self) -> Dict[str, str]:
-        import harvest.wizard as wizard
+        import harvest.cli.wizard as wizard
 
         w = wizard.Wizard()
 

@@ -1,6 +1,5 @@
 """Aggregation processor for channel-based chat system."""
 
-from __future__ import annotations
 
 import threading
 

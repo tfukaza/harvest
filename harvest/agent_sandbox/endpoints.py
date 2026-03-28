@@ -1,6 +1,5 @@
 """Endpoint and addressing schemas for agent-runner scaffolding."""
 
-from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import StrEnum
@@ -11,6 +10,7 @@ class EndpointKind(StrEnum):
     """Enumerates the sandbox endpoint kinds that the runner must address."""
 
     AGENT = "agent"
+    HUMAN = "human"
     GROUP_CHAT = "group_chat"
     MESSAGE_PROCESSOR = "message_processor"
 

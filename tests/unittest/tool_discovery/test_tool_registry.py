@@ -1,6 +1,5 @@
 """Tests for ToolRegistry — aggregation, uniqueness enforcement, policy filtering."""
 
-from __future__ import annotations
 
 import json
 
@@ -9,7 +8,7 @@ import pytest
 from harvest.interfaces.service import ServicePermission, ServiceRole
 from harvest.interfaces.tool_definition import InterfaceTool, ToolArgument
 from harvest.interfaces.tool_registry import ToolRegistry
-from harvest.policy import AgentPolicy
+from harvest.core.policy import AgentPolicy
 
 
 # ---------------------------------------------------------------------------

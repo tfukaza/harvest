@@ -1,6 +1,5 @@
 """Unit tests for harvest.agent_sandbox.llm_errors.classify_llm_error."""
 
-from __future__ import annotations
 
 import pytest
 

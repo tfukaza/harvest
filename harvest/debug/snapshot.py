@@ -1,6 +1,5 @@
 """Snapshot dataclasses for the debug monitor."""
 
-from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any

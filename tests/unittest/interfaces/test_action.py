@@ -1,6 +1,5 @@
 """Tests for Service with ACTION role (replaces Action ABC tests)."""
 
-from __future__ import annotations
 
 from typing import Any
 

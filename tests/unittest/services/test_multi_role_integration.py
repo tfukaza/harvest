@@ -6,7 +6,6 @@ SandboxServiceRouter. Verifies policy-filtered tool wiring, discover_tools,
 and that fetch/execute calls route correctly.
 """
 
-from __future__ import annotations
 
 import json
 from typing import Any
@@ -16,7 +15,7 @@ import pytest
 
 from harvest.agent_sandbox.service_router import SandboxServiceRouter
 from harvest.interfaces.service import ServicePermission, ServiceRole
-from harvest.policy import AgentPolicy
+from harvest.core.policy import AgentPolicy
 from harvest.services.paper_broker import PaperBrokerService
 
 

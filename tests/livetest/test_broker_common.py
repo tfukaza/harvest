@@ -3,7 +3,7 @@
 # import unittest
 
 # from harvest.broker.robinhood import RobinhoodBroker
-# from harvest.definitions import Account, Interval, Stats
+# from harvest.domain.definitions import Account, Interval, Stats
 # from harvest.util.helper import debugger
 
 # secret_path = os.environ["SECRET_PATH"]

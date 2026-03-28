@@ -1,6 +1,5 @@
 """Agent policy system for the Harvest agent sandbox."""
 
-from __future__ import annotations
 
 import enum
 from dataclasses import dataclass

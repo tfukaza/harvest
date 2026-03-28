@@ -5,7 +5,6 @@ that standardises bus creation, typed dispatch, and handler registration
 for the rest of the codebase.
 """
 
-from __future__ import annotations
 
 import asyncio
 import logging

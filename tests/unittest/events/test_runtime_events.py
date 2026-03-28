@@ -1,6 +1,5 @@
 """Contract tests for generalized runtime events."""
 
-from __future__ import annotations
 
 from harvest.events import (
     AgentLifecycleChanged,

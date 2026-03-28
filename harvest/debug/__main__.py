@@ -1,6 +1,5 @@
 """Standalone entry point: python -m harvest.debug."""
 
-from __future__ import annotations
 
 import argparse
 

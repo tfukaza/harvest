@@ -25,7 +25,6 @@ Every request emits a typed event onto the event bus (if one is connected):
 - ``ExternalEventDelivered``
 """
 
-from __future__ import annotations
 
 import asyncio
 import concurrent.futures
@@ -57,7 +56,7 @@ from harvest.interfaces.tool_registry import ToolRegistry
 
 if TYPE_CHECKING:
     from harvest.events.event_bus import EventBus
-    from harvest.policy import AgentPolicy
+    from harvest.core.policy import AgentPolicy
 
 logger = logging.getLogger(__name__)
 

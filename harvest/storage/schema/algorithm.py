@@ -1,6 +1,5 @@
 """Algorithm-local schema storage built on the flexible infrastructure layer."""
 
-from __future__ import annotations
 
 import datetime as dt
 from typing import Any
@@ -9,7 +8,7 @@ import polars as pl
 from sqlalchemy import UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
-from harvest.definitions import OrderSide, TimeDelta, TimeSpan, Transaction, TransactionFrame
+from harvest.domain.definitions import OrderSide, TimeDelta, TimeSpan, Transaction, TransactionFrame
 from harvest.storage.base import FlexibleStorage, StorageRecord
 
 

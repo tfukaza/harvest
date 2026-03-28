@@ -1,6 +1,5 @@
 """Tests for Phase 7: Conversation Compaction."""
 
-from __future__ import annotations
 
 import json
 from typing import Any
@@ -571,25 +570,25 @@ class TestPersistence:
 
 class TestCLICompactionFlags:
     def test_context_limit_flag(self) -> None:
-        from harvest.cli import parser
+        from harvest.cli.main import parser
 
         args = parser.parse_args(["agent", "--context-limit", "64000"])
         assert args.context_limit == 64000
 
     def test_compaction_threshold_flag(self) -> None:
-        from harvest.cli import parser
+        from harvest.cli.main import parser
 
         args = parser.parse_args(["agent", "--compaction-threshold", "0.8"])
         assert args.compaction_threshold == 0.8
 
     def test_no_compaction_flag(self) -> None:
-        from harvest.cli import parser
+        from harvest.cli.main import parser
 
         args = parser.parse_args(["agent", "--no-compaction"])
         assert args.no_compaction is True
 
     def test_defaults_are_none_and_false(self) -> None:
-        from harvest.cli import parser
+        from harvest.cli.main import parser
 
         args = parser.parse_args(["agent"])
         assert args.context_limit is None

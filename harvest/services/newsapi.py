@@ -4,7 +4,6 @@ Phase 16 concrete service implementation.
 Requires: ``requests`` (standard HTTP client, no SDK dependency).
 """
 
-from __future__ import annotations
 
 import json
 from datetime import datetime, timedelta, timezone
@@ -21,7 +20,7 @@ from harvest.interfaces.service import (
     ServiceRole,
 )
 from harvest.interfaces.tool_definition import InterfaceTool, ToolArgument
-from harvest.result_buffer import ServiceResult
+from harvest.tools.result_buffer import ServiceResult
 
 _BASE_URL = "https://newsapi.org/v2"
 

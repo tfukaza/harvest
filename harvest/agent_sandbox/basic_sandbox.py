@@ -1,6 +1,5 @@
 """Concrete BasicSandbox implementation for hosting multiple agents."""
 
-from __future__ import annotations
 
 import enum
 import json
@@ -10,7 +9,7 @@ import threading
 from pathlib import Path
 from typing import Any
 
-from harvest.agent import Agent
+from harvest.core.agent import Agent
 from harvest.agent_sandbox.chat import ChatRouter
 from harvest.agent_sandbox.config import AgentSandboxConfig
 from harvest.agent_sandbox.endpoints import DeliveryMode, GroupChatDefinition, SandboxEndpoint
@@ -23,9 +22,8 @@ from harvest.agent_sandbox.service_router import SandboxServiceRouter
 from harvest.agent_sandbox.system_prompt_builder import SystemPromptBuilder
 from harvest.events.event_bus import EventBus
 from harvest.interfaces.tool_definition import InterfaceTool
-from harvest.policy import AgentPolicy, ChildPolicyMode
-from harvest.policy_registry import PolicyRegistry
-from harvest.agent_sandbox.admin_queue import AdminMessageQueue
+from harvest.core.policy import AgentPolicy, ChildPolicyMode
+from harvest.core.policy_registry import PolicyRegistry
 from harvest.storage.schema.chat import ChatStore
 
 logger = logging.getLogger(__name__)
@@ -171,7 +169,6 @@ class BasicSandbox(AgentSandbox):
         policy_registry: PolicyRegistry | None = None,
         event_bus: EventBus | None = None,
         chat_store: ChatStore | None = None,
-        admin_queue: AdminMessageQueue | None = None,
     ) -> None:
         """Initialize the sandbox.
 
@@ -180,7 +177,6 @@ class BasicSandbox(AgentSandbox):
             policy_registry: Optional shared policy registry.
             event_bus: Optional framework event bus for integration.
             chat_store: Optional ChatStore for message persistence.
-            admin_queue: Optional admin message queue for human-in-the-loop.
         """
         self._config = config
         self._agents: dict[str, _AgentHandle] = {}
@@ -229,12 +225,6 @@ class BasicSandbox(AgentSandbox):
         self._service_router.register_event_notification_callback(
             self._add_event_notification
         )
-
-        # Wire admin queue: when admin enqueues a message, inject it into the
-        # ChatRouter immediately so agents receive it and wake up.
-        self._admin_queue = admin_queue
-        if admin_queue is not None:
-            admin_queue.on_enqueue(self._handle_admin_message)
 
     @property
     def config(self) -> AgentSandboxConfig:
@@ -625,37 +615,6 @@ class BasicSandbox(AgentSandbox):
                 "agents": agent_info,
                 "last_dispatch_results": self._last_dispatch_results,
             }
-
-    # -- Admin message handling --
-
-    def _handle_admin_message(self, admin_msg: Any) -> None:
-        """Called (from any thread) when an admin message is enqueued.
-
-        Filters by sandbox_id and injects the message into the ChatRouter.
-        """
-        if admin_msg.sandbox_id != self._config.runner_id:
-            logger.debug(
-                "Ignoring admin message for sandbox '%s' (we are '%s')",
-                admin_msg.sandbox_id, self._config.runner_id,
-            )
-            return
-        logger.info(
-            "Injecting admin message %s into channel %s",
-            admin_msg.message_id,
-            admin_msg.channel_id,
-        )
-        result = self._chat_router.send_message(
-            sender_id="admin",
-            channel_id=admin_msg.channel_id,
-            content=admin_msg.content,
-            message_id=admin_msg.message_id,
-        )
-        if result.get("status") == "error":
-            logger.warning(
-                "Admin message %s failed: %s",
-                admin_msg.message_id,
-                result.get("error"),
-            )
 
     # -- AgentSandbox contract --
 

@@ -4,7 +4,6 @@ One ChatRouter instance exists per agent sandbox. It manages all channels
 within that sandbox and routes messages between agents.
 """
 
-from __future__ import annotations
 
 import datetime as dt
 import logging

@@ -19,7 +19,6 @@ The ``DATA_SOURCE`` / ``ACTION`` / ``EVENT_SOURCE`` distinction is preserved
 for *policy and security* reasons — see ``ServiceRole`` docstring.
 """
 
-from __future__ import annotations
 
 import enum
 from abc import ABC, abstractmethod

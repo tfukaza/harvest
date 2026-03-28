@@ -1,6 +1,5 @@
 """Sanity tests for the surviving CLI surface."""
 
-from __future__ import annotations
 
 import io
 import pathlib

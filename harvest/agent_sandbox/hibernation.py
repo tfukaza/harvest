@@ -6,7 +6,6 @@ found they are wrapped as WakeEvents, formatted into a prompt, and fed back
 into the agent's step() to restart the LLM call loop.
 """
 
-from __future__ import annotations
 
 import datetime as dt
 from abc import ABC, abstractmethod

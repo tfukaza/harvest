@@ -1,6 +1,5 @@
 """Tests for the EventBusServer component."""
 
-from __future__ import annotations
 
 import asyncio
 import json
@@ -20,7 +19,7 @@ pytest_plugins = ["aiohttp.pytest_plugin"]
 
 def _make_server():
     """Create an EventBusServer with a fresh EventBus (import deferred)."""
-    from harvest.event_server import EventBusServer
+    from harvest.http.event_server import EventBusServer
 
     bus = EventBus(name=f"test_server_{uuid4().hex}")
     server = EventBusServer(event_bus=bus, host="127.0.0.1", port=0)
@@ -100,7 +99,7 @@ class TestEventBusServerUnit:
         assert record["event_type"] == "price_update"
 
     def test_buffer_max_size_evicts_oldest(self):
-        from harvest.event_server import _MAX_BUFFER_PER_CLIENT
+        from harvest.http.event_server import _MAX_BUFFER_PER_CLIENT
 
         server, _bus = _make_server()
         key = ("client-a", "price_update")
@@ -128,7 +127,7 @@ async def event_bus():
 
 @pytest.fixture
 def event_server_app(event_bus):
-    from harvest.event_server import EventBusServer
+    from harvest.http.event_server import EventBusServer
 
     server = EventBusServer(event_bus=event_bus)
     app = server._build_app()
@@ -283,7 +282,7 @@ class TestServerLifecycle:
     """Tests for start/stop lifecycle."""
 
     async def test_start_and_stop(self):
-        from harvest.event_server import EventBusServer
+        from harvest.http.event_server import EventBusServer
 
         bus = EventBus()
         server = EventBusServer(event_bus=bus, host="127.0.0.1", port=0)

@@ -6,7 +6,7 @@
 # import unittest.mock
 
 # from harvest.broker.kraken import Kraken
-# from harvest.enum import Interval
+# from harvest.domain.enum import Interval
 # from harvest.utils import debugger, utc_current_time
 # secret_path = os.environ["SECRET_PATH"]
 # debugger.setLevel("DEBUG")

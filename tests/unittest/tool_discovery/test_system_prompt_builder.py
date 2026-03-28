@@ -1,6 +1,5 @@
 """Tests for SystemPromptBuilder — named, independently addressable sections."""
 
-from __future__ import annotations
 
 import pytest
 

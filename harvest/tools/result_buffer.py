@@ -12,7 +12,6 @@ Tools return :class:`ServiceResult` via factory constructors. The
 :class:`ResultBuffer` handles all sizing, chunking, and navigation.
 """
 
-from __future__ import annotations
 
 import enum
 import json

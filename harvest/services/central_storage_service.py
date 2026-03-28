@@ -11,8 +11,8 @@ from typing import Any, Dict
 
 from harvest.services.service_interface import Service
 from harvest.storage.schema.market import CentralStorage
-from harvest.definitions import TickerCandleList
-from harvest.enum import Interval
+from harvest.domain.definitions import TickerCandleList
+from harvest.domain.enum import Interval
 from harvest.events.base import PriceUpdated
 
 

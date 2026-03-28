@@ -1,6 +1,5 @@
 """Unit tests for dispatch_and_wait and wait_for_event."""
 
-from __future__ import annotations
 
 import threading
 

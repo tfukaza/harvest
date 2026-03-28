@@ -6,7 +6,6 @@
 - All blocks cleared together on read_event_notifications()
 """
 
-from __future__ import annotations
 
 import json
 import time
@@ -27,7 +26,7 @@ from harvest.interfaces.service import (
     ServicePermission,
     ServiceRole,
 )
-from harvest.policy import AgentPolicy
+from harvest.core.policy import AgentPolicy
 
 
 # ---------------------------------------------------------------------------

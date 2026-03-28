@@ -4,7 +4,6 @@ Used exclusively in tests and local development.
 Provides a read-only stock price data source.
 """
 
-from __future__ import annotations
 
 import json
 from typing import TYPE_CHECKING, Any

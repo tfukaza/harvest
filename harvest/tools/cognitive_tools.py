@@ -12,13 +12,12 @@ Activation is controlled by the ``cognitive_tools`` field on
 - ``"todo"`` → ``todo``
 """
 
-from __future__ import annotations
 
 import json
 import uuid
 from typing import Any, Callable
 
-from harvest.result_buffer import ServiceResult
+from harvest.tools.result_buffer import ServiceResult
 
 
 def _tool_spec(
