@@ -3,9 +3,9 @@ from typing import TYPE_CHECKING
 
 from .service_interface import Service
 from ..events.event_bus import EventBus
-from ..events.events import PriceUpdateEvent
-from ..definitions import TickerCandleList, ChainInfo, ChainData, OptionData
-from ..enum import Interval
+from ..events.base import PriceUpdated, ResourceUpdated
+from harvest.domain.definitions import TickerCandleList, ChainInfo, ChainData, OptionData
+from harvest.domain.enum import Interval
 
 if TYPE_CHECKING:
     from .central_storage_service import CentralStorageService
@@ -25,6 +25,11 @@ class MarketDataService(Service):
         self.subscribers = set()
         self._active_feeds = {}
         self._is_running = False
+
+    @property
+    def resource_id(self) -> str:
+        """Return the stable resource identifier for market data."""
+        return self.service_name
 
     async def start(self) -> None:
         """Start the market data service"""
@@ -114,9 +119,25 @@ class MarketDataService(Service):
 
         # Publish event
         if self.event_bus:
-            # Create event data as dict for now
-            event_data = {"symbol": symbol, "price_data": price_data, "timestamp": dt.datetime.utcnow()}
-            self.event_bus.publish("price_update", event_data)
+            timestamp = dt.datetime.now(dt.UTC)
+            price_event = PriceUpdated(
+                symbol=symbol,
+                price_data=price_data,
+                interval="",
+                broker_id="market_data_service",
+                source=self.service_name,
+                timestamp_utc=timestamp,
+            )
+            self.event_bus.dispatch(price_event)
+
+            resource_event = ResourceUpdated(
+                resource_id=self.resource_id,
+                payload={"symbol": symbol, "price_data": price_data, "timestamp": timestamp},
+                capability="market_data_distribution",
+                source=self.service_name,
+                timestamp_utc=timestamp,
+            )
+            self.event_bus.dispatch(resource_event)
 
     async def fetch_chain_info(self, symbol: str) -> ChainInfo:
         """

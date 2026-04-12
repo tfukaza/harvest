@@ -1,162 +1,133 @@
+"""Harvest event bus backed by bubus.
+
+This module provides a thin Harvest-owned wrapper around ``bubus.EventBus``
+that standardises bus creation, typed dispatch, and handler registration
+for the rest of the codebase.
+"""
+
+
 import asyncio
-from typing import Callable, Any
-from uuid import uuid4
 import logging
+import uuid
+from typing import Any, Callable, TypeVar
+
+import bubus
+
+from harvest.events.base import HarvestEvent
 
 logger = logging.getLogger(__name__)
 
+T = TypeVar("T", bound=HarvestEvent)
+
 
 class EventBus:
+    """Harvest system event bus.
+
+    Wraps a ``bubus.EventBus`` instance and exposes a small opinionated
+    surface for dispatching and subscribing to typed ``HarvestEvent``
+    subclasses.
     """
-    Event bus system for decoupled communication between services.
-    Supports both synchronous and asynchronous event handling.
-    """
 
-    def __init__(self):
-        self._event_handlers: dict[str, list[dict[str, Any]]] = {}
-        self._lock = asyncio.Lock()
-
-    def publish(self, event_type: str, data: dict) -> None:
-        """
-        Publish an event to all subscribers.
-
-        Note that individual handlers maybe asynchronous, but this function as a whole runs them synchronously.
+    def __init__(self, name: str = "harvest") -> None:
+        """Create a new Harvest event bus.
 
         Args:
-            event_type: Type of event being published
-            data: Event data payload
+            name: Human-readable name for the underlying bubus bus.
+                  A unique suffix is appended automatically to avoid
+                  conflicts when multiple buses share the same logical name.
         """
-        if event_type not in self._event_handlers:
-            logger.debug(f"No handlers for event type: {event_type}")
-            return
+        unique_name = f"{name}_{uuid.uuid4().hex[:8]}"
+        self._bus = bubus.EventBus(name=unique_name)
 
-        handlers = self._event_handlers[event_type].copy()
+    # -- dispatch ------------------------------------------------------------
 
-        for handler_info in handlers:
-            try:
-                if not self._matches_filters(data, handler_info["filters"]):
-                    continue
-
-                handler = handler_info["callback"]
-                if asyncio.iscoroutinefunction(handler):
-                    asyncio.create_task(handler(data))
-                else:
-                    handler(data)
-            except Exception as e:
-                logger.error(f"Error in event handler for {event_type}: {e}")
-
-    async def publish_async(self, event_type: str, data: dict) -> None:
-        """
-        Publish an event asynchronously to all subscribers.
+    def dispatch(self, event: HarvestEvent) -> HarvestEvent:
+        """Dispatch a typed event onto the bus.
 
         Args:
-            event_type: Type of event being published
-            data: Event data payload
-        """
-        async with self._lock:
-            if event_type not in self._event_handlers:
-                logger.debug(f"No handlers for event type: {event_type}")
-                return
-
-            handlers = self._event_handlers[event_type].copy()
-
-        # Execute handlers concurrently
-        tasks = []
-        for handler_info in handlers:
-            try:
-                if not self._matches_filters(data, handler_info["filters"]):
-                    continue
-
-                handler = handler_info["callback"]
-                if asyncio.iscoroutinefunction(handler):
-                    tasks.append(handler(data))
-                else:
-                    tasks.append(asyncio.create_task(asyncio.to_thread(handler, data)))
-            except Exception as e:
-                logger.error(f"Error preparing handler for {event_type}: {e}")
-
-        if tasks:
-            await asyncio.gather(*tasks, return_exceptions=True)
-
-    def subscribe(self, event_type: str, callback: Callable, filters: dict | None = None) -> str:
-        """
-        Subscribe to an event type with optional filtering.
-
-        Args:
-            event_type: Type of event to subscribe to
-            callback: Function to call when event occurs
-            filters: Optional filters for event data.
-               This is a dictionary where keys are field names and values are expected values.
-               The callback will only be called if the event data matches all filters.
+            event: A ``HarvestEvent`` subclass instance.
 
         Returns:
-            Subscription ID for later unsubscription
+            The dispatched event (can be awaited for completion).
         """
-        subscription_id = str(uuid4())
+        return self._bus.dispatch(event)
 
-        handler_info = {"id": subscription_id, "callback": callback, "filters": filters or {}}
-
-        if event_type not in self._event_handlers:
-            self._event_handlers[event_type] = []
-
-        self._event_handlers[event_type].append(handler_info)
-
-        logger.debug(f"Subscribed to {event_type} with ID: {subscription_id}")
-        return subscription_id
-
-    def unsubscribe(self, subscription_id: str) -> None:
-        """
-        Unsubscribe from events using subscription ID.
+    async def dispatch_async(self, event: HarvestEvent) -> HarvestEvent:
+        """Dispatch and wait for all handlers to finish.
 
         Args:
-            subscription_id: ID returned from subscribe()
-        """
-        for event_type, handlers in self._event_handlers.items():
-            self._event_handlers[event_type] = [h for h in handlers if h["id"] != subscription_id]
-
-            # Clean up empty event types
-            if not self._event_handlers[event_type]:
-                del self._event_handlers[event_type]
-                break
-
-        logger.debug(f"Unsubscribed: {subscription_id}")
-
-    def get_subscription_count(self, event_type: str | None = None) -> int:
-        """
-        Get the number of subscriptions for an event type or all events.
-
-        Args:
-            event_type: Optional event type to count, if None counts all
+            event: A ``HarvestEvent`` subclass instance.
 
         Returns:
-            Number of subscriptions
+            The completed event.
         """
-        if event_type:
-            return len(self._event_handlers.get(event_type, []))
+        return await self._bus.dispatch(event)
 
-        return sum(len(handlers) for handlers in self._event_handlers.values())
+    def dispatch_sync(self, event: HarvestEvent) -> HarvestEvent:
+        """Dispatch an event and process it synchronously.
 
-    def clear_all_subscriptions(self) -> None:
-        """Clear all event subscriptions."""
-        self._event_handlers.clear()
-        logger.info("All event subscriptions cleared")
-
-    def _matches_filters(self, data: dict, filters: dict) -> bool:
-        """
-        Check if event data matches subscription filters.
+        Useful when no async event loop is running (e.g. inside broker
+        polling threads).  Uses ``bubus.EventBus.step`` which processes
+        one event synchronously.
 
         Args:
-            data: Event data
-            filters: Filter criteria
+            event: A ``HarvestEvent`` subclass instance.
 
         Returns:
-            True if data matches all filters
+            The dispatched event.
         """
-        if not filters:
-            return True
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            async def _dispatch_and_step() -> HarvestEvent:
+                dispatched_event = self._bus.dispatch(event)
+                await self._bus.step(dispatched_event)
+                return dispatched_event
 
-        for key, expected_value in filters.items():
-            if key not in data or data[key] != expected_value:
-                return False
+            return asyncio.run(_dispatch_and_step())
 
-        return True
+        raise RuntimeError("dispatch_sync() cannot be used while an event loop is running; use dispatch_async() instead")
+
+    # -- subscribe -----------------------------------------------------------
+
+    def on(
+        self,
+        event_type: type[T],
+        handler: Callable[[T], Any],
+    ) -> None:
+        """Register a handler for a typed event class.
+
+        Args:
+            event_type: The ``HarvestEvent`` subclass to listen for.
+            handler: Sync or async callable that receives the event.
+        """
+        self._bus.on(event_type, handler)
+
+    def off(
+        self,
+        event_type: type[T],
+        handler: Callable[[T], Any],
+    ) -> None:
+        """Unsubscribe a handler from a typed event class.
+
+        Args:
+            event_type: The ``HarvestEvent`` subclass to stop listening for.
+            handler: The handler to remove.
+        """
+        key = event_type.__name__
+        handlers = self._bus.handlers.get(key, [])
+        try:
+            handlers.remove(handler)
+        except ValueError:
+            pass
+
+    # -- lifecycle -----------------------------------------------------------
+
+    async def stop(self) -> None:
+        """Stop the underlying bubus bus and clean up resources."""
+        await self._bus.stop(clear=True)
+
+    @property
+    def bus(self) -> bubus.EventBus:
+        """Access the underlying bubus ``EventBus`` for advanced usage."""
+        return self._bus

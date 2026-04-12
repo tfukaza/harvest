@@ -3,16 +3,22 @@ import os
 import pickle
 import re
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Union
+from typing import Any, Callable, Dict, List, Protocol, Union
 
 from harvest.broker._base import Broker
-from harvest.definitions import OPTION_QTY_MULTIPLIER, Account, Stats
-from harvest.enum import DataBrokerType, Interval
-from harvest.events.events import OrderFilledEvent
+from harvest.domain.definitions import OPTION_QTY_MULTIPLIER, Account, Stats
+from harvest.domain.enum import DataBrokerType, Interval
+from harvest.events.base import OrderFilled
 from harvest.events.event_bus import EventBus
-from harvest.storage import Storage
 from harvest.util.factory import load_broker
 from harvest.util.helper import data_to_occ, debugger, is_crypto
+
+
+class BacktestStorage(Protocol):
+    """Protocol for backtest storage objects used by the legacy paper broker."""
+
+    def load(self, symbol: str, interval: Interval) -> Any:
+        """Load market data for a symbol and interval."""
 
 
 class PaperBroker(Broker):
@@ -149,7 +155,8 @@ class PaperBroker(Broker):
         super().setup(stats, account, trader_main)
         self.backtest = False
 
-    def setup_backtest(self, storage: Storage) -> None:
+    def setup_backtest(self, storage: BacktestStorage) -> None:
+        """Configure backtest price access against a load-capable storage object."""
         self.backtest = True
         self.storage = storage
 
@@ -241,16 +248,16 @@ class PaperBroker(Broker):
 
                     # Publish order filled event
                     if self.event_bus:
-                        event_data = {
-                            "order_id": ret["order_id"],
-                            "symbol": ret["symbol"],
-                            "side": ret["side"],
-                            "quantity": ret["quantity"],
-                            "filled_price": ret["filled_price"],
-                            "filled_time": ret["filled_time"],
-                            "algorithm_name": "",  # Will be set by the service
-                        }
-                        self.event_bus.publish("order_filled", event_data)
+                        event = OrderFilled(
+                            order_id=ret["order_id"],
+                            symbol=ret["symbol"],
+                            side=ret["side"],
+                            quantity=ret["quantity"],
+                            filled_price=ret["filled_price"],
+                            filled_time=ret["filled_time"],
+                            source="PaperBroker",
+                        )
+                        self.event_bus.dispatch_sync(event)
             else:
                 if pos is None:
                     raise Exception(f"Cannot sell {sym}, is not owned")
@@ -270,16 +277,16 @@ class PaperBroker(Broker):
 
                 # Publish order filled event
                 if self.event_bus:
-                    event_data = {
-                        "order_id": ret["order_id"],
-                        "symbol": ret["symbol"],
-                        "side": ret["side"],
-                        "quantity": ret["quantity"],
-                        "filled_price": ret["filled_price"],
-                        "filled_time": ret["filled_time"],
-                        "algorithm_name": "",  # Will be set by the service
-                    }
-                    self.event_bus.publish("order_filled", event_data)
+                    event = OrderFilled(
+                        order_id=ret["order_id"],
+                        symbol=ret["symbol"],
+                        side=ret["side"],
+                        quantity=ret["quantity"],
+                        filled_price=ret["filled_price"],
+                        filled_time=ret["filled_time"],
+                        source="PaperBroker",
+                    )
+                    self.event_bus.dispatch_sync(event)
 
             self.equity = self._calc_equity()
 

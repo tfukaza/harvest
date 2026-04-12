@@ -9,7 +9,7 @@ from ..events.event_bus import EventBus
 from ..util.helper import debugger
 
 if TYPE_CHECKING:
-    from ..algorithm import Algorithm, AlgorithmHealth, AlgorithmStatus
+    from harvest.domain.algorithm import Algorithm, AlgorithmHealth, AlgorithmStatus
 
 
 def check_interval(current_time: dt.datetime, interval_str: str) -> bool:

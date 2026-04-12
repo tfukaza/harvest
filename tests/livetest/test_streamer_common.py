@@ -4,7 +4,7 @@ import unittest
 
 from harvest.broker.robinhood import RobinhoodBroker
 from harvest.broker.yahoo import YahooBroker
-from harvest.definitions import Account, Interval, Stats
+from harvest.domain.definitions import Account, Interval, Stats
 from harvest.util.helper import debugger, utc_epoch_zero
 
 secret_path = os.environ["SECRET_PATH"]

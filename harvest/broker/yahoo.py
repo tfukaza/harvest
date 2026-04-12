@@ -9,8 +9,8 @@ import requests
 import yfinance as yf
 
 from harvest.broker._base import Broker
-from harvest.definitions import Account, Stats
-from harvest.enum import Interval
+from harvest.domain.definitions import Account, Stats
+from harvest.domain.enum import Interval
 from harvest.util.date import convert_input_to_datetime, date_to_str, str_to_datetime, utc_current_time, utc_epoch_zero
 from harvest.util.helper import (
     check_interval,
@@ -313,7 +313,7 @@ class YahooBroker(Broker):
 
     def _format_df(self, df: pd.DataFrame, symbol: str) -> pd.DataFrame:
         """
-        Format the DataFrame returned by yfinance to the format expected by the BrokerHub.
+        Format the DataFrame returned by yfinance for Harvest broker processing.
 
         If the Dataframe contains 1 ticker, Yfinance returns with the following columns:
             Open        High         Low       Close   Adj Close     Volume

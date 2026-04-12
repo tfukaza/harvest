@@ -1,0 +1,40 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+/* Slack-style @mention highlights — light blue bg, dark blue text */
+.mention {
+  background-color: #e0f2fe;
+  color: #1264a3;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-weight: 600;
+}
+.mention.mention-known {
+  background-color: #dbeafe;
+  color: #1264a3;
+  font-weight: 700;
+}
+
+/* Slack-style #channel highlights */
+.channel-ref {
+  background-color: #e0f2fe;
+  color: #1264a3;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+/* Typing indicator animation */
+.typing-dots {
+  display: inline-block;
+  animation: blink 1.4s infinite;
+}
+@keyframes blink {
+  0%, 20% { opacity: 1; }
+  50% { opacity: 0.3; }
+  80%, 100% { opacity: 1; }
+}
+.typing-bar .mention.mention-known {
+  font-style: normal;
+}

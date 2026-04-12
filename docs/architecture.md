@@ -1,84 +1,53 @@
 # Architecture
 
-## Overview
+This document has been split into focused subsystem documents under `architecture/`.
 
-Harvest is a trading framework with two architectural paths that currently coexist:
+## Quick Navigation
 
-1. The legacy runtime built around `BrokerHub` in `harvest/trader/trader.py`.
-2. The newer service-oriented runtime built around `Orchestrator` in `harvest/orchestrator.py`.
+### Agent Sandbox
 
-New work should generally prefer the orchestrator and service path unless the task is specifically about compatibility with the legacy runtime.
+| Document | Scope |
+|----------|-------|
+| [architecture/overview.md](architecture/overview.md) | High-level system diagram, runtime paths, shared infrastructure |
+| [architecture/sandbox.md](architecture/sandbox.md) | BasicSandbox: hosting, threading, lifecycle, from_manifest() |
+| [architecture/agent.md](architecture/agent.md) | HarvestAgent: LLM loop, tools, identity, conversation compaction, multi-LLM |
+| [architecture/manifest.md](architecture/manifest.md) | YAML manifest format, loading, validation, seeds |
+| [architecture/policies.md](architecture/policies.md) | AgentPolicy, PolicyRegistry, service permissions, child policy modes |
 
-## Core Domains
+### Communication
 
-### Algorithms
+| Document | Scope |
+|----------|-------|
+| [architecture/chat-router.md](architecture/chat-router.md) | ChatRouter: message routing, delivery, staking, agent tools |
+| [architecture/channels.md](architecture/channels.md) | Channel types (group, processor), mention system, notification modes |
+| [architecture/processors.md](architecture/processors.md) | GatedProcessor and AggregationProcessor channel buffering |
+| [architecture/hibernation.md](architecture/hibernation.md) | Hibernation loop, EventSources, wake event formatting |
 
-- `harvest/algorithm.py` contains the newer `Algorithm` abstraction.
-- `harvest/algo.py` contains the legacy `BaseAlgo` abstraction that is still used by the CLI flow.
-- Algorithms define trading logic, watchlists, and indicator-driven behavior.
+### Services & Tools
 
-### Brokers
+| Document | Scope |
+|----------|-------|
+| [architecture/services.md](architecture/services.md) | Unified Service ABC, ServiceRole, concrete services (Alpaca, Paper, NewsAPI, Perplexity) |
+| [architecture/service-router.md](architecture/service-router.md) | SandboxServiceRouter: two-level policy, generic tools, audit events |
+| [architecture/tool-discovery.md](architecture/tool-discovery.md) | InterfaceTool, ToolRegistry, discover_tools, spec injection |
+| [architecture/system-prompt.md](architecture/system-prompt.md) | SystemPromptBuilder: dynamic sections, tool specs, event notifications |
 
-- `harvest/broker/_base.py` defines the broker contract.
-- Concrete implementations live under `harvest/broker/`.
-- Brokers are responsible for market data access, order placement, account access, and broker-specific capabilities.
+### Infrastructure
 
-### Storage
+| Document | Scope |
+|----------|-------|
+| [architecture/events.md](architecture/events.md) | Event bus, typed event taxonomy, audit trail |
+| [architecture/storage.md](architecture/storage.md) | ChatStore, ConversationStore, market/account storage, FlexibleStorage |
+| [architecture/debug-monitor.md](architecture/debug-monitor.md) | Debug server, bidirectional WebSocket, admin mode, SvelteKit frontend |
+| [architecture/logging.md](architecture/logging.md) | JSONFormatter, log_event(), structured logging setup |
+| [architecture/cli.md](architecture/cli.md) | CLI commands: sandbox, agent, debug-server, event-server |
 
-- `harvest/storage/_base.py` defines local and central storage models.
-- `LocalAlgorithmStorage` is algorithm-local.
-- `CentralStorage` is shared storage for price history and account-level data.
-- Duplication between local and central storage code is intentional and should not be removed casually.
+Start with [overview.md](architecture/overview.md) for the big picture, then drill into the subsystem that matches your task.
 
-### Services
+## Historical Context
 
-- `harvest/services/` contains the newer service-oriented architecture.
-- Key services include market data, broker access, algorithms, central storage, and service discovery.
-- `Orchestrator` wires these services together and manages lifecycle.
+The original agent-runner design docs are preserved for reference:
 
-### Events
-
-- `harvest/events/event_bus.py` provides the event bus.
-- `harvest/events/events.py` defines event payload types.
-- The orchestrator path is event-driven and uses these abstractions to decouple components.
-
-## Entry Points
-
-### CLI
-
-- The `harvest` console script points to `harvest.cli:main`.
-- `harvest start` scans a directory for `BaseAlgo` subclasses and runs them through the legacy `BrokerHub` flow.
-- This means the default CLI behavior is still tied more closely to legacy APIs than to the newer orchestrator path.
-
-### Examples
-
-- `examples/` contains the clearest examples of intended usage.
-- `examples/orchestrator_example.py` is the best starting point for the service-oriented direction.
-
-## Current Architectural Reality
-
-The repo is not fully migrated to one runtime model.
-
-- The legacy path is still user-visible via the CLI.
-- The orchestrator path expresses the newer direction and should guide platform evolution.
-- Some service-oriented pieces are present but not yet fully integrated across the whole project.
-
-When making changes, state explicitly which of these you are affecting:
-
-- Legacy `BrokerHub` runtime
-- Service-oriented `Orchestrator` runtime
-- Shared broker/storage/event abstractions used by both
-
-## Stable Invariants
-
-- Python 3.12 is the minimum supported version.
-- UTC is the internal time standard.
-- Domain data should be represented with typed structures rather than loose dictionaries when practical.
-- Documentation and code should evolve together when architecture changes.
-
-## Known Tensions
-
-- The CLI still reflects older abstractions.
-- The orchestrator path reflects newer architecture but is not the only active path.
-
-Treat these tensions as normal project context, not as reasons to rewrite large portions of the codebase during unrelated tasks.
+- `agent.md` — original agent behavior boundary design
+- `agent-runner.md` — original sandbox/runner design vision (pre-implementation)
+- `phase-*.md` — implementation plans for each development phase

@@ -8,7 +8,7 @@ import pandas as pd
 import requests
 
 from harvest.broker._base import Broker
-from harvest.enum import Interval
+from harvest.domain.enum import Interval
 from harvest.util.helper import (
     convert_input_to_datetime,
     debugger,
@@ -212,7 +212,7 @@ class PolygonBroker(Broker):
     # ------------- Helper methods ------------- #
 
     def create_secret(self) -> Dict[str, str]:
-        import harvest.wizard as wizard
+        import harvest.cli.wizard as wizard
 
         w = wizard.Wizard()
 

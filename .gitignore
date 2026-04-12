@@ -10,6 +10,14 @@
 dist/
 build/
 
+# gui / SvelteKit
+gui/build/
+gui/node_modules/
+gui/.svelte-kit/
+
+# debug logs
+logs/
+
 # ignore stock storage files
 data/
 
@@ -22,7 +30,10 @@ data/
 !trunk.yaml
 !dummy_account.yaml
 !dummy_account_copy.yaml
+!demos/*.yaml
 package-lock.json
+
+.env
 
 .DS_Store
 
@@ -35,4 +46,5 @@ save
 .vscode
 .ruff.toml
 TODO.md
+docs/phase-*.md
 

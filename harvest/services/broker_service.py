@@ -1,30 +1,56 @@
 import datetime as dt
-from typing import TYPE_CHECKING, Dict, Any
+from typing import TYPE_CHECKING, Dict, Any, Protocol, runtime_checkable
 
 from .service_interface import Service
 from ..events.event_bus import EventBus
-from ..definitions import Order, Account, Position, OrderSide, BrokerCapabilities, AssetType
-from ..enum import Interval
+from ..events.base import OrderPlaced, OrderCancelled
+from harvest.domain.definitions import Order, Account, Position, OrderSide, BrokerCapabilities, AssetType
+from harvest.domain.enum import Interval
 from ..util.helper import mark_up, mark_down
 
 if TYPE_CHECKING:
-    from ..events.events import OrderPlacedEvent
+    pass
+
+
+@runtime_checkable
+class BrokerProtocol(Protocol):
+    """Protocol defining the interface that broker implementations must satisfy.
+
+    BrokerService delegates to broker instances that implement this protocol.
+    All methods are required -- brokers that lack a capability should raise
+    NotImplementedError rather than silently returning defaults.
+    """
+
+    def buy(self, symbol: str, quantity: float, time_in_force: str, extended_hours: bool) -> Order | None: ...
+    def sell(self, symbol: str, quantity: float, time_in_force: str, extended_hours: bool) -> Order | None: ...
+    def get_current_price(self, symbol: str) -> float: ...
+    def get_positions(self) -> Any: ...
+    def cancel_order(self, order_id: str) -> bool: ...
+    def get_order_status(self, order_id: str) -> dict | None: ...
+    def fetch_account(self) -> Account: ...
+    def health_check(self) -> dict[str, Any]: ...
+    def get_broker_capabilities(self) -> BrokerCapabilities: ...
 
 
 class BrokerService(Service):
-    """
-    Service for managing broker operations including order placement and account management.
+    """Service for managing broker operations including order placement and account management.
+
     Acts as an interface between algorithms and the underlying broker implementations.
+    All brokers must implement BrokerProtocol.
     """
 
-    def __init__(self, brokers: Dict[str, Any]):
+    def __init__(self, brokers: Dict[str, BrokerProtocol]):
         super().__init__("broker")
-        self.brokers = brokers  # Dictionary of broker instances keyed by brokerage name
+        self.brokers = brokers
         self.event_bus = None
         self._is_running = False
 
-    def _get_broker(self, brokerage: str):
-        """Retrieve the broker instance for the specified brokerage."""
+    def _get_broker(self, brokerage: str) -> BrokerProtocol:
+        """Retrieve the broker instance for the specified brokerage.
+
+        Raises:
+            ValueError: If the brokerage name is not registered.
+        """
         if brokerage not in self.brokers:
             raise ValueError(f"Brokerage {brokerage} not found")
         return self.brokers[brokerage]
@@ -39,26 +65,16 @@ class BrokerService(Service):
         self.is_running = False
 
     def health_check(self) -> dict[str, any]:  # type: ignore
-        """Perform health check on the broker service and all managed brokers"""
+        """Perform health check on the broker service and all managed brokers."""
         broker_statuses = {}
         all_brokers_connected = True
 
         for brokerage_name, broker in self.brokers.items():
             try:
-                # Check if broker has health check method
-                if hasattr(broker, "health_check"):
-                    broker_status = broker.health_check()
-                else:
-                    # Basic connectivity check
-                    broker_status = {
-                        "connected": broker is not None,
-                        "status": "healthy" if broker is not None else "disconnected",
-                    }
-
+                broker_status = broker.health_check()
                 broker_statuses[brokerage_name] = broker_status
                 if not broker_status.get("connected", False):
                     all_brokers_connected = False
-
             except Exception as e:
                 broker_statuses[brokerage_name] = {"connected": False, "status": "error", "error": str(e)}
                 all_brokers_connected = False
@@ -94,27 +110,26 @@ class BrokerService(Service):
         extended_hours: bool = False,
         brokerage: str = "default",
     ) -> Order | None:
-        """
-        Place order through the specified broker
+        """Place order through the specified broker.
 
         Args:
-            symbol: Symbol to trade
-            side: BUY or SELL
-            quantity: Quantity to trade
-            order_type: Order type (market, limit, etc.)
-            time_in_force: Time in force (gtc, gtd)
-            extended_hours: Whether to allow extended hours trading
-            brokerage: Name of the brokerage to use
+            symbol: Symbol to trade.
+            side: BUY or SELL.
+            quantity: Quantity to trade.
+            order_type: Order type (market, limit, etc.).
+            time_in_force: Time in force (gtc, gtd).
+            extended_hours: Whether to allow extended hours trading.
+            brokerage: Name of the brokerage to use.
 
         Returns:
-            Order object if successful, None otherwise
+            Order object if successful, None otherwise.
         """
         broker = self._get_broker(brokerage)
 
         # Calculate limit price for market orders
         limit_price = None
         if order_type == "market":
-            current_price = self._get_current_price(symbol, brokerage)
+            current_price = broker.get_current_price(symbol)
             if side == OrderSide.BUY:
                 limit_price = mark_up(current_price)
             else:
@@ -129,172 +144,121 @@ class BrokerService(Service):
 
             # Publish order placed event
             if result and self.event_bus:
-                event_data = {
-                    "order_id": result.order_id if hasattr(result, "order_id") else "unknown",
-                    "algorithm_name": "",  # Will be set by algorithm
-                    "symbol": symbol,
-                    "side": side.value,
-                    "quantity": quantity,
-                    "brokerage": brokerage,
-                    "timestamp": dt.datetime.utcnow(),
-                }
-                self.event_bus.publish("order_placed", event_data)
+                event = OrderPlaced(
+                    order_id=result.order_id if hasattr(result, "order_id") else "unknown",
+                    symbol=symbol,
+                    side=side.value,
+                    quantity=quantity,
+                    brokerage=brokerage,
+                    source="BrokerService",
+                )
+                self.event_bus.dispatch(event)
 
             return result
 
         except Exception as e:
-            # Log error and return None
             print(f"Order placement failed: {e}")
             return None
 
-    def _get_current_price(self, symbol: str, brokerage: str) -> float:
-        """
-        Get current price for a symbol from the specified broker
-
-        Args:
-            symbol: Symbol to get price for
-            brokerage: Name of the brokerage to use
-
-        Returns:
-            Current price as float
-        """
-        broker = self._get_broker(brokerage)
-        try:
-            if hasattr(broker, "get_current_price"):
-                return broker.get_current_price(symbol)
-            elif hasattr(broker, "fetch_price"):
-                return broker.fetch_price(symbol)
-            else:
-                return 100.0  # Placeholder value
-        except Exception:
-            return 100.0
-
     async def get_account_info(self, brokerage: str = "default") -> Account:
-        """
-        Get current account information from the specified broker
+        """Get current account information from the specified broker.
 
         Args:
-            brokerage: Name of the brokerage to use
+            brokerage: Name of the brokerage to use.
 
         Returns:
-            Account object with current account data
+            Account object with current account data.
         """
         broker = self._get_broker(brokerage)
         return broker.fetch_account()
 
     async def get_positions(self, brokerage: str = "default") -> list[Position]:
-        """
-        Get current positions from the specified broker
+        """Get current positions from the specified broker.
 
         Args:
-            brokerage: Name of the brokerage to use
+            brokerage: Name of the brokerage to use.
 
         Returns:
-            List of Position objects for all current positions
+            List of Position objects for all current positions.
         """
         broker = self._get_broker(brokerage)
         try:
             positions = []
-            if hasattr(broker, "get_positions"):
-                broker_positions = broker.get_positions()
-                if hasattr(broker_positions, "stock"):
-                    positions.extend(broker_positions.stock)
-                if hasattr(broker_positions, "crypto"):
-                    positions.extend(broker_positions.crypto)
-                if hasattr(broker_positions, "option"):
-                    positions.extend(broker_positions.option)
-            elif hasattr(broker, "positions"):
-                broker_positions = broker.positions
-                if hasattr(broker_positions, "stock"):
-                    positions.extend(broker_positions.stock)
-                if hasattr(broker_positions, "crypto"):
-                    positions.extend(broker_positions.crypto)
-                if hasattr(broker_positions, "option"):
-                    positions.extend(broker_positions.option)
+            broker_positions = broker.get_positions()
+            if hasattr(broker_positions, "stock"):
+                positions.extend(broker_positions.stock)
+            if hasattr(broker_positions, "crypto"):
+                positions.extend(broker_positions.crypto)
+            if hasattr(broker_positions, "option"):
+                positions.extend(broker_positions.option)
             return positions
         except Exception as e:
             print(f"Failed to get positions: {e}")
             return []
 
     async def cancel_order(self, order_id: str, brokerage: str = "default") -> bool:
-        """
-        Cancel an existing order through the specified broker
+        """Cancel an existing order through the specified broker.
 
         Args:
-            order_id: ID of order to cancel
-            brokerage: Name of the brokerage to use
+            order_id: ID of order to cancel.
+            brokerage: Name of the brokerage to use.
 
         Returns:
-            True if successful, False otherwise
+            True if successful, False otherwise.
         """
         broker = self._get_broker(brokerage)
         try:
-            if hasattr(broker, "cancel_order"):
-                result = broker.cancel_order(order_id)
-                if result and self.event_bus:
-                    event_data = {"order_id": order_id, "brokerage": brokerage, "timestamp": dt.datetime.utcnow()}
-                    self.event_bus.publish("order_cancelled", event_data)
-                return result
-            else:
-                return False
+            result = broker.cancel_order(order_id)
+            if result and self.event_bus:
+                event = OrderCancelled(
+                    order_id=order_id,
+                    brokerage=brokerage,
+                    source="BrokerService",
+                )
+                self.event_bus.dispatch(event)
+            return result
         except Exception as e:
             print(f"Order cancellation failed: {e}")
             return False
 
     async def get_order_status(self, order_id: str, brokerage: str = "default") -> dict | None:
-        """
-        Get status of a specific order from the specified broker
+        """Get status of a specific order from the specified broker.
 
         Args:
-            order_id: ID of order to check
-            brokerage: Name of the brokerage to use
+            order_id: ID of order to check.
+            brokerage: Name of the brokerage to use.
 
         Returns:
-            Order status information as dict, None if not found
+            Order status information as dict, None if not found.
         """
         broker = self._get_broker(brokerage)
-
         try:
-            if hasattr(broker, "get_order_status"):
-                return broker.get_order_status(order_id)
-            else:
-                return None
-
+            return broker.get_order_status(order_id)
         except Exception as e:
             print(f"Failed to get order status: {e}")
             return None
 
     def monitor_orders(self) -> None:
+        """Start monitoring orders for fills and updates.
+
+        This would typically run in a background task.
         """
-        Start monitoring orders for fills and updates
-        This would typically run in a background task
-        """
-        # This would be implemented as a background monitoring task
-        # that checks for order fills and publishes events
         pass
 
     def get_broker_capabilities(self, brokerage: str = "default") -> BrokerCapabilities:
-        """
-        Get capabilities of a specific broker.
+        """Get capabilities of a specific broker.
 
-        :brokerage: Name of the brokerage to query
-        :returns: BrokerCapabilities object containing broker capabilities
+        Args:
+            brokerage: Name of the brokerage to query.
+
+        Returns:
+            BrokerCapabilities object containing broker capabilities.
         """
         broker = self._get_broker(brokerage)
-        if hasattr(broker, "get_broker_capabilities"):
-            return broker.get_broker_capabilities()
-
-        # Fallback for older broker implementations
-        return BrokerCapabilities(
-            broker_id=broker.__class__.__name__,
-            supported_intervals_tickers={},  # Empty dict for legacy brokers
-            exchange=getattr(broker, "exchange", "unknown"),
-            supported_asset_types=[AssetType.STOCK, AssetType.CRYPTO, AssetType.OPTION],
-            features=["basic_trading"],
-        )
+        return broker.get_broker_capabilities()
 
     def get_all_broker_capabilities(self) -> dict[str, BrokerCapabilities]:
-        """Get capabilities of all available brokers"""
+        """Get capabilities of all available brokers."""
         capabilities = {}
         for brokerage_name, broker in self.brokers.items():
             try:
@@ -311,13 +275,15 @@ class BrokerService(Service):
         return capabilities
 
     def supports_symbol_and_interval(self, symbol: str, interval: str, brokerage: str = "default") -> bool:
-        """
-        Check if a broker supports trading a specific symbol at a specific interval.
+        """Check if a broker supports trading a specific symbol at a specific interval.
 
-        :symbol: Symbol to check
-        :interval: Interval to check (string representation)
-        :brokerage: Broker to check
-        :returns: True if supported, False otherwise
+        Args:
+            symbol: Symbol to check.
+            interval: Interval to check (string representation).
+            brokerage: Broker to check.
+
+        Returns:
+            True if supported, False otherwise.
         """
         try:
             capabilities = self.get_broker_capabilities(brokerage)

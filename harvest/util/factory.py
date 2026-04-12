@@ -1,33 +1,46 @@
-"""
-This is a helper module that provides a factory function to load the necessary modules and packages dynamically.
-"""
+"""Helper factories for supported broker and storage components."""
 
-from harvest.enum import BrokerType, StorageType
-from harvest.storage.base_storage import BaseStorage
+from harvest.domain.enum import BrokerType, StorageType
 
 
-def load_storage(storage_type: StorageType) -> BaseStorage:
+def load_storage(storage_type: StorageType):
+    """Load a supported storage class.
+
+    Args:
+        storage_type: Supported storage backend identifier.
+
+    Returns:
+        The storage class for the requested backend.
+
+    Raises:
+        ValueError: If the storage type is not supported.
+    """
     if storage_type.value == StorageType.BASE.value:
-        from harvest.storage.base_storage import BaseStorage
+        from harvest.storage.schema.market import CentralStorage
 
-        return BaseStorage
-    elif storage_type.value == StorageType.CSV.value:
+        return CentralStorage
+    if storage_type.value == StorageType.CSV.value:
         from harvest.storage.csv_storage import CSVStorage
 
         return CSVStorage
-    elif storage_type.value == StorageType.PICKLE.value:
-        from harvest.storage.pickle_storage import PickleStorage
 
-        return PickleStorage
-    elif storage_type.value == StorageType.DB.value:
-        from harvest.storage.database_storage import DBStorage
-
-        return DBStorage
-    else:
-        raise ValueError(f"Invalid storage option: {storage_type}")
+    raise ValueError(f"Unsupported storage option: {storage_type}")
 
 
 def load_broker(broker_type: BrokerType):
+    """Load a legacy broker class.
+
+    .. deprecated::
+        Legacy brokers are used by the Orchestrator runtime path.
+        For agent-based workflows, use ``harvest.services.*Service`` classes.
+    """
+    import warnings
+    warnings.warn(
+        "load_broker() loads legacy broker implementations. "
+        "For agent-based workflows, use harvest.services.*Service classes.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     if broker_type.value == BrokerType.DUMMY.value:
         from harvest.broker.mock import DummyDataBroker
 

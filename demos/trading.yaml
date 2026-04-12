@@ -1,0 +1,86 @@
+sandbox:
+  name: "trading"
+  display_name: "Trading Sandbox"
+
+  services:
+    paper:
+      type: paper_broker
+      config:
+        starting_cash: 100000.0
+        commission_fee: 0.0
+
+    newsapi:
+      type: newsapi
+      config:
+        api_key: "${NEWSAPI_KEY}"
+
+    perplexity:
+      type: perplexity
+      config:
+        api_key: "${PERPLEXITY_API_KEY}"
+        model: "sonar"
+
+  policies:
+    researcher:
+      allowed_services:
+        - newsapi
+        - perplexity
+      can_send_messages: true
+      can_create_channel: false
+      can_create_agents: false
+      child_policy_mode: none
+      event_subscriptions:
+        allowed_wake_sources:
+          - inbox
+        allowed_event_types:
+          - ExternalEventFired
+
+    trader:
+      allowed_services:
+        - paper
+        - newsapi
+      can_send_messages: true
+      can_create_channel: false
+      can_create_agents: false
+      child_policy_mode: none
+      event_subscriptions:
+        allowed_wake_sources:
+          - inbox
+        allowed_event_types:
+          - ExternalEventFired
+
+  agents:
+    researcher:
+      policy: researcher
+      model: "openrouter/google/gemini-2.5-flash"
+      system_prompt: |
+        You are a financial research analyst. Use newsapi and perplexity tools
+        to research market conditions, news, and economic factors. Share your
+        findings with the trader agent via the #signals channel.
+
+    trader:
+      policy: trader
+      model: "openrouter/google/gemini-2.5-flash"
+      system_prompt: |
+        You are a paper trader. Read signals from the researcher in #signals,
+        use paper broker tools to check prices and account state, then place
+        simulated trades. Keep the researcher informed of executed trades.
+
+  channels:
+    signals:
+      type: group
+      description: "Channel for sharing research signals and trade updates."
+      members:
+        - researcher
+        - trader
+      notification_mode: ambient
+
+  seeds:
+    - channel: signals
+      content: >
+        The trading session is open. Researcher, begin by scanning for
+        interesting market news and opportunities. Trader, stand by for
+        signals and be ready to act on promising leads.
+      recipients:
+        - researcher
+        - trader

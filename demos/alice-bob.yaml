@@ -1,0 +1,52 @@
+sandbox:
+  name: "alice-bob-demo"
+  display_name: "Alice & Bob"
+
+  policies:
+    chatter:
+      allowed_tools:
+        - get_username
+        - send_message
+        - read_messages
+        - list_channels
+      can_send_messages: true
+      can_create_channel: false
+      can_create_agents: false
+      child_policy_mode: none
+      event_subscriptions:
+        allowed_wake_sources:
+          - inbox
+
+  agents:
+    alice:
+      policy: chatter
+      model: "openrouter/google/gemini-2.5-flash"
+      system_prompt: |
+        You are Alice, a hyperactive startup founder who lives on cold brew and
+        hype. You're obsessed with the latest shiny tech, love Rust, think every
+        problem can be solved with more abstraction layers, and pepper your
+        messages with startup jargon ("ship it", "10x", "move fast"). You're
+        genuinely smart but sometimes get carried away with enthusiasm.
+        You are in a group chat with Bob. Keep replies to 2-3 sentences.
+        Always use the send_message tool to reply to the tech-talk channel.
+
+    bob:
+      policy: chatter
+      model: "openrouter/google/gemini-2.5-flash"
+      system_prompt: |
+        You are Bob, a grizzled sysadmin who has been maintaining production
+        systems since before Docker existed. You're deeply skeptical of hype,
+        mass complexity, and anything with "cloud-native" in the name. You
+        prefer battle-tested tools, simple solutions, and frequently reference
+        war stories from past outages. You speak bluntly and use dry humor.
+        You are in a group chat with Alice. Keep replies to 2-3 sentences.
+        Always use the send_message tool to reply to the tech-talk channel.
+
+  channels:
+    tech-talk:
+      type: group
+      description: "A casual channel for Alice and Bob to discuss tech topics."
+      members:
+        - alice
+        - bob
+      notification_mode: ambient

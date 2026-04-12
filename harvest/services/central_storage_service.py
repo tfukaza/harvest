@@ -10,10 +10,10 @@ import os
 from typing import Any, Dict
 
 from harvest.services.service_interface import Service
-from harvest.storage._base import CentralStorage
-from harvest.definitions import TickerCandleList
-from harvest.enum import Interval
-from harvest.events.events import PriceUpdateEvent
+from harvest.storage.schema.market import CentralStorage
+from harvest.domain.definitions import TickerCandleList
+from harvest.domain.enum import Interval
+from harvest.events.base import PriceUpdated
 
 
 class CentralStorageService(Service):
@@ -103,7 +103,7 @@ class CentralStorageService(Service):
                 storage_status = {
                     "status": "healthy",
                     "database_accessible": True,
-                    "database_url": str(storage.db_engine.url),
+                    "database_url": storage.storage.database_url,
                 }
                 storage_statuses[storage_name] = storage_status
             except Exception as e:
@@ -182,10 +182,14 @@ class CentralStorageService(Service):
             symbols = data.df["symbol"].unique()
             if len(symbols) > 0:
                 symbol = symbols[0]
-
-                price_event = PriceUpdateEvent(symbol=symbol, price_data=data, timestamp=dt.datetime.utcnow())
-
-                self.event_bus.publish("price_update", price_event.__dict__)
+                event = PriceUpdated(
+                    symbol=symbol,
+                    interval="",
+                    broker_id="central_storage",
+                    price_data=data,
+                    source="CentralStorageService",
+                )
+                self.event_bus.dispatch(event)
 
     def get_account_performance_history(
         self,
@@ -263,7 +267,7 @@ class CentralStorageService(Service):
         storage_info = {}
         for storage_name, storage in self.storages.items():
             storage_info[storage_name] = {
-                "database_path": str(storage.db_engine.url),
+                "database_path": storage.storage.database_url,
                 "capabilities": ["price_history", "account_performance"],
             }
 

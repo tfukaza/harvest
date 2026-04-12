@@ -1,5 +1,5 @@
 ![Header](docs/banner.png)<br />
-Harvest is a simple yet flexible Python framework for algorithmic trading. Paper trade and live trade stocks, cryptos, and options![^1][^2] Visit [**here**](https://tfukaza.github.io/harvest-website) for tutorials and documentation.
+Harvest is a Python framework for algorithmic trading that is being refactored toward a service-oriented, event-driven architecture. Broker integrations, storage backends, event transport, and algorithm abstractions remain the foundation while the legacy trader runtime is being removed. Visit [**here**](https://tfukaza.github.io/harvest-website) for tutorials and documentation.
 
 <br />
 
@@ -15,34 +15,31 @@ Harvest is currently at **v0.3**. The program is unstable and contains many bugs
 - 💡 [Submit a feature suggestion](https://github.com/tfukaza/harvest/issues/new?assignees=&labels=enhancement%2C+question&template=feature-request.md&title=%5B%F0%9F%92%A1Feature+Request%5D)
 - 📝 [Request documentation](https://github.com/tfukaza/harvest/issues/new?assignees=&labels=documentation&template=documentation.md&title=%5B%F0%9F%93%9DDocumentation%5D)
 
-# See for yourself!
-The example below is an algorithm to trade Twitter stocks using the moving average crossover strategy.
-```python
-from harvest.algo import *
-from harvest.trader import *
+# Current Direction
 
-class Watch(BaseAlgo):
-    def config(self):
-        self.watchlist = ["TWTR"]
-        self.interval = "5MIN"
+Harvest no longer treats the legacy `BrokerHub` trader path as a supported runtime. The current supported direction is the orchestrator and service architecture documented in `docs/architecture.md` and demonstrated in `examples/orchestrator_example.py`.
 
-    def main(self):
-        sma_long = self.sma(period=50)
-        sma_short = self.sma(period=20)
-        if self.crossover(sma_long, sma_short):
-            self.buy()
-        elif self.crossover(sma_short, sma_long):
-            self.sell()
-```
-To paper trade using this algorithm, run the following command:
+To explore the current runtime direction locally, run:
+
 ```bash
-harvest start -s yahoo -b paper
+uv run python examples/orchestrator_example.py
 ```
-To live trade using Robinhood, run:
+
+The CLI entrypoint is still present for utility workflows, but the old `harvest start` runtime path has been removed as part of the refactor.
+
+The first Phase 4 proof-of-concept agent is available from the CLI. Add `ANTHROPIC_API_KEY` to a local `.env` file at the repo root, then run:
+
 ```bash
-harvest start -s robinhood -b robinhood
+uv run harvest agent
 ```
-With Harvest, the process of testing and deploying your strategies is a piece of cake 🍰
+
+The default model for this CLI slice is `anthropic/claude-sonnet-4-20250514`. If you override it with `--model` or `HARVEST_AGENT_MODEL`, keep it on a Claude 4 model.
+
+For a single prompt instead of an interactive session, use:
+
+```bash
+uv run harvest agent --message "Summarize the current runtime direction."
+```
 
 # Installation
 The only requirement is to have **Python 3.12 or newer**.
@@ -68,17 +65,19 @@ Replace `BROKER` with a brokerage/data source of your choice in lowercase:
 - Kraken
 - Polygon
 
-If you installed Harvest as a tool, you can run commands directly:
+If you installed Harvest as a tool, the CLI is available directly:
+
 ```bash
-harvest start -s yahoo -b paper
+harvest --help
 ```
 
 If you added Harvest to a project, run commands with `uv run`, for example:
+
 ```bash
-uv run harvest start -s yahoo -b paper
+uv run harvest --help
 ```
 
-Now you're all set.
+For runtime development during the refactor, prefer the orchestrator examples and architecture docs over the legacy CLI startup flow.
 
 # Contributing
 Contributions are greatly appreciated. Check out the [CONTRIBUTING](CONTRIBUTING.md) document for details, and [ABOUT](ABOUT.md) for the long-term goals of this project.
@@ -97,4 +96,4 @@ Contributions are greatly appreciated. Check out the [CONTRIBUTING](CONTRIBUTING
 - To run lint & format checks automatically, install the extensions recommended and save
 
 [^1]: What assets you can trade depends on the broker you are using.
-[^2]: Backtesting is also available, but it is not supported for options.
+[^2]: Some historical documentation and examples may still reference removed legacy flows while the Phase 3 cleanup is in progress.

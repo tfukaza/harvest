@@ -31,6 +31,9 @@ dependencies = [
     "rich>=13.0.0",
     "SQLAlchemy>=2.0.0",
     "requests",
+    "polars>=1.38.1",
+    "litellm>=1.82.1",
+    "bubus>=1.5.6",
 ]
 
 [project.urls]
@@ -42,7 +45,8 @@ robinhood = ["pyotp", "robin_stocks"]
 webull = ["webull"]
 kraken = ["krakenex"]
 yahoo = ["yfinance>=0.2.38"]
-server = ["flask", "flask-login", "flask-cors"]
+server = ["flask", "flask-login", "flask-cors", "aiohttp>=3.9"]
+debug = ["flask", "flask-sock"]
 dev = ["coverage"]
 
 [project.scripts]
@@ -56,3 +60,8 @@ include = ["harvest", "harvest.*"]
 
 [tool.coverage.run]
 source = ["harvest/"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+]
