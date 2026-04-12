@@ -3,9 +3,9 @@
 
 import time
 
-from harvest.agent_sandbox.chat_events import NewChatMessage, SendChatMessage
-from harvest.agent_sandbox.event_helpers import SyncEventBus
-from harvest.agent_sandbox.sandbox_gateway import SandboxGateway
+from harvest.agent_sandbox.chat.events import NewChatMessage, SendChatMessage
+from harvest.agent_sandbox.events.helpers import SyncEventBus
+from harvest.agent_sandbox.services.gateway import SandboxGateway
 from harvest.events.base import (
     DataFetchRequested,
     ExternalEventFired,

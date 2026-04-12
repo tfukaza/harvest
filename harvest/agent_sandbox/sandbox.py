@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 
 from harvest.agent_sandbox.config import AgentSandboxConfig
 from harvest.agent_sandbox.endpoints import DeliveryMode, GroupChatDefinition, SandboxEndpoint
-from harvest.agent_sandbox.processors import MessageProcessor
+from harvest.agent_sandbox.processors.base import MessageProcessor
 from harvest.core.runtime import Runtime
 
 

@@ -11,7 +11,7 @@ import pytest
 
 from harvest.agent_sandbox.basic_sandbox import AgentStatus, BasicSandbox
 from harvest.agent_sandbox.config import AgentSandboxConfig
-from harvest.agent_sandbox.channels import GroupChannel
+from harvest.agent_sandbox.chat.channels import GroupChannel
 from harvest.harvest_agent import HarvestAgent, HarvestAgentConfig
 from harvest.core.policy import AgentPolicy, ChildPolicyMode
 from harvest.core.policy_registry import PolicyRegistry
@@ -122,18 +122,18 @@ def test_lifecycle_happy_path():
     assert AgentStatus.UNRECOVERABLE.value == "unrecoverable"
 
     # Verify lifecycle events module imports
-    from harvest.agent_sandbox.lifecycle_events import (
+    from harvest.agent_sandbox.lifecycle.events import (
         AgentStarted, AgentStatusChanged, AgentStopped,
         CreateAgentRequest, CreateAgentResponse,
         ShutdownAgentRequest, ShutdownAgentResponse,
     )
 
     # Verify chat client module imports
-    from harvest.agent_sandbox.chat_client import ChatRouterClient
-    from harvest.agent_sandbox.agent_manager_client import AgentManagerClient
+    from harvest.agent_sandbox.chat.client import ChatRouterClient
+    from harvest.agent_sandbox.lifecycle.manager_client import AgentManagerClient
 
     # Verify service events module imports
-    from harvest.agent_sandbox.service_events import (
+    from harvest.agent_sandbox.services.events import (
         FetchDataRequest, FetchDataResponse,
     )
 

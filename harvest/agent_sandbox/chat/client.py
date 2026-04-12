@@ -10,7 +10,7 @@ import logging
 import uuid
 from typing import Any
 
-from harvest.agent_sandbox.chat_events import (
+from harvest.agent_sandbox.chat.events import (
     AddAgentToChannelRequest,
     AddAgentToChannelResponse,
     ChatMessageDelivered,
@@ -28,7 +28,7 @@ from harvest.agent_sandbox.chat_events import (
     StakeGranted,
     StakeQueued,
 )
-from harvest.agent_sandbox.event_helpers import SyncEventBus, dispatch_and_wait
+from harvest.agent_sandbox.events.helpers import SyncEventBus, dispatch_and_wait
 from harvest.events.base import HarvestEvent
 
 logger = logging.getLogger(__name__)

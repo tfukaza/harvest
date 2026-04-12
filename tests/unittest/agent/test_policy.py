@@ -154,7 +154,7 @@ def test_policy_receive_without_send() -> None:
 
 def test_policy_participate_without_create() -> None:
     """Agent with can_create_channel=False can still participate in existing channels."""
-    from harvest.agent_sandbox.channels import GroupChannel
+    from harvest.agent_sandbox.chat.channels import GroupChannel
 
     policy = AgentPolicy(name="participant", can_create_channel=False, can_send_messages=True)
     sandbox, agent = _make_sandbox_agent(policy=policy)

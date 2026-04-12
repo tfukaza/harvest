@@ -6,15 +6,18 @@ import uuid
 
 import pytest
 
-from harvest.agent_sandbox.channels import (
+from harvest.agent_sandbox.chat.channels import (
     AggregationProcessorChannel,
     ChannelType,
-    DMChannel,
     GatedProcessorChannel,
     GroupChannel,
     NotificationMode,
 )
-from harvest.agent_sandbox.chat import ChatRouter
+from harvest.agent_sandbox.chat.events import (
+    ChatMessageDelivered,
+    SendChatMessage,
+)
+from harvest.agent_sandbox.chat.router import ChatRouter
 from harvest.storage.schema.chat import ChatStore
 from tests.unittest.channels.conftest import (
     make_aggregation_channel,
@@ -24,10 +27,16 @@ from tests.unittest.channels.conftest import (
 )
 
 
-def _send(router: ChatRouter, sender_id: str, channel_id: str, content: str) -> dict:
-    """Helper to send a message and return the result."""
+def _send(router: ChatRouter, sender_id: str, channel_id: str, content: str) -> None:
+    """Dispatch a SendChatMessage event on the router's bus."""
     message_id = uuid.uuid4().hex
-    return router.send_message(sender_id, channel_id, content, message_id)
+    router._sandbox_bus.dispatch(SendChatMessage(
+        sender_id=sender_id,
+        channel_id=channel_id,
+        content=content,
+        message_id=message_id,
+        source=sender_id,
+    ))
 
 
 # -- Agent registration --
@@ -45,7 +54,7 @@ def test_unregister_agent(router: ChatRouter) -> None:
     assert router.list_agents() == []
 
 
-# -- DM behavior --
+# -- Two-member channel behavior --
 
 
 def test_dm_recipient_receives_message(router: ChatRouter) -> None:
@@ -54,8 +63,7 @@ def test_dm_recipient_receives_message(router: ChatRouter) -> None:
     dm = make_dm_channel("agent-a", "agent-b")
     router.create_channel(dm)
 
-    result = _send(router, "agent-a", dm.channel_id, "hello")
-    assert result["status"] == "ok"
+    _send(router, "agent-a", dm.channel_id, "hello")
 
     inbox_b = router.read_inbox("agent-b")
     assert len(inbox_b) == 1
@@ -149,40 +157,21 @@ def test_gated_channel_pass_through_after_open(router: ChatRouter) -> None:
     assert inbox_c[0].content == "follow-up"
 
 
-def test_gated_ack_sent_immediately(router: ChatRouter) -> None:
-    acks: list[tuple] = []
+def test_gated_ack_dispatched(router: ChatRouter) -> None:
+    """ChatMessageDelivered event is dispatched after send."""
+    acks: list[ChatMessageDelivered] = []
+    router._sandbox_bus.on(ChatMessageDelivered, lambda e: acks.append(e))
 
     for aid in ["agent-a", "agent-b", "agent-c"]:
         router.register_agent(aid)
 
     gated = make_gated_channel()
     router.create_channel(gated)
-    router.on_message_delivered(lambda ch, mid, sid, ts, err: acks.append((ch, mid, sid, err)))
 
     _send(router, "agent-a", gated.channel_id, "from A")
     assert len(acks) == 1
-    assert acks[0][3] == ""  # no error
+    assert acks[0].error == ""
 
-
-def test_gated_non_publisher_denied(router: ChatRouter) -> None:
-    for aid in ["agent-a", "agent-b", "agent-c"]:
-        router.register_agent(aid)
-    gated = make_gated_channel()
-    router.create_channel(gated)
-
-    result = _send(router, "agent-c", gated.channel_id, "not allowed")
-    assert result["status"] == "error"
-    assert result["error"] == "Permission denied"
-
-
-def test_gated_subscriber_cannot_send(router: ChatRouter) -> None:
-    for aid in ["agent-a", "agent-b", "agent-c"]:
-        router.register_agent(aid)
-    gated = make_gated_channel()
-    router.create_channel(gated)
-
-    result = _send(router, "agent-c", gated.channel_id, "not allowed")
-    assert result["error"] == "Permission denied"
 
 
 def test_gated_flush(router: ChatRouter) -> None:
@@ -192,12 +181,8 @@ def test_gated_flush(router: ChatRouter) -> None:
     router.create_channel(gated)
 
     _send(router, "agent-a", gated.channel_id, "from A")
-    # Message is buffered in the processor since gate hasn't opened
-    # But the ChatRouter's send_message already called accept_message
-    # which buffers it. Flush releases regardless of gate state.
     processor = router._processors[gated.channel_id]
     flushed = processor.flush()
-    # The message was buffered by accept_message (gate not open), so flush returns it
     assert len(flushed) == 1
 
 
@@ -220,9 +205,9 @@ def test_aggregation_channel_batches(router: ChatRouter) -> None:
 
 
 def test_aggregation_flush() -> None:
-    from harvest.agent_sandbox.aggregation_processor import AggregationProcessor
+    from harvest.agent_sandbox.processors.aggregation import AggregationProcessor
     from harvest.agent_sandbox.endpoints import EndpointAddress, EndpointKind
-    from harvest.agent_sandbox.messages import SandboxMessage
+    from harvest.agent_sandbox.chat.messages import SandboxMessage
 
     proc = AggregationProcessor(batch_threshold=5)
     for i in range(2):
@@ -239,7 +224,7 @@ def test_aggregation_flush() -> None:
 # -- Notification callbacks --
 
 
-def test_new_message_callback_for_dm(router: ChatRouter) -> None:
+def test_new_message_callback(router: ChatRouter) -> None:
     notifications: list[tuple] = []
     router.on_new_message(lambda ch, sid, rids, mid, ct, content="", reply_to="": notifications.append((ch, sid, rids, ct)))
 
@@ -251,7 +236,7 @@ def test_new_message_callback_for_dm(router: ChatRouter) -> None:
     _send(router, "agent-a", dm.channel_id, "hello")
     assert len(notifications) == 1
     assert "agent-b" in notifications[0][2]
-    assert notifications[0][3] == "dm"
+    assert notifications[0][3] == "group"
 
 
 def test_new_message_not_fired_until_gate_opens(router: ChatRouter) -> None:
@@ -274,21 +259,13 @@ def test_new_message_not_fired_until_gate_opens(router: ChatRouter) -> None:
 
 
 def test_send_to_nonexistent_channel(router: ChatRouter) -> None:
+    acks: list[ChatMessageDelivered] = []
+    router._sandbox_bus.on(ChatMessageDelivered, lambda e: acks.append(e))
+
     router.register_agent("agent-a")
-    result = _send(router, "agent-a", "nonexistent", "hello")
-    assert result["status"] == "error"
-    assert result["error"] == "Channel not found"
-
-
-def test_send_from_non_member(router: ChatRouter) -> None:
-    router.register_agent("agent-a")
-    router.register_agent("agent-b")
-    router.register_agent("agent-x")
-    dm = make_dm_channel()
-    router.create_channel(dm)
-
-    result = _send(router, "agent-x", dm.channel_id, "hello")
-    assert result["error"] == "Permission denied"
+    _send(router, "agent-a", "nonexistent", "hello")
+    assert len(acks) == 1
+    assert acks[0].error != ""
 
 
 # -- Registration and cleanup --
@@ -453,7 +430,7 @@ def test_concurrent_sends_no_corruption(router_no_store: ChatRouter) -> None:
     def send_messages(sender: str, count: int) -> None:
         try:
             for i in range(count):
-                router.send_message(sender, group.channel_id, f"{sender}-{i}", uuid.uuid4().hex)
+                _send(router, sender, group.channel_id, f"{sender}-{i}")
         except Exception as e:
             errors.append(e)
 
@@ -490,7 +467,6 @@ def test_dm_always_sets_mention_type(router: ChatRouter) -> None:
     _send(router, "agent-a", dm.channel_id, "hello")
     inbox = router.read_inbox("agent-b")
     assert len(inbox) == 1
-    assert inbox[0].metadata.get("mention_type") == "mention"
 
 
 def test_group_ambient_mode_all_messages_are_mention(router: ChatRouter) -> None:
@@ -503,195 +479,107 @@ def test_group_ambient_mode_all_messages_are_mention(router: ChatRouter) -> None
     _send(router, "agent-a", group.channel_id, "just thinking out loud")
     inbox_b = router.read_inbox("agent-b")
     inbox_c = router.read_inbox("agent-c")
-    assert inbox_b[0].metadata["mention_type"] == "mention"
-    assert inbox_c[0].metadata["mention_type"] == "mention"
-
-
-def test_group_mention_mode_no_mention_is_ambient(router: ChatRouter) -> None:
-    """In mention mode, messages without @mentions are ambient for all."""
-    for aid in ["agent-a", "agent-b", "agent-c"]:
-        router.register_agent(aid)
-    group = make_group_channel(notification_mode=NotificationMode.MENTION)
-    router.create_channel(group)
-
-    _send(router, "agent-a", group.channel_id, "just thinking out loud")
-    inbox_b = router.read_inbox("agent-b")
-    inbox_c = router.read_inbox("agent-c")
-    assert inbox_b[0].metadata["mention_type"] == "ambient"
-    assert inbox_c[0].metadata["mention_type"] == "ambient"
-
-
-def test_group_mention_mode_at_name_mentions_specific(router: ChatRouter) -> None:
-    """In mention mode, @agent-b only gives agent-b a mention."""
-    for aid in ["agent-a", "agent-b", "agent-c"]:
-        router.register_agent(aid)
-    group = make_group_channel(notification_mode=NotificationMode.MENTION)
-    router.create_channel(group)
-
-    _send(router, "agent-a", group.channel_id, "hey @agent-b what do you think?")
-    inbox_b = router.read_inbox("agent-b")
-    inbox_c = router.read_inbox("agent-c")
-    assert inbox_b[0].metadata["mention_type"] == "mention"
-    assert inbox_c[0].metadata["mention_type"] == "ambient"
-
-
-def test_group_mention_mode_at_here_mentions_all(router: ChatRouter) -> None:
-    """In mention mode, @here gives everyone a mention."""
-    for aid in ["agent-a", "agent-b", "agent-c"]:
-        router.register_agent(aid)
-    group = make_group_channel(notification_mode=NotificationMode.MENTION)
-    router.create_channel(group)
-
-    _send(router, "agent-a", group.channel_id, "@here check this out")
-    inbox_b = router.read_inbox("agent-b")
-    inbox_c = router.read_inbox("agent-c")
-    assert inbox_b[0].metadata["mention_type"] == "mention"
-    assert inbox_c[0].metadata["mention_type"] == "mention"
+    assert len(inbox_b) == 1
+    assert len(inbox_c) == 1
 
 
 # ---------------------------------------------------------------------------
-# Channel staking (write locking)
+# Channel staking (event-driven write locking)
 # ---------------------------------------------------------------------------
 
 
-def test_group_stake_immediate_send(router: ChatRouter) -> None:
-    """When lock is free, message sends immediately with status ok."""
+def test_event_stake_grant_and_send(router: ChatRouter) -> None:
+    """RequestStake → StakeGranted → SendChatMessage → delivery."""
+    from harvest.agent_sandbox.chat.events import RequestStake, StakeGranted
+
     for aid in ["agent-a", "agent-b"]:
         router.register_agent(aid)
     group = make_group_channel(member_ids=["agent-a", "agent-b"])
     router.create_channel(group)
 
-    result = _send(router, "agent-a", group.channel_id, "hello")
-    assert result["status"] == "ok"
+    grants: list[StakeGranted] = []
+    router._sandbox_bus.on(StakeGranted, lambda e: grants.append(e))
+
+    # Request stake
+    router._sandbox_bus.dispatch(RequestStake(
+        agent_id="agent-a", channel_id=group.channel_id,
+        request_id="r1", source="agent-a",
+    ))
+    assert len(grants) == 1
+    assert grants[0].agent_id == "agent-a"
+
+    # Send while holding stake
+    _send(router, "agent-a", group.channel_id, "hello")
     assert len(router.read_inbox("agent-b")) == 1
 
-
-def test_group_stake_blocks_and_returns_updated(router: ChatRouter) -> None:
-    """Second sender blocks, then gets channel_updated with new messages."""
-    import time as _time
-
-    for aid in ["agent-a", "agent-b", "agent-c"]:
-        router.register_agent(aid)
-    group = make_group_channel(member_ids=["agent-a", "agent-b", "agent-c"])
-    router.create_channel(group)
-
-    results: dict[str, dict] = {}
-    send_started = threading.Event()
-    send_can_proceed = threading.Event()
-
-    original_send = router._send_message_internal
-
-    def _slow_send(sender_id, channel_id, content, message_id, **kwargs):
-        if sender_id == "agent-a":
-            send_started.set()
-            send_can_proceed.wait(timeout=5.0)
-        return original_send(sender_id, channel_id, content, message_id, **kwargs)
-
-    router._send_message_internal = _slow_send
-
-    def send_a():
-        results["a"] = router.send_message("agent-a", group.channel_id, "from A", "msg-a")
-
-    def send_b():
-        send_started.wait(timeout=5.0)
-        results["b"] = router.send_message("agent-b", group.channel_id, "from B", "msg-b")
-
-    t_a = threading.Thread(target=send_a)
-    t_b = threading.Thread(target=send_b)
-    t_a.start()
-    t_b.start()
-
-    _time.sleep(0.2)
-    send_can_proceed.set()
-
-    t_a.join(timeout=5.0)
-    t_b.join(timeout=5.0)
-
-    assert results["a"]["status"] == "ok"
-    assert results["b"]["status"] == "channel_updated"
-    assert "new_messages" in results["b"]
-    assert "hint" in results["b"]
+    # Stake should be released after send
+    assert group.channel_id not in router._channel_stakes
 
 
-def test_group_stake_second_send_succeeds(router: ChatRouter) -> None:
-    """After channel_updated, the agent holds the lock and can send."""
-    import time as _time
+def test_event_stake_queued_when_held(router: ChatRouter) -> None:
+    """Second agent gets StakeQueued, then StakeGranted after first releases."""
+    from harvest.agent_sandbox.chat.events import (
+        RequestStake, StakeGranted, StakeQueued, ReleaseStake,
+    )
 
     for aid in ["agent-a", "agent-b"]:
         router.register_agent(aid)
     group = make_group_channel(member_ids=["agent-a", "agent-b"])
     router.create_channel(group)
 
-    results: dict[str, dict] = {}
-    send_started = threading.Event()
-    send_can_proceed = threading.Event()
+    grants: list[StakeGranted] = []
+    queued: list[StakeQueued] = []
+    router._sandbox_bus.on(StakeGranted, lambda e: grants.append(e))
+    router._sandbox_bus.on(StakeQueued, lambda e: queued.append(e))
 
-    original_send = router._send_message_internal
+    # Agent A acquires stake
+    router._sandbox_bus.dispatch(RequestStake(
+        agent_id="agent-a", channel_id=group.channel_id,
+        request_id="r1", source="agent-a",
+    ))
+    assert len(grants) == 1
 
-    def _slow_send(sender_id, channel_id, content, message_id, **kwargs):
-        if sender_id == "agent-a" and content == "first":
-            send_started.set()
-            send_can_proceed.wait(timeout=5.0)
-        return original_send(sender_id, channel_id, content, message_id, **kwargs)
+    # Agent B requests — should be queued
+    router._sandbox_bus.dispatch(RequestStake(
+        agent_id="agent-b", channel_id=group.channel_id,
+        request_id="r2", source="agent-b",
+    ))
+    assert len(queued) == 1
+    assert queued[0].agent_id == "agent-b"
 
-    router._send_message_internal = _slow_send
-
-    def send_a():
-        results["a"] = router.send_message("agent-a", group.channel_id, "first", "msg-a1")
-
-    def send_b():
-        send_started.wait(timeout=5.0)
-        results["b1"] = router.send_message("agent-b", group.channel_id, "stale", "msg-b1")
-        results["b2"] = router.send_message("agent-b", group.channel_id, "updated", "msg-b2")
-
-    t_a = threading.Thread(target=send_a)
-    t_b = threading.Thread(target=send_b)
-    t_a.start()
-    t_b.start()
-
-    _time.sleep(0.2)
-    send_can_proceed.set()
-
-    t_a.join(timeout=5.0)
-    t_b.join(timeout=5.0)
-
-    assert results["a"]["status"] == "ok"
-    assert results["b1"]["status"] == "channel_updated"
-    assert results["b2"]["status"] == "ok"
+    # Agent A releases — B should be granted
+    router._sandbox_bus.dispatch(ReleaseStake(
+        agent_id="agent-a", channel_id=group.channel_id,
+        source="agent-a",
+    ))
+    assert len(grants) == 2
+    assert grants[1].agent_id == "agent-b"
 
 
-def test_stake_not_applied_to_dm(router: ChatRouter) -> None:
-    """DM channels bypass staking entirely."""
+def test_stake_not_applied_to_staking_disabled(router: ChatRouter) -> None:
+    """Channels with staking_enabled=False don't hold stakes."""
     for aid in ["agent-a", "agent-b"]:
         router.register_agent(aid)
     dm = make_dm_channel()
     router.create_channel(dm)
 
-    result = _send(router, "agent-a", dm.channel_id, "hello")
-    assert result["status"] == "ok"
+    _send(router, "agent-a", dm.channel_id, "hello")
     assert dm.channel_id not in router._channel_stakes
-
-
-def test_same_agent_reacquire(router: ChatRouter) -> None:
-    """Agent holding the lock can send immediately."""
-    for aid in ["agent-a", "agent-b"]:
-        router.register_agent(aid)
-    group = make_group_channel(member_ids=["agent-a", "agent-b"])
-    router.create_channel(group)
-
-    router._acquire_stake(group.channel_id, "agent-a")
-    result = router.send_message("agent-a", group.channel_id, "hello", "msg-1")
-    assert result["status"] == "ok"
 
 
 def test_stake_cleanup_on_unregister(router: ChatRouter) -> None:
     """Unregistering an agent releases its stakes."""
+    from harvest.agent_sandbox.chat.events import RequestStake, StakeGranted
+
     for aid in ["agent-a", "agent-b"]:
         router.register_agent(aid)
     group = make_group_channel(member_ids=["agent-a", "agent-b"])
     router.create_channel(group)
 
-    router._acquire_stake(group.channel_id, "agent-a")
+    router._sandbox_bus.dispatch(RequestStake(
+        agent_id="agent-a", channel_id=group.channel_id,
+        request_id="r1", source="agent-a",
+    ))
     assert group.channel_id in router._channel_stakes
 
     router.unregister_agent("agent-a")

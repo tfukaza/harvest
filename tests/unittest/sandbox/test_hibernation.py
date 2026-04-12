@@ -12,10 +12,10 @@ import pytest
 
 from harvest.core.agent import Agent
 from harvest.agent_sandbox.basic_sandbox import BasicSandbox, HIBERNATION_POLL_MIN, _AgentHandle
-from harvest.agent_sandbox.channels import DMChannel
-from harvest.agent_sandbox.chat import ChatRouter
+from harvest.agent_sandbox.chat.channels import GroupChannel
+from harvest.agent_sandbox.chat.router import ChatRouter
 from harvest.agent_sandbox.config import AgentSandboxConfig
-from harvest.agent_sandbox.hibernation import EventSource, InboxEventSource, WakeEvent
+from harvest.agent_sandbox.lifecycle.hibernation import EventSource, InboxEventSource, WakeEvent
 
 
 # ---------------------------------------------------------------------------
@@ -94,21 +94,35 @@ def test_wake_event_frozen() -> None:
 # ---------------------------------------------------------------------------
 
 
+def _make_router() -> ChatRouter:
+    """Create a ChatRouter with a SyncEventBus for tests."""
+    from harvest.agent_sandbox.events.helpers import SyncEventBus
+    return ChatRouter(sandbox_bus=SyncEventBus(name="test-hib"))
+
+
+def _send(router: ChatRouter, sender_id: str, channel_id: str, content: str, message_id: str) -> None:
+    from harvest.agent_sandbox.chat.events import SendChatMessage
+    router._sandbox_bus.dispatch(SendChatMessage(
+        sender_id=sender_id, channel_id=channel_id,
+        content=content, message_id=message_id, source=sender_id,
+    ))
+
+
 def test_inbox_event_source_empty() -> None:
-    router = ChatRouter()
+    router = _make_router()
     router.register_agent("agent-a")
     source = InboxEventSource(router)
     assert source.poll("agent-a") == []
 
 
 def test_inbox_event_source_returns_events() -> None:
-    router = ChatRouter()
+    router = _make_router()
     router.register_agent("agent-a")
     router.register_agent("agent-b")
-    dm = DMChannel(channel_id="dm:a:b", member_ids=["agent-a", "agent-b"])
+    dm = GroupChannel(channel_id="dm:a:b", member_ids=["agent-a", "agent-b"], staking_enabled=False)
     router.create_channel(dm)
 
-    router.send_message("agent-a", "dm:a:b", "hello", "msg-1")
+    _send(router, "agent-a", "dm:a:b", "hello", "msg-1")
 
     source = InboxEventSource(router)
     events = source.poll("agent-b")
@@ -121,13 +135,13 @@ def test_inbox_event_source_returns_events() -> None:
 
 
 def test_inbox_event_source_consumes_messages() -> None:
-    router = ChatRouter()
+    router = _make_router()
     router.register_agent("agent-a")
     router.register_agent("agent-b")
-    dm = DMChannel(channel_id="dm:a:b", member_ids=["agent-a", "agent-b"])
+    dm = GroupChannel(channel_id="dm:a:b", member_ids=["agent-a", "agent-b"], staking_enabled=False)
     router.create_channel(dm)
 
-    router.send_message("agent-a", "dm:a:b", "hello", "msg-1")
+    _send(router, "agent-a", "dm:a:b", "hello", "msg-1")
 
     source = InboxEventSource(router)
     events = source.poll("agent-b")

@@ -13,7 +13,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from harvest.agent_sandbox.service_router import SandboxServiceRouter
+from harvest.agent_sandbox.services.router import SandboxServiceRouter
 from harvest.interfaces.service import ServicePermission, ServiceRole
 from harvest.core.policy import AgentPolicy
 from harvest.services.paper_broker import PaperBrokerService
@@ -189,7 +189,7 @@ def test_discover_tools_catalogue_filters_by_policy() -> None:
         name="limited",
         allowed_services=(ServicePermission("newsapi"),),
     )
-    _, discover = router.make_discovery_tool("agent-1", policy, inject_callback=lambda a, t: None)
+    _, discover = router.make_discovery_tool("agent-1", policy, inject_callback=lambda t: None)
     catalogue = json.loads(discover())
     names = {item["name"] for item in catalogue}
 
@@ -331,7 +331,7 @@ def test_discover_tools_catalogue_service_type_correct() -> None:
             ServicePermission("perplexity"),
         ),
     )
-    _, discover = router.make_discovery_tool("agent-1", policy, inject_callback=lambda a, t: None)
+    _, discover = router.make_discovery_tool("agent-1", policy, inject_callback=lambda t: None)
     catalogue = json.loads(discover())
 
     by_name = {item["name"]: item for item in catalogue}

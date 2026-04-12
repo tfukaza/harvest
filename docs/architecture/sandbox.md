@@ -88,7 +88,7 @@ The `from_manifest()` class method creates a fully wired sandbox from a YAML man
    - Injects an **identity footer** into the system prompt telling the agent its ID and mention conventions
    - Creates a `HarvestAgent` and registers it with the sandbox
 4. For each channel in the manifest:
-   - Creates the appropriate channel type (DM, Group, GatedProcessor, AggregationProcessor)
+   - Creates the appropriate channel type (Group, GatedProcessor, AggregationProcessor)
    - Registers it on the ChatRouter with the correct notification mode
 5. Returns the sandbox in a ready-but-not-started state
 
@@ -114,12 +114,11 @@ The `BasicSandbox` accepts an optional `admin_queue` parameter (`AdminMessageQue
 
 Each sandbox creates a per-sandbox synchronous event bus (`sandbox_bus`, an instance of `SyncEventBus`) named `sandbox-{runner_id}`. Internal components (ChatRouter, ServiceRouter, SandboxGateway) subscribe to and dispatch events on this bus. The `SandboxGateway` relays whitelisted event types between the `sandbox_bus` and the orchestrator-level `event_bus`, providing event isolation — sandbox-internal events stay local unless explicitly promoted.
 
-## Parent-Child Agent Tracking
+## Agent Lifecycle Tracking
 
-`BasicSandbox` tracks the lifecycle of dynamically created child agents through three maps:
+`BasicSandbox` tracks agent lifecycle through two maps:
 
-- `_parent_map: dict[str, str]` — maps each child `agent_id` to its `parent_id`
 - `_agent_policies: dict[str, AgentPolicy]` — stores the policy for every registered agent
 - `_shutdown_reasons: dict[str, str]` — records why each agent was stopped (e.g., parent request, error)
 
-The sandbox listens for `CreateAgentRequest`, `ShutdownAgentRequest`, and `GetAgentStatusRequest` events on the `sandbox_bus`. Parent agents can only shut down their own children (verified against `_parent_map`). `AgentStarted` and `AgentStopped` events are dispatched on the bus so other components can react to lifecycle changes.
+The sandbox listens for `CreateAgentRequest`, `ShutdownAgentRequest`, and `GetAgentStatusRequest` events on the `sandbox_bus`. Ownership enforcement (e.g. ensuring a parent can only shut down its own children) is the responsibility of `AgentManagerClient` on the agent side, not the sandbox. `AgentStarted` and `AgentStopped` events are dispatched on the bus so other components can react to lifecycle changes.

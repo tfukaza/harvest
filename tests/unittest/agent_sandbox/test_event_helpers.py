@@ -3,7 +3,7 @@
 
 import threading
 
-from harvest.agent_sandbox.event_helpers import (
+from harvest.agent_sandbox.events.helpers import (
     SyncEventBus,
     dispatch_and_wait,
     wait_for_event,

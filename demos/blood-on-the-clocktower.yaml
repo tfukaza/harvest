@@ -61,7 +61,7 @@ I don't want to just suppress it. I want to make sure why this error is being lo
         You have these tools available:
         - `create_agent(agent_id, policy_name)` — spawn a player agent
         - `add_agent_to_channel(agent_id, channel_id)` — add player to a channel
-        - `create_channel(channel_id, channel_type, member_ids)` — create DM or group
+        - `create_channel(channel_id, channel_type, member_ids)` — create a group channel
         - `send_message(channel_id, content)` — post to any channel
         - `read_messages(channel_id)` — read channel messages
         - `shutdown_agent(agent_id)` — remove an eliminated player
@@ -122,12 +122,12 @@ I don't want to just suppress it. I want to make sure why this error is being lo
                        member_ids=["storyteller", "<imp_id>", "<poisoner_id>"])
         ```
 
-        ### Step 6: DM Each Player Their Role
-        Create a DM channel with each player and send their role info:
+        ### Step 6: Message Each Player Their Role
+        Create a private channel with each player and send their role info:
         ```
-        create_channel(channel_id="dm-alice", channel_type="dm",
+        create_channel(channel_id="private-alice", channel_type="group",
                        member_ids=["storyteller", "alice"])
-        send_message(channel_id="dm-alice", content="...")
+        send_message(channel_id="private-alice", content="...")
         ```
 
         For Good players, send:

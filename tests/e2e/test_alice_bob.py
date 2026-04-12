@@ -144,7 +144,7 @@ class TestManifestAndSandbox:
     def test_seed_message_reaches_both_agents(self) -> None:
         """Seed message appears in both agents' inboxes."""
         sandbox = BasicSandbox.from_manifest(MANIFEST_PATH)
-        sandbox.chat_router.inject_seed("tech-talk", "Test topic")
+        sandbox.chat_router.send_message("system", "tech-talk", "Test topic", "seed-test")
 
         alice_inbox = sandbox.chat_router.peek_inbox("alice")
         bob_inbox = sandbox.chat_router.peek_inbox("bob")
@@ -183,7 +183,7 @@ class TestConversation:
         sandbox = BasicSandbox.from_manifest(MANIFEST_PATH, chat_store=chat_store)
         _patch_agents(sandbox)
 
-        sandbox.chat_router.inject_seed("tech-talk", "Test topic")
+        sandbox.chat_router.send_message("system", "tech-talk", "Test topic", "seed-test")
 
         for _ in range(2):
             _step_agent(sandbox, "alice")
@@ -198,7 +198,7 @@ class TestConversation:
         sandbox = BasicSandbox.from_manifest(MANIFEST_PATH, chat_store=chat_store)
         _patch_agents(sandbox)
 
-        sandbox.chat_router.inject_seed("tech-talk", "Test topic")
+        sandbox.chat_router.send_message("system", "tech-talk", "Test topic", "seed-test")
         _step_agent(sandbox, "alice")
         _step_agent(sandbox, "bob")
 
@@ -213,7 +213,7 @@ class TestConversation:
         sandbox = BasicSandbox.from_manifest(MANIFEST_PATH, chat_store=chat_store)
         _patch_agents(sandbox)
 
-        sandbox.chat_router.inject_seed("tech-talk", "Test topic")
+        sandbox.chat_router.send_message("system", "tech-talk", "Test topic", "seed-test")
         _step_agent(sandbox, "alice")
 
         history = sandbox.chat_router.load_channel_history("tech-talk")

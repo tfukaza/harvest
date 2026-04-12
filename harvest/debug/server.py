@@ -133,28 +133,32 @@ class DebugMonitorServer:
                             sandbox_id, channel_id, content,
                         )
                         if sandbox_id and channel_id and content:
+                            from harvest.agent_sandbox.chat.events import SendChatMessage
                             message_id = uuid.uuid4().hex
                             try:
                                 sandbox = registry.get_sandbox(sandbox_id)
-                                result = sandbox.chat_router.send_message(
+                                sandbox._sandbox_bus.dispatch(SendChatMessage(
                                     sender_id="admin",
                                     channel_id=channel_id,
                                     content=content,
                                     message_id=message_id,
-                                )
-                            except KeyError:
-                                result = {"status": "error", "error": f"Unknown sandbox: {sandbox_id}"}
-                            if result.get("status") == "error":
-                                typing_queue.put({
-                                    "type": "admin_blocked",
-                                    "reason": result.get("error", "send failed"),
-                                })
-                            else:
+                                    source="admin",
+                                ))
                                 typing_queue.put({
                                     "type": "admin_queued",
                                     "sandbox_id": sandbox_id,
                                     "channel_id": channel_id,
                                     "message_id": message_id,
+                                })
+                            except KeyError:
+                                typing_queue.put({
+                                    "type": "admin_blocked",
+                                    "reason": f"Unknown sandbox: {sandbox_id}",
+                                })
+                            except Exception as exc:
+                                typing_queue.put({
+                                    "type": "admin_blocked",
+                                    "reason": str(exc),
                                 })
                         else:
                             typing_queue.put({

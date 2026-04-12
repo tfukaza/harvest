@@ -19,7 +19,7 @@ This document has been split into focused subsystem documents under `architectur
 | Document | Scope |
 |----------|-------|
 | [architecture/chat-router.md](architecture/chat-router.md) | ChatRouter: message routing, delivery, staking, agent tools |
-| [architecture/channels.md](architecture/channels.md) | Channel types (DM, group, processor), mention system, notification modes |
+| [architecture/channels.md](architecture/channels.md) | Channel types (group, processor), mention system, notification modes |
 | [architecture/processors.md](architecture/processors.md) | GatedProcessor and AggregationProcessor channel buffering |
 | [architecture/hibernation.md](architecture/hibernation.md) | Hibernation loop, EventSources, wake event formatting |
 

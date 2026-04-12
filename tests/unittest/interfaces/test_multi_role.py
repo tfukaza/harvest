@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 
-from harvest.agent_sandbox.service_router import SandboxServiceRouter
+from harvest.agent_sandbox.services.router import SandboxServiceRouter
 from harvest.interfaces.examples.mock_full_service import MockFullService
 from harvest.interfaces.service import ServiceRole
 from harvest.core.policy import AgentPolicy

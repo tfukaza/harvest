@@ -54,7 +54,7 @@ See `examples/orchestrator_example.py` for the canonical usage pattern.
 The agent sandbox hosts multiple LLM-backed agents in a Slack-like collaboration environment:
 
 - **BasicSandbox** — concrete sandbox with per-agent threading and hibernation loop
-- **ChatRouter** — message routing with DM, group, and processor channels
+- **ChatRouter** — message routing with group and processor channels
 - **Mention System** — `@here` and `@agent-name` conventions with notification modes
 - **Hibernation** — jittered sleep/wake cycle with EventSources
 - **YAML Manifest** — declarative sandbox definition

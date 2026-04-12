@@ -10,7 +10,7 @@ import yaml
 
 logger = logging.getLogger(__name__)
 
-from harvest.agent_sandbox.channels import ChannelType, NotificationMode
+from harvest.agent_sandbox.chat.channels import ChannelType, NotificationMode
 from harvest.core.policy import AgentPolicy
 from harvest.core.policy_registry import PolicyRegistry, _parse_policy
 
@@ -41,6 +41,7 @@ class ChannelManifestEntry:
     subscriber_ids: list[str] = field(default_factory=list)
     batch_threshold: int = 1
     notification_mode: NotificationMode = NotificationMode.AMBIENT
+    staking_enabled: bool = True
 
 
 @dataclass
@@ -77,7 +78,6 @@ class SandboxManifest:
 
 
 _CHANNEL_TYPE_MAP = {
-    "dm": ChannelType.DM,
     "group": ChannelType.GROUP,
     "processor_gated": ChannelType.PROCESSOR_GATED,
     "processor_aggregation": ChannelType.PROCESSOR_AGGREGATION,
@@ -194,11 +194,6 @@ def load_manifest(
                     f"Channel '{channel_id}' references undefined agent '{mid}'"
                 )
 
-        if channel_type == ChannelType.DM and len(member_ids) != 2:
-            raise ValueError(
-                f"DM channel '{channel_id}' must have exactly 2 members, got {len(member_ids)}"
-            )
-
         if channel_type in (ChannelType.PROCESSOR_GATED, ChannelType.PROCESSOR_AGGREGATION):
             if not publisher_ids:
                 raise ValueError(
@@ -221,6 +216,7 @@ def load_manifest(
             subscriber_ids=subscriber_ids,
             batch_threshold=channel_data.get("batch_threshold", 1),
             notification_mode=notif_mode,
+            staking_enabled=channel_data.get("staking_enabled", True),
         )
 
     # Parse seeds

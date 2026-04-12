@@ -13,7 +13,7 @@ from typing import Any
 
 import pytest
 
-from harvest.agent_sandbox.service_router import SandboxServiceRouter
+from harvest.agent_sandbox.services.router import SandboxServiceRouter
 from harvest.agent_sandbox.system_prompt_builder import SystemPromptBuilder
 from harvest.interfaces.service import (
     ActionCommand,
@@ -235,7 +235,7 @@ def test_discover_tools_respects_analyst_policy() -> None:
         name="analyst",
         allowed_services=(ServicePermission("market-data"),),
     )
-    _, discover = router.make_discovery_tool("analyst-1", analyst_policy, inject_callback=lambda aid, t: None)
+    _, discover = router.make_discovery_tool("analyst-1", analyst_policy, inject_callback=lambda t: None)
     catalogue = json.loads(discover())
     names = {item["name"] for item in catalogue}
 
@@ -254,21 +254,21 @@ def test_discover_tools_activation_injects_correct_spec() -> None:
     )
     _, discover = router.make_discovery_tool(
         "analyst-1", analyst_policy,
-        inject_callback=lambda aid, tool: injected.append((aid, tool))
+        inject_callback=lambda tool: injected.append(tool)
     )
     result = json.loads(discover(tool_name="get_market_price"))
 
     assert result["name"] == "get_market_price"
     assert len(injected) == 1
-    assert injected[0][0] == "analyst-1"
-    assert injected[0][1].name == "get_market_price"
+    assert injected[0].name == "get_market_price"
 
 
 def test_event_notification_injected_on_delivery() -> None:
     """When an event is delivered, the notification appears in the system prompt."""
     builder = SystemPromptBuilder()
+    agent_id = "analyst-1"
 
-    def _add_notification(aid: str, src_id: str, evt_type: str) -> None:
+    def _add_notification(src_id: str, evt_type: str) -> None:
         block = (
             f"## Pending Event Notification\n\n"
             f"A new event has arrived from source '{src_id}' "
@@ -277,9 +277,8 @@ def test_event_notification_injected_on_delivery() -> None:
         builder.append("event_notifications", block)
 
     router = _build_router()
-    router.register_event_notification_callback(_add_notification)
+    router.register_event_notification_callback(agent_id, _add_notification)
 
-    agent_id = "analyst-1"
     router.register_agent_wake_callback(agent_id, wake_fn=lambda: None)
     router.subscribe_agent(agent_id, "price-alerts")
 

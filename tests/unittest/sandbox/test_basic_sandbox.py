@@ -12,8 +12,8 @@ import pytest
 
 from harvest.core.agent import Agent
 from harvest.agent_sandbox.basic_sandbox import BasicSandbox, _AgentHandle
-from harvest.agent_sandbox.channels import DMChannel, GroupChannel, GatedProcessorChannel
-from harvest.agent_sandbox.chat import ChatRouter
+from harvest.agent_sandbox.chat.channels import GroupChannel, GatedProcessorChannel
+from harvest.agent_sandbox.chat.router import ChatRouter
 from harvest.agent_sandbox.config import AgentSandboxConfig
 from harvest.agent_sandbox.manifest import load_manifest, SandboxManifest
 from harvest.core.policy import AgentPolicy, ChildPolicyMode
@@ -485,7 +485,7 @@ sandbox:
     sandbox = BasicSandbox.from_manifest(path)
     channels = sandbox.chat_router.list_channels()
     assert len(channels) == 1
-    from harvest.agent_sandbox.channels import AggregationProcessorChannel
+    from harvest.agent_sandbox.chat.channels import AggregationProcessorChannel
     assert isinstance(channels[0], AggregationProcessorChannel)
     assert channels[0].batch_threshold == 3
 

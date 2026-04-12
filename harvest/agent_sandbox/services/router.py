@@ -270,9 +270,9 @@ class SandboxServiceRouter:
         # Callbacks to wake agents when an event fires
         self._agent_wake_callbacks: dict[str, Callable[[], None]] = {}
 
-        # Callback for pushing event arrival notifications into system prompt
-        # agent_id, source_id, event_type → None
-        self._event_notification_callback: Callable[[str, str, str], None] | None = None
+        # Per-agent callbacks for pushing event arrival notifications into system prompt
+        # source_id, event_type → None
+        self._event_notification_callbacks: dict[str, Callable[[str, str], None]] = {}
 
         self._lock = threading.Lock()
 
@@ -404,18 +404,21 @@ class SandboxServiceRouter:
             self._agent_subscriptions.pop(agent_id, None)
             self._pending_events.pop(agent_id, None)
             self._agent_wake_callbacks.pop(agent_id, None)
+            self._event_notification_callbacks.pop(agent_id, None)
 
     def register_event_notification_callback(
         self,
-        callback: Callable[[str, str, str], None],
+        agent_id: str,
+        callback: Callable[[str, str], None],
     ) -> None:
-        """Register the callback invoked when an external event is delivered.
+        """Register a per-agent callback invoked when an external event is delivered.
 
         Args:
-            callback: Called once per agent per delivered external event.
-                Signature: ``(agent_id, source_id, event_type) -> None``.
+            agent_id: The agent this callback belongs to.
+            callback: Called when an external event arrives for this agent.
+                Signature: ``(source_id, event_type) -> None``.
         """
-        self._event_notification_callback = callback
+        self._event_notification_callbacks[agent_id] = callback
 
     # -- Auto-registration and discovery tools -------------------------------
 
@@ -477,7 +480,7 @@ class SandboxServiceRouter:
         self,
         agent_id: str,
         policy: AgentPolicy | None,
-        inject_callback: Callable[[str, InterfaceTool], None],
+        inject_callback: Callable[[InterfaceTool], None],
     ) -> tuple[dict, Callable[..., str]]:
         """Return the ``discover_tools`` callable for an agent.
 
@@ -492,7 +495,7 @@ class SandboxServiceRouter:
         Args:
             agent_id: The agent this tool belongs to.
             policy: Agent policy used to scope which tools are discoverable.
-            inject_callback: Called with ``(agent_id, tool)`` when a full
+            inject_callback: Called with ``(tool)`` when a full
                 spec activation is requested.
 
         Returns:
@@ -524,7 +527,7 @@ class SandboxServiceRouter:
                 return json.dumps({"error": "unknown_tool", "tool_name": tool_name})
 
             if tool_name not in already_injected:
-                inject_callback(agent_id, tool)
+                inject_callback(tool)
                 already_injected.add(tool_name)
                 self._emit(ToolSpecsInjected(source=f"sandbox:{self._sandbox_id}", agent_id=agent_id, tool_names=[tool_name]))
 
@@ -555,7 +558,7 @@ class SandboxServiceRouter:
         self,
         agent_id: str,
         policy: AgentPolicy | None,
-        clear_notifications_callback: Callable[[str], None] | None = None,
+        clear_notifications_callback: Callable[[], None] | None = None,
     ) -> tuple[list[dict], dict[str, Callable[..., str]]]:
         """Generate the generic service tools for an agent.
 
@@ -575,7 +578,6 @@ class SandboxServiceRouter:
             policy: Optional AgentPolicy for access scoping.
             clear_notifications_callback: Optional callable invoked after
                 ``read_event_notifications()`` drains the queue.
-                Signature: ``(agent_id: str) -> None``.
 
         Returns:
             A ``(tool_specs, tool_map)`` tuple ready to be merged into a
@@ -630,13 +632,13 @@ class SandboxServiceRouter:
     def _make_read_event_notifications_callable(
         self,
         agent_id: str,
-        clear_notifications_callback: Callable[[str], None] | None = None,
+        clear_notifications_callback: Callable[[], None] | None = None,
     ) -> Callable[..., str]:
         def _read_event_notifications() -> str:
             result = self._do_read_notifications(agent_id)
             if clear_notifications_callback is not None:
                 try:
-                    clear_notifications_callback(agent_id)
+                    clear_notifications_callback()
                 except Exception:
                     logger.exception(
                         "clear_notifications_callback failed for agent '%s'", agent_id
@@ -811,9 +813,10 @@ class SandboxServiceRouter:
                     self._pending_events[agent_id] = []
                 self._pending_events[agent_id].append(notification)
 
-            if self._event_notification_callback is not None:
+            cb = self._event_notification_callbacks.get(agent_id)
+            if cb is not None:
                 try:
-                    self._event_notification_callback(agent_id, source_id, event_type)
+                    cb(source_id, event_type)
                 except Exception:
                     logger.exception(
                         "Event notification callback failed for agent '%s'", agent_id

@@ -87,7 +87,7 @@ Those should be configurable by the sandbox rather than baked into a single rigi
 
 Not all sandbox messages need to be forwarded immediately.
 
-By default, a message sent through the sandbox bus can behave like a DM or group-chat message and be delivered right away. But some coordination patterns need a staging step.
+By default, a message sent through the sandbox bus is delivered to group channel members right away. But some coordination patterns need a staging step.
 
 A `Message Processor` is an optional sandbox-local component that sits between senders and recipients. Its job is to decide when a message should actually be released.
 

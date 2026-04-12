@@ -81,7 +81,7 @@ Additional event sources can be registered via `sandbox.add_event_source(agent_i
 
 `_format_wake_events(events)` converts `WakeEvent`s into a prompt string:
 
-**Mention events** (DMs, @here, @name):
+**Mention events** (@here, @name, or AMBIENT channels):
 ```
 @alice in #team-discussion: Hey, what do you think about...
 ```

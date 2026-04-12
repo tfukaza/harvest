@@ -2,7 +2,7 @@
 
 A parent agent holds one ``AgentManagerClient`` instance. It exposes
 blocking methods that dispatch lifecycle requests onto the shared
-:class:`~harvest.agent_sandbox.event_helpers.SyncEventBus` and wait for
+:class:`~harvest.agent_sandbox.events.helpers.SyncEventBus` and wait for
 responses, hiding the event plumbing from the agent thread.
 """
 
@@ -11,11 +11,11 @@ import logging
 import uuid
 from collections import defaultdict
 
-from harvest.agent_sandbox.event_helpers import (
+from harvest.agent_sandbox.events.helpers import (
     SyncEventBus,
     dispatch_and_wait,
 )
-from harvest.agent_sandbox.lifecycle_events import (
+from harvest.agent_sandbox.lifecycle.events import (
     AgentStatusChanged,
     AgentStopped,
     CreateAgentRequest,

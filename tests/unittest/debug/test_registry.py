@@ -7,8 +7,8 @@ from unittest.mock import MagicMock
 import pytest
 
 from harvest.agent_sandbox.basic_sandbox import BasicSandbox
-from harvest.agent_sandbox.channels import GroupChannel
-from harvest.agent_sandbox.chat import ChatRouter
+from harvest.agent_sandbox.chat.channels import GroupChannel
+from harvest.agent_sandbox.chat.router import ChatRouter
 from harvest.agent_sandbox.config import AgentSandboxConfig
 from harvest.debug.registry import SandboxRegistry
 from harvest.debug.snapshot import SandboxSnapshot

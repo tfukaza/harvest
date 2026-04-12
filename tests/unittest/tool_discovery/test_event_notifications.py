@@ -13,7 +13,7 @@ from typing import Any
 
 import pytest
 
-from harvest.agent_sandbox.service_router import SandboxServiceRouter
+from harvest.agent_sandbox.services.router import SandboxServiceRouter
 from harvest.agent_sandbox.system_prompt_builder import SystemPromptBuilder
 from harvest.events.event_bus import EventBus
 from harvest.events.base import ExternalEventFired
@@ -93,7 +93,7 @@ def _setup_router_with_agent(
     builder = SystemPromptBuilder()
     cleared: list[str] = []
 
-    def _add_notification(aid: str, src_id: str, evt_type: str) -> None:
+    def _add_notification(src_id: str, evt_type: str) -> None:
         block = (
             f"## Pending Event Notification\n\n"
             f"A new event has arrived from source '{src_id}' "
@@ -101,12 +101,12 @@ def _setup_router_with_agent(
         )
         builder.append("event_notifications", block)
 
-    def _clear_notifications(aid: str) -> None:
+    def _clear_notifications() -> None:
         builder.clear("event_notifications")
-        cleared.append(aid)
+        cleared.append(agent_id)
 
     router = SandboxServiceRouter(sandbox_id="test")
-    router.register_event_notification_callback(_add_notification)
+    router.register_event_notification_callback(agent_id, _add_notification)
 
     es = _MockEventSource(source_id)
     router.register_service(es)
@@ -165,8 +165,9 @@ def test_multiple_events_from_different_sources_produce_separate_blocks() -> Non
     # Set up two event sources
     builder = SystemPromptBuilder()
     cleared: list[str] = []
+    agent_id = "agent-1"
 
-    def _add_notification(aid: str, src_id: str, evt_type: str) -> None:
+    def _add_notification(src_id: str, evt_type: str) -> None:
         block = (
             f"## Pending Event Notification\n\n"
             f"A new event has arrived from source '{src_id}' "
@@ -174,19 +175,18 @@ def test_multiple_events_from_different_sources_produce_separate_blocks() -> Non
         )
         builder.append("event_notifications", block)
 
-    def _clear_notifications(aid: str) -> None:
+    def _clear_notifications() -> None:
         builder.clear("event_notifications")
-        cleared.append(aid)
+        cleared.append(agent_id)
 
     router = SandboxServiceRouter(sandbox_id="test")
-    router.register_event_notification_callback(_add_notification)
+    router.register_event_notification_callback(agent_id, _add_notification)
 
     es1 = _MockEventSource("source-a")
     es2 = _MockEventSource("source-b")
     router.register_service(es1)
     router.register_service(es2)
 
-    agent_id = "agent-1"
     router.register_agent_wake_callback(agent_id, wake_fn=lambda: None)
     router.subscribe_agent(agent_id, "source-a")
     router.subscribe_agent(agent_id, "source-b")
@@ -215,26 +215,26 @@ def test_multiple_events_from_different_sources_produce_separate_blocks() -> Non
 def test_read_event_notifications_clears_all_blocks() -> None:
     """After read_event_notifications(), ALL pending blocks are cleared."""
     builder = SystemPromptBuilder()
+    agent_id = "agent-1"
 
-    def _add_notification(aid: str, src_id: str, evt_type: str) -> None:
+    def _add_notification(src_id: str, evt_type: str) -> None:
         block = (
             f"## Pending Event Notification\n\n"
             f"A new event from '{src_id}' (type: '{evt_type}'). Call read_event_notifications()."
         )
         builder.append("event_notifications", block)
 
-    def _clear_notifications(aid: str) -> None:
+    def _clear_notifications() -> None:
         builder.clear("event_notifications")
 
     router = SandboxServiceRouter(sandbox_id="test")
-    router.register_event_notification_callback(_add_notification)
+    router.register_event_notification_callback(agent_id, _add_notification)
 
     es1 = _MockEventSource("src-a")
     es2 = _MockEventSource("src-b")
     router.register_service(es1)
     router.register_service(es2)
 
-    agent_id = "agent-1"
     router.register_agent_wake_callback(agent_id, wake_fn=lambda: None)
     router.subscribe_agent(agent_id, "src-a")
     router.subscribe_agent(agent_id, "src-b")

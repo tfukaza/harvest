@@ -8,7 +8,6 @@ from dataclasses import dataclass, field
 class ChannelType(enum.Enum):
     """Enumerates the types of channels in the chat system."""
 
-    DM = "dm"
     GROUP = "group"
     PROCESSOR_GATED = "processor_gated"
     PROCESSOR_AGGREGATION = "processor_aggregation"
@@ -40,25 +39,18 @@ class ChannelDefinition:
 
 
 @dataclass
-class DMChannel(ChannelDefinition):
-    """Direct message channel between two agents.
-
-    Implemented identically to GroupChannel — a DM is just a group with exactly
-    two members. Separate dataclass exists because creation conventions differ:
-    DMs are created ad-hoc by agents, groups by configuration or orchestrators.
-    """
-
-    channel_type: ChannelType = ChannelType.DM
-    member_ids: list[str] = field(default_factory=list)
-
-
-@dataclass
 class GroupChannel(ChannelDefinition):
-    """Group chat channel with N members."""
+    """Member-based chat channel.
+
+    Covers both 1-on-1 (DM) and multi-member conversations — a DM is simply
+    a group with two members, ``staking_enabled=False``, and AMBIENT
+    notification mode.
+    """
 
     channel_type: ChannelType = ChannelType.GROUP
     member_ids: list[str] = field(default_factory=list)
     notification_mode: NotificationMode = NotificationMode.AMBIENT
+    staking_enabled: bool = True
 
 
 @dataclass

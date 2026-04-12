@@ -4,7 +4,7 @@
 import json
 from typing import Any
 
-from harvest.agent_sandbox.service_router import SandboxServiceRouter
+from harvest.agent_sandbox.services.router import SandboxServiceRouter
 from harvest.interfaces.examples.mock_full_service import MockFullService
 from harvest.interfaces.service import ServicePermission, ServiceRole
 from harvest.interfaces.tool_registry import ToolRegistry

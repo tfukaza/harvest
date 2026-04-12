@@ -17,7 +17,7 @@ system defined in :mod:`harvest.policy`, these abstractions form the
 "corporate firewall" architecture: agents can only reach external services
 that the sandbox has explicitly registered **and** that the agent's
 individual policy permits.  All interactions are routed through the
-:class:`~harvest.agent_sandbox.service_router.SandboxServiceRouter` and
+:class:`~harvest.agent_sandbox.services.router.SandboxServiceRouter` and
 logged as typed events on the orchestrator event bus.
 """
 

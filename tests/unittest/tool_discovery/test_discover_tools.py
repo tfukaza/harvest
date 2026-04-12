@@ -14,7 +14,7 @@ from typing import Any
 
 import pytest
 
-from harvest.agent_sandbox.service_router import SandboxServiceRouter
+from harvest.agent_sandbox.services.router import SandboxServiceRouter
 from harvest.interfaces.service import (
     ActionCommand,
     ActionResult,
@@ -103,7 +103,7 @@ def test_discover_tools_no_args_returns_lightweight_list() -> None:
     policy = _make_policy()
     injected: list = []
 
-    _, discover = router.make_discovery_tool("agent-1", policy, inject_callback=lambda aid, tool: injected.append(tool))
+    _, discover = router.make_discovery_tool("agent-1", policy, inject_callback=lambda tool: injected.append(tool))
     result = json.loads(discover())
 
     assert isinstance(result, list)
@@ -122,7 +122,7 @@ def test_discover_tools_no_args_does_not_inject() -> None:
     policy = _make_policy()
     injected: list = []
 
-    _, discover = router.make_discovery_tool("agent-1", policy, inject_callback=lambda aid, tool: injected.append(tool))
+    _, discover = router.make_discovery_tool("agent-1", policy, inject_callback=lambda tool: injected.append(tool))
     discover()
 
     assert injected == []
@@ -133,7 +133,7 @@ def test_discover_tools_no_args_respects_policy() -> None:
     policy = _make_policy(sources=())
     injected: list = []
 
-    _, discover = router.make_discovery_tool("agent-1", policy, inject_callback=lambda aid, tool: injected.append(tool))
+    _, discover = router.make_discovery_tool("agent-1", policy, inject_callback=lambda tool: injected.append(tool))
     result = json.loads(discover())
 
     assert result == []
@@ -147,7 +147,7 @@ def test_discover_tools_no_args_respects_policy() -> None:
 def test_discover_tools_with_name_returns_full_spec() -> None:
     router = _make_router_with_stock()
     policy = _make_policy()
-    _, discover = router.make_discovery_tool("agent-1", policy, inject_callback=lambda aid, tool: None)
+    _, discover = router.make_discovery_tool("agent-1", policy, inject_callback=lambda tool: None)
 
     result = json.loads(discover(tool_name="get_stock_price"))
     assert result["name"] == "get_stock_price"
@@ -163,12 +163,11 @@ def test_discover_tools_with_name_calls_inject_callback() -> None:
     policy = _make_policy()
     injected: list = []
 
-    _, discover = router.make_discovery_tool("agent-1", policy, inject_callback=lambda aid, tool: injected.append((aid, tool)))
+    _, discover = router.make_discovery_tool("agent-1", policy, inject_callback=lambda tool: injected.append(tool))
     discover(tool_name="get_stock_price")
 
     assert len(injected) == 1
-    assert injected[0][0] == "agent-1"
-    assert injected[0][1].name == "get_stock_price"
+    assert injected[0].name == "get_stock_price"
 
 
 def test_discover_tools_with_name_duplicate_does_not_reinject() -> None:
@@ -176,7 +175,7 @@ def test_discover_tools_with_name_duplicate_does_not_reinject() -> None:
     policy = _make_policy()
     injected: list = []
 
-    _, discover = router.make_discovery_tool("agent-1", policy, inject_callback=lambda aid, tool: injected.append(tool))
+    _, discover = router.make_discovery_tool("agent-1", policy, inject_callback=lambda tool: injected.append(tool))
     discover(tool_name="get_stock_price")
     discover(tool_name="get_stock_price")
 
@@ -186,7 +185,7 @@ def test_discover_tools_with_name_duplicate_does_not_reinject() -> None:
 def test_discover_tools_unknown_name_returns_error() -> None:
     router = _make_router_with_stock()
     policy = _make_policy()
-    _, discover = router.make_discovery_tool("agent-1", policy, inject_callback=lambda aid, tool: None)
+    _, discover = router.make_discovery_tool("agent-1", policy, inject_callback=lambda tool: None)
 
     result = json.loads(discover(tool_name="nonexistent_tool"))
     assert "error" in result
@@ -197,7 +196,7 @@ def test_discover_tools_policy_denied_tool_returns_error() -> None:
     router = _make_router_with_stock()
     policy = _make_policy(sources=())
 
-    _, discover = router.make_discovery_tool("agent-1", policy, inject_callback=lambda aid, tool: None)
+    _, discover = router.make_discovery_tool("agent-1", policy, inject_callback=lambda tool: None)
     result = json.loads(discover(tool_name="get_stock_price"))
     assert "error" in result
     assert result["error"] == "unknown_tool"
@@ -221,7 +220,7 @@ def test_tool_specs_injected_event_emitted_on_activation() -> None:
         router.register_service(_StockService("stock-data"))
 
         policy = _make_policy()
-        _, discover = router.make_discovery_tool("agent-1", policy, inject_callback=lambda aid, tool: None)
+        _, discover = router.make_discovery_tool("agent-1", policy, inject_callback=lambda tool: None)
         discover(tool_name="get_stock_price")
 
         await asyncio.sleep(0.1)
@@ -252,7 +251,7 @@ def test_tool_specs_injected_event_not_emitted_on_catalogue() -> None:
         router.register_service(_StockService("stock-data"))
 
         policy = _make_policy()
-        _, discover = router.make_discovery_tool("agent-1", policy, inject_callback=lambda aid, tool: None)
+        _, discover = router.make_discovery_tool("agent-1", policy, inject_callback=lambda tool: None)
         discover()
 
         await asyncio.sleep(0.1)
@@ -281,7 +280,7 @@ def test_tool_specs_injected_event_not_emitted_on_duplicate_activation() -> None
         router.register_service(_StockService("stock-data"))
 
         policy = _make_policy()
-        _, discover = router.make_discovery_tool("agent-1", policy, inject_callback=lambda aid, tool: None)
+        _, discover = router.make_discovery_tool("agent-1", policy, inject_callback=lambda tool: None)
         discover(tool_name="get_stock_price")
         discover(tool_name="get_stock_price")
 

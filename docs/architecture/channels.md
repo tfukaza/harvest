@@ -8,25 +8,14 @@ All inter-agent communication flows through channels. From an agent's perspectiv
 
 ```python
 class ChannelType(Enum):
-    DM = "dm"
     GROUP = "group"
     PROCESSOR_GATED = "processor_gated"
     PROCESSOR_AGGREGATION = "processor_aggregation"
 ```
 
-### DM Channel
-
-Two agents, bidirectional. Messages always notify the recipient (no ambient mode).
-
-```python
-DMChannel(channel_id="dm:alice:bob", member_ids=["alice", "bob"])
-```
-
-DM channel IDs follow the convention `dm:{sorted_id_1}:{sorted_id_2}` for deterministic lookup.
-
 ### Group Channel
 
-N agents, all can send and receive. The primary channel type for team discussions.
+N agents, all can send and receive. This is the only member-based channel type — it covers both 1-on-1 and multi-member conversations.
 
 ```python
 GroupChannel(
@@ -34,7 +23,16 @@ GroupChannel(
     member_ids=["alice", "bob", "charlie"],
     notification_mode=NotificationMode.AMBIENT,
 )
+
+# Two-member channel with no write locking
+GroupChannel(
+    channel_id="alice-bob",
+    member_ids=["alice", "bob"],
+    staking_enabled=False,
+)
 ```
+
+The `staking_enabled` flag controls whether the channel uses write locking (FIFO staking). When enabled (the default), agents must acquire an exclusive write lock before sending, preventing concurrent writes. Small channels can disable this for immediate sends.
 
 ### Processor Channels
 
@@ -99,13 +97,9 @@ The mention metadata flows through the system:
 
 This mimics Slack's behavior: mentioned messages show full content with a red badge, while unmentioned channel activity shows a bold channel name without urgency.
 
-## DM Behavior
-
-DMs always use mention-level notification regardless of any notification mode setting. When you send a DM, the recipient always gets the full message content in their wake prompt.
-
 ## YAML Configuration
 
-In a manifest, channels specify their notification mode:
+In a manifest, channels specify their type and notification mode:
 
 ```yaml
 channels:
@@ -113,6 +107,11 @@ channels:
     type: group
     members: [alice, bob, charlie]
     notification_mode: ambient    # default
+
+  alice-bob:
+    type: group
+    members: [alice, bob]
+    staking_enabled: false        # no write locking for small channels
 
   large-channel:
     type: group

@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 class ToolRegistry:
     """Aggregates InterfaceTool instances across all registered services.
 
-    One instance lives inside :class:`~harvest.agent_sandbox.service_router.SandboxServiceRouter`.
+    One instance lives inside :class:`~harvest.agent_sandbox.services.router.SandboxServiceRouter`.
     Tools are registered at service-registration time and looked up at
     agent-wiring time and discovery time.
 

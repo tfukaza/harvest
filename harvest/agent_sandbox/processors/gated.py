@@ -3,7 +3,7 @@
 
 import threading
 
-from harvest.agent_sandbox.messages import SandboxMessage
+from harvest.agent_sandbox.chat.messages import SandboxMessage
 
 
 class GatedProcessor:

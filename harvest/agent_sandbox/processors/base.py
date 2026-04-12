@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from harvest.agent_sandbox.endpoints import EndpointAddress
-from harvest.agent_sandbox.messages import SandboxMessage
+from harvest.agent_sandbox.chat.messages import SandboxMessage
 
 
 class MessageProcessor(ABC):

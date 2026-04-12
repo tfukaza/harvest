@@ -4,7 +4,7 @@
 import json
 
 from harvest.agent_sandbox.basic_sandbox import BasicSandbox
-from harvest.agent_sandbox.channels import DMChannel, GroupChannel
+from harvest.agent_sandbox.chat.channels import GroupChannel
 from harvest.agent_sandbox.config import AgentSandboxConfig
 from harvest.harvest_agent import HarvestAgent, HarvestAgentConfig
 from harvest.core.policy import AgentPolicy
@@ -55,7 +55,7 @@ def test_send_message_tool() -> None:
     sandbox.register_agent("agent-a", agent_a)
     sandbox.register_agent("agent-b", agent_b)
 
-    dm = DMChannel(channel_id="dm:agent-a:agent-b", member_ids=["agent-a", "agent-b"])
+    dm = GroupChannel(channel_id="dm:agent-a:agent-b", member_ids=["agent-a", "agent-b"], staking_enabled=False)
     sandbox.chat_router.create_channel(dm)
 
     result = agent_a._tool_map["send_message"](channel_id="dm:agent-a:agent-b", content="hello")
@@ -69,10 +69,14 @@ def test_read_messages_tool() -> None:
     sandbox.register_agent("agent-a", agent_a)
     sandbox.register_agent("agent-b", agent_b)
 
-    dm = DMChannel(channel_id="dm:agent-a:agent-b", member_ids=["agent-a", "agent-b"])
+    dm = GroupChannel(channel_id="dm:agent-a:agent-b", member_ids=["agent-a", "agent-b"], staking_enabled=False)
     sandbox.chat_router.create_channel(dm)
 
-    sandbox.chat_router.send_message("agent-a", "dm:agent-a:agent-b", "hello", "msg-1")
+    from harvest.agent_sandbox.chat.events import SendChatMessage
+    sandbox._sandbox_bus.dispatch(SendChatMessage(
+        sender_id="agent-a", channel_id="dm:agent-a:agent-b",
+        content="hello", message_id="msg-1", source="agent-a",
+    ))
 
     result = agent_b._tool_map["read_messages"]()
     assert "messages" in result
@@ -150,7 +154,7 @@ def test_leave_channel_auto_cleanup() -> None:
     sandbox.register_agent("agent-a", agent_a)
     sandbox.register_agent("agent-b", agent_b)
 
-    dm = DMChannel(channel_id="dm:agent-a:agent-b", member_ids=["agent-a", "agent-b"])
+    dm = GroupChannel(channel_id="dm:agent-a:agent-b", member_ids=["agent-a", "agent-b"], staking_enabled=False)
     sandbox.chat_router.create_channel(dm)
 
     agent_a._tool_map["leave_channel"](channel_id="dm:agent-a:agent-b")
@@ -165,10 +169,14 @@ def test_message_delivered_to_inbox() -> None:
     sandbox.register_agent("agent-a", agent_a)
     sandbox.register_agent("agent-b", agent_b)
 
-    dm = DMChannel(channel_id="dm:agent-a:agent-b", member_ids=["agent-a", "agent-b"])
+    dm = GroupChannel(channel_id="dm:agent-a:agent-b", member_ids=["agent-a", "agent-b"], staking_enabled=False)
     sandbox.chat_router.create_channel(dm)
 
-    sandbox.chat_router.send_message("agent-a", "dm:agent-a:agent-b", "hello", "msg-1")
+    from harvest.agent_sandbox.chat.events import SendChatMessage
+    sandbox._sandbox_bus.dispatch(SendChatMessage(
+        sender_id="agent-a", channel_id="dm:agent-a:agent-b",
+        content="hello", message_id="msg-1", source="agent-a",
+    ))
 
     inbox = sandbox.chat_router.peek_inbox("agent-b")
     assert len(inbox) == 1

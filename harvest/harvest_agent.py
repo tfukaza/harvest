@@ -24,8 +24,8 @@ litellm.suppress_debug_info = True
 from litellm import completion
 
 from harvest.core.agent import Agent
-from harvest.agent_sandbox.chat_client import ChatRouterClient
-from harvest.agent_sandbox.agent_manager_client import AgentManagerClient
+from harvest.agent_sandbox.chat.client import ChatRouterClient
+from harvest.agent_sandbox.lifecycle.manager_client import AgentManagerClient
 
 DEFAULT_MODEL = "anthropic/claude-haiku-4-5-20251001"
 DEFAULT_SYSTEM_PROMPT = (
@@ -255,6 +255,7 @@ class HarvestAgent(Agent):
         agent_id: str = "",
         policy: Any | None = None,
     ) -> None:
+        super().__init__()
         self.config = config
         self.agent_id = agent_id or config.session_id
         self._completion_func = completion_func or completion
@@ -372,7 +373,7 @@ class HarvestAgent(Agent):
 
         Args:
             service_router: A
-                :class:`~harvest.agent_sandbox.service_router.SandboxServiceRouter`
+                :class:`~harvest.agent_sandbox.services.router.SandboxServiceRouter`
                 instance.
         """
         tool_specs, tool_map = service_router.make_service_tools(
@@ -414,7 +415,7 @@ class HarvestAgent(Agent):
             tools are enabled, :attr:`self._agent_manager`.
 
         Args:
-            sandbox_bus: A :class:`~harvest.agent_sandbox.event_helpers.SyncEventBus`.
+            sandbox_bus: A :class:`~harvest.agent_sandbox.events.helpers.SyncEventBus`.
             policy: An :class:`~harvest.policy.AgentPolicy` instance.
         """
         self._chat_client = ChatRouterClient(self.agent_id, sandbox_bus)
@@ -578,7 +579,7 @@ class HarvestAgent(Agent):
             "create_channel", "Create a new channel.",
             {
                 "channel_id": {"type": "string"},
-                "channel_type": {"type": "string", "enum": ["dm", "group"]},
+                "channel_type": {"type": "string", "enum": ["group"]},
                 "member_ids": {"type": "array", "items": {"type": "string"}},
                 "description": {"type": "string"},
             },

@@ -175,7 +175,7 @@ class Service(ABC):
 
     A Service declares one or more :class:`ServiceRole` values that describe
     what it can do.  The sandbox registers one ``Service`` instance per
-    external entity.  The :class:`~harvest.agent_sandbox.service_router.SandboxServiceRouter`
+    external entity.  The :class:`~harvest.agent_sandbox.services.router.SandboxServiceRouter`
     routes requests to the correct method based on role.
 
     Agents never hold direct references to ``Service`` instances.  All
@@ -304,7 +304,7 @@ class Service(ABC):
     ) -> None:
         """Inject the service router's fetch dispatch callback.
 
-        Called by :class:`~harvest.agent_sandbox.service_router.SandboxServiceRouter`
+        Called by :class:`~harvest.agent_sandbox.services.router.SandboxServiceRouter`
         at registration time for services with ``DATA_SOURCE`` role.
         Tool handlers use this callback to route requests through the full
         pipeline (policy enforcement, event bus audit) without holding a
@@ -325,7 +325,7 @@ class Service(ABC):
     ) -> None:
         """Inject the service router's execute dispatch callback.
 
-        Called by :class:`~harvest.agent_sandbox.service_router.SandboxServiceRouter`
+        Called by :class:`~harvest.agent_sandbox.services.router.SandboxServiceRouter`
         at registration time for services with ``ACTION`` role.
         Tool handlers use this callback to route commands through the full
         pipeline (policy enforcement, event bus audit) without holding a

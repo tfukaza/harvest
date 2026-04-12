@@ -185,7 +185,7 @@ class CreateChannelRequest(HarvestEvent):
     requester_id: str
     request_id: str
     channel_id: str
-    channel_type: str  # "group" or "dm"
+    channel_type: str  # "group"
     member_ids: list[str] = Field(default_factory=list)
     description: str = ""
 

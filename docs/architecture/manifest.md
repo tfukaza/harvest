@@ -45,10 +45,11 @@ sandbox:
       notification_mode: ambient
 
     private:
-      type: dm
+      type: group
       members:
         - alice
         - bob
+      staking_enabled: false
 
   seeds:
     - channel: team-chat
@@ -95,13 +96,14 @@ Keyed by `channel_id`. Each entry:
 
 | Field | Type | Applies To | Description |
 |-------|------|-----------|-------------|
-| `type` | str | all | `dm`, `group`, `processor_gated`, `processor_aggregation` |
+| `type` | str | all | `group`, `processor_gated`, `processor_aggregation` |
 | `description` | str | all | Channel description |
-| `members` | list[str] | dm, group | Agent IDs |
+| `members` | list[str] | group | Agent IDs |
 | `publishers` | list[str] | processor | Agents who can send |
 | `subscribers` | list[str] | processor | Agents who receive on release |
 | `batch_threshold` | int | aggregation | Messages before batch release |
 | `notification_mode` | str | group | `ambient` (default) or `mention` |
+| `staking_enabled` | bool | group | Enable write locking (default: `true`) |
 
 ### `seeds`
 
@@ -121,7 +123,6 @@ Seeds are injected as system messages before agents start their hibernation loop
 
 - Every agent references a defined policy (local or shared registry)
 - Every channel member/publisher/subscriber references a defined agent
-- DM channels have exactly 2 members
 - Processor channels have at least 1 publisher and 1 subscriber
 - Seed channels and recipients reference defined channels and agents
 

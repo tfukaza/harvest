@@ -1,18 +1,17 @@
 """Exports for the agent-sandbox architecture."""
 
-from harvest.agent_sandbox.aggregation_processor import AggregationProcessor
-from harvest.agent_sandbox.channels import (
+from harvest.agent_sandbox.processors.aggregation import AggregationProcessor
+from harvest.agent_sandbox.chat.channels import (
     AggregationProcessorChannel,
     ChannelDefinition,
     ChannelType,
-    DMChannel,
     GatedProcessorChannel,
     GroupChannel,
     NotificationMode,
     ProcessorChannel,
 )
-from harvest.agent_sandbox.chat import ChatRouter
-from harvest.agent_sandbox.chat_events import (
+from harvest.agent_sandbox.chat.router import ChatRouter
+from harvest.agent_sandbox.chat.events import (
     BatchReleased,
     ChatMessageDelivered,
     GateOpened,
@@ -22,9 +21,9 @@ from harvest.agent_sandbox.chat_events import (
 from harvest.agent_sandbox.config import AgentSandboxConfig
 from harvest.agent_sandbox.endpoints import DeliveryMode, EndpointAddress, EndpointKind, GroupChatDefinition, SandboxEndpoint
 from harvest.agent_sandbox.factory import AgentSandboxFactory
-from harvest.agent_sandbox.gated_processor import GatedProcessor
-from harvest.agent_sandbox.hibernation import EventSource, InboxEventSource, WakeEvent
-from harvest.agent_sandbox.messages import MessageBatch, SandboxMessage
+from harvest.agent_sandbox.processors.gated import GatedProcessor
+from harvest.agent_sandbox.lifecycle.hibernation import EventSource, InboxEventSource, WakeEvent
+from harvest.agent_sandbox.chat.messages import MessageBatch, SandboxMessage
 from harvest.agent_sandbox.persistence import LocalAgentStore, RecoverySnapshot, ReasoningRecord, SessionStateRecord, ToolResultRecord
 from harvest.agent_sandbox.processors import AggregationProcessorConfig, GatedReleaseProcessorConfig, MessageProcessor
 from harvest.agent_sandbox.promotion import PromotionCandidate, PromotionDecision, PromotionPolicy, PromotionTarget
@@ -45,7 +44,6 @@ __all__ = [
     "ChannelType",
     "ChatMessageDelivered",
     "ChatRouter",
-    "DMChannel",
     "DeliveryMode",
     "EndpointAddress",
     "EndpointKind",

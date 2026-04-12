@@ -11,7 +11,7 @@ from typing import Any
 
 import pytest
 
-from harvest.agent_sandbox.service_router import SandboxServiceRouter
+from harvest.agent_sandbox.services.router import SandboxServiceRouter
 from harvest.events.event_bus import EventBus
 from harvest.events.base import DataFetchCompleted, DataFetchRequested
 from harvest.interfaces.service import (

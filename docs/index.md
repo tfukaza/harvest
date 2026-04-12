@@ -18,7 +18,7 @@ The architecture docs live under `architecture/` and cover the current implement
 - **[architecture/overview.md](architecture/overview.md)** — Start here. High-level system diagram, two runtime paths (Orchestrator + Agent Sandbox), shared infrastructure.
 - **[architecture/sandbox.md](architecture/sandbox.md)** — BasicSandbox: agent hosting, per-agent threading, lifecycle, from_manifest(), identity footer.
 - **[architecture/chat-router.md](architecture/chat-router.md)** — ChatRouter: unified message routing, send/read flow, mention parsing, agent tools, seed injection.
-- **[architecture/channels.md](architecture/channels.md)** — Channel types (DM, group, processor), NotificationMode (AMBIENT vs MENTION), @here/@name conventions.
+- **[architecture/channels.md](architecture/channels.md)** — Channel types (group, processor), NotificationMode (AMBIENT vs MENTION), @here/@name conventions.
 - **[architecture/hibernation.md](architecture/hibernation.md)** — Hibernation loop, jittered sleep, wake signals, EventSources, wake event formatting.
 - **[architecture/manifest.md](architecture/manifest.md)** — YAML manifest format, section reference, validation, seed messages, demo manifests.
 - **[architecture/policies.md](architecture/policies.md)** — AgentPolicy, PolicyRegistry, ChildPolicyMode, policy resolution in manifests.
