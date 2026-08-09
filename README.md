@@ -1,4 +1,24 @@
 ![Header](docs/banner.png)<br />
+
+> [!WARNING]
+> **As of August 8th 2026, Harvest is archived and no longer developed.**
+>
+> The Harvest project began in 2021, and in the 5 years since, a lot has changed. 
+> Part of it was a realization making an algorithmic trading framework was
+> harder than expected. It's hard to curate data, it's hard to maintain uptime,
+> and of course, hard to actually make money.
+> 
+> But the most detrimental of all was AI. Since the beginning, the project's 
+> core value was to provide a clean and intuitive API for human developers 
+> to easily develop algorithms and access brokerages. This value proposition
+> was rendered obsolete as coding agents became progressively better and 
+> every other brokerages (even Robinhood!) began releasing their own MCP servers.  
+> 
+> Harvest isn't completely dead though. The experience I gained through 
+> working on this project, and notably the experimental agent orchestration 
+> system that was developed near the tail end of its life, will live on in 
+> [Shepherd](https://github.com/tfukaza/shepherd), the successor project of Harvest.
+
 Harvest is a simple yet flexible Python framework for algorithmic trading. Paper trade and live trade stocks, cryptos, and options![^1][^2] Visit [**here**](https://tfukaza.github.io/harvest-website) for tutorials and documentation.
 
 <br />
